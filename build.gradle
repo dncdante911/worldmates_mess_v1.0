@@ -1,14 +1,72 @@
-// Androidx Components
-implementation("androidx.core:core-ktx:1.9.0")
-implementation("androidx.appcompat:appcompat:1.6.1")
-implementation("com.google.android.material:material:1.9.0")
-implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
-implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+android {
+    compileSdk = 34
+    
+    defaultConfig {
+        applicationId = "com.worldmates.messenger"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+    }
+    
+    buildFeatures {
+        compose = true
+    }
+    
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
 
-// Networking (Retrofit, OkHttp, Gson)
-implementation("com.squareup.retrofit2:retrofit:2.9.0")
-implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
+    }
+}
 
-// Socket.IO
-implementation("io.socket:socket.io-client:2.0.1") // Или более новая версия
+dependencies {
+    // AndroidX Core
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+
+    // Material Design
+    implementation("com.google.android.material:material:1.11.0")
+
+    // Jetpack Compose
+    implementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    implementation("androidx.activity:activity-compose:1.8.0")
+
+    // Networking
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
+    // Socket.IO
+    implementation("io.socket:socket.io-client:2.1.1")
+
+    // Image Loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // FCM (Push Notifications)
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+
+    // Encryption
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+}

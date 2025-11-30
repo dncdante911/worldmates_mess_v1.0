@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WorldMates Messenger</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">WorldMates Messenger</string>
+    <string name="login_subtitle">Спілкуйтеся з друзями</string>
+    <string name="hint_username">Ім\'я користувача або Email</string>
+    <string name="hint_password">Пароль</string>
+    <string name="btn_login">Вхід</string>
+    <string name="btn_register">Зареєструватися</string>
+    <string name="login_loading">Завантаження...</string>
+    <string name="no_account">Немаєте облікового запису?</string>
+    <string name="register_here">Зареєструйтеся тут</string>
+    <string name="error_empty_username">Введіть ім\'я користувача</string>
+    <string name="error_empty_password">Введіть пароль</string>
+    <string name="error_invalid_credentials">Невірне ім\'я користувача або пароль</string>
+    <string name="error_network">Помилка мережі. Перевірте з\'єднання</string>
+    <string name="success_login">Успішний вхід!</string>
+    
+    <!-- Chats Screen -->
+    <string name="messages_title">Повідомлення</string>
+    <string name="search_hint">Пошук чатів...</string>
+    <string name="new_message">Нове повідомлення</string>
+    <string name="empty_chats">Немаєте чатів</string>
+    <string name="empty_chats_desc">Почніть розмову зараз!</string>
+    <string name="no_messages">Немаєте повідомлень</string>
+    <string name="last_message_you">Ви: </string>
+    
+    <!-- Messages Screen -->
+    <string name="message_hint">Введіть повідомлення...</string>
+    <string name="send_message">Надіслати</string>
+    <string name="typing">Друкує...</string>
+    <string name="decryption_error">Помилка дешифрування повідомлення</string>
+    <string name="loading_messages">Завантаження повідомлень...</string>
+    <string name="message_sent">Повідомлення надіслано</string>
+    <string name="message_failed">Не вдалося надіслати повідомлення</string>
+    <string name="media_file">📎 Медіа-файл</string>
+    
+    <!-- General -->
+    <string name="back">Назад</string>
+    <string name="cancel">Скасувати</string>
+    <string name="ok">Добре</string>
+    <string name="retry">Повторити</string>
+    <string name="error">Помилка</string>
+    <string name="warning">Попередження</string>
+    <string name="info">Інформація</string>
+    <string name="loading">Завантаження...</string>
+    <string name="connecting">Підключення...</string>
+    <string name="offline">Офлайн</string>
+    <string name="online">Онлайн</string>
+    
+    <!-- Notifications -->
+    <string name="notification_title">Нове повідомлення</string>
+    <string name="notification_channel">Повідомлення WorldMates</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">Налаштування</string>
+    <string name="settings_account">Обліковий запис</string>
+    <string name="settings_privacy">Приватність</string>
+    <string name="settings_notifications">Сповіщення</string>
+    <string name="settings_about">Про додаток</string>
+    <string name="logout">Вихід</string>
+    
+    <!-- Errors -->
+    <string name="error_something_wrong">Щось пішло не так</string>
+    <string name="error_try_again">Спробуйте ще раз</string>
+    <string name="error_no_internet">Немаєте з\'єднання з інтернетом</string>
+    <string name="error_server">Помилка серверу. Спробуйте пізніше</string>
+</resources>

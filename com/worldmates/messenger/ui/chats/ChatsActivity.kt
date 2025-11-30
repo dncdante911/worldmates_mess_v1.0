@@ -96,6 +96,17 @@ fun ChatsScreen(
             onSearchChange = { searchText = it }
         )
 
+  Row(modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = { showGroups = false }) { Text("Чаты") }
+        Button(onClick = { showGroups = true }) { Text("Групи") }
+    }
+
+if (showGroups) {
+        // Show groups list
+    } else {
+        // Show chats list
+    }
+
         // Chats List
         if (filteredChats.isEmpty()) {
             EmptyChatsState()

@@ -1,10 +1,8 @@
 package com.worldmates.messenger.network
 
 import android.content.Context
-import android.media.MediaRecorder
-import android.net.Uri
-import android.provider.MediaStore
 import android.util.Log
+import com.worldmates.messenger.data.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -19,12 +17,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Менеджер для загрузки медиа-файлов на сервер
+ * Менеджер для загрузки медиа-файлів на сервер
  */
-class MediaUploader(
-    private val context: Context,
-    private val apiService: WorldMatesApi
-) {
+class MediaUploader(private val context: Context) {
 
     sealed class UploadResult {
         data class Success(val mediaId: String, val url: String, val thumbnail: String? = null) : UploadResult()
@@ -34,11 +29,6 @@ class MediaUploader(
 
     companion object {
         private const val TAG = "MediaUploader"
-        private const val MAX_FILE_SIZE_REGULAR = 2 * 1024 * 1024 * 1024L // 2GB
-        private const val MAX_FILE_SIZE_PREMIUM = 10 * 1024 * 1024 * 1024L // 10GB
-        private const val MAX_IMAGE_SIZE = 50 * 1024 * 1024L // 50MB
-        private const val MAX_VIDEO_SIZE = 5 * 1024 * 1024 * 1024L // 5GB
-        private const val MAX_AUDIO_SIZE = 1 * 1024 * 1024 * 1024L // 1GB
     }
 
     /**
@@ -56,13 +46,18 @@ class MediaUploader(
         try {
             val file = File(filePath)
 
+            // Проверяем существование файла
+            if (!file.exists()) {
+                return@withContext UploadResult.Error("Файл не знайдено: $filePath")
+            }
+
             // Проверяем размер файла
             if (!validateFileSize(file, mediaType, isPremium)) {
-                return@withContext UploadResult.Error("Файл занадто великий")
+                return@withContext UploadResult.Error("Файл занадто великий для типу: $mediaType")
             }
 
             // Создаем RequestBody с прогрессом
-            val requestBody = ProgressRequestBody(file, mediaType, onProgress)
+            val requestBody = ProgressRequestBody(file, getMimeType(mediaType), onProgress)
 
             val filePart = MultipartBody.Part.createFormData(
                 "file",
@@ -73,7 +68,7 @@ class MediaUploader(
             val accessTokenBody = accessToken.toRequestBody("text/plain".toMediaType())
             val mediaTypeBody = mediaType.toRequestBody("text/plain".toMediaType())
 
-            val response = apiService.uploadMedia(
+            val response = RetrofitClient.apiService.uploadMedia(
                 accessToken = accessTokenBody,
                 mediaType = mediaTypeBody,
                 recipientId = recipientId?.toString()?.toRequestBody("text/plain".toMediaType()),
@@ -87,11 +82,13 @@ class MediaUploader(
                         Log.d(TAG, "Медіа завантажено: ${response.url}")
                         UploadResult.Success(response.mediaId, response.url, response.thumbnail)
                     } else {
-                        UploadResult.Error("Невідповідь від серверу")
+                        UploadResult.Error("Невідповідь від серверу: mediaId або url null")
                     }
                 }
-                400, 401 -> UploadResult.Error(response.errorMessage ?: "Помилка авторизації")
-                else -> UploadResult.Error(response.errorMessage ?: "Невідома помилка")
+                400 -> UploadResult.Error(response.errorMessage ?: "Помилка запиту")
+                401 -> UploadResult.Error("Не авторизовано")
+                413 -> UploadResult.Error("Файл занадто великий")
+                else -> UploadResult.Error(response.errorMessage ?: "Помилка ${response.apiStatus}")
             }
 
         } catch (e: IOException) {
@@ -106,40 +103,34 @@ class MediaUploader(
         }
     }
 
-    private fun validateFileSize(file: File, mediaType: String, isPremium: Boolean): Boolean {
-        val fileSize = file.length()
-        val maxSize = when (mediaType) {
-            "image" -> MAX_IMAGE_SIZE
-            "video" -> MAX_VIDEO_SIZE
-            "audio" -> MAX_AUDIO_SIZE
-            "voice" -> MAX_AUDIO_SIZE
-            "file" -> if (isPremium) MAX_FILE_SIZE_PREMIUM else MAX_FILE_SIZE_REGULAR
-            else -> MAX_FILE_SIZE_REGULAR
-        }
-        return fileSize <= maxSize
-    }
-
     /**
      * Загружает аватар группы
      */
     suspend fun uploadGroupAvatar(
         accessToken: String,
         groupId: Long,
-        filePath: String
+        filePath: String,
+        onProgress: ((Int) -> Unit)? = null
     ): UploadResult = withContext(Dispatchers.IO) {
         try {
             val file = File(filePath)
 
+            if (!file.exists()) {
+                return@withContext UploadResult.Error("Файл не знайдено")
+            }
+
+            val requestBody = ProgressRequestBody(file, "image/*", onProgress)
+
             val filePart = MultipartBody.Part.createFormData(
                 "file",
                 file.name,
-                file.asRequestBody("image/*".toMediaType())
+                requestBody
             )
 
             val accessTokenBody = accessToken.toRequestBody("text/plain".toMediaType())
             val groupIdBody = groupId.toString().toRequestBody("text/plain".toMediaType())
 
-            val response = apiService.uploadGroupAvatar(
+            val response = RetrofitClient.apiService.uploadGroupAvatar(
                 accessToken = accessTokenBody,
                 groupId = groupIdBody,
                 file = filePart
@@ -158,6 +149,76 @@ class MediaUploader(
         } catch (e: Exception) {
             Log.e(TAG, "Error uploading avatar: ${e.message}", e)
             UploadResult.Error("Помилка: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Загружает аватар пользователя
+     */
+    suspend fun uploadUserAvatar(
+        accessToken: String,
+        filePath: String,
+        onProgress: ((Int) -> Unit)? = null
+    ): UploadResult = withContext(Dispatchers.IO) {
+        try {
+            val file = File(filePath)
+
+            if (!file.exists()) {
+                return@withContext UploadResult.Error("Файл не знайдено")
+            }
+
+            val requestBody = ProgressRequestBody(file, "image/*", onProgress)
+
+            val filePart = MultipartBody.Part.createFormData(
+                "file",
+                file.name,
+                requestBody
+            )
+
+            val accessTokenBody = accessToken.toRequestBody("text/plain".toMediaType())
+
+            val response = RetrofitClient.apiService.uploadUserAvatar(
+                accessToken = accessTokenBody,
+                file = filePart
+            )
+
+            when (response.apiStatus) {
+                200 -> {
+                    if (response.url != null) {
+                        UploadResult.Success(response.mediaId ?: "", response.url)
+                    } else {
+                        UploadResult.Error("Невідповідь від серверу")
+                    }
+                }
+                else -> UploadResult.Error(response.errorMessage ?: "Помилка завантаження")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error uploading user avatar: ${e.message}", e)
+            UploadResult.Error("Помилка: ${e.message}", e)
+        }
+    }
+
+    private fun validateFileSize(file: File, mediaType: String, isPremium: Boolean): Boolean {
+        val fileSize = file.length()
+        val maxSize = when (mediaType) {
+            Constants.MESSAGE_TYPE_IMAGE -> Constants.MAX_IMAGE_SIZE
+            Constants.MESSAGE_TYPE_VIDEO -> Constants.MAX_VIDEO_SIZE
+            Constants.MESSAGE_TYPE_AUDIO -> Constants.MAX_AUDIO_SIZE
+            Constants.MESSAGE_TYPE_VOICE -> Constants.MAX_AUDIO_SIZE
+            Constants.MESSAGE_TYPE_FILE -> if (isPremium) Constants.MAX_FILE_SIZE_PREMIUM else Constants.MAX_FILE_SIZE_REGULAR
+            else -> Constants.MAX_FILE_SIZE_REGULAR
+        }
+        return fileSize <= maxSize
+    }
+
+    private fun getMimeType(mediaType: String): String {
+        return when (mediaType) {
+            Constants.MESSAGE_TYPE_IMAGE -> "image/*"
+            Constants.MESSAGE_TYPE_VIDEO -> "video/*"
+            Constants.MESSAGE_TYPE_AUDIO -> "audio/*"
+            Constants.MESSAGE_TYPE_VOICE -> "audio/*"
+            Constants.MESSAGE_TYPE_FILE -> "application/*"
+            else -> "application/octet-stream"
         }
     }
 }
@@ -194,7 +255,7 @@ private class ProgressRequestBody(
 }
 
 /**
- * Утилита для роботи з файловой системой
+ * Утилита для роботи с файловой системой
  */
 class FileManager(private val context: Context) {
 
@@ -205,7 +266,7 @@ class FileManager(private val context: Context) {
     /**
      * Копирует файл из URI в локальный кэш
      */
-    fun copyUriToCache(uri: Uri, fileName: String? = null): File? {
+    fun copyUriToCache(uri: android.net.Uri, fileName: String? = null): File? {
         return try {
             val displayName = fileName ?: getDisplayName(uri)
             val cacheFile = File(context.cacheDir, displayName)
@@ -226,36 +287,36 @@ class FileManager(private val context: Context) {
     /**
      * Получает имя файла из URI
      */
-    fun getDisplayName(uri: Uri): String {
+    fun getDisplayName(uri: android.net.Uri): String {
         return when {
             uri.scheme == "content" -> {
                 val cursor = context.contentResolver.query(uri, null, null, null, null)
                 cursor?.use {
-                    val nameIndex = it.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                    val nameIndex = it.getColumnIndex(android.provider.MediaStore.MediaColumns.DISPLAY_NAME)
                     if (it.moveToFirst()) {
                         it.getString(nameIndex)
                     } else {
-                        "unknown"
+                        "unknown_${System.currentTimeMillis()}"
                     }
-                } ?: "unknown"
+                } ?: "unknown_${System.currentTimeMillis()}"
             }
-            else -> uri.lastPathSegment ?: "unknown"
+            else -> uri.lastPathSegment ?: "unknown_${System.currentTimeMillis()}"
         }
     }
 
     /**
      * Получает MIME тип из URI
      */
-    fun getMimeType(uri: Uri): String? {
+    fun getMimeType(uri: android.net.Uri): String? {
         return context.contentResolver.getType(uri)
     }
 
     /**
      * Получает размер файла из URI
      */
-    fun getFileSize(uri: Uri): Long {
+    fun getFileSize(uri: android.net.Uri): Long {
         return context.contentResolver.query(uri, null, null, null, null)?.use {
-            val sizeIndex = it.getColumnIndex(MediaStore.MediaColumns.SIZE)
+            val sizeIndex = it.getColumnIndex(android.provider.MediaStore.MediaColumns.SIZE)
             if (it.moveToFirst()) {
                 it.getLong(sizeIndex)
             } else {
@@ -325,7 +386,7 @@ class FileManager(private val context: Context) {
         var deletedSize = 0L
         val cacheDir = context.cacheDir
         cacheDir.listFiles()?.forEach { file ->
-            if (file.isFile && (file.name.startsWith("VOICE_") || file.name.startsWith("IMG_"))) {
+            if (file.isFile && (file.name.startsWith("VOICE_") || file.name.startsWith("IMG_") || file.name.startsWith("VID_"))) {
                 deletedSize += file.length()
                 file.delete()
             }

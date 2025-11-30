@@ -2,7 +2,7 @@ package com.worldmates.messenger.data.model
 
 import com.google.gson.annotations.SerializedName
 
-// ==================== CHAT MODELS ====================
+// ==================== BASIC MODELS ====================
 
 data class Chat(
     @SerializedName("id") val id: Long,
@@ -18,17 +18,19 @@ data class Chat(
     @SerializedName("members_count") val membersCount: Int = 0,
     @SerializedName("is_admin") val isAdmin: Boolean = false,
     @SerializedName("is_muted") val isMuted: Boolean = false,
-    @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null
+    @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
+    @SerializedName("last_activity") val lastActivity: Long? = null
 )
 
 data class Message(
     @SerializedName("id") val id: Long,
     @SerializedName("from_id") val fromId: Long,
     @SerializedName("to_id") val toId: Long,
+    @SerializedName("group_id") val groupId: Long? = null,
     @SerializedName("text") val encryptedText: String,
     @SerializedName("time") val timeStamp: Long,
-    @SerializedName("media") val mediaUrl: String?,
-    @SerializedName("type") val type: String, // "text", "image", "video", "audio", "voice", "file"
+    @SerializedName("media") val mediaUrl: String? = null,
+    @SerializedName("type") val type: String, // "text", "image", "video", "audio", "voice", "file", "call"
     @SerializedName("media_type") val mediaType: String? = null,
     @SerializedName("media_duration") val mediaDuration: Long? = null,
     @SerializedName("media_size") val mediaSize: Long? = null,
@@ -39,7 +41,10 @@ data class Message(
     @SerializedName("is_deleted") val isDeleted: Boolean = false,
     @SerializedName("reply_to_id") val replyToId: Long? = null,
     @SerializedName("reply_to_text") val replyToText: String? = null,
-    val decryptedText: String? = null
+    @SerializedName("is_read") val isRead: Boolean = false,
+    @SerializedName("read_at") val readAt: Long? = null,
+    val decryptedText: String? = null,
+    val isLocalPending: Boolean = false // Для локально надісланих повідомлень, що чекають
 )
 
 data class Group(
@@ -52,9 +57,13 @@ data class Group(
     @SerializedName("admin_name") val adminName: String,
     @SerializedName("is_private") val isPrivate: Boolean,
     @SerializedName("is_admin") val isAdmin: Boolean = false,
+    @SerializedName("is_moderator") val isModerator: Boolean = false,
+    @SerializedName("is_member") val isMember: Boolean = true,
     @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("updated_time") val updatedTime: Long? = null,
     @SerializedName("members") val members: List<GroupMember>? = null,
-    @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null
+    @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
+    @SerializedName("settings") val settings: GroupSettings? = null
 )
 
 data class GroupMember(
@@ -64,7 +73,16 @@ data class GroupMember(
     @SerializedName("role") val role: String, // "admin", "moderator", "member"
     @SerializedName("joined_time") val joinedTime: Long,
     @SerializedName("is_muted") val isMuted: Boolean = false,
-    @SerializedName("is_blocked") val isBlocked: Boolean = false
+    @SerializedName("is_blocked") val isBlocked: Boolean = false,
+    @SerializedName("permissions") val permissions: List<String>? = null
+)
+
+data class GroupSettings(
+    @SerializedName("allow_members_invite") val allowMembersInvite: Boolean = true,
+    @SerializedName("allow_members_pin") val allowMembersPin: Boolean = false,
+    @SerializedName("allow_members_delete_messages") val allowMembersDeleteMessages: Boolean = false,
+    @SerializedName("allow_voice_calls") val allowVoiceCalls: Boolean = true,
+    @SerializedName("allow_video_calls") val allowVideoCalls: Boolean = true
 )
 
 data class MediaFile(
@@ -73,7 +91,7 @@ data class MediaFile(
     @SerializedName("type") val type: String, // "image", "video", "audio", "voice", "file"
     @SerializedName("mime_type") val mimeType: String,
     @SerializedName("size") val size: Long,
-    @SerializedName("duration") val duration: Long? = null, // для видео/аудио в миллисекундах
+    @SerializedName("duration") val duration: Long? = null,
     @SerializedName("width") val width: Int? = null,
     @SerializedName("height") val height: Int? = null,
     @SerializedName("thumbnail") val thumbnail: String? = null,
@@ -82,51 +100,14 @@ data class MediaFile(
 
 data class VoiceMessage(
     @SerializedName("id") val id: String,
-    val localPath: String? = null, // для записи перед отправкой
+    val localPath: String? = null,
     @SerializedName("url") val url: String? = null,
-    @SerializedName("duration") val duration: Long, // миллисекунды
+    @SerializedName("duration") val duration: Long,
     @SerializedName("size") val size: Long,
     @SerializedName("created_time") val createdTime: Long
 )
 
-// ==================== API RESPONSES ====================
-
-data class ChatListResponse(
-    @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("data") val chats: List<Chat>?,
-    @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
-)
-
-data class MessageListResponse(
-    @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("messages") val messages: List<Message>?,
-    @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
-)
-
-data class GroupListResponse(
-    @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("groups") val groups: List<Group>?,
-    @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
-)
-
-data class GroupDetailResponse(
-    @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("group") val group: Group?,
-    @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
-)
-
-data class MediaUploadResponse(
-    @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("media_id") val mediaId: String?,
-    @SerializedName("url") val url: String?,
-    @SerializedName("thumbnail") val thumbnail: String?,
-    @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
-)
+// ==================== API REQUEST MODELS ====================
 
 data class CreateGroupRequest(
     val name: String,
@@ -136,17 +117,113 @@ data class CreateGroupRequest(
     val memberIds: List<Long> = emptyList()
 )
 
-data class CreateGroupResponse(
-    @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("group_id") val groupId: Long?,
-    @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
+data class SendMessageRequest(
+    val text: String,
+    val recipientId: Long? = null,
+    val groupId: Long? = null,
+    val mediaUrl: String? = null,
+    val mediaType: String? = null,
+    val replyToId: Long? = null,
+    val sendTime: Long
 )
+
+data class CallInitiateRequest(
+    val recipientId: Long,
+    val callType: String, // "voice", "video"
+    val rtcOffer: String? = null,
+    val initiatedAt: Long
+)
+
+// ==================== API RESPONSE MODELS ====================
 
 data class AuthResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("access_token") val accessToken: String?,
     @SerializedName("user_id") val userId: Long?,
+    @SerializedName("username") val username: String?,
+    @SerializedName("avatar") val avatar: String?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class ChatListResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("data") val chats: List<Chat>?,
+    @SerializedName("total_count") val totalCount: Int? = null,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class MessageListResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("messages") val messages: List<Message>?,
+    @SerializedName("total_count") val totalCount: Int? = null,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class GroupListResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("groups") val groups: List<Group>?,
+    @SerializedName("total_count") val totalCount: Int? = null,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class GroupDetailResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("group") val group: Group?,
+    @SerializedName("members") val members: List<GroupMember>? = null,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class MediaUploadResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("media_id") val mediaId: String?,
+    @SerializedName("url") val url: String?,
+    @SerializedName("thumbnail") val thumbnail: String?,
+    @SerializedName("width") val width: Int?,
+    @SerializedName("height") val height: Int?,
+    @SerializedName("duration") val duration: Long?,
+    @SerializedName("size") val size: Long?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class CreateGroupResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("group_id") val groupId: Long?,
+    @SerializedName("group") val group: Group?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class MessageResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message_id") val messageId: Long?,
+    @SerializedName("message") val message: Message?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class CallResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("call_id") val callId: String?,
+    @SerializedName("call_token") val callToken: String?,
+    @SerializedName("rtc_signal") val rtcSignal: String?,
+    @SerializedName("peer_connection_data") val peerConnectionData: String?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class UserResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("user_id") val userId: Long?,
+    @SerializedName("username") val username: String?,
+    @SerializedName("avatar") val avatar: String?,
+    @SerializedName("status") val status: String?, // "online", "offline", "away"
+    @SerializedName("last_seen") val lastSeen: Long?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 )

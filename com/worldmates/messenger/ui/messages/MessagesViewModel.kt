@@ -1,11 +1,13 @@
 package com.worldmates.messenger.ui.messages
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Message
+import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.network.MediaUploader
 import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.SocketManager
@@ -16,7 +18,10 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
 
-class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
+class MessagesViewModel(application: Application) : 
+    AndroidViewModel(application), SocketManager.SocketListener {
+
+    private val context = application
 
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages
@@ -34,9 +39,11 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
     private var groupId: Long = 0
     private var socketManager: SocketManager? = null
     private var mediaUploader: MediaUploader? = null
+    private var fileManager: FileManager? = null
 
     fun initialize(recipientId: Long) {
         this.recipientId = recipientId
+        this.groupId = 0
         fetchMessages()
         setupSocket()
         Log.d("MessagesViewModel", "Ініціалізація для користувача $recipientId")
@@ -44,6 +51,7 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
 
     fun initializeGroup(groupId: Long) {
         this.groupId = groupId
+        this.recipientId = 0
         fetchGroupMessages()
         setupSocket()
         Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
@@ -53,8 +61,8 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
      * Завантажує історію повідомлень для особистого чату
      */
     fun fetchMessages(beforeMessageId: Long = 0) {
-        if (UserSession.accessToken == null || recipientId == 0) {
-            _error.value = "Помилка: не авторизовано"
+        if (UserSession.accessToken == null || recipientId == 0L) {
+            _error.value = "Помилка: не авторизовано або невірний ID"
             return
         }
 
@@ -81,11 +89,15 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
                         msg.copy(decryptedText = decryptedText)
                     }
 
-                    _messages.value = (_messages.value + decryptedMessages).distinctBy { it.id }
+                    val currentMessages = _messages.value.toMutableList()
+                    currentMessages.addAll(decryptedMessages)
+                    _messages.value = currentMessages.distinctBy { it.id }
+                    
                     _error.value = null
                     Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень")
                 } else {
                     _error.value = response.errorMessage ?: "Помилка завантаження повідомлень"
+                    Log.e("MessagesViewModel", "API Error: ${response.apiStatus}")
                 }
 
                 _isLoading.value = false
@@ -101,7 +113,7 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
      * Завантажує повідомлення групи
      */
     private fun fetchGroupMessages(beforeMessageId: Long = 0) {
-        if (UserSession.accessToken == null || groupId == 0) {
+        if (UserSession.accessToken == null || groupId == 0L) {
             _error.value = "Помилка: не авторизовано"
             return
         }
@@ -112,21 +124,27 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
             try {
                 val response = RetrofitClient.apiService.getMessages(
                     accessToken = UserSession.accessToken!!,
-                    recipientId = groupId, // Используем groupId как recipientId для API
+                    recipientId = groupId,
                     limit = Constants.MESSAGES_PAGE_SIZE,
                     beforeMessageId = beforeMessageId
                 )
 
                 if (response.apiStatus == 200 && response.messages != null) {
                     val decryptedMessages = response.messages!!.map { msg ->
-                        val decryptedText = DecryptionUtility.decryptMessage(
-                            msg.encryptedText,
-                            msg.timeStamp
-                        ) ?: "(Помилка дешифрування)"
+                        val decryptedText = try {
+                            DecryptionUtility.decryptMessage(msg.encryptedText, msg.timeStamp)
+                                ?: "(Помилка дешифрування)"
+                        } catch (e: Exception) {
+                            Log.e("MessagesViewModel", "Помилка дешифрування групи", e)
+                            "(Помилка дешифрування)"
+                        }
                         msg.copy(decryptedText = decryptedText)
                     }
 
-                    _messages.value = (_messages.value + decryptedMessages).distinctBy { it.id }
+                    val currentMessages = _messages.value.toMutableList()
+                    currentMessages.addAll(decryptedMessages)
+                    _messages.value = currentMessages.distinctBy { it.id }
+                    
                     _error.value = null
                     Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень групи")
                 } else {
@@ -143,7 +161,7 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
     }
 
     /**
-     * Надсилает простое текстовое сообщение
+     * Надсилает текстовое сообщение
      */
     fun sendMessage(text: String) {
         if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L) || text.isBlank()) {
@@ -155,29 +173,36 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
 
         viewModelScope.launch {
             try {
+                val sendTime = System.currentTimeMillis() / 1000
+                
                 val response = if (groupId != 0L) {
                     RetrofitClient.apiService.sendGroupMessage(
                         accessToken = UserSession.accessToken!!,
                         groupId = groupId,
                         text = text,
-                        sendTime = System.currentTimeMillis() / 1000
+                        sendTime = sendTime
                     )
                 } else {
                     RetrofitClient.apiService.sendMessage(
                         accessToken = UserSession.accessToken!!,
                         recipientId = recipientId,
                         text = text,
-                        sendTime = System.currentTimeMillis() / 1000
+                        sendTime = sendTime
                     )
                 }
 
                 if (response.apiStatus == 200) {
-                    fetchMessages()
+                    // Перезагружаем сообщения
+                    if (groupId != 0L) {
+                        fetchGroupMessages()
+                    } else {
+                        fetchMessages()
+                    }
                     _error.value = null
                     Log.d("MessagesViewModel", "Повідомлення надіслано")
                 } else {
                     _error.value = response.errorMessage ?: "Не вдалося надіслати повідомлення"
-                    Log.e("MessagesViewModel", "Помилка відповіді: ${response.errorMessage}")
+                    Log.e("MessagesViewModel", "Send Error: ${response.errorMessage}")
                 }
 
                 _isLoading.value = false
@@ -198,15 +223,17 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
             return
         }
 
+        if (!file.exists()) {
+            _error.value = "Файл не знайдено"
+            return
+        }
+
         _isLoading.value = true
 
         viewModelScope.launch {
             try {
                 if (mediaUploader == null) {
-                    mediaUploader = MediaUploader(
-                        context = android.app.Application(),
-                        apiService = RetrofitClient.apiService
-                    )
+                    mediaUploader = MediaUploader(context)
                 }
 
                 val result = mediaUploader!!.uploadMedia(
@@ -232,6 +259,11 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
                         _uploadProgress.value = 0
                         _error.value = null
                         Log.d("MessagesViewModel", "Медіа завантажено: ${result.url}")
+                        
+                        // Чистимо файл
+                        if (file.exists()) {
+                            file.delete()
+                        }
                     }
                     is MediaUploader.UploadResult.Error -> {
                         _error.value = result.message
@@ -260,8 +292,7 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
         if (UserSession.accessToken == null) return
 
         // Для простоты отправляем как текстовое сообщение с URL
-        // На реальном проекте нужно будет расширить API
-        val messageText = if (caption.isNotEmpty()) caption else "📎 [$mediaType]"
+        val messageText = if (caption.isNotEmpty()) "$caption\n$mediaUrl" else "📎 $mediaType"
         sendMessage(messageText)
     }
 
@@ -272,6 +303,7 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
         try {
             socketManager = SocketManager(this)
             socketManager?.connect()
+            Log.d("MessagesViewModel", "Socket.IO налаштований")
         } catch (e: Exception) {
             Log.e("MessagesViewModel", "Помилка Socket.IO", e)
         }
@@ -283,19 +315,26 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
                 id = messageJson.getLong("id"),
                 fromId = messageJson.getLong("from_id"),
                 toId = messageJson.getLong("to_id"),
+                groupId = messageJson.optLong("group_id", 0).takeIf { it != 0L },
                 encryptedText = messageJson.getString("text"),
                 timeStamp = messageJson.getLong("time"),
-                mediaUrl = messageJson.optString("media", ""),
-                type = messageJson.optString("type", "text"),
-                decryptedText = DecryptionUtility.decryptMessage(
-                    messageJson.getString("text"),
-                    messageJson.getLong("time")
-                ) ?: "(Помилка)"
+                mediaUrl = messageJson.optString("media", null),
+                type = messageJson.optString("type", Constants.MESSAGE_TYPE_TEXT),
+                senderName = messageJson.optString("sender_name", null),
+                senderAvatar = messageJson.optString("sender_avatar", null),
+                decryptedText = try {
+                    DecryptionUtility.decryptMessage(
+                        messageJson.getString("text"),
+                        messageJson.getLong("time")
+                    ) ?: "(Помилка)"
+                } catch (e: Exception) {
+                    "(Помилка дешифрування)"
+                }
             )
 
             // Проверяем, принадлежит ли сообщение текущему диалогу
             val isRelevant = if (groupId != 0L) {
-                messageJson.optLong("group_id", 0) == groupId
+                message.groupId == groupId
             } else {
                 (message.fromId == recipientId && message.toId == UserSession.userId) ||
                 (message.fromId == UserSession.userId && message.toId == recipientId)
@@ -304,7 +343,7 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
             if (isRelevant) {
                 val currentMessages = _messages.value.toMutableList()
                 currentMessages.add(message)
-                _messages.value = currentMessages
+                _messages.value = currentMessages.distinctBy { it.id }
                 Log.d("MessagesViewModel", "Нове повідомлення додано")
             }
         } catch (e: Exception) {
@@ -313,15 +352,18 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
     }
 
     override fun onSocketConnected() {
-        Log.i("MessagesViewModel", "Socket підключено")
+        Log.i("MessagesViewModel", "Socket підключено успішно")
+        _error.value = null
     }
 
     override fun onSocketDisconnected() {
         Log.w("MessagesViewModel", "Socket відключено")
+        _error.value = "Втрачено з'єднання з сервером"
     }
 
     override fun onSocketError(error: String) {
         Log.e("MessagesViewModel", "Помилка Socket: $error")
+        _error.value = error
     }
 
     fun clearError() {

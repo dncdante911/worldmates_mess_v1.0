@@ -1,7 +1,9 @@
 package com.worldmates.messenger.ui.messages
 
-import android.os.Build
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -11,7 +13,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,24 +24,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import coil.compose.AsyncImage
-import com.worldmates.messenger.data.Constants
-import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Message
+import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.ui.theme.WorldMatesTheme
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
 import kotlinx.coroutines.launch
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
 
 class MessagesActivity : AppCompatActivity() {
 
@@ -78,7 +73,7 @@ class MessagesActivity : AppCompatActivity() {
 
         setContent {
             WorldMatesTheme {
-                MessagesScreenWrapper(
+                MessagesScreen(
                     viewModel = viewModel,
                     fileManager = fileManager,
                     voiceRecorder = voiceRecorder,
@@ -88,33 +83,30 @@ class MessagesActivity : AppCompatActivity() {
                     isGroup = isGroup,
                     onBackPressed = { finish() },
                     onImageSelected = { uri ->
-                        val file = fileManager.copyUriToCache(uri, "IMG_${System.currentTimeMillis()}.jpg")
+                        val file = fileManager.copyUriToCache(uri)
                         if (file != null) {
-                            viewModel.uploadAndSendMedia(file, Constants.MESSAGE_TYPE_IMAGE)
+                            viewModel.uploadAndSendMedia(file, "image")
                         }
                     },
                     onVideoSelected = { uri ->
-                        val file = fileManager.copyUriToCache(uri, "VID_${System.currentTimeMillis()}.mp4")
+                        val file = fileManager.copyUriToCache(uri)
                         if (file != null) {
-                            viewModel.uploadAndSendMedia(file, Constants.MESSAGE_TYPE_VIDEO)
+                            viewModel.uploadAndSendMedia(file, "video")
                         }
                     }
                 )
             }
         }
-
-        Log.d("MessagesActivity", "Ініціалізовано з recipientId=$recipientId, groupId=$groupId, isGroup=$isGroup")
     }
 
     override fun onDestroy() {
         super.onDestroy()
         voicePlayer.release()
-        fileManager.clearMediaCache()
     }
 }
 
 @Composable
-fun MessagesScreenWrapper(
+fun MessagesScreen(
     viewModel: MessagesViewModel,
     fileManager: FileManager,
     voiceRecorder: VoiceRecorder,
@@ -123,15 +115,14 @@ fun MessagesScreenWrapper(
     recipientAvatar: String,
     isGroup: Boolean,
     onBackPressed: () -> Unit,
-    onImageSelected: (android.net.Uri) -> Unit,
-    onVideoSelected: (android.net.Uri) -> Unit
+    onImageSelected: (Uri) -> Unit,
+    onVideoSelected: (Uri) -> Unit
 ) {
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val uploadProgress by viewModel.uploadProgress.collectAsState()
     val recordingState by voiceRecorder.recordingState.collectAsState()
     val recordingDuration by voiceRecorder.recordingDuration.collectAsState()
-    val error by viewModel.error.collectAsState()
 
     var messageText by remember { mutableStateOf("") }
     var showMediaOptions by remember { mutableStateOf(false) }
@@ -139,16 +130,14 @@ fun MessagesScreenWrapper(
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri ->
+    ) { uri: Uri? ->
         uri?.let { onImageSelected(it) }
-        showMediaOptions = false
     }
 
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri ->
+    ) { uri: Uri? ->
         uri?.let { onVideoSelected(it) }
-        showMediaOptions = false
     }
 
     Column(
@@ -157,242 +146,141 @@ fun MessagesScreenWrapper(
             .background(Color(0xFFF5F5F5))
     ) {
         // Header
-        TopAppBar(
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxHeight()
-                ) {
-                    if (recipientAvatar.isNotEmpty()) {
-                        AsyncImage(
-                            model = recipientAvatar,
-                            contentDescription = recipientName,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(recipientName, fontWeight = FontWeight.Bold)
-                }
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackPressed) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-            },
-            actions = {
-                IconButton(onClick = { }) {
-                    Icon(Icons.Default.Call, contentDescription = "Call", tint = Color.White)
-                }
-                IconButton(onClick = { }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF0084FF),
-                titleContentColor = Color.White,
-                navigationIconContentColor = Color.White,
-                actionIconContentColor = Color.White
-            )
+        MessagesHeaderBar(
+            recipientName = recipientName,
+            recipientAvatar = recipientAvatar,
+            onBackPressed = onBackPressed
         )
 
-        // Error message
-        if (error != null) {
-            Surface(
-                color = Color(0xFFFFCDD2),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-            ) {
-                Text(
-                    error!!,
-                    color = Color(0xFFC62828),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-        }
-
         // Messages List
-        val listState = rememberLazyListState()
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
-            reverseLayout = true,
-            state = listState
+            reverseLayout = true
         ) {
             items(messages.reversed()) { message ->
-                MessageBubbleItem(
+                MessageBubbleComposable(
                     message = message,
-                    voicePlayer = voicePlayer,
-                    fileManager = fileManager
+                    voicePlayer = voicePlayer
                 )
             }
         }
 
         // Upload Progress
         if (uploadProgress > 0 && uploadProgress < 100) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    progress = uploadProgress / 100f,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                )
-                Text(
-                    "Завантажено: $uploadProgress%",
-                    fontSize = 10.sp,
-                    modifier = Modifier.padding(4.dp)
-                )
-            }
-        }
-
-        // Media Options
-        if (showMediaOptions) {
-            Row(
+            LinearProgressIndicator(
+                progress = uploadProgress / 100f,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .background(Color.White)
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                MediaOptionButton(
-                    icon = Icons.Default.Image,
-                    label = "Фото",
-                    onClick = { imagePickerLauncher.launch("image/*") }
-                )
-                MediaOptionButton(
-                    icon = Icons.Default.VideoLibrary,
-                    label = "Відео",
-                    onClick = { videoPickerLauncher.launch("video/*") }
-                )
-                MediaOptionButton(
-                    icon = Icons.Default.LocationOn,
-                    label = "Локація",
-                    onClick = { }
-                )
-            }
-        }
-
-        // Voice Recording UI
-        if (recordingState is VoiceRecorder.RecordingState.Recording ||
-            recordingState is VoiceRecorder.RecordingState.Paused
-        ) {
-            VoiceRecordingBar(
-                duration = recordingDuration,
-                voiceRecorder = voiceRecorder,
-                onCancel = {
-                    scope.launch {
-                        voiceRecorder.cancelRecording()
-                    }
-                },
-                onStop = {
-                    scope.launch {
-                        val stopped = voiceRecorder.stopRecording()
-                        if (stopped && voiceRecorder.recordingState.value is VoiceRecorder.RecordingState.Completed) {
-                            val filePath =
-                                (voiceRecorder.recordingState.value as VoiceRecorder.RecordingState.Completed).filePath
-                            viewModel.uploadAndSendMedia(
-                                File(filePath),
-                                Constants.MESSAGE_TYPE_VOICE
-                            )
-                        }
-                    }
-                },
-                isRecording = recordingState is VoiceRecorder.RecordingState.Recording
+                    .height(4.dp)
             )
         }
 
         // Message Input
-        if (recordingState !is VoiceRecorder.RecordingState.Recording &&
-            recordingState !is VoiceRecorder.RecordingState.Paused
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextField(
-                    value = messageText,
-                    onValueChange = { messageText = it },
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(Color(0xFFF0F0F0), RoundedCornerShape(24.dp))
-                        .padding(4.dp),
-                    placeholder = { Text("Введіть повідомлення...") },
-                    singleLine = false,
-                    maxLines = 4,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    leadingIcon = {
-                        IconButton(onClick = { showMediaOptions = !showMediaOptions }) {
-                            Icon(Icons.Default.AttachFile, contentDescription = "Attach")
-                        }
-                    }
-                )
-
+        MessageInputBar(
+            messageText = messageText,
+            onMessageChange = { messageText = it },
+            onSendClick = {
                 if (messageText.isNotBlank()) {
-                    IconButton(
-                        onClick = {
-                            if (messageText.isNotBlank()) {
-                                viewModel.sendMessage(messageText)
-                                messageText = ""
-                                showMediaOptions = false
-                            }
-                        },
-                        enabled = !isLoading
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = "Send",
-                            tint = if (isLoading) Color.Gray else Color(0xFF0084FF)
-                        )
-                    }
-                } else {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                voiceRecorder.startRecording()
-                            }
-                        },
-                        enabled = !isLoading
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = "Voice",
-                            tint = Color(0xFF0084FF)
-                        )
+                    viewModel.sendMessage(messageText)
+                    messageText = ""
+                }
+            },
+            isLoading = isLoading,
+            recordingState = recordingState,
+            recordingDuration = recordingDuration,
+            voiceRecorder = voiceRecorder,
+            onStartVoiceRecord = {
+                scope.launch {
+                    voiceRecorder.startRecording()
+                }
+            },
+            onCancelVoiceRecord = {
+                scope.launch {
+                    voiceRecorder.cancelRecording()
+                }
+            },
+            onStopVoiceRecord = {
+                scope.launch {
+                    val stopped = voiceRecorder.stopRecording()
+                    if (stopped && voiceRecorder.recordingState.value is VoiceRecorder.RecordingState.Completed) {
+                        val filePath = (voiceRecorder.recordingState.value as VoiceRecorder.RecordingState.Completed).filePath
+                        viewModel.uploadAndSendMedia(java.io.File(filePath), "voice")
                     }
                 }
-            }
-        }
+            },
+            onShowMediaOptions = { showMediaOptions = !showMediaOptions },
+            onPickImage = { imagePickerLauncher.launch("image/*") },
+            onPickVideo = { videoPickerLauncher.launch("video/*") },
+            showMediaOptions = showMediaOptions
+        )
     }
 }
 
 @Composable
-fun MessageBubbleItem(
+fun MessagesHeaderBar(
+    recipientName: String,
+    recipientAvatar: String,
+    onBackPressed: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                if (recipientAvatar.isNotEmpty()) {
+                    AsyncImage(
+                        model = recipientAvatar,
+                        contentDescription = recipientName,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(recipientName)
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onBackPressed) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = { }) {
+                Icon(Icons.Default.Call, contentDescription = "Call")
+            }
+            IconButton(onClick = { }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "More")
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color(0xFF0084FF),
+            titleContentColor = Color.White,
+            navigationIconContentColor = Color.White,
+            actionIconContentColor = Color.White
+        )
+    )
+}
+
+@Composable
+fun MessageBubbleComposable(
     message: Message,
-    voicePlayer: VoicePlayer,
-    fileManager: FileManager
+    voicePlayer: VoicePlayer
 ) {
     val isOwn = message.fromId == UserSession.userId
     val bgColor = if (isOwn) Color(0xFF0084FF) else Color.White
     val textColor = if (isOwn) Color.White else Color.Black
+    val playbackState by voicePlayer.playbackState.collectAsState()
+    val currentPosition by voicePlayer.currentPosition.collectAsState()
+    val duration by voicePlayer.duration.collectAsState()
 
     Row(
         modifier = Modifier
@@ -407,8 +295,10 @@ fun MessageBubbleItem(
             shape = RoundedCornerShape(12.dp),
             color = bgColor
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                // Text content
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                // Text message
                 if (message.decryptedText != null && message.decryptedText!!.isNotEmpty()) {
                     Text(
                         text = message.decryptedText!!,
@@ -418,28 +308,28 @@ fun MessageBubbleItem(
                 }
 
                 // Image
-                if (message.type == Constants.MESSAGE_TYPE_IMAGE && !message.mediaUrl.isNullOrEmpty()) {
+                if (!message.mediaUrl.isNullOrEmpty() && message.type == "image") {
                     AsyncImage(
                         model = message.mediaUrl,
-                        contentDescription = "Image",
+                        contentDescription = "Media",
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 200.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .padding(top = 8.dp),
+                            .padding(top = if (message.decryptedText != null) 8.dp else 0.dp),
                         contentScale = ContentScale.Crop
                     )
                 }
 
-                // Video thumbnail
-                if (message.type == Constants.MESSAGE_TYPE_VIDEO && !message.mediaUrl.isNullOrEmpty()) {
+                // Video (thumbnail)
+                if (!message.mediaUrl.isNullOrEmpty() && message.type == "video") {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 200.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color.Gray.copy(alpha = 0.3f))
-                            .padding(top = 8.dp),
+                            .padding(top = if (message.decryptedText != null) 8.dp else 0.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -451,8 +341,8 @@ fun MessageBubbleItem(
                     }
                 }
 
-                // Voice message
-                if (message.type == Constants.MESSAGE_TYPE_VOICE && !message.mediaUrl.isNullOrEmpty()) {
+                // Voice message player
+                if (message.type == "voice" && !message.mediaUrl.isNullOrEmpty()) {
                     VoiceMessagePlayer(
                         message = message,
                         voicePlayer = voicePlayer,
@@ -460,7 +350,6 @@ fun MessageBubbleItem(
                     )
                 }
 
-                // Timestamp
                 Text(
                     text = formatTime(message.timeStamp),
                     color = textColor.copy(alpha = 0.7f),
@@ -502,7 +391,7 @@ fun VoiceMessagePlayer(
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
-                imageVector = if (playbackState == VoicePlayer.PlaybackState.Playing)
+                imageVector = if (playbackState == VoicePlayer.PlaybackState.Playing) 
                     Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = "Play",
                 tint = textColor,
@@ -525,6 +414,131 @@ fun VoiceMessagePlayer(
             fontSize = 10.sp,
             modifier = Modifier.padding(start = 4.dp)
         )
+    }
+}
+
+@Composable
+fun MessageInputBar(
+    messageText: String,
+    onMessageChange: (String) -> Unit,
+    onSendClick: () -> Unit,
+    isLoading: Boolean,
+    recordingState: VoiceRecorder.RecordingState,
+    recordingDuration: Long,
+    voiceRecorder: VoiceRecorder,
+    onStartVoiceRecord: () -> Unit,
+    onCancelVoiceRecord: () -> Unit,
+    onStopVoiceRecord: () -> Unit,
+    onShowMediaOptions: () -> Unit,
+    onPickImage: () -> Unit,
+    onPickVideo: () -> Unit,
+    showMediaOptions: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+    ) {
+        // Media Options
+        if (showMediaOptions) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MediaOptionButton(
+                    icon = Icons.Default.Image,
+                    label = "Фото",
+                    onClick = { onPickImage() }
+                )
+                MediaOptionButton(
+                    icon = Icons.Default.VideoLibrary,
+                    label = "Відео",
+                    onClick = { onPickVideo() }
+                )
+                MediaOptionButton(
+                    icon = Icons.Default.LocationOn,
+                    label = "Локація",
+                    onClick = { }
+                )
+                MediaOptionButton(
+                    icon = Icons.Default.AttachMoney,
+                    label = "Оплата",
+                    onClick = { }
+                )
+            }
+        }
+
+        // Voice Recording UI
+        if (recordingState is VoiceRecorder.RecordingState.Recording || 
+            recordingState is VoiceRecorder.RecordingState.Paused) {
+            VoiceRecordingBar(
+                duration = recordingDuration,
+                voiceRecorder = voiceRecorder,
+                onCancel = onCancelVoiceRecord,
+                onStop = onStopVoiceRecord,
+                isRecording = recordingState is VoiceRecorder.RecordingState.Recording
+            )
+        }
+
+        // Message Input
+        if (recordingState !is VoiceRecorder.RecordingState.Recording &&
+            recordingState !is VoiceRecorder.RecordingState.Paused) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = messageText,
+                    onValueChange = onMessageChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color(0xFFF0F0F0), RoundedCornerShape(24.dp))
+                        .padding(horizontal = 4.dp),
+                    placeholder = { Text("Введіть повідомлення...") },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    leadingIcon = {
+                        IconButton(onClick = onShowMediaOptions) {
+                            Icon(Icons.Default.AttachFile, contentDescription = "Attach")
+                        }
+                    }
+                )
+
+                if (messageText.isNotBlank()) {
+                    IconButton(
+                        onClick = onSendClick,
+                        enabled = !isLoading
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Send",
+                            tint = if (isLoading) Color.Gray else Color(0xFF0084FF)
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = onStartVoiceRecord,
+                        enabled = !isLoading
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Voice",
+                            tint = Color(0xFF0084FF)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -554,19 +568,18 @@ fun VoiceRecordingBar(
         Text(
             text = voiceRecorder.formatDuration(duration),
             fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
         )
 
         IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Close, contentDescription = "Cancel", tint = Color.Red)
+            Icon(Icons.Default.Close, contentDescription = "Cancel")
         }
 
         Button(
             onClick = onStop,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0084FF))
         ) {
-            Text("Надіслати", color = Color.White, fontSize = 12.sp)
+            Text("Надіслати", color = Color.White)
         }
     }
 }
@@ -602,6 +615,6 @@ fun MediaOptionButton(
 }
 
 private fun formatTime(timestamp: Long): String {
-    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp * 1000))
+    val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+    return sdf.format(java.util.Date(timestamp * 1000))
 }

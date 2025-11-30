@@ -1,22 +1,98 @@
 package com.worldmates.messenger.data
 
 object Constants {
-    // !! КОНСТАНТЫ API И КЛЮЧИ (ВНЕСЕНЫ ИЗ ВАШИХ ДАННЫХ)
+    // ==================== API ENDPOINTS ====================
     const val BASE_URL = "https://worldmates.club/api/v2/" 
-    // URL для Node.js Socket.IO (ПОРТ 4001 - пример. Требует проверки на вашем сервере!)
-    const val SOCKET_URL = "https://worldmates.club:4001/" 
+    const val SOCKET_URL = "https://worldmates.club:449/" 
     
-    // Ваш siteEncryptKey
+    // ==================== SECURITY ====================
     const val SITE_ENCRYPT_KEY = "2ad9c757daccdfff436dc226779e20b719f6d6f8" 
-    // !!
-
-    // API ENDPOINTS (GET/POST параметр type)
+    
+    // ==================== API QUERY PARAMETERS ====================
     const val AUTH_ENDPOINT = "?type=auth"
     const val GET_CHATS_ENDPOINT = "?type=get_chats"
     const val GET_MESSAGES_ENDPOINT = "?type=get_user_messages"
-
-    // SOCKET.IO EVENTS (Проверьте, что эти имена соответствуют вашему Node.js серверу)
+    
+    // ==================== SOCKET.IO EVENTS ====================
     const val SOCKET_EVENT_AUTH = "register_socket"
     const val SOCKET_EVENT_NEW_MESSAGE = "new_message"
     const val SOCKET_EVENT_SEND_MESSAGE = "send_message"
+    const val SOCKET_EVENT_TYPING = "is_typing"
+    const val SOCKET_EVENT_LAST_SEEN = "is_last_seen"
+    const val SOCKET_EVENT_MESSAGE_SEEN = "message_seen"
+    const val SOCKET_EVENT_GROUP_MESSAGE = "group_message"
+    const val SOCKET_EVENT_USER_ONLINE = "user_online"
+    const val SOCKET_EVENT_USER_OFFLINE = "user_offline"
+    
+    // ==================== PUSH NOTIFICATIONS ====================
+    const val FCM_TOPIC_MESSAGES = "worldmates_messages"
+    const val FCM_TOPIC_CALLS = "worldmates_calls"
+    
+    // ==================== MEDIA UPLOAD ====================
+    const val MAX_IMAGE_SIZE = 50 * 1024 * 1024L // 50MB
+    const val MAX_VIDEO_SIZE = 5 * 1024 * 1024 * 1024L // 5GB
+    const val MAX_AUDIO_SIZE = 1 * 1024 * 1024 * 1024L // 1GB
+    const val MAX_FILE_SIZE_REGULAR = 2 * 1024 * 1024 * 1024L // 2GB
+    const val MAX_FILE_SIZE_PREMIUM = 10 * 1024 * 1024 * 1024L // 10GB
+    
+    const val MEDIA_UPLOAD_TIMEOUT = 600 // 10 minutes in seconds
+    const val MEDIA_UPLOAD_CHUNK_SIZE = 256 * 1024 // 256KB chunks
+    
+    // ==================== CACHE ====================
+    const val CACHE_EXPIRATION_TIME = 24 * 60 * 60 * 1000L // 24 hours in ms
+    const val MAX_MESSAGES_IN_CACHE = 1000
+    const val MAX_CHATS_IN_CACHE = 500
+    
+    // ==================== MESSAGE PAGINATION ====================
+    const val MESSAGES_PAGE_SIZE = 30
+    const val CHATS_PAGE_SIZE = 50
+    const val GROUPS_PAGE_SIZE = 50
+    const val MEMBERS_PAGE_SIZE = 100
+    
+    // ==================== TIMEOUTS ====================
+    const val CONNECT_TIMEOUT_SECONDS = 30L
+    const val READ_TIMEOUT_SECONDS = 30L
+    const val WRITE_TIMEOUT_SECONDS = 30L
+    
+    // ==================== VOICE CALLS ====================
+    const val VOICE_CALL_TIMEOUT = 60 // seconds
+    const val VIDEO_CALL_TIMEOUT = 120 // seconds
+    
+    // ==================== DEVICE INFO ====================
+    const val APP_VERSION = "1.0.0"
+    const val DEVICE_TYPE = "android"
+    
+    // ==================== COMPRESSION ====================
+    const val IMAGE_COMPRESSION_QUALITY = 80 // 0-100
+    const val VIDEO_COMPRESSION_BITRATE = 5000000 // 5 Mbps
+    
+    // ==================== MESSAGE TYPES ====================
+    const val MESSAGE_TYPE_TEXT = "text"
+    const val MESSAGE_TYPE_IMAGE = "image"
+    const val MESSAGE_TYPE_VIDEO = "video"
+    const val MESSAGE_TYPE_AUDIO = "audio"
+    const val MESSAGE_TYPE_VOICE = "voice"
+    const val MESSAGE_TYPE_FILE = "file"
+    const val MESSAGE_TYPE_CALL = "call"
+    const val MESSAGE_TYPE_LOCATION = "location"
+    const val MESSAGE_TYPE_SYSTEM = "system"
+    
+    // ==================== CHAT TYPES ====================
+    const val CHAT_TYPE_USER = "user"
+    const val CHAT_TYPE_GROUP = "group"
+    const val CHAT_TYPE_CHANNEL = "channel"
+    const val CHAT_TYPE_PRIVATE_GROUP = "private_group"
+    
+    // ==================== USER ROLES ====================
+    const val ROLE_ADMIN = "admin"
+    const val ROLE_MODERATOR = "moderator"
+    const val ROLE_MEMBER = "member"
+    
+    // ==================== ERROR CODES ====================
+    const val ERROR_UNAUTHORIZED = 401
+    const val ERROR_FORBIDDEN = 403
+    const val ERROR_NOT_FOUND = 404
+    const val ERROR_SERVER = 500
+    const val ERROR_TIMEOUT = 408
+    const val ERROR_NO_CONNECTION = 0
 }

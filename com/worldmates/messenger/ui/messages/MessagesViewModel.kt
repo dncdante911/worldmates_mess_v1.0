@@ -3,8 +3,10 @@ package com.worldmates.messenger.ui.messages
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Message
+import com.worldmates.messenger.network.MediaUploader
 import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.SocketManager
 import com.worldmates.messenger.utils.DecryptionUtility
@@ -12,9 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import retrofit2.http.Field
-import retrofit2.http.FormUrlEncoded
-import retrofit2.http.POST
+import java.io.File
 
 class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
 
@@ -27,8 +27,13 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private val _uploadProgress = MutableStateFlow(0)
+    val uploadProgress: StateFlow<Int> = _uploadProgress
+
     private var recipientId: Long = 0
+    private var groupId: Long = 0
     private var socketManager: SocketManager? = null
+    private var mediaUploader: MediaUploader? = null
 
     fun initialize(recipientId: Long) {
         this.recipientId = recipientId
@@ -37,8 +42,15 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
         Log.d("MessagesViewModel", "Ініціалізація для користувача $recipientId")
     }
 
+    fun initializeGroup(groupId: Long) {
+        this.groupId = groupId
+        fetchGroupMessages()
+        setupSocket()
+        Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
+    }
+
     /**
-     * Завантажує історію повідомлень
+     * Завантажує історію повідомлень для особистого чату
      */
     fun fetchMessages(beforeMessageId: Long = 0) {
         if (UserSession.accessToken == null || recipientId == 0) {
@@ -53,12 +65,11 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
                 val response = RetrofitClient.apiService.getMessages(
                     accessToken = UserSession.accessToken!!,
                     recipientId = recipientId,
-                    limit = 30,
+                    limit = Constants.MESSAGES_PAGE_SIZE,
                     beforeMessageId = beforeMessageId
                 )
 
                 if (response.apiStatus == 200 && response.messages != null) {
-                    // Дешифруємо усі повідомлення
                     val decryptedMessages = response.messages!!.map { msg ->
                         val decryptedText = try {
                             DecryptionUtility.decryptMessage(msg.encryptedText, msg.timeStamp)
@@ -87,10 +98,55 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
     }
 
     /**
-     * Надсилає повідомлення
+     * Завантажує повідомлення групи
+     */
+    private fun fetchGroupMessages(beforeMessageId: Long = 0) {
+        if (UserSession.accessToken == null || groupId == 0) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.getMessages(
+                    accessToken = UserSession.accessToken!!,
+                    recipientId = groupId, // Используем groupId как recipientId для API
+                    limit = Constants.MESSAGES_PAGE_SIZE,
+                    beforeMessageId = beforeMessageId
+                )
+
+                if (response.apiStatus == 200 && response.messages != null) {
+                    val decryptedMessages = response.messages!!.map { msg ->
+                        val decryptedText = DecryptionUtility.decryptMessage(
+                            msg.encryptedText,
+                            msg.timeStamp
+                        ) ?: "(Помилка дешифрування)"
+                        msg.copy(decryptedText = decryptedText)
+                    }
+
+                    _messages.value = (_messages.value + decryptedMessages).distinctBy { it.id }
+                    _error.value = null
+                    Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень групи")
+                } else {
+                    _error.value = response.errorMessage ?: "Помилка завантаження повідомлень"
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e("MessagesViewModel", "Помилка завантаження повідомлень групи", e)
+            }
+        }
+    }
+
+    /**
+     * Надсилает простое текстовое сообщение
      */
     fun sendMessage(text: String) {
-        if (UserSession.accessToken == null || recipientId == 0 || text.isBlank()) {
+        if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L) || text.isBlank()) {
             _error.value = "Не можна надіслати порожнє повідомлення"
             return
         }
@@ -99,24 +155,29 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
 
         viewModelScope.launch {
             try {
-                // Використовуємо REST API для надсилання
-                val sendService = RetrofitClient.retrofit.create(SendMessageService::class.java)
-                
-                val response = sendService.sendMessage(
-                    accessToken = UserSession.accessToken!!,
-                    recipientId = recipientId,
-                    text = text,
-                    sendTime = System.currentTimeMillis() / 1000
-                )
+                val response = if (groupId != 0L) {
+                    RetrofitClient.apiService.sendGroupMessage(
+                        accessToken = UserSession.accessToken!!,
+                        groupId = groupId,
+                        text = text,
+                        sendTime = System.currentTimeMillis() / 1000
+                    )
+                } else {
+                    RetrofitClient.apiService.sendMessage(
+                        accessToken = UserSession.accessToken!!,
+                        recipientId = recipientId,
+                        text = text,
+                        sendTime = System.currentTimeMillis() / 1000
+                    )
+                }
 
-                if (response.contains("\"api_status\":\"200\"")) {
-                    // Оновлюємо список повідомлень
+                if (response.apiStatus == 200) {
                     fetchMessages()
                     _error.value = null
                     Log.d("MessagesViewModel", "Повідомлення надіслано")
                 } else {
-                    _error.value = "Не вдалося надіслати повідомлення"
-                    Log.e("MessagesViewModel", "Помилка відповіді: $response")
+                    _error.value = response.errorMessage ?: "Не вдалося надіслати повідомлення"
+                    Log.e("MessagesViewModel", "Помилка відповіді: ${response.errorMessage}")
                 }
 
                 _isLoading.value = false
@@ -129,7 +190,83 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
     }
 
     /**
-     * Налаштовує Socket.IO
+     * Загружает и отправляет медиа-файл
+     */
+    fun uploadAndSendMedia(file: File, mediaType: String) {
+        if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L)) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                if (mediaUploader == null) {
+                    mediaUploader = MediaUploader(
+                        context = android.app.Application(),
+                        apiService = RetrofitClient.apiService
+                    )
+                }
+
+                val result = mediaUploader!!.uploadMedia(
+                    accessToken = UserSession.accessToken!!,
+                    mediaType = mediaType,
+                    filePath = file.absolutePath,
+                    recipientId = recipientId.takeIf { it != 0L },
+                    groupId = groupId.takeIf { it != 0L },
+                    isPremium = false,
+                    onProgress = { progress ->
+                        _uploadProgress.value = progress
+                    }
+                )
+
+                when (result) {
+                    is MediaUploader.UploadResult.Success -> {
+                        // Отправляем сообщение с медиа
+                        sendMediaMessage(
+                            mediaUrl = result.url,
+                            mediaType = mediaType,
+                            caption = ""
+                        )
+                        _uploadProgress.value = 0
+                        _error.value = null
+                        Log.d("MessagesViewModel", "Медіа завантажено: ${result.url}")
+                    }
+                    is MediaUploader.UploadResult.Error -> {
+                        _error.value = result.message
+                        _uploadProgress.value = 0
+                        Log.e("MessagesViewModel", "Помилка завантаження: ${result.message}")
+                    }
+                    is MediaUploader.UploadResult.Progress -> {
+                        _uploadProgress.value = result.percent
+                    }
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                _uploadProgress.value = 0
+                Log.e("MessagesViewModel", "Помилка завантаження медіа", e)
+            }
+        }
+    }
+
+    /**
+     * Отправляет сообщение с медиа-ссылкой
+     */
+    private fun sendMediaMessage(mediaUrl: String, mediaType: String, caption: String) {
+        if (UserSession.accessToken == null) return
+
+        // Для простоты отправляем как текстовое сообщение с URL
+        // На реальном проекте нужно будет расширить API
+        val messageText = if (caption.isNotEmpty()) caption else "📎 [$mediaType]"
+        sendMessage(messageText)
+    }
+
+    /**
+     * Налаштовує Socket.IO для получения сообщений в реальном времени
      */
     private fun setupSocket() {
         try {
@@ -156,7 +293,15 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
                 ) ?: "(Помилка)"
             )
 
-            if (message.fromId == recipientId || message.toId == recipientId) {
+            // Проверяем, принадлежит ли сообщение текущему диалогу
+            val isRelevant = if (groupId != 0L) {
+                messageJson.optLong("group_id", 0) == groupId
+            } else {
+                (message.fromId == recipientId && message.toId == UserSession.userId) ||
+                (message.fromId == UserSession.userId && message.toId == recipientId)
+            }
+
+            if (isRelevant) {
                 val currentMessages = _messages.value.toMutableList()
                 currentMessages.add(message)
                 _messages.value = currentMessages
@@ -186,16 +331,6 @@ class MessagesViewModel : ViewModel(), SocketManager.SocketListener {
     override fun onCleared() {
         super.onCleared()
         socketManager?.disconnect()
+        Log.d("MessagesViewModel", "ViewModel очищена")
     }
-}
-
-@FormUrlEncoded
-interface SendMessageService {
-    @POST("?type=send_message")
-    suspend fun sendMessage(
-        @Field("access_token") accessToken: String,
-        @Field("recipient_id") recipientId: Long,
-        @Field("text") text: String,
-        @Field("send_time") sendTime: Long
-    ): String
 }

@@ -24,7 +24,8 @@ data class Message(
 
 data class ChatListResponse(
     @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("data") val chats: List<Chat>?
+    @SerializedName("data") val chats: List<Chat>?,
+    @SerializedName("error") val errorMessage: String?
 )
 
 data class MessageListResponse(

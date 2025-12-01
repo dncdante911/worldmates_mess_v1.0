@@ -67,8 +67,8 @@ fun ChatsScreen(
 ) {
     val chats by viewModel.chatList.collectAsState()
     var searchText by remember { mutableStateOf("") }
-    val filteredChats = chats.filter { 
-        it.username.contains(searchText, ignoreCase = true) ||
+    var showGroups by remember { mutableStateOf(false) }
+    val filteredChats = chats.filter {
         it.username.contains(searchText, ignoreCase = true)
     }
 
@@ -86,7 +86,9 @@ fun ChatsScreen(
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF0084FF)
+                containerColor = Color(0xFF0084FF),
+                titleContentColor = Color.White,
+                actionIconContentColor = Color.White
             )
         )
 
@@ -96,31 +98,54 @@ fun ChatsScreen(
             onSearchChange = { searchText = it }
         )
 
-  Row(modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = { showGroups = false }) { Text("Чаты") }
-        Button(onClick = { showGroups = true }) { Text("Групи") }
-    }
-
-if (showGroups) {
-        // Show groups list
-    } else {
-        // Show chats list
-    }
-
-        // Chats List
-        if (filteredChats.isEmpty()) {
-            EmptyChatsState()
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+        // Tabs: Chats / Groups
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = { showGroups = false },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (!showGroups) Color(0xFF0084FF) else Color.LightGray
+                )
             ) {
-                items(filteredChats) { chat ->
-                    ChatItemRow(
-                        chat = chat,
-                        onClick = { onChatClick(chat) }
-                    )
+                Text("Чати", color = Color.White)
+            }
+            Button(
+                onClick = { showGroups = true },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (showGroups) Color(0xFF0084FF) else Color.LightGray
+                )
+            ) {
+                Text("Групи", color = Color.White)
+            }
+        }
+
+        // Content
+        if (showGroups) {
+            // TODO: Show groups list when GroupsScreen is integrated
+            EmptyGroupsState()
+        } else {
+            // Chats List
+            if (filteredChats.isEmpty()) {
+                EmptyChatsState()
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    items(filteredChats) { chat ->
+                        ChatItemRow(
+                            chat = chat,
+                            onClick = { onChatClick(chat) }
+                        )
+                    }
                 }
             }
         }
@@ -257,6 +282,37 @@ fun EmptyChatsState() {
 
         Text(
             text = "Почніть розмову зараз!",
+            fontSize = 14.sp,
+            color = Color.Gray,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
+}
+
+@Composable
+fun EmptyGroupsState() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "👥",
+            fontSize = 48.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        Text(
+            text = "Немає груп",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+
+        Text(
+            text = "Створіть нову групу або приєднайтесь до існуючої",
             fontSize = 14.sp,
             color = Color.Gray,
             modifier = Modifier.padding(top = 8.dp)

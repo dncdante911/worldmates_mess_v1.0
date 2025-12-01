@@ -586,7 +586,7 @@ fun VoiceRecordingBar(
 
 @Composable
 fun MediaOptionButton(
-    icon: androidx.compose.material.icons.Icons.Filled,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onClick: () -> Unit
 ) {
@@ -601,14 +601,17 @@ fun MediaOptionButton(
             color = Color(0xFF0084FF),
             modifier = Modifier.size(48.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color.White,
-                modifier = Modifier
-                    .size(24.dp)
-                    .align(Alignment.Center)
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
         Text(label, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
     }

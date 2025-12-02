@@ -1,9 +1,11 @@
 package com.worldmates.messenger.network
 
+import android.util.Log
 import com.worldmates.messenger.data.Constants
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -25,13 +27,25 @@ class SiteKeyInterceptor : Interceptor {
             .url(newUrl)
             .build()
 
+        Log.d("API_REQUEST", "URL: ${newRequest.url}")
+        Log.d("API_REQUEST", "Method: ${newRequest.method}")
+        Log.d("API_REQUEST", "Headers: ${newRequest.headers}")
+
         return chain.proceed(newRequest)
     }
 }
 
 object RetrofitClient {
 
+    // Логирование HTTP запросов
+    private val loggingInterceptor = HttpLoggingInterceptor { message ->
+        Log.d("API_LOG", message)
+    }.apply {
+        level = HttpLoggingInterceptor.Level.BODY
+    }
+
     private val client = OkHttpClient.Builder()
+        .addInterceptor(loggingInterceptor)
         .addInterceptor(SiteKeyInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)

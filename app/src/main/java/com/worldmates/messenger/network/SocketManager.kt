@@ -176,6 +176,19 @@ class SocketManager(private val listener: SocketListener) {
     }
 
     /**
+     * Универсальный метод для отправки произвольных событий через Socket.IO
+     * Используется для WebRTC сигнализации и других кастомных событий
+     */
+    fun emit(event: String, data: Any) {
+        if (socket?.connected() == true) {
+            socket?.emit(event, data)
+            Log.d("SocketManager", "Emitted event: $event")
+        } else {
+            Log.w("SocketManager", "Cannot emit event '$event': Socket not connected")
+        }
+    }
+
+    /**
      * Отправляет индикатор "печатает"
      */
     fun sendTyping(recipientId: Long, isTyping: Boolean) {

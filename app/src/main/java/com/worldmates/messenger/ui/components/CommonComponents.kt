@@ -9,6 +9,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -454,9 +458,9 @@ fun AnimatedFavoriteIcon(
     ) {
         Icon(
             imageVector = if (isFavorite) {
-                androidx.compose.material.icons.Icons.Default.Favorite
+                Icons.Filled.Favorite
             } else {
-                androidx.compose.material.icons.Icons.Default.FavoriteBorder
+                Icons.Filled.FavoriteBorder
             },
             contentDescription = "Favorite",
             tint = if (isFavorite) Error else TextSecondary,

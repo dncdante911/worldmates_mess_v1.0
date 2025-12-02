@@ -302,8 +302,8 @@ class VoicePlayer(private val context: Context) {
     /**
      * Возобновляет воспроизведение
      */
-    fun resume(): Boolean {
-        return try {
+    suspend fun resume(): Boolean = withContext(Dispatchers.Default) {
+        return@withContext try {
             if (mediaPlayer != null && !mediaPlayer!!.isPlaying) {
                 mediaPlayer?.start()
                 _playbackState.value = PlaybackState.Playing

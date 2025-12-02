@@ -1,5 +1,6 @@
 package com.worldmates.messenger.network
 
+import com.google.gson.annotations.SerializedName
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.model.*
 import okhttp3.MultipartBody

@@ -1,14 +1,9 @@
 package com.worldmates.messenger.ui.messages
 
-import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,87 +18,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.FileManager
-import com.worldmates.messenger.ui.theme.WorldMatesTheme
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
 import kotlinx.coroutines.launch
-
-class MessagesActivity : AppCompatActivity() {
-
-    private lateinit var viewModel: MessagesViewModel
-    private lateinit var fileManager: FileManager
-    private lateinit var voiceRecorder: VoiceRecorder
-    private lateinit var voicePlayer: VoicePlayer
-
-    private var recipientId: Long = 0
-    private var groupId: Long = 0
-    private var recipientName: String = ""
-    private var recipientAvatar: String = ""
-    private var isGroup: Boolean = false
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        recipientId = intent.getLongExtra("recipient_id", 0)
-        groupId = intent.getLongExtra("group_id", 0)
-        recipientName = intent.getStringExtra("recipient_name") ?: "Unknown"
-        recipientAvatar = intent.getStringExtra("recipient_avatar") ?: ""
-        isGroup = intent.getBooleanExtra("is_group", false)
-
-        fileManager = FileManager(this)
-        voiceRecorder = VoiceRecorder(this)
-        voicePlayer = VoicePlayer(this)
-
-        viewModel = ViewModelProvider(this).get(MessagesViewModel::class.java)
-
-        if (isGroup) {
-            viewModel.initializeGroup(groupId)
-        } else {
-            viewModel.initialize(recipientId)
-        }
-
-        setContent {
-            WorldMatesTheme {
-                MessagesScreen(
-                    viewModel = viewModel,
-                    fileManager = fileManager,
-                    voiceRecorder = voiceRecorder,
-                    voicePlayer = voicePlayer,
-                    recipientName = recipientName,
-                    recipientAvatar = recipientAvatar,
-                    isGroup = isGroup,
-                    onBackPressed = { finish() },
-                    onImageSelected = { uri ->
-                        val file = fileManager.copyUriToCache(uri)
-                        if (file != null) {
-                            viewModel.uploadAndSendMedia(file, "image")
-                        }
-                    },
-                    onVideoSelected = { uri ->
-                        val file = fileManager.copyUriToCache(uri)
-                        if (file != null) {
-                            viewModel.uploadAndSendMedia(file, "video")
-                        }
-                    }
-                )
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        voicePlayer.release()
-    }
-}
 
 @Composable
 fun MessagesScreen(
@@ -219,6 +145,7 @@ fun MessagesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagesHeaderBar(
     recipientName: String,
@@ -586,7 +513,7 @@ fun VoiceRecordingBar(
 
 @Composable
 fun MediaOptionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     onClick: () -> Unit
 ) {

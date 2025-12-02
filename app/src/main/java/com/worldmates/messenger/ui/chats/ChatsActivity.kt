@@ -60,6 +60,7 @@ class ChatsActivity : AppCompatActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatsScreen(
     viewModel: ChatsViewModel,

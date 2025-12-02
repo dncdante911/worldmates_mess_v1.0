@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -317,6 +318,7 @@ fun MessagesScreenContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagesTopBar(
     recipientName: String,
@@ -639,36 +641,6 @@ fun MessageInputBar(
                 Icon(Icons.Default.Mic, contentDescription = "Voice", tint = Color(0xFF0084FF))
             }
         }
-    }
-}
-
-@Composable
-fun MediaOptionButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clickable { onClick() }
-            .padding(8.dp)
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = Color(0xFF0084FF),
-            modifier = Modifier.size(48.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-        Text(label, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
     }
 }
 

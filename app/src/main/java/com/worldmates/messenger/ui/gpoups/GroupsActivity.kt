@@ -64,6 +64,7 @@ class GroupsActivity : AppCompatActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupsScreenWrapper(
     viewModel: GroupsViewModel,

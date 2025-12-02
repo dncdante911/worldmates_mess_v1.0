@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.worldmates.messenger"
-    compileSdk 34
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.worldmates.messenger"
         minSdk 30  // Android 11.0 и выше
-        targetSdk 34
+        targetSdk 33
         versionCode 1
         versionName "1.0"
 

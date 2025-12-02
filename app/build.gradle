@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.worldmates.messenger"
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.worldmates.messenger"
         minSdk 30  // Android 11.0 и выше
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -38,10 +38,14 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+        // Отключаем incremental compilation для обхода JDK image transform проблемы
+        incremental = false
     }
 
     kotlinOptions {
         jvmTarget = '17'
+        // Отключаем incremental compilation в Kotlin тоже
+        freeCompilerArgs += ['-Xno-call-assertions', '-Xno-param-assertions', '-Xno-receiver-assertions']
     }
 
     buildFeatures {

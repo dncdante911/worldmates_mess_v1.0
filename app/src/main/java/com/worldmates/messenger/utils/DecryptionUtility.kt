@@ -1,8 +1,8 @@
 package com.worldmates.messenger.utils
 
 import android.util.Base64
-import java.security.spec.SecretKeySpec
 import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * Утилита для дешифрования сообщений Wowonder/Worldmates.

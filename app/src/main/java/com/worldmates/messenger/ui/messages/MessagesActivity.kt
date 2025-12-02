@@ -103,7 +103,7 @@ class MessagesActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         voicePlayer.release()
-        fileManager.clearMediaCache()
+        fileManager.clearOldCacheFiles()
     }
 }
 
@@ -134,7 +134,7 @@ fun MessagesScreenContent(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            val file = fileManager.copyUriToCache(it, "IMG_${System.currentTimeMillis()}.jpg")
+            val file = fileManager.copyUriToCache(it)
             if (file != null) {
                 viewModel.uploadAndSendMedia(file, Constants.MESSAGE_TYPE_IMAGE)
             }
@@ -146,7 +146,7 @@ fun MessagesScreenContent(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            val file = fileManager.copyUriToCache(it, "VID_${System.currentTimeMillis()}.mp4")
+            val file = fileManager.copyUriToCache(it)
             if (file != null) {
                 viewModel.uploadAndSendMedia(file, Constants.MESSAGE_TYPE_VIDEO)
             }
@@ -644,7 +644,7 @@ fun MessageInputBar(
 
 @Composable
 fun MediaOptionButton(
-    icon: androidx.compose.material.icons.Icons.Filled,
+    icon: ImageVector,
     label: String,
     onClick: () -> Unit
 ) {

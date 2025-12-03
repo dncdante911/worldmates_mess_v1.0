@@ -28,9 +28,15 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
     val needsRelogin: StateFlow<Boolean> = _needsRelogin
 
     private var socketManager: SocketManager? = null
+    private var authErrorCount = 0 // Счетчик ошибок авторизации
 
     init {
-        fetchChats()
+        // Добавляем небольшую задержку перед первым запросом
+        // чтобы токен успел активироваться на сервере
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(500) // 500ms задержка
+            fetchChats()
+        }
         setupSocket()
     }
 

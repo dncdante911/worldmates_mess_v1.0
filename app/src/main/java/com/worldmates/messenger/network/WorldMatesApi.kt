@@ -45,6 +45,15 @@ interface WorldMatesApi {
     ): ChatListResponse
 
     @FormUrlEncoded
+    @POST("?type=search")
+    suspend fun searchUsers(
+        @Field("access_token") accessToken: String,
+        @Field("query") query: String,
+        @Field("limit") limit: Int = 30,
+        @Field("offset") offset: Int = 0
+    ): UserSearchResponse
+
+    @FormUrlEncoded
     @POST(Constants.GET_MESSAGES_ENDPOINT)
     suspend fun getMessages(
         @Field("access_token") accessToken: String,
@@ -265,6 +274,24 @@ data class CallResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("call_id") val callId: String?,
     @SerializedName("rtc_signal") val rtcSignal: String?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class SearchUser(
+    @SerializedName("user_id") val userId: Long,
+    @SerializedName("username") val username: String,
+    @SerializedName("name") val name: String?,
+    @SerializedName("avatar") val avatarUrl: String,
+    @SerializedName("verified") val verified: Int = 0,
+    @SerializedName("lastseen") val lastSeen: Long?,
+    @SerializedName("lastseen_status") val lastSeenStatus: String?, // "online", "offline", "recently"
+    @SerializedName("about") val about: String?
+)
+
+data class UserSearchResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("users") val users: List<SearchUser>?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 )

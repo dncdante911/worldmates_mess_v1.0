@@ -24,6 +24,9 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private val _needsRelogin = MutableStateFlow(false)
+    val needsRelogin: StateFlow<Boolean> = _needsRelogin
+
     private var socketManager: SocketManager? = null
 
     init {
@@ -95,9 +98,17 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                         _error.value = null // Не помилка, просто порожньо
                     }
                 } else {
-                    val errorMsg = response.errorMessage ?: "Невідома помилка (${response.apiStatus})"
-                    _error.value = errorMsg
-                    Log.e("ChatsViewModel", "❌ Помилка API: ${response.apiStatus} - $errorMsg")
+                    // Якщо отримали 404 або помилку авторизації - очищаємо сесію і вимагаємо перелогін
+                    if (response.apiStatus == 404 || response.apiStatus == 401 || response.apiStatus == 403) {
+                        Log.e("ChatsViewModel", "❌ Токен недійсний або застарілий. Потрібен перелогін")
+                        UserSession.clearSession()
+                        _needsRelogin.value = true
+                        _error.value = "Сесія застаріла. Будь ласка, увійдіть знову"
+                    } else {
+                        val errorMsg = response.errorMessage ?: "Невідома помилка (${response.apiStatus})"
+                        _error.value = errorMsg
+                        Log.e("ChatsViewModel", "❌ Помилка API: ${response.apiStatus} - $errorMsg")
+                    }
                 }
 
                 _isLoading.value = false

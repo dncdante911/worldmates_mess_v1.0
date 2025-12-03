@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +45,17 @@ class ChatsActivity : AppCompatActivity() {
 
         setContent {
             WorldMatesTheme {
+                // Обробка необхідності перелогіну
+                val needsRelogin by viewModel.needsRelogin.collectAsState()
+
+                LaunchedEffect(needsRelogin) {
+                    if (needsRelogin) {
+                        // Перенаправляємо на екран логіну
+                        navigateToLogin()
+                        finish()
+                    }
+                }
+
                 ChatsScreen(
                     viewModel = viewModel,
                     groupsViewModel = groupsViewModel,
@@ -80,6 +92,12 @@ class ChatsActivity : AppCompatActivity() {
 
     private fun navigateToSettings() {
         startActivity(Intent(this, com.worldmates.messenger.ui.settings.SettingsActivity::class.java))
+    }
+
+    private fun navigateToLogin() {
+        startActivity(Intent(this, com.worldmates.messenger.ui.login.LoginActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
     }
 }
 
@@ -119,11 +137,23 @@ fun ChatsScreen(
         TopAppBar(
             title = { Text("Повідомлення") },
             actions = {
-                IconButton(onClick = { /* Додати новий чат */ }) {
-                    Icon(Icons.Default.Add, contentDescription = "New Chat")
+                var showSearchDialog by remember { mutableStateOf(false) }
+
+                IconButton(onClick = { showSearchDialog = true }) {
+                    Icon(Icons.Default.Search, contentDescription = "Пошук користувачів")
                 }
                 IconButton(onClick = onSettingsClick) {
                     Icon(Icons.Default.Settings, contentDescription = "Налаштування")
+                }
+
+                if (showSearchDialog) {
+                    UserSearchDialog(
+                        onDismiss = { showSearchDialog = false },
+                        onUserClick = { user ->
+                            showSearchDialog = false
+                            // TODO: Navigate to messages with this user
+                        }
+                    )
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -526,4 +556,147 @@ fun EmptyGroupsState() {
             modifier = Modifier.padding(top = 8.dp)
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserSearchDialog(
+    onDismiss: () -> Unit,
+    onUserClick: (com.worldmates.messenger.network.SearchUser) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<com.worldmates.messenger.network.SearchUser>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Пошук користувачів") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+            ) {
+                // Search field
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Введіть ім'я або username") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    },
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Search button
+                Button(
+                    onClick = {
+                        if (searchQuery.isNotBlank()) {
+                            isSearching = true
+                            errorMessage = null
+                            // Perform search
+                            kotlinx.coroutines.GlobalScope.launch {
+                                try {
+                                    val response = com.worldmates.messenger.network.RetrofitClient.apiService.searchUsers(
+                                        accessToken = com.worldmates.messenger.data.UserSession.accessToken ?: "",
+                                        query = searchQuery
+                                    )
+                                    if (response.apiStatus == 200 && response.users != null) {
+                                        searchResults = response.users
+                                        errorMessage = null
+                                    } else {
+                                        errorMessage = "Нічого не знайдено"
+                                        searchResults = emptyList()
+                                    }
+                                } catch (e: Exception) {
+                                    errorMessage = "Помилка: ${e.localizedMessage}"
+                                    searchResults = emptyList()
+                                } finally {
+                                    isSearching = false
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSearching && searchQuery.isNotBlank()
+                ) {
+                    if (isSearching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White
+                        )
+                    } else {
+                        Text("Шукати")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Error message
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                // Search results
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(searchResults) { user ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onUserClick(user) }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AsyncImage(
+                                model = user.avatarUrl,
+                                contentDescription = user.username,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 12.dp)
+                            ) {
+                                Text(
+                                    text = user.name ?: user.username,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "@${user.username}",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+
+                            if (user.verified == 1) {
+                                Text("✓", color = Color(0xFF0084FF), fontSize = 20.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрити")
+            }
+        }
+    )
 }

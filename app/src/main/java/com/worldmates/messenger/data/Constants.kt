@@ -2,12 +2,13 @@ package com.worldmates.messenger.data
 
 object Constants {
     // ==================== API ENDPOINTS ====================
-    const val BASE_URL = "https://worldmates.club/api/v2/" 
-    const val SOCKET_URL = "https://worldmates.club:449/" 
-    
+    const val BASE_URL = "https://worldmates.club/api/v2/"
+    const val SOCKET_URL = "https://worldmates.club:449/"
+
     // ==================== SECURITY ====================
-    const val SITE_ENCRYPT_KEY = "2ad9c757daccdfff436dc226779e20b719f6d6f8" 
-    
+    const val SITE_ENCRYPT_KEY = "2ad9c757daccdfff436dc226779e20b719f6d6f8"
+    const val SERVER_KEY = "a8975daa76d7197ab87412b096696bb0e341eb4d-9bb411ab89d8a290362726fca6129e76-81746510"
+
     // ==================== API QUERY PARAMETERS ====================
     const val AUTH_ENDPOINT = "?type=auth"
     const val GET_CHATS_ENDPOINT = "?type=get_chats"

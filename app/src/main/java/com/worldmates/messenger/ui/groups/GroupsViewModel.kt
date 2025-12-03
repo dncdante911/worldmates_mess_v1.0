@@ -33,7 +33,12 @@ class GroupsViewModel : ViewModel() {
     val error: StateFlow<String?> = _error
 
     init {
-        fetchGroups()
+        // Добавляем задержку перед первым запросом
+        // чтобы токен успел активироваться на сервере
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(2500) // 2.5 секунды задержка (чуть больше чем в ChatsViewModel)
+            fetchGroups()
+        }
     }
 
     fun fetchGroups() {

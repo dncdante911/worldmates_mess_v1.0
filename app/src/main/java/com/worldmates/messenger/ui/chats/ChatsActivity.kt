@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,6 +46,9 @@ class ChatsActivity : AppCompatActivity() {
                     viewModel = viewModel,
                     onChatClick = { chat ->
                         navigateToMessages(chat)
+                    },
+                    onSettingsClick = {
+                        navigateToSettings()
                     }
                 )
             }
@@ -58,15 +62,22 @@ class ChatsActivity : AppCompatActivity() {
             putExtra("recipient_avatar", chat.avatarUrl)
         })
     }
+
+    private fun navigateToSettings() {
+        startActivity(Intent(this, com.worldmates.messenger.ui.settings.SettingsActivity::class.java))
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatsScreen(
     viewModel: ChatsViewModel,
-    onChatClick: (Chat) -> Unit
+    onChatClick: (Chat) -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     val chats by viewModel.chatList.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
     var searchText by remember { mutableStateOf("") }
     var showGroups by remember { mutableStateOf(false) }
     val filteredChats = chats.filter {
@@ -84,6 +95,9 @@ fun ChatsScreen(
             actions = {
                 IconButton(onClick = { /* Додати новий чат */ }) {
                     Icon(Icons.Default.Add, contentDescription = "New Chat")
+                }
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Default.Settings, contentDescription = "Налаштування")
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -128,24 +142,65 @@ fun ChatsScreen(
         }
 
         // Content
-        if (showGroups) {
-            // TODO: Show groups list when GroupsScreen is integrated
-            EmptyGroupsState()
-        } else {
-            // Chats List
-            if (filteredChats.isEmpty()) {
-                EmptyChatsState()
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
+        Box(modifier = Modifier.weight(1f)) {
+            if (isLoading) {
+                // Loading indicator
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    items(filteredChats) { chat ->
-                        ChatItemRow(
-                            chat = chat,
-                            onClick = { onChatClick(chat) }
+                    CircularProgressIndicator(color = Color(0xFF0084FF))
+                    Text(
+                        "Завантаження...",
+                        modifier = Modifier.padding(top = 16.dp),
+                        color = Color.Gray
+                    )
+                }
+            } else if (error != null) {
+                // Error state
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        "⚠️",
+                        fontSize = 48.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Text(
+                        error ?: "Помилка завантаження",
+                        color = Color.Red,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    )
+                    Button(
+                        onClick = { viewModel.fetchChats() },
+                        modifier = Modifier.padding(top = 16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF0084FF)
                         )
+                    ) {
+                        Text("Спробувати ще раз")
+                    }
+                }
+            } else if (showGroups) {
+                // TODO: Show groups list when GroupsScreen is integrated
+                EmptyGroupsState()
+            } else {
+                // Chats List
+                if (filteredChats.isEmpty()) {
+                    EmptyChatsState()
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(filteredChats) { chat ->
+                            ChatItemRow(
+                                chat = chat,
+                                onClick = { onChatClick(chat) }
+                            )
+                        }
                     }
                 }
             }

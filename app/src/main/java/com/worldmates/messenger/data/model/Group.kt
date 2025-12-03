@@ -248,3 +248,30 @@ data class UserResponse(
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 )
+
+// ==================== EXTENSION FUNCTIONS ====================
+
+/**
+ * Конвертує Chat об'єкт в Group об'єкт
+ * Використовується для отримання груп через getChats API
+ */
+fun Chat.toGroup(): Group {
+    return Group(
+        id = this.id,
+        name = this.username,
+        avatarUrl = this.avatarUrl,
+        description = this.description,
+        membersCount = this.membersCount,
+        adminId = this.userId, // Використовуємо userId як adminId
+        adminName = "", // Немає цієї інформації в Chat
+        isPrivate = this.isPrivate,
+        isAdmin = this.isAdmin,
+        isModerator = false, // Немає цієї інформації в Chat
+        isMember = true,
+        createdTime = this.lastActivity ?: System.currentTimeMillis(),
+        updatedTime = this.lastActivity,
+        members = null,
+        pinnedMessageId = this.pinnedMessageId,
+        settings = null
+    )
+}

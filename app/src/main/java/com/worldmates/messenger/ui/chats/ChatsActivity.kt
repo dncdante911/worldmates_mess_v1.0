@@ -34,18 +34,24 @@ import com.worldmates.messenger.ui.theme.WorldMatesTheme
 class ChatsActivity : AppCompatActivity() {
 
     private lateinit var viewModel: ChatsViewModel
+    private lateinit var groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         viewModel = ViewModelProvider(this).get(ChatsViewModel::class.java)
+        groupsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.groups.GroupsViewModel::class.java)
 
         setContent {
             WorldMatesTheme {
                 ChatsScreen(
                     viewModel = viewModel,
+                    groupsViewModel = groupsViewModel,
                     onChatClick = { chat ->
                         navigateToMessages(chat)
+                    },
+                    onGroupClick = { group ->
+                        navigateToGroupMessages(group)
                     },
                     onSettingsClick = {
                         navigateToSettings()
@@ -63,6 +69,15 @@ class ChatsActivity : AppCompatActivity() {
         })
     }
 
+    private fun navigateToGroupMessages(group: com.worldmates.messenger.data.model.Group) {
+        startActivity(Intent(this, MessagesActivity::class.java).apply {
+            putExtra("group_id", group.id)
+            putExtra("recipient_name", group.name)
+            putExtra("recipient_avatar", group.avatarUrl)
+            putExtra("is_group", true)
+        })
+    }
+
     private fun navigateToSettings() {
         startActivity(Intent(this, com.worldmates.messenger.ui.settings.SettingsActivity::class.java))
     }
@@ -72,16 +87,27 @@ class ChatsActivity : AppCompatActivity() {
 @Composable
 fun ChatsScreen(
     viewModel: ChatsViewModel,
+    groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel,
     onChatClick: (Chat) -> Unit,
+    onGroupClick: (com.worldmates.messenger.data.model.Group) -> Unit,
     onSettingsClick: () -> Unit
 ) {
     val chats by viewModel.chatList.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+
+    val groups by groupsViewModel.groupList.collectAsState()
+    val isLoadingGroups by groupsViewModel.isLoading.collectAsState()
+    val errorGroups by groupsViewModel.error.collectAsState()
+
     var searchText by remember { mutableStateOf("") }
     var showGroups by remember { mutableStateOf(false) }
+
     val filteredChats = chats.filter {
         it.username.contains(searchText, ignoreCase = true)
+    }
+    val filteredGroups = groups.filter {
+        it.name.contains(searchText, ignoreCase = true)
     }
 
     Column(
@@ -185,8 +211,60 @@ fun ChatsScreen(
                     }
                 }
             } else if (showGroups) {
-                // TODO: Show groups list when GroupsScreen is integrated
-                EmptyGroupsState()
+                // Groups List
+                if (isLoadingGroups) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(color = Color(0xFF0084FF))
+                        Text(
+                            "Завантаження груп...",
+                            modifier = Modifier.padding(top = 16.dp),
+                            color = Color.Gray
+                        )
+                    }
+                } else if (errorGroups != null) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            "⚠️",
+                            fontSize = 48.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Text(
+                            errorGroups ?: "Помилка завантаження груп",
+                            color = Color.Red,
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        )
+                        Button(
+                            onClick = { groupsViewModel.fetchGroups() },
+                            modifier = Modifier.padding(top = 16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF0084FF)
+                            )
+                        ) {
+                            Text("Спробувати ще раз")
+                        }
+                    }
+                } else if (filteredGroups.isEmpty()) {
+                    EmptyGroupsState()
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(filteredGroups) { group ->
+                            GroupItemRow(
+                                group = group,
+                                onClick = { onGroupClick(group) }
+                            )
+                        }
+                    }
+                }
             } else {
                 // Chats List
                 if (filteredChats.isEmpty()) {
@@ -342,6 +420,80 @@ fun EmptyChatsState() {
             color = Color.Gray,
             modifier = Modifier.padding(top = 8.dp)
         )
+    }
+}
+
+@Composable
+fun GroupItemRow(
+    group: com.worldmates.messenger.data.model.Group,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(12.dp)
+            .background(Color.White, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar
+        AsyncImage(
+            model = group.avatarUrl,
+            contentDescription = group.name,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+
+        // Group info
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp)
+        ) {
+            Text(
+                text = group.name,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+
+            Row {
+                Text(
+                    text = "${group.membersCount} членів",
+                    fontSize = 13.sp,
+                    color = Color.Gray
+                )
+                if (group.isPrivate) {
+                    Text(
+                        text = " • Приватна",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+
+        // Admin badge
+        if (group.isAdmin) {
+            Surface(
+                modifier = Modifier.size(24.dp),
+                shape = CircleShape,
+                color = Color(0xFF0084FF)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Text(
+                        text = "👤",
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
     }
 }
 

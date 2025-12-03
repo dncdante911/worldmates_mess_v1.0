@@ -18,7 +18,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -564,6 +566,7 @@ fun UserSearchDialog(
     onDismiss: () -> Unit,
     onUserClick: (com.worldmates.messenger.network.SearchUser) -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<com.worldmates.messenger.network.SearchUser>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
@@ -599,7 +602,7 @@ fun UserSearchDialog(
                             isSearching = true
                             errorMessage = null
                             // Perform search
-                            kotlinx.coroutines.GlobalScope.launch {
+                            coroutineScope.launch {
                                 try {
                                     val response = com.worldmates.messenger.network.RetrofitClient.apiService.searchUsers(
                                         accessToken = com.worldmates.messenger.data.UserSession.accessToken ?: "",

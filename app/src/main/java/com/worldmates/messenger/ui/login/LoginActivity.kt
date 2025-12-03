@@ -44,6 +44,12 @@ class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Проверка автологина
+        if (com.worldmates.messenger.data.UserSession.isLoggedIn) {
+            navigateToChats()
+            return
+        }
+
         viewModel = ViewModelProvider(this).get(LoginViewModel::class.java)
 
         setContent {
@@ -186,7 +192,11 @@ fun LoginScreen(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 400))
             ) {
-                RegisterPrompt()
+                RegisterPrompt(
+                    onNavigateToRegister = {
+                        startActivity(Intent(this@LoginActivity, com.worldmates.messenger.ui.register.RegisterActivity::class.java))
+                    }
+                )
             }
         }
     }
@@ -387,7 +397,7 @@ fun LoginFormCard(
 }
 
 @Composable
-fun RegisterPrompt() {
+fun RegisterPrompt(onNavigateToRegister: () -> Unit) {
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -398,7 +408,7 @@ fun RegisterPrompt() {
             fontSize = 14.sp
         )
         TextButton(
-            onClick = { /* TODO: Navigate to registration */ }
+            onClick = onNavigateToRegister
         ) {
             Text(
                 "Зареєструйтеся",

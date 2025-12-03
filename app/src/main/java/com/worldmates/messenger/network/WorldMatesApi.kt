@@ -20,6 +20,18 @@ interface WorldMatesApi {
         @Field("android_m_device_id") deviceId: String? = null
     ): AuthResponse
 
+    @FormUrlEncoded
+    @POST("?type=create-account")
+    suspend fun register(
+        @Field("username") username: String,
+        @Field("email") email: String,
+        @Field("password") password: String,
+        @Field("confirm_password") confirmPassword: String,
+        @Field("device_type") deviceType: String = "phone",
+        @Field("gender") gender: String = "male",
+        @Field("android_m_device_id") deviceId: String? = null
+    ): AuthResponse
+
     // ==================== CHATS ====================
 
     @FormUrlEncoded

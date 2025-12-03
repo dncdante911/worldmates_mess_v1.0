@@ -56,7 +56,8 @@ class LoginActivity : AppCompatActivity() {
             WorldMatesTheme {
                 LoginScreen(
                     viewModel = viewModel,
-                    onLoginSuccess = { navigateToChats() }
+                    onLoginSuccess = { navigateToChats() },
+                    onNavigateToRegister = { navigateToRegister() }
                 )
             }
         }
@@ -89,13 +90,18 @@ class LoginActivity : AppCompatActivity() {
         startActivity(Intent(this, ChatsActivity::class.java))
         finish()
     }
+
+    private fun navigateToRegister() {
+        startActivity(Intent(this, com.worldmates.messenger.ui.register.RegisterActivity::class.java))
+    }
 }
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -193,9 +199,7 @@ fun LoginScreen(
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 400))
             ) {
                 RegisterPrompt(
-                    onNavigateToRegister = {
-                        startActivity(Intent(this@LoginActivity, com.worldmates.messenger.ui.register.RegisterActivity::class.java))
-                    }
+                    onNavigateToRegister = onNavigateToRegister
                 )
             }
         }

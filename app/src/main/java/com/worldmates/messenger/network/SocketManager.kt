@@ -52,14 +52,14 @@ class SocketManager(private val listener: SocketListener) {
             }
 
             // 3. Обработка переподключения
-            socket?.on(Socket.EVENT_RECONNECT) {
+            socket?.on("reconnect") {
                 Log.d("SocketManager", "Socket Reconnected")
                 authenticateSocket()
                 listener.onSocketConnected()
             }
 
             // 4. Обработка попытки переподключения
-            socket?.on(Socket.EVENT_RECONNECT_ATTEMPT) { args ->
+            socket?.on("reconnecting") { args ->
                 val attempt = if (args.isNotEmpty()) args[0].toString() else "?"
                 Log.d("SocketManager", "Reconnection Attempt #$attempt")
             }

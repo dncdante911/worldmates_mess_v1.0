@@ -37,10 +37,16 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
     fun fetchChats() {
         if (UserSession.accessToken == null) {
             _error.value = "Користувач не авторизований"
+            Log.e("ChatsViewModel", "Access token is null!")
             return
         }
 
+        Log.d("ChatsViewModel", "Початок завантаження чатів...")
+        Log.d("ChatsViewModel", "Access token: ${UserSession.accessToken}")
+        Log.d("ChatsViewModel", "User ID: ${UserSession.userId}")
+
         _isLoading.value = true
+        _error.value = null
 
         viewModelScope.launch {
             try {
@@ -52,32 +58,64 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                     setOnline = 1
                 )
 
-                if (response.apiStatus == 200 && response.chats != null) {
-                    // Дешифруємо останнє повідомлення у кожному чаті
-                    val decryptedChats = response.chats!!.map { chat ->
-                        val lastMessage = chat.lastMessage?.let { msg ->
-                            val decryptedText = DecryptionUtility.decryptMessage(
-                                msg.encryptedText,
-                                msg.timeStamp
-                            )
-                            msg.copy(decryptedText = decryptedText)
-                        }
-                        chat.copy(lastMessage = lastMessage)
-                    }
+                Log.d("ChatsViewModel", "API Response Status: ${response.apiStatus}")
+                Log.d("ChatsViewModel", "Chats count: ${response.chats?.size ?: 0}")
+                Log.d("ChatsViewModel", "Error code: ${response.errorCode}")
+                Log.d("ChatsViewModel", "Error message: ${response.errorMessage}")
 
-                    _chatList.value = decryptedChats
-                    _error.value = null
-                    Log.d("ChatsViewModel", "Завантажено ${decryptedChats.size} чатів")
+                if (response.apiStatus == 200) {
+                    if (response.chats != null && response.chats.isNotEmpty()) {
+                        Log.d("ChatsViewModel", "Отримано ${response.chats.size} чатів")
+
+                        // Дешифруємо останнє повідомлення у кожному чаті
+                        val decryptedChats = response.chats.map { chat ->
+                            Log.d("ChatsViewModel", "Chat: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
+
+                            val lastMessage = chat.lastMessage?.let { msg ->
+                                val decryptedText = try {
+                                    DecryptionUtility.decryptMessage(
+                                        msg.encryptedText,
+                                        msg.timeStamp
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e("ChatsViewModel", "Помилка дешифрування", e)
+                                    msg.encryptedText // Використовуємо зашифрований текст якщо помилка
+                                }
+                                msg.copy(decryptedText = decryptedText)
+                            }
+                            chat.copy(lastMessage = lastMessage)
+                        }
+
+                        _chatList.value = decryptedChats
+                        _error.value = null
+                        Log.d("ChatsViewModel", "✅ Завантажено ${decryptedChats.size} чатів успішно")
+                    } else {
+                        Log.w("ChatsViewModel", "⚠️ API повернуло 200, але чатів немає")
+                        _chatList.value = emptyList()
+                        _error.value = null // Не помилка, просто порожньо
+                    }
                 } else {
-                    _error.value = response.errorMessage ?: "Помилка завантаження чатів"
-                    Log.e("ChatsViewModel", "Помилка API: ${response.apiStatus}")
+                    val errorMsg = response.errorMessage ?: "Невідома помилка (${response.apiStatus})"
+                    _error.value = errorMsg
+                    Log.e("ChatsViewModel", "❌ Помилка API: ${response.apiStatus} - $errorMsg")
                 }
 
                 _isLoading.value = false
-            } catch (e: Exception) {
-                _error.value = "Помилка: ${e.localizedMessage}"
+            } catch (e: com.google.gson.JsonSyntaxException) {
+                val errorMsg = "Помилка парсингу відповіді від сервера"
+                _error.value = errorMsg
                 _isLoading.value = false
-                Log.e("ChatsViewModel", "Помилка завантаження чатів", e)
+                Log.e("ChatsViewModel", "❌ $errorMsg", e)
+            } catch (e: java.net.ConnectException) {
+                val errorMsg = "Не вдалося з'єднатися з сервером"
+                _error.value = errorMsg
+                _isLoading.value = false
+                Log.e("ChatsViewModel", "❌ $errorMsg", e)
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                _isLoading.value = false
+                Log.e("ChatsViewModel", "❌ Помилка завантаження чатів", e)
             }
         }
     }

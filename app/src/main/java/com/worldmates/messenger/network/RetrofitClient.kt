@@ -2,18 +2,16 @@ package com.worldmates.messenger.network
 
 import android.util.Log
 import com.worldmates.messenger.data.Constants
-import okhttp3.Interceptor
-import okhttp3.OkHttpClient
-import okhttp3.Response
+import okhttp3.*
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * Interceptor для добавления siteEncryptKey в каждый запрос.
+ * Interceptor для добавления server_key и siteEncryptKey в каждый запрос.
  */
-class SiteKeyInterceptor : Interceptor {
+class ApiKeyInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
         val originalHttpUrl = originalRequest.url
@@ -23,9 +21,28 @@ class SiteKeyInterceptor : Interceptor {
             .addQueryParameter("s", Constants.SITE_ENCRYPT_KEY)
             .build()
 
-        val newRequest = originalRequest.newBuilder()
-            .url(newUrl)
-            .build()
+        // Если это POST запрос, добавляем server_key в тело
+        val newRequest = if (originalRequest.method == "POST" && originalRequest.body is FormBody) {
+            val formBody = originalRequest.body as FormBody
+            val formBodyBuilder = FormBody.Builder()
+
+            // Добавляем server_key первым
+            formBodyBuilder.add("server_key", Constants.SERVER_KEY)
+
+            // Копируем все существующие параметры
+            for (i in 0 until formBody.size) {
+                formBodyBuilder.add(formBody.name(i), formBody.value(i))
+            }
+
+            originalRequest.newBuilder()
+                .url(newUrl)
+                .post(formBodyBuilder.build())
+                .build()
+        } else {
+            originalRequest.newBuilder()
+                .url(newUrl)
+                .build()
+        }
 
         Log.d("API_REQUEST", "URL: ${newRequest.url}")
         Log.d("API_REQUEST", "Method: ${newRequest.method}")
@@ -46,7 +63,7 @@ object RetrofitClient {
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .addInterceptor(SiteKeyInterceptor())
+        .addInterceptor(ApiKeyInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()

@@ -137,22 +137,43 @@ data class CallInitiateRequest(
 // ==================== API RESPONSE MODELS ====================
 
 data class AuthResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?, // Может быть String или Int
     @SerializedName("access_token") val accessToken: String?,
     @SerializedName("user_id") val userId: Long?,
     @SerializedName("username") val username: String?,
     @SerializedName("avatar") val avatar: String?,
     @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
+    @SerializedName("error_message") val errorMessage: String?,
+    @SerializedName("errors") val errors: ErrorsObject? = null
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
+
+data class ErrorsObject(
+    @SerializedName("error_id") val errorId: Int?,
+    @SerializedName("error_text") val errorText: String?
 )
 
 data class ChatListResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?, // Может быть String или Int
     @SerializedName("data") val chats: List<Chat>?,
     @SerializedName("total_count") val totalCount: Int? = null,
     @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
-)
+    @SerializedName("error_message") val errorMessage: String?,
+    @SerializedName("errors") val errors: ErrorsObject? = null
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 data class MessageListResponse(
     @SerializedName("api_status") val apiStatus: Int,

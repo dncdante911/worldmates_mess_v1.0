@@ -31,10 +31,10 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
     private var authErrorCount = 0 // Счетчик ошибок авторизации
 
     init {
-        // Добавляем небольшую задержку перед первым запросом
+        // Добавляем задержку перед первым запросом
         // чтобы токен успел активироваться на сервере
         viewModelScope.launch {
-            kotlinx.coroutines.delay(500) // 500ms задержка
+            kotlinx.coroutines.delay(2000) // 2 секунды задержка
             fetchChats()
         }
         setupSocket()

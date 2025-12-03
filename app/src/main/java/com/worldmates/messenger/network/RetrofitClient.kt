@@ -62,8 +62,8 @@ object RetrofitClient {
     }
 
     private val client = OkHttpClient.Builder()
-        .addInterceptor(loggingInterceptor)
-        .addInterceptor(ApiKeyInterceptor())
+        .addInterceptor(ApiKeyInterceptor()) // Добавляем server_key сначала
+        .addInterceptor(loggingInterceptor) // Логируем после модификации запроса
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()

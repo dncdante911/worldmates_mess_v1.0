@@ -25,10 +25,14 @@ class SocketManager(private val listener: SocketListener) {
         if (UserSession.accessToken == null || socket?.connected() == true) return
 
         try {
-            // Опции для Socket.IO (могут потребовать доработки в зависимости от конфигурации вашего сервера)
+            // Опции для Socket.IO с улучшенными настройками переподключения
             val opts = IO.Options()
-            opts.forceNew = true
-            opts.reconnection = true
+            opts.forceNew = false // Не создавать новое соединение, если уже есть
+            opts.reconnection = true // Автоматическое переподключение
+            opts.reconnectionAttempts = Int.MAX_VALUE // Бесконечные попытки переподключения
+            opts.reconnectionDelay = 1000 // Начальная задержка 1 сек
+            opts.reconnectionDelayMax = 5000 // Максимальная задержка 5 сек
+            opts.timeout = 20000 // Тайм-аут подключения 20 сек
             opts.query = "access_token=${UserSession.accessToken}&user_id=${UserSession.userId}"
 
             socket = IO.socket(Constants.SOCKET_URL, opts)
@@ -47,21 +51,34 @@ class SocketManager(private val listener: SocketListener) {
                 listener.onSocketDisconnected()
             }
 
-            // 3. Обработка ошибок
+            // 3. Обработка переподключения
+            socket?.on(Socket.EVENT_RECONNECT) {
+                Log.d("SocketManager", "Socket Reconnected")
+                authenticateSocket()
+                listener.onSocketConnected()
+            }
+
+            // 4. Обработка попытки переподключения
+            socket?.on(Socket.EVENT_RECONNECT_ATTEMPT) { args ->
+                val attempt = if (args.isNotEmpty()) args[0].toString() else "?"
+                Log.d("SocketManager", "Reconnection Attempt #$attempt")
+            }
+
+            // 6. Обработка ошибок
             socket?.on(Socket.EVENT_CONNECT_ERROR) { args ->
                 val error = if (args.isNotEmpty()) args[0].toString() else "Unknown error"
                 Log.e("SocketManager", "Connection Error: $error")
                 listener.onSocketError("Connection Error: $error")
             }
 
-            // 4. Получение нового сообщения
+            // 7. Получение нового сообщения
             socket?.on(Constants.SOCKET_EVENT_NEW_MESSAGE) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     listener.onNewMessage(args[0] as JSONObject)
                 }
             }
 
-            // 5. Обработка индикатора печатания
+            // 8. Обработка индикатора печатания
             socket?.on(Constants.SOCKET_EVENT_TYPING) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     val data = args[0] as JSONObject
@@ -74,7 +91,7 @@ class SocketManager(private val listener: SocketListener) {
                 }
             }
 
-            // 6. Обработка "последний раз в сети"
+            // 9. Обработка "последний раз в сети"
             socket?.on(Constants.SOCKET_EVENT_LAST_SEEN) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     val data = args[0] as JSONObject
@@ -87,7 +104,7 @@ class SocketManager(private val listener: SocketListener) {
                 }
             }
 
-            // 7. Обработка прочтения сообщения
+            // 10. Обработка прочтения сообщения
             socket?.on(Constants.SOCKET_EVENT_MESSAGE_SEEN) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     val data = args[0] as JSONObject
@@ -100,7 +117,7 @@ class SocketManager(private val listener: SocketListener) {
                 }
             }
 
-            // 8. Обработка группового сообщения
+            // 11. Обработка группового сообщения
             socket?.on(Constants.SOCKET_EVENT_GROUP_MESSAGE) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     val data = args[0] as JSONObject
@@ -111,7 +128,7 @@ class SocketManager(private val listener: SocketListener) {
                 }
             }
 
-            // 9. Обработка статуса "онлайн"
+            // 12. Обработка статуса "онлайн"
             socket?.on(Constants.SOCKET_EVENT_USER_ONLINE) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     val data = args[0] as JSONObject
@@ -123,7 +140,7 @@ class SocketManager(private val listener: SocketListener) {
                 }
             }
 
-            // 10. Обработка статуса "оффлайн"
+            // 13. Обработка статуса "оффлайн"
             socket?.on(Constants.SOCKET_EVENT_USER_OFFLINE) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     val data = args[0] as JSONObject

@@ -149,12 +149,30 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
     override fun onSocketDisconnected() {
         Log.w("ChatsViewModel", "Socket відключено")
-        _error.value = "Втрачено з'єднання"
+        // Не показуємо помилку користувачу, оскільки Socket.IO автоматично спробує переподключитися
+        // _error.value = "Втрачено з'єднання"
+
+        // Спробуємо переподключитися через 2 секунди, якщо автоматичне переподключення не спрацює
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(2000)
+            if (socketManager != null) {
+                try {
+                    socketManager?.connect()
+                    Log.d("ChatsViewModel", "Спроба переподключення Socket...")
+                } catch (e: Exception) {
+                    Log.e("ChatsViewModel", "Помилка переподключення Socket", e)
+                }
+            }
+        }
     }
 
     override fun onSocketError(error: String) {
         Log.e("ChatsViewModel", "Помилка Socket: $error")
-        _error.value = error
+        // Не показуємо помилку Socket користувачу, якщо це тимчасова помилка з'єднання
+        if (!error.contains("xhr poll error", ignoreCase = true) &&
+            !error.contains("timeout", ignoreCase = true)) {
+            _error.value = error
+        }
     }
 
     /**

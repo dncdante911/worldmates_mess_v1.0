@@ -44,4 +44,7 @@
     <string name="error_network">Помилка мережі</string>
     <string name="error_login">Помилка входу</string>
     <string name="error_register">Помилка реєстрації</string>
+    <string name="error_no_internet">Немає з\'єднання з інтернетом</string>
+    <string name="error_server">Помилка сервера. Спробуйте пізніше</string>
+    <string name="error_something_wrong">Щось пішло не так</string>
 </resources>

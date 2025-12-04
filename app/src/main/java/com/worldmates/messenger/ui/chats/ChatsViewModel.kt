@@ -34,7 +34,7 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
         // Добавляем задержку перед первым запросом
         // чтобы токен успел активироваться на сервере
         viewModelScope.launch {
-            kotlinx.coroutines.delay(2000) // 2 секунды задержка
+            kotlinx.coroutines.delay(5000) // 5 секунд задержка
             fetchChats()
         }
         setupSocket()

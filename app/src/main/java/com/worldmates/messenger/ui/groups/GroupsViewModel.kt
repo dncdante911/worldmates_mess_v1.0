@@ -36,7 +36,7 @@ class GroupsViewModel : ViewModel() {
         // Добавляем задержку перед первым запросом
         // чтобы токен успел активироваться на сервере
         viewModelScope.launch {
-            kotlinx.coroutines.delay(2500) // 2.5 секунды задержка (чуть больше чем в ChatsViewModel)
+            kotlinx.coroutines.delay(5000) // 5 секунд задержка
             fetchGroups()
         }
     }

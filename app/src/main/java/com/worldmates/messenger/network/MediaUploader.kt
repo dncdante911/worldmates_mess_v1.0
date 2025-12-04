@@ -65,11 +65,10 @@ class MediaUploader(private val context: Context) {
                 requestBody
             )
 
-            val accessTokenBody = accessToken.toRequestBody("text/plain".toMediaType())
             val mediaTypeBody = mediaType.toRequestBody("text/plain".toMediaType())
 
             val response = RetrofitClient.apiService.uploadMedia(
-                accessToken = accessTokenBody,
+                accessToken = accessToken,
                 mediaType = mediaTypeBody,
                 recipientId = recipientId?.toString()?.toRequestBody("text/plain".toMediaType()),
                 groupId = groupId?.toString()?.toRequestBody("text/plain".toMediaType()),
@@ -127,11 +126,10 @@ class MediaUploader(private val context: Context) {
                 requestBody
             )
 
-            val accessTokenBody = accessToken.toRequestBody("text/plain".toMediaType())
             val groupIdBody = groupId.toString().toRequestBody("text/plain".toMediaType())
 
             val response = RetrofitClient.apiService.uploadGroupAvatar(
-                accessToken = accessTokenBody,
+                accessToken = accessToken,
                 groupId = groupIdBody,
                 file = filePart
             )
@@ -175,10 +173,8 @@ class MediaUploader(private val context: Context) {
                 requestBody
             )
 
-            val accessTokenBody = accessToken.toRequestBody("text/plain".toMediaType())
-
             val response = RetrofitClient.apiService.uploadUserAvatar(
-                accessToken = accessTokenBody,
+                accessToken = accessToken,
                 file = filePart
             )
 

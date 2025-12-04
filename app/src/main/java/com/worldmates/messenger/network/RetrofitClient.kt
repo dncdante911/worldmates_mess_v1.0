@@ -6,9 +6,27 @@ import okhttp3.*
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.net.CookieManager
-import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
+
+/**
+ * Простая реализация CookieJar для хранения cookies в памяти
+ */
+class MemoryCookieJar : CookieJar {
+    private val cookieStore = mutableMapOf<String, MutableList<Cookie>>()
+
+    override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+        val host = url.host
+        cookieStore[host] = cookies.toMutableList()
+        Log.d("CookieJar", "Saved ${cookies.size} cookies for $host")
+    }
+
+    override fun loadForRequest(url: HttpUrl): List<Cookie> {
+        val host = url.host
+        val cookies = cookieStore[host] ?: emptyList()
+        Log.d("CookieJar", "Loaded ${cookies.size} cookies for $host")
+        return cookies
+    }
+}
 
 /**
  * Interceptor для добавления server_key и siteEncryptKey в каждый запрос.
@@ -63,13 +81,8 @@ object RetrofitClient {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    // Cookie Manager для сохранения сессии (PHPSESSID и других cookies)
-    private val cookieManager = CookieManager().apply {
-        setCookiePolicy(CookiePolicy.ACCEPT_ALL)
-    }
-
     private val client = OkHttpClient.Builder()
-        .cookieJar(JavaNetCookieJar(cookieManager)) // Сохраняем cookies между запросами
+        .cookieJar(MemoryCookieJar()) // Сохраняем cookies между запросами
         .addInterceptor(ApiKeyInterceptor()) // Добавляем server_key сначала
         .addInterceptor(loggingInterceptor) // Логируем после модификации запроса
         .connectTimeout(30, TimeUnit.SECONDS)

@@ -40,7 +40,7 @@ object UserSession {
             putLong(KEY_USER_ID, id)
             putString(KEY_USERNAME, username)
             putString(KEY_AVATAR, avatar)
-            apply()
+            commit() // Синхронное сохранение, чтобы токен гарантированно записался
         }
     }
 

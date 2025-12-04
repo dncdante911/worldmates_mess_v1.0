@@ -79,13 +79,10 @@ class MessagesViewModel(application: Application) :
 
                 if (response.apiStatus == 200 && response.messages != null) {
                     val decryptedMessages = response.messages!!.map { msg ->
-                        val decryptedText = try {
-                            DecryptionUtility.decryptMessage(msg.encryptedText, msg.timeStamp)
-                                ?: "(Помилка дешифрування)"
-                        } catch (e: Exception) {
-                            Log.e("MessagesViewModel", "Помилка дешифрування", e)
-                            "(Помилка дешифрування)"
-                        }
+                        val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+                            msg.encryptedText,
+                            msg.timeStamp
+                        )
                         msg.copy(decryptedText = decryptedText)
                     }
 
@@ -131,13 +128,10 @@ class MessagesViewModel(application: Application) :
 
                 if (response.apiStatus == 200 && response.messages != null) {
                     val decryptedMessages = response.messages!!.map { msg ->
-                        val decryptedText = try {
-                            DecryptionUtility.decryptMessage(msg.encryptedText, msg.timeStamp)
-                                ?: "(Помилка дешифрування)"
-                        } catch (e: Exception) {
-                            Log.e("MessagesViewModel", "Помилка дешифрування групи", e)
-                            "(Помилка дешифрування)"
-                        }
+                        val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+                            msg.encryptedText,
+                            msg.timeStamp
+                        )
                         msg.copy(decryptedText = decryptedText)
                     }
 
@@ -185,6 +179,7 @@ class MessagesViewModel(application: Application) :
                 } else {
                     RetrofitClient.apiService.sendMessage(
                         accessToken = UserSession.accessToken!!,
+                        userId = UserSession.userId,
                         recipientId = recipientId,
                         text = text,
                         sendTime = sendTime
@@ -322,14 +317,10 @@ class MessagesViewModel(application: Application) :
                 type = messageJson.optString("type", Constants.MESSAGE_TYPE_TEXT),
                 senderName = messageJson.optString("sender_name", null),
                 senderAvatar = messageJson.optString("sender_avatar", null),
-                decryptedText = try {
-                    DecryptionUtility.decryptMessage(
-                        messageJson.getString("text"),
-                        messageJson.getLong("time")
-                    ) ?: "(Помилка)"
-                } catch (e: Exception) {
-                    "(Помилка дешифрування)"
-                }
+                decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+                    messageJson.getString("text"),
+                    messageJson.getLong("time")
+                )
             )
 
             // Проверяем, принадлежит ли сообщение текущему диалогу

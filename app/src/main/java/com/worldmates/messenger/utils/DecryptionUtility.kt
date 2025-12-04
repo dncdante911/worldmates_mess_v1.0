@@ -54,4 +54,28 @@ object DecryptionUtility {
             return null
         }
     }
+
+    /**
+     * Пытается расшифровать сообщение. Если не получается - возвращает исходный текст.
+     * Это нужно для поддержки как зашифрованных (с веб-версии), так и незашифрованных сообщений.
+     *
+     * @param text Текст сообщения (зашифрованный или нет).
+     * @param timestamp Unix-метка времени сообщения.
+     * @return Расшифрованный текст или исходный текст, если расшифровка не удалась.
+     */
+    fun decryptMessageOrOriginal(text: String, timestamp: Long): String {
+        // Проверяем, похоже ли это на Base64 строку
+        if (text.isEmpty()) return text
+
+        // Пытаемся расшифровать
+        val decrypted = decryptMessage(text, timestamp)
+
+        // Если расшифровка успешна и результат не пустой, возвращаем его
+        return if (!decrypted.isNullOrEmpty()) {
+            decrypted
+        } else {
+            // Иначе возвращаем исходный текст (возможно он не был зашифрован)
+            text
+        }
+    }
 }

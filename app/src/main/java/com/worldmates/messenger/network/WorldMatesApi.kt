@@ -150,12 +150,14 @@ interface WorldMatesApi {
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
-    @POST("?type=send_message")
+    @POST("?type=insert_new_message")
     suspend fun sendMessage(
         @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long,
         @Field("recipient_id") recipientId: Long,
         @Field("text") text: String,
-        @Field("send_time") sendTime: Long
+        @Field("send_time") sendTime: Long,
+        @Field("message_hash_id") messageHashId: String = ""
     ): MessageResponse
 
     @FormUrlEncoded

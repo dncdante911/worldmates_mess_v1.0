@@ -81,15 +81,10 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                             Log.d("ChatsViewModel", "Chat: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
 
                             val lastMessage = chat.lastMessage?.let { msg ->
-                                val decryptedText = try {
-                                    DecryptionUtility.decryptMessage(
-                                        msg.encryptedText,
-                                        msg.timeStamp
-                                    )
-                                } catch (e: Exception) {
-                                    Log.e("ChatsViewModel", "Помилка дешифрування", e)
-                                    msg.encryptedText // Використовуємо зашифрований текст якщо помилка
-                                }
+                                val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+                                    msg.encryptedText,
+                                    msg.timeStamp
+                                )
                                 msg.copy(decryptedText = decryptedText)
                             }
                             chat.copy(lastMessage = lastMessage)

@@ -220,14 +220,6 @@ data class CreateGroupResponse(
     @SerializedName("error_message") val errorMessage: String?
 )
 
-data class MessageResponse(
-    @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("message_id") val messageId: Long?,
-    @SerializedName("message") val message: Message?,
-    @SerializedName("error_code") val errorCode: Int?,
-    @SerializedName("error_message") val errorMessage: String?
-)
-
 data class CallResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("call_id") val callId: String?,

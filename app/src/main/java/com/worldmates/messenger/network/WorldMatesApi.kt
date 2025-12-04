@@ -150,7 +150,7 @@ interface WorldMatesApi {
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
-    @POST("?type=insert_new_message")
+    @POST("https://worldmates.club/app_api.php?type=insert_new_message")
     suspend fun sendMessage(
         @Query("access_token") accessToken: String,
         @Field("user_id") userId: Long,
@@ -266,10 +266,23 @@ interface WorldMatesApi {
 // ==================== RESPONSE MODELS ====================
 
 data class MessageResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") val apiStatusString: String?, // "200" или "400"
+    @SerializedName("api_text") val apiText: String?, // "success" или "failed"
+    @SerializedName("api_version") val apiVersion: String?,
+    @SerializedName("messages") val messages: List<Message>?,
     @SerializedName("message_id") val messageId: Long?,
+    @SerializedName("errors") val errors: ErrorDetails?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
+) {
+    // Для совместимости с кодом, проверяющим apiStatus как Int
+    val apiStatus: Int
+        get() = apiStatusString?.toIntOrNull() ?: 400
+}
+
+data class ErrorDetails(
+    @SerializedName("error_id") val errorId: String?,
+    @SerializedName("error_text") val errorText: String?
 )
 
 data class CallResponse(

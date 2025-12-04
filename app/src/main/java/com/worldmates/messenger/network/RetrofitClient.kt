@@ -6,6 +6,8 @@ import okhttp3.*
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
 /**
@@ -61,7 +63,13 @@ object RetrofitClient {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
+    // Cookie Manager для сохранения сессии (PHPSESSID и других cookies)
+    private val cookieManager = CookieManager().apply {
+        setCookiePolicy(CookiePolicy.ACCEPT_ALL)
+    }
+
     private val client = OkHttpClient.Builder()
+        .cookieJar(JavaNetCookieJar(cookieManager)) // Сохраняем cookies между запросами
         .addInterceptor(ApiKeyInterceptor()) // Добавляем server_key сначала
         .addInterceptor(loggingInterceptor) // Логируем после модификации запроса
         .connectTimeout(30, TimeUnit.SECONDS)

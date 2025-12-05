@@ -57,6 +57,19 @@ object DecryptionUtility {
     }
 
     /**
+     * Проверяет, является ли строка валидным Base64.
+     */
+    private fun isBase64(text: String): Boolean {
+        return try {
+            // Base64 строки обычно содержат только A-Z, a-z, 0-9, +, /, =
+            val base64Pattern = "^[A-Za-z0-9+/]+=*$".toRegex()
+            base64Pattern.matches(text) && text.length % 4 == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
      * Пытается расшифровать сообщение. Если не получается - возвращает исходный текст.
      * Это нужно для поддержки как зашифрованных (с веб-версии), так и незашифрованных сообщений.
      *
@@ -65,10 +78,16 @@ object DecryptionUtility {
      * @return Расшифрованный текст или исходный текст, если расшифровка не удалась.
      */
     fun decryptMessageOrOriginal(text: String, timestamp: Long): String {
-        // Проверяем, похоже ли это на Base64 строку
+        // Проверяем, пустая ли строка
         if (text.isEmpty()) return text
 
-        Log.d("DecryptionUtility", "Попытка расшифровки: text='$text', timestamp=$timestamp")
+        // Проверяем, похоже ли это на Base64 строку
+        if (!isBase64(text)) {
+            Log.d("DecryptionUtility", "Текст не похож на Base64, возвращаю как есть: '$text'")
+            return text
+        }
+
+        Log.d("DecryptionUtility", "Попытка расшифровки Base64: text='$text', timestamp=$timestamp")
 
         // Пытаемся расшифровать
         val decrypted = decryptMessage(text, timestamp)

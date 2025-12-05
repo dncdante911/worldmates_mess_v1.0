@@ -15,15 +15,17 @@ object Constants {
     const val GET_MESSAGES_ENDPOINT = "?type=get_user_messages"
     
     // ==================== SOCKET.IO EVENTS ====================
-    const val SOCKET_EVENT_AUTH = "register_socket"
-    const val SOCKET_EVENT_NEW_MESSAGE = "new_message"
-    const val SOCKET_EVENT_SEND_MESSAGE = "send_message"
-    const val SOCKET_EVENT_TYPING = "is_typing"
-    const val SOCKET_EVENT_LAST_SEEN = "is_last_seen"
-    const val SOCKET_EVENT_MESSAGE_SEEN = "message_seen"
+    const val SOCKET_EVENT_AUTH = "join"  // Изменено с register_socket на join
+    const val SOCKET_EVENT_PRIVATE_MESSAGE = "private_message"  // Событие личного сообщения от сервера
+    const val SOCKET_EVENT_NEW_MESSAGE = "new_message"  // Оставлено для обратной совместимости
+    const val SOCKET_EVENT_SEND_MESSAGE = "private_message"  // Отправка личного сообщения
+    const val SOCKET_EVENT_TYPING = "typing"  // Изменено с is_typing
+    const val SOCKET_EVENT_TYPING_DONE = "typing_done"  // Окончание набора
+    const val SOCKET_EVENT_LAST_SEEN = "ping_for_lastseen"  // Изменено
+    const val SOCKET_EVENT_MESSAGE_SEEN = "seen_messages"  // Изменено с message_seen
     const val SOCKET_EVENT_GROUP_MESSAGE = "group_message"
-    const val SOCKET_EVENT_USER_ONLINE = "user_online"
-    const val SOCKET_EVENT_USER_OFFLINE = "user_offline"
+    const val SOCKET_EVENT_USER_ONLINE = "on_user_loggedin"  // Изменено с user_online
+    const val SOCKET_EVENT_USER_OFFLINE = "user_status_change"  // Для офлайн статуса
     
     // ==================== PUSH NOTIFICATIONS ====================
     const val FCM_TOPIC_MESSAGES = "worldmates_messages"

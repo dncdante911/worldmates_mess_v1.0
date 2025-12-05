@@ -185,18 +185,37 @@ class MessagesViewModel(application: Application) :
                     )
                 }
 
+                Log.d("MessagesViewModel", "API Response: status=${response.apiStatus}, messages=${response.messages?.size}, errors=${response.errors}")
+
                 if (response.apiStatus == 200) {
-                    // Перезагружаем сообщения
-                    if (groupId != 0L) {
-                        fetchGroupMessages()
+                    // Если API вернул сообщения, добавляем их в список
+                    if (response.messages != null && response.messages.isNotEmpty()) {
+                        val decryptedMessages = response.messages.map { msg ->
+                            val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+                                msg.encryptedText,
+                                msg.timeStamp
+                            )
+                            msg.copy(decryptedText = decryptedText)
+                        }
+
+                        val currentMessages = _messages.value.toMutableList()
+                        currentMessages.addAll(0, decryptedMessages) // Добавляем в начало
+                        _messages.value = currentMessages
+                        Log.d("MessagesViewModel", "Додано ${decryptedMessages.size} нових повідомлень")
                     } else {
-                        fetchMessages()
+                        // Если API не вернул сообщения, перезагружаем весь список
+                        Log.d("MessagesViewModel", "API не повернув повідомлення, перезавантажуємо список")
+                        if (groupId != 0L) {
+                            fetchGroupMessages()
+                        } else {
+                            fetchMessages()
+                        }
                     }
                     _error.value = null
                     Log.d("MessagesViewModel", "Повідомлення надіслано")
                 } else {
-                    _error.value = response.errorMessage ?: "Не вдалося надіслати повідомлення"
-                    Log.e("MessagesViewModel", "Send Error: ${response.errorMessage}")
+                    _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати повідомлення"
+                    Log.e("MessagesViewModel", "Send Error: ${response.errors?.errorText ?: response.errorMessage}")
                 }
 
                 _isLoading.value = false

@@ -71,9 +71,19 @@ class SocketManager(private val listener: SocketListener) {
                 listener.onSocketError("Connection Error: $error")
             }
 
-            // 7. Получение нового сообщения
+            // 7. Получение нового личного сообщения (основное событие от сервера)
+            socket?.on(Constants.SOCKET_EVENT_PRIVATE_MESSAGE) { args ->
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    val messageData = args[0] as JSONObject
+                    Log.d("SocketManager", "Received private_message: ${messageData.toString()}")
+                    listener.onNewMessage(messageData)
+                }
+            }
+
+            // 8. Получение нового сообщения (для обратной совместимости)
             socket?.on(Constants.SOCKET_EVENT_NEW_MESSAGE) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
+                    Log.d("SocketManager", "Received new_message: ${args[0]}")
                     listener.onNewMessage(args[0] as JSONObject)
                 }
             }
@@ -162,13 +172,17 @@ class SocketManager(private val listener: SocketListener) {
 
     private fun authenticateSocket() {
         // Проверяем токен и отправляем данные для "привязки" сокета на Node.js
+        // Сервер ожидает событие "join" с session hash в поле user_id
         if (socket?.connected() == true && UserSession.accessToken != null) {
             val authData = JSONObject().apply {
-                put("access_token", UserSession.accessToken)
-                put("user_id", UserSession.userId)
+                // user_id должен быть session hash (access_token), а НЕ числовой ID
+                put("user_id", UserSession.accessToken)
+                // Опционально: можно добавить массивы открытых чатов
+                // put("recipient_ids", JSONArray())
+                // put("recipient_group_ids", JSONArray())
             }
             socket?.emit(Constants.SOCKET_EVENT_AUTH, authData)
-            Log.d("SocketManager", "Sent authentication data to Node.js server.")
+            Log.d("SocketManager", "Sent 'join' event with session hash: ${UserSession.accessToken?.take(10)}...")
         }
     }
 

@@ -220,6 +220,16 @@ class MessagesViewModel(application: Application) :
                             fetchMessages()
                         }
                     }
+
+                    // КРИТИЧНО: Эмитим Socket.IO событие для real-time доставки
+                    if (groupId != 0L) {
+                        socketManager?.sendGroupMessage(groupId, text)
+                        Log.d("MessagesViewModel", "Socket.IO: Відправлено групове повідомлення")
+                    } else {
+                        socketManager?.sendMessage(recipientId, text)
+                        Log.d("MessagesViewModel", "Socket.IO: Відправлено приватне повідомлення")
+                    }
+
                     _error.value = null
                     Log.d("MessagesViewModel", "Повідомлення надіслано")
                 } else {
@@ -412,8 +422,8 @@ class MessagesViewModel(application: Application) :
      */
     fun sendTypingStatus(isTyping: Boolean) {
         socketManager?.emit(Constants.SOCKET_EVENT_TYPING, JSONObject().apply {
-            put("recipient_id", recipientId)
-            put("is_typing", isTyping)
+            put("user_id", UserSession.userId)  // Кто печатает
+            put("recipient_id", recipientId)  // Кому отправляем
         })
     }
 

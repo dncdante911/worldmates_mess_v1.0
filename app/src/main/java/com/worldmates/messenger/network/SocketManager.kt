@@ -189,13 +189,15 @@ class SocketManager(private val listener: SocketListener) {
     fun sendMessage(recipientId: Long, text: String) {
         if (socket?.connected() == true && UserSession.accessToken != null) {
             val messagePayload = JSONObject().apply {
-                put("access_token", UserSession.accessToken)
-                put("user_id", UserSession.userId)
-                put("recipient_id", recipientId)
-                put("text", text)
+                // Сервер ожидает именно эти поля (см. PrivateMessageController.js)
+                put("msg", text)  // НЕ "text"!
+                put("from_id", UserSession.userId)  // НЕ "user_id"!
+                put("to_id", recipientId)  // НЕ "recipient_id"!
                 // TODO: Добавить поля для медиа, стикеров и т.д.
+                // mediaId, mediaFilename, record, message_reply_id, story_id, lng, lat, contact, color, isSticker
             }
             socket?.emit(Constants.SOCKET_EVENT_SEND_MESSAGE, messagePayload)
+            Log.d("SocketManager", "Emitted private_message to user $recipientId: $text")
         } else {
             // Fallback: Если Socket не подключен, можно использовать REST API для отправки (send-message.php)
             Log.w("SocketManager", "Socket not connected. Message not sent via socket.")
@@ -255,12 +257,14 @@ class SocketManager(private val listener: SocketListener) {
     fun sendGroupMessage(groupId: Long, text: String) {
         if (socket?.connected() == true && UserSession.accessToken != null) {
             val messagePayload = JSONObject().apply {
-                put("access_token", UserSession.accessToken)
-                put("user_id", UserSession.userId)
+                // Сервер ожидает именно эти поля (см. GroupMessageController.js)
+                put("msg", text)  // НЕ "text"!
+                put("from_id", UserSession.userId)  // НЕ "user_id"!
                 put("group_id", groupId)
-                put("text", text)
+                // TODO: mediaId, message_reply_id, color, isSticker
             }
             socket?.emit(Constants.SOCKET_EVENT_GROUP_MESSAGE, messagePayload)
+            Log.d("SocketManager", "Emitted group_message to group $groupId: $text")
         }
     }
 

@@ -150,14 +150,12 @@ interface WorldMatesApi {
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
-    @POST("https://worldmates.club/app_api.php?type=insert_new_message")
+    @POST("?type=send-message")
     suspend fun sendMessage(
         @Query("access_token") accessToken: String,
-        @Field("user_id") userId: Long,
-        @Field("recipient_id") recipientId: Long,
+        @Field("user_id") recipientId: Long,
         @Field("text") text: String,
-        @Field("send_time") sendTime: Long,
-        @Field("message_hash_id") messageHashId: String = ""
+        @Field("message_hash_id") messageHashId: String
     ): MessageResponse
 
     @FormUrlEncoded

@@ -27,10 +27,17 @@ object DecryptionUtility {
      */
     fun decryptMessage(encryptedText: String, timestamp: Long): String? {
         // 1. Создаем 16-байтовый ключ (128 бит) из метки времени.
-        // PHP-функция Wo_Secure создает 16-байтовую строку из числа. Мы имитируем это,
-        // используя первые 16 символов строки, полученной из timestamp.
-        val timestampString = timestamp.toString().padStart(16, '0')
-        val keyBytes = timestampString.toByteArray(Charsets.UTF_8).sliceArray(0 until 16)
+        // PHP's openssl_encrypt конвертирует число в строку и дополняет нулевыми байтами В КОНЦЕ.
+        // Например, 1754067404 -> "1754067404" -> "1754067404\x00\x00\x00\x00\x00\x00" (16 байт)
+        val timestampString = timestamp.toString()
+        val timestampBytes = timestampString.toByteArray(Charsets.UTF_8)
+
+        // Создаем 16-байтовый массив, заполненный нулями
+        val keyBytes = ByteArray(16)
+        // Копируем байты timestamp в начало, остальное останется нулями
+        timestampBytes.copyInto(keyBytes, 0, 0, minOf(timestampBytes.size, 16))
+
+        Log.d("DecryptionUtility", "Ключ дешифрования: timestamp=$timestamp, key=${keyBytes.joinToString("") { "%02x".format(it) }}")
 
         try {
             val keySpec = SecretKeySpec(keyBytes, ALGORITHM)

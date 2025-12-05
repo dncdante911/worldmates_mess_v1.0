@@ -18,8 +18,8 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
 
-class MessagesViewModel(application: Application) : 
-    AndroidViewModel(application), SocketManager.SocketListener {
+class MessagesViewModel(application: Application) :
+    AndroidViewModel(application), SocketManager.ExtendedSocketListener {
 
     private val context = application
 
@@ -34,6 +34,12 @@ class MessagesViewModel(application: Application) :
 
     private val _uploadProgress = MutableStateFlow(0)
     val uploadProgress: StateFlow<Int> = _uploadProgress
+
+    private val _isTyping = MutableStateFlow(false)
+    val isTyping: StateFlow<Boolean> = _isTyping
+
+    private val _recipientOnlineStatus = MutableStateFlow(false)
+    val recipientOnlineStatus: StateFlow<Boolean> = _recipientOnlineStatus
 
     private var recipientId: Long = 0
     private var groupId: Long = 0
@@ -88,8 +94,9 @@ class MessagesViewModel(application: Application) :
 
                     val currentMessages = _messages.value.toMutableList()
                     currentMessages.addAll(decryptedMessages)
-                    _messages.value = currentMessages.distinctBy { it.id }
-                    
+                    // Сортируем по времени (старые сверху, новые внизу)
+                    _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+
                     _error.value = null
                     Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень")
                 } else {
@@ -137,8 +144,9 @@ class MessagesViewModel(application: Application) :
 
                     val currentMessages = _messages.value.toMutableList()
                     currentMessages.addAll(decryptedMessages)
-                    _messages.value = currentMessages.distinctBy { it.id }
-                    
+                    // Сортируем по времени (старые сверху, новые внизу)
+                    _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+
                     _error.value = null
                     Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень групи")
                 } else {
@@ -199,8 +207,9 @@ class MessagesViewModel(application: Application) :
                         }
 
                         val currentMessages = _messages.value.toMutableList()
-                        currentMessages.addAll(0, decryptedMessages) // Добавляем в начало
-                        _messages.value = currentMessages
+                        currentMessages.addAll(decryptedMessages)
+                        // Сортируем по времени (старые сверху, новые внизу)
+                        _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
                         Log.d("MessagesViewModel", "Додано ${decryptedMessages.size} нових повідомлень")
                     } else {
                         // Если API не вернул сообщения, перезагружаем весь список
@@ -352,7 +361,9 @@ class MessagesViewModel(application: Application) :
             if (isRelevant) {
                 val currentMessages = _messages.value.toMutableList()
                 currentMessages.add(message)
-                _messages.value = currentMessages.distinctBy { it.id }
+                // Сортируем по времени (старые сверху, новые внизу)
+                _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+                Log.d("MessagesViewModel", "Додано нове повідомлення від Socket.IO: ${message.decryptedText}")
                 Log.d("MessagesViewModel", "Нове повідомлення додано")
             }
         } catch (e: Exception) {
@@ -373,6 +384,37 @@ class MessagesViewModel(application: Application) :
     override fun onSocketError(error: String) {
         Log.e("MessagesViewModel", "Помилка Socket: $error")
         _error.value = error
+    }
+
+    override fun onTypingStatus(userId: Long, isTyping: Boolean) {
+        if (userId == recipientId) {
+            _isTyping.value = isTyping
+            Log.d("MessagesViewModel", "Користувач $userId ${if (isTyping) "набирає" else "зупинив набір"}")
+        }
+    }
+
+    override fun onUserOnline(userId: Long) {
+        if (userId == recipientId) {
+            _recipientOnlineStatus.value = true
+            Log.d("MessagesViewModel", "Користувач $userId з'явився онлайн")
+        }
+    }
+
+    override fun onUserOffline(userId: Long) {
+        if (userId == recipientId) {
+            _recipientOnlineStatus.value = false
+            Log.d("MessagesViewModel", "Користувач $userId з'явився офлайн")
+        }
+    }
+
+    /**
+     * Отправляет событие "набирает текст" через Socket.IO
+     */
+    fun sendTypingStatus(isTyping: Boolean) {
+        socketManager?.emit(Constants.SOCKET_EVENT_TYPING, JSONObject().apply {
+            put("recipient_id", recipientId)
+            put("is_typing", isTyping)
+        })
     }
 
     fun clearError() {

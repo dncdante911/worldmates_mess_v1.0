@@ -1,6 +1,7 @@
 package com.worldmates.messenger.utils
 
 import android.util.Base64
+import android.util.Log
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 
@@ -67,14 +68,18 @@ object DecryptionUtility {
         // Проверяем, похоже ли это на Base64 строку
         if (text.isEmpty()) return text
 
+        Log.d("DecryptionUtility", "Попытка расшифровки: text='$text', timestamp=$timestamp")
+
         // Пытаемся расшифровать
         val decrypted = decryptMessage(text, timestamp)
 
         // Если расшифровка успешна и результат не пустой, возвращаем его
         return if (!decrypted.isNullOrEmpty()) {
+            Log.d("DecryptionUtility", "Успешно расшифровано: '$decrypted'")
             decrypted
         } else {
             // Иначе возвращаем исходный текст (возможно он не был зашифрован)
+            Log.d("DecryptionUtility", "Не удалось расшифровать, возвращаю исходный текст: '$text'")
             text
         }
     }

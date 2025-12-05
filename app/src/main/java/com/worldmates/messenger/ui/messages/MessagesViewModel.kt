@@ -167,22 +167,21 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                val sendTime = System.currentTimeMillis() / 1000
-                
+                val messageHashId = System.currentTimeMillis().toString()
+
                 val response = if (groupId != 0L) {
                     RetrofitClient.apiService.sendGroupMessage(
                         accessToken = UserSession.accessToken!!,
                         groupId = groupId,
                         text = text,
-                        sendTime = sendTime
+                        sendTime = System.currentTimeMillis() / 1000
                     )
                 } else {
                     RetrofitClient.apiService.sendMessage(
                         accessToken = UserSession.accessToken!!,
-                        userId = UserSession.userId,
                         recipientId = recipientId,
                         text = text,
-                        sendTime = sendTime
+                        messageHashId = messageHashId
                     )
                 }
 

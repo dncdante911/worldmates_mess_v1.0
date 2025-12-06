@@ -92,11 +92,13 @@ class SocketManager(private val listener: SocketListener) {
             socket?.on(Constants.SOCKET_EVENT_TYPING) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     val data = args[0] as JSONObject
-                    val userId = data.optLong("user_id", 0)
-                    val isTyping = data.optBoolean("is_typing", false)
-                    Log.d("SocketManager", "User $userId is typing: $isTyping")
+                    // Сервер отправляет sender_id (НЕ user_id!) и is_typing: 200 (печатает) или 300 (закончил)
+                    val senderId = data.optLong("sender_id", 0)
+                    val isTypingCode = data.optInt("is_typing", 0)
+                    val isTyping = isTypingCode == 200  // 200 = печатает, 300 = закончил
+                    Log.d("SocketManager", "User $senderId is typing: $isTyping (code: $isTypingCode)")
                     if (listener is ExtendedSocketListener) {
-                        listener.onTypingStatus(userId, isTyping)
+                        listener.onTypingStatus(senderId, isTyping)
                     }
                 }
             }
@@ -140,24 +142,32 @@ class SocketManager(private val listener: SocketListener) {
 
             // 12. Обработка статуса "онлайн"
             socket?.on(Constants.SOCKET_EVENT_USER_ONLINE) { args ->
-                if (args.isNotEmpty() && args[0] is JSONObject) {
-                    val data = args[0] as JSONObject
-                    val userId = data.optLong("user_id", 0)
-                    Log.d("SocketManager", "User $userId is online")
-                    if (listener is ExtendedSocketListener) {
-                        listener.onUserOnline(userId)
+                Log.d("SocketManager", "Received ${Constants.SOCKET_EVENT_USER_ONLINE} event with ${args.size} args")
+                if (args.isNotEmpty()) {
+                    Log.d("SocketManager", "Event data: ${args[0]}")
+                    if (args[0] is JSONObject) {
+                        val data = args[0] as JSONObject
+                        val userId = data.optLong("user_id", 0)
+                        Log.d("SocketManager", "✅ User $userId is ONLINE")
+                        if (listener is ExtendedSocketListener) {
+                            listener.onUserOnline(userId)
+                        }
                     }
                 }
             }
 
             // 13. Обработка статуса "оффлайн"
             socket?.on(Constants.SOCKET_EVENT_USER_OFFLINE) { args ->
-                if (args.isNotEmpty() && args[0] is JSONObject) {
-                    val data = args[0] as JSONObject
-                    val userId = data.optLong("user_id", 0)
-                    Log.d("SocketManager", "User $userId is offline")
-                    if (listener is ExtendedSocketListener) {
-                        listener.onUserOffline(userId)
+                Log.d("SocketManager", "Received ${Constants.SOCKET_EVENT_USER_OFFLINE} event with ${args.size} args")
+                if (args.isNotEmpty()) {
+                    Log.d("SocketManager", "Event data: ${args[0]}")
+                    if (args[0] is JSONObject) {
+                        val data = args[0] as JSONObject
+                        val userId = data.optLong("user_id", 0)
+                        Log.d("SocketManager", "❌ User $userId is OFFLINE")
+                        if (listener is ExtendedSocketListener) {
+                            listener.onUserOffline(userId)
+                        }
                     }
                 }
             }

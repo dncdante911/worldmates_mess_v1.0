@@ -28,6 +28,9 @@ import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.FileManager
+import com.worldmates.messenger.ui.theme.WMShapes
+import com.worldmates.messenger.ui.theme.MessageBubbleOwn
+import com.worldmates.messenger.ui.theme.MessageBubbleOther
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
 import kotlinx.coroutines.launch
@@ -281,7 +284,7 @@ fun MessageBubbleComposable(
     voicePlayer: VoicePlayer
 ) {
     val isOwn = message.fromId == UserSession.userId
-    val bgColor = if (isOwn) Color(0xFF0084FF) else Color.White
+    val bgColor = if (isOwn) MessageBubbleOwn else MessageBubbleOther
     val textColor = if (isOwn) Color.White else Color.Black
     val playbackState by voicePlayer.playbackState.collectAsState()
     val currentPosition by voicePlayer.currentPosition.collectAsState()
@@ -290,18 +293,19 @@ fun MessageBubbleComposable(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
     ) {
         Surface(
             modifier = Modifier
                 .widthIn(max = 280.dp)
                 .padding(horizontal = 8.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = bgColor
+            shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble,
+            color = bgColor,
+            shadowElevation = 1.dp
         ) {
             Column(
-                modifier = Modifier.padding(12.dp)
+                modifier = Modifier.padding(10.dp)
             ) {
                 // Text message
                 if (message.decryptedText != null && message.decryptedText!!.isNotEmpty()) {

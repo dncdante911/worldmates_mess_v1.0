@@ -49,10 +49,26 @@ fun MessagesScreen(
     val uploadProgress by viewModel.uploadProgress.collectAsState()
     val recordingState by voiceRecorder.recordingState.collectAsState()
     val recordingDuration by voiceRecorder.recordingDuration.collectAsState()
+    val isTyping by viewModel.isTyping.collectAsState()
+    val isOnline by viewModel.recipientOnlineStatus.collectAsState()
 
     var messageText by remember { mutableStateOf("") }
     var showMediaOptions by remember { mutableStateOf(false) }
+    var isCurrentlyTyping by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    // Управление индикатором "печатает" с автоматическим сбросом через 2 секунды
+    LaunchedEffect(messageText) {
+        if (messageText.isNotBlank() && !isCurrentlyTyping) {
+            // Начали печатать
+            viewModel.sendTypingStatus(true)
+            isCurrentlyTyping = true
+        } else if (messageText.isBlank() && isCurrentlyTyping) {
+            // Очистили поле
+            viewModel.sendTypingStatus(false)
+            isCurrentlyTyping = false
+        }
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -75,6 +91,8 @@ fun MessagesScreen(
         MessagesHeaderBar(
             recipientName = recipientName,
             recipientAvatar = recipientAvatar,
+            isOnline = isOnline,
+            isTyping = isTyping,
             onBackPressed = onBackPressed
         )
 
@@ -150,6 +168,8 @@ fun MessagesScreen(
 fun MessagesHeaderBar(
     recipientName: String,
     recipientAvatar: String,
+    isOnline: Boolean,
+    isTyping: Boolean,
     onBackPressed: () -> Unit
 ) {
     TopAppBar(
@@ -158,18 +178,40 @@ fun MessagesHeaderBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxHeight()
             ) {
+                // Аватар с индикатором онлайн-статуса
                 if (recipientAvatar.isNotEmpty()) {
-                    AsyncImage(
-                        model = recipientAvatar,
-                        contentDescription = recipientName,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                    Box {
+                        AsyncImage(
+                            model = recipientAvatar,
+                            contentDescription = recipientName,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Зелёная/серая точка онлайн-статуса
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .align(Alignment.BottomEnd)
+                                .clip(CircleShape)
+                                .background(if (isOnline) Color(0xFF4CAF50) else Color.Gray)
+                                .border(2.dp, Color.White, CircleShape)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(recipientName)
+                // Имя и статус "печатает"
+                Column {
+                    Text(recipientName)
+                    if (isTyping) {
+                        Text(
+                            text = "печатает...",
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
             }
         },
         navigationIcon = {

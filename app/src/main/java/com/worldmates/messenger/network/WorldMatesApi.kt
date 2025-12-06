@@ -195,6 +195,35 @@ interface WorldMatesApi {
 
     // ==================== MEDIA UPLOAD ====================
 
+    // XHR Upload endpoints (используются для загрузки файлов на сервер)
+    @Multipart
+    @POST("xhr/upload_image.php")
+    suspend fun uploadImage(
+        @Query("access_token") accessToken: String,
+        @Part image: MultipartBody.Part
+    ): XhrUploadResponse
+
+    @Multipart
+    @POST("xhr/upload_video.php")
+    suspend fun uploadVideo(
+        @Query("access_token") accessToken: String,
+        @Part video: MultipartBody.Part
+    ): XhrUploadResponse
+
+    @Multipart
+    @POST("xhr/upload_audio.php")
+    suspend fun uploadAudio(
+        @Query("access_token") accessToken: String,
+        @Part audio: MultipartBody.Part
+    ): XhrUploadResponse
+
+    @Multipart
+    @POST("xhr/upload_file.php")
+    suspend fun uploadFile(
+        @Query("access_token") accessToken: String,
+        @Part file: MultipartBody.Part
+    ): XhrUploadResponse
+
     @Multipart
     @POST("?type=upload_media")
     suspend fun uploadMedia(
@@ -318,4 +347,20 @@ data class UserSearchResponse(
     @SerializedName("users") val users: List<SearchUser>?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
+)
+
+/**
+ * Response from XHR upload endpoints (upload_image.php, upload_video.php, etc.)
+ */
+data class XhrUploadResponse(
+    @SerializedName("status") val status: Int,
+    @SerializedName("image") val imageUrl: String?, // URL для изображений
+    @SerializedName("image_src") val imageSrc: String?, // Путь к файлу
+    @SerializedName("video") val videoUrl: String?, // URL для видео
+    @SerializedName("video_src") val videoSrc: String?, // Путь к видео
+    @SerializedName("audio") val audioUrl: String?, // URL для аудио
+    @SerializedName("audio_src") val audioSrc: String?, // Путь к аудио
+    @SerializedName("file") val fileUrl: String?, // URL для файлов
+    @SerializedName("file_src") val fileSrc: String?, // Путь к файлу
+    @SerializedName("error") val error: String?
 )

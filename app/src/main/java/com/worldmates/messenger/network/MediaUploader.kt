@@ -32,6 +32,46 @@ class MediaUploader(private val context: Context) {
     }
 
     /**
+     * Загружает несколько медиа-файлов на сервер (до 15 штук)
+     */
+    suspend fun uploadMultipleFiles(
+        accessToken: String,
+        files: List<File>,
+        mediaTypes: List<String>,
+        recipientId: Long? = null,
+        groupId: Long? = null,
+        onProgress: ((Int, Int) -> Unit)? = null // (current file index, progress)
+    ): List<UploadResult> = withContext(Dispatchers.IO) {
+        if (files.size > Constants.MAX_FILES_PER_MESSAGE) {
+            return@withContext listOf(UploadResult.Error("Максимум ${Constants.MAX_FILES_PER_MESSAGE} файлів за раз"))
+        }
+
+        val results = mutableListOf<UploadResult>()
+        files.forEachIndexed { index, file ->
+            val mediaType = mediaTypes.getOrNull(index) ?: Constants.MESSAGE_TYPE_FILE
+            Log.d(TAG, "Завантаження файлу ${index + 1}/${files.size}: ${file.name}")
+
+            val result = uploadMedia(
+                accessToken = accessToken,
+                mediaType = mediaType,
+                filePath = file.absolutePath,
+                recipientId = recipientId,
+                groupId = groupId,
+                onProgress = { progress ->
+                    onProgress?.invoke(index, progress)
+                }
+            )
+            results.add(result)
+
+            // Если загрузка не удалась, можно продолжить или прервать
+            if (result is UploadResult.Error) {
+                Log.e(TAG, "Помилка завантаження файлу ${file.name}: ${result.message}")
+            }
+        }
+        results
+    }
+
+    /**
      * Загружает медиа-файл на сервер
      */
     suspend fun uploadMedia(
@@ -194,16 +234,16 @@ class MediaUploader(private val context: Context) {
         }
     }
 
-    private fun validateFileSize(file: File, mediaType: String, isPremium: Boolean): Boolean {
+    private fun validateFileSize(file: File, mediaType: String, isPremium: Boolean = false): Boolean {
         val fileSize = file.length()
         val maxSize = when (mediaType) {
-            Constants.MESSAGE_TYPE_IMAGE -> Constants.MAX_IMAGE_SIZE
-            Constants.MESSAGE_TYPE_VIDEO -> Constants.MAX_VIDEO_SIZE
-            Constants.MESSAGE_TYPE_AUDIO -> Constants.MAX_AUDIO_SIZE
-            Constants.MESSAGE_TYPE_VOICE -> Constants.MAX_AUDIO_SIZE
-            Constants.MESSAGE_TYPE_FILE -> if (isPremium) Constants.MAX_FILE_SIZE_PREMIUM else Constants.MAX_FILE_SIZE_REGULAR
-            else -> Constants.MAX_FILE_SIZE_REGULAR
+            Constants.MESSAGE_TYPE_IMAGE -> Constants.MAX_IMAGE_SIZE // 15MB
+            Constants.MESSAGE_TYPE_VIDEO -> Constants.MAX_VIDEO_SIZE // 1GB (с сжатием)
+            Constants.MESSAGE_TYPE_AUDIO, Constants.MESSAGE_TYPE_VOICE -> Constants.MAX_AUDIO_SIZE // 100MB
+            Constants.MESSAGE_TYPE_FILE -> Constants.MAX_FILE_SIZE // 500MB для любых файлов
+            else -> Constants.MAX_FILE_SIZE // 500MB по умолчанию
         }
+        Log.d(TAG, "Валідація розміру: ${fileSize / 1024 / 1024}MB / ${maxSize / 1024 / 1024}MB для типу $mediaType")
         return fileSize <= maxSize
     }
 

@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.FileManager
@@ -80,6 +81,39 @@ fun MessagesScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { onVideoSelected(it) }
+    }
+
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // TODO: обработать аудио файл
+            Log.d("MessagesScreen", "Вибрано аудіо: $it")
+        }
+    }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // TODO: обработать файл
+            Log.d("MessagesScreen", "Вибрано файл: $it")
+        }
+    }
+
+    // Для выбора нескольких файлов (до 15 штук)
+    val multipleFilesPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            if (uris.size > Constants.MAX_FILES_PER_MESSAGE) {
+                Log.w("MessagesScreen", "Вибрано занадто багато файлів: ${uris.size}, макс: ${Constants.MAX_FILES_PER_MESSAGE}")
+                // TODO: показать ошибку пользователю
+            } else {
+                // TODO: обработать множественные файлы
+                Log.d("MessagesScreen", "Вибрано ${uris.size} файлів")
+            }
+        }
     }
 
     Column(
@@ -158,6 +192,8 @@ fun MessagesScreen(
             onShowMediaOptions = { showMediaOptions = !showMediaOptions },
             onPickImage = { imagePickerLauncher.launch("image/*") },
             onPickVideo = { videoPickerLauncher.launch("video/*") },
+            onPickAudio = { audioPickerLauncher.launch("audio/*") },
+            onPickFile = { filePickerLauncher.launch("*/*") },
             showMediaOptions = showMediaOptions
         )
     }
@@ -401,6 +437,8 @@ fun MessageInputBar(
     onShowMediaOptions: () -> Unit,
     onPickImage: () -> Unit,
     onPickVideo: () -> Unit,
+    onPickAudio: () -> Unit,
+    onPickFile: () -> Unit,
     showMediaOptions: Boolean
 ) {
     Column(
@@ -426,6 +464,16 @@ fun MessageInputBar(
                     icon = Icons.Default.VideoLibrary,
                     label = "Відео",
                     onClick = { onPickVideo() }
+                )
+                MediaOptionButton(
+                    icon = Icons.Default.AudioFile,
+                    label = "Аудіо",
+                    onClick = { onPickAudio() }
+                )
+                MediaOptionButton(
+                    icon = Icons.Default.InsertDriveFile,
+                    label = "Файл",
+                    onClick = { onPickFile() }
                 )
                 MediaOptionButton(
                     icon = Icons.Default.LocationOn,

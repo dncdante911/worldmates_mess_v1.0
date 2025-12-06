@@ -13,8 +13,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import java.io.File
 import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.*
 
 /**
  * Менеджер для загрузки медиа-файлів на сервер
@@ -72,7 +70,9 @@ class MediaUploader(private val context: Context) {
     }
 
     /**
-     * Загружает медиа-файл на сервер
+     * Загружает медиа-файл на сервер (двухшаговый процесс)
+     * Шаг 1: Загружаем файл на сервер через xhr endpoint
+     * Шаг 2: Отправляем сообщение с URL загруженного файла
      */
     suspend fun uploadMedia(
         accessToken: String,
@@ -88,57 +88,99 @@ class MediaUploader(private val context: Context) {
 
             // Проверяем существование файла
             if (!file.exists()) {
+                Log.e(TAG, "Файл не існує: $filePath")
                 return@withContext UploadResult.Error("Файл не знайдено: $filePath")
             }
 
             // Проверяем размер файла
+            val fileSize = file.length()
+            Log.d(TAG, "Розмір файлу: ${fileSize / 1024 / 1024}MB для типу $mediaType")
+
             if (!validateFileSize(file, mediaType, isPremium)) {
                 return@withContext UploadResult.Error("Файл занадто великий для типу: $mediaType")
             }
 
-            // Создаем RequestBody с прогрессом
-            val requestBody = ProgressRequestBody(file, getMimeType(mediaType), onProgress)
+            // Шаг 1: Загружаем файл на сервер через xhr endpoint
+            Log.d(TAG, "Крок 1: Завантаження файлу на сервер...")
+            val uploadResponse = uploadFileToServer(accessToken, file, mediaType, onProgress)
 
-            val filePart = MultipartBody.Part.createFormData(
-                "file",
-                file.name,
-                requestBody
-            )
-
-            val mediaTypeBody = mediaType.toRequestBody("text/plain".toMediaType())
-
-            // Используем sendMessageWithMedia вместо upload_media (которого нет на сервере)
-            val response = if (recipientId != null) {
-                val messageHashId = System.currentTimeMillis().toString()
-                RetrofitClient.apiService.sendMessageWithMedia(
-                    accessToken = accessToken,
-                    recipientId = recipientId.toString().toRequestBody("text/plain".toMediaType()),
-                    text = "".toRequestBody("text/plain".toMediaType()), // Пустой текст, только медиа
-                    messageHashId = messageHashId.toRequestBody("text/plain".toMediaType()),
-                    file = filePart
-                )
-            } else {
-                // Для групп пока используем старый метод (TODO: добавить поддержку групп)
-                Log.e(TAG, "Отправка медиа в группы пока не поддерживается")
-                return@withContext UploadResult.Error("Отправка медиа в группы пока не поддерживается")
+            if (uploadResponse.status != 200) {
+                Log.e(TAG, "Помилка завантаження файлу: ${uploadResponse.error}")
+                return@withContext UploadResult.Error(uploadResponse.error ?: "Помилка завантаження файлу")
             }
 
-            when (response.apiStatus) {
-                200 -> {
-                    // Получаем информацию о медиа из отправленного сообщения
-                    val firstMessage = response.messages?.firstOrNull()
-                    if (firstMessage != null && !firstMessage.mediaUrl.isNullOrEmpty()) {
-                        val mediaId = firstMessage.id.toString()
-                        Log.d(TAG, "Медіа завантажено: ${firstMessage.mediaUrl}")
-                        UploadResult.Success(mediaId, firstMessage.mediaUrl!!, null)
-                    } else {
-                        UploadResult.Error("Невідповідь від серверу: media URL null")
+            // Получаем URL загруженного файла
+            val mediaUrl = when (mediaType) {
+                Constants.MESSAGE_TYPE_IMAGE -> uploadResponse.imageUrl
+                Constants.MESSAGE_TYPE_VIDEO -> uploadResponse.videoUrl
+                Constants.MESSAGE_TYPE_AUDIO, Constants.MESSAGE_TYPE_VOICE -> uploadResponse.audioUrl
+                Constants.MESSAGE_TYPE_FILE -> uploadResponse.fileUrl
+                else -> uploadResponse.fileUrl
+            }
+
+            if (mediaUrl.isNullOrEmpty()) {
+                Log.e(TAG, "Сервер не повернув URL файлу")
+                return@withContext UploadResult.Error("Сервер не повернув URL файлу")
+            }
+
+            Log.d(TAG, "Файл завантажено на сервер: $mediaUrl")
+
+            // Шаг 2: Отправляем сообщение с URL загруженного файла
+            if (recipientId != null) {
+                Log.d(TAG, "Крок 2: Відправка повідомлення з медіа...")
+                val messageHashId = System.currentTimeMillis().toString()
+                val messageResponse = RetrofitClient.apiService.sendMessage(
+                    accessToken = accessToken,
+                    recipientId = recipientId,
+                    text = mediaUrl, // Отправляем URL как текст сообщения
+                    messageHashId = messageHashId
+                )
+
+                when (messageResponse.apiStatus) {
+                    200 -> {
+                        val firstMessage = messageResponse.messages?.firstOrNull()
+                        if (firstMessage != null) {
+                            Log.d(TAG, "Повідомлення з медіа відправлено успішно")
+                            UploadResult.Success(
+                                mediaId = firstMessage.id.toString(),
+                                url = mediaUrl,
+                                thumbnail = null
+                            )
+                        } else {
+                            UploadResult.Error("Повідомлення відправлено, але не отримано відповідь")
+                        }
+                    }
+                    else -> {
+                        Log.e(TAG, "Помилка відправки повідомлення: ${messageResponse.errorMessage}")
+                        UploadResult.Error(messageResponse.errorMessage ?: "Помилка відправки повідомлення")
                     }
                 }
-                400 -> UploadResult.Error(response.errorMessage ?: "Помилка запиту")
-                401 -> UploadResult.Error("Не авторизовано")
-                413 -> UploadResult.Error("Файл занадто великий")
-                else -> UploadResult.Error(response.errorMessage ?: "Помилка ${response.apiStatus}")
+            } else if (groupId != null) {
+                Log.d(TAG, "Крок 2: Відправка повідомлення в групу...")
+                val messageResponse = RetrofitClient.apiService.sendGroupMessage(
+                    accessToken = accessToken,
+                    groupId = groupId,
+                    text = mediaUrl,
+                    sendTime = System.currentTimeMillis()
+                )
+
+                when (messageResponse.apiStatus) {
+                    200 -> {
+                        Log.d(TAG, "Повідомлення з медіа в групу відправлено успішно")
+                        UploadResult.Success(
+                            mediaId = messageResponse.messageId?.toString() ?: "",
+                            url = mediaUrl,
+                            thumbnail = null
+                        )
+                    }
+                    else -> {
+                        Log.e(TAG, "Помилка відправки повідомлення в групу: ${messageResponse.errorMessage}")
+                        UploadResult.Error(messageResponse.errorMessage ?: "Помилка відправки в групу")
+                    }
+                }
+            } else {
+                Log.e(TAG, "Не вказано recipient_id або group_id")
+                return@withContext UploadResult.Error("Не вказано одержувача")
             }
 
         } catch (e: IOException) {
@@ -150,6 +192,50 @@ class MediaUploader(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Exception: ${e.message}", e)
             UploadResult.Error("Помилка: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Загружает файл на сервер через соответствующий xhr endpoint
+     */
+    private suspend fun uploadFileToServer(
+        accessToken: String,
+        file: File,
+        mediaType: String,
+        onProgress: ((Int) -> Unit)? = null
+    ): XhrUploadResponse {
+        val requestBody = ProgressRequestBody(file, getMimeType(mediaType), onProgress)
+
+        // Создаем MultipartBody.Part с правильным именем параметра для каждого типа
+        val filePart = when (mediaType) {
+            Constants.MESSAGE_TYPE_IMAGE -> {
+                MultipartBody.Part.createFormData("image", file.name, requestBody)
+            }
+            Constants.MESSAGE_TYPE_VIDEO -> {
+                MultipartBody.Part.createFormData("video", file.name, requestBody)
+            }
+            Constants.MESSAGE_TYPE_AUDIO, Constants.MESSAGE_TYPE_VOICE -> {
+                MultipartBody.Part.createFormData("audio", file.name, requestBody)
+            }
+            else -> {
+                MultipartBody.Part.createFormData("file", file.name, requestBody)
+            }
+        }
+
+        // Вызываем соответствующий xhr endpoint
+        return when (mediaType) {
+            Constants.MESSAGE_TYPE_IMAGE -> {
+                RetrofitClient.apiService.uploadImage(accessToken, filePart)
+            }
+            Constants.MESSAGE_TYPE_VIDEO -> {
+                RetrofitClient.apiService.uploadVideo(accessToken, filePart)
+            }
+            Constants.MESSAGE_TYPE_AUDIO, Constants.MESSAGE_TYPE_VOICE -> {
+                RetrofitClient.apiService.uploadAudio(accessToken, filePart)
+            }
+            else -> {
+                RetrofitClient.apiService.uploadFile(accessToken, filePart)
+            }
         }
     }
 

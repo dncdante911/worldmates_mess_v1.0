@@ -198,28 +198,28 @@ interface WorldMatesApi {
     // XHR Upload endpoints (используются для загрузки файлов на сервер)
     // Используем абсолютный путь (с /) чтобы обойти api/v2/
     @Multipart
-    @POST("/xhr/upload_image.php")
+    @POST("/xhr/upload_image.php?f=upload_image")
     suspend fun uploadImage(
         @Query("access_token") accessToken: String,
         @Part image: MultipartBody.Part
     ): XhrUploadResponse
 
     @Multipart
-    @POST("/xhr/upload_video.php")
+    @POST("/xhr/upload_video.php?f=upload_video")
     suspend fun uploadVideo(
         @Query("access_token") accessToken: String,
         @Part video: MultipartBody.Part
     ): XhrUploadResponse
 
     @Multipart
-    @POST("/xhr/upload_audio.php")
+    @POST("/xhr/upload_audio.php?f=upload_audio")
     suspend fun uploadAudio(
         @Query("access_token") accessToken: String,
         @Part audio: MultipartBody.Part
     ): XhrUploadResponse
 
     @Multipart
-    @POST("/xhr/upload_file.php")
+    @POST("/xhr/upload_file.php?f=upload_file")
     suspend fun uploadFile(
         @Query("access_token") accessToken: String,
         @Part file: MultipartBody.Part

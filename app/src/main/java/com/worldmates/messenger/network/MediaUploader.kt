@@ -107,21 +107,32 @@ class MediaUploader(private val context: Context) {
 
             val mediaTypeBody = mediaType.toRequestBody("text/plain".toMediaType())
 
-            val response = RetrofitClient.apiService.uploadMedia(
-                accessToken = accessToken,
-                mediaType = mediaTypeBody,
-                recipientId = recipientId?.toString()?.toRequestBody("text/plain".toMediaType()),
-                groupId = groupId?.toString()?.toRequestBody("text/plain".toMediaType()),
-                file = filePart
-            )
+            // Используем sendMessageWithMedia вместо upload_media (которого нет на сервере)
+            val response = if (recipientId != null) {
+                val messageHashId = System.currentTimeMillis().toString()
+                RetrofitClient.apiService.sendMessageWithMedia(
+                    accessToken = accessToken,
+                    recipientId = recipientId.toString().toRequestBody("text/plain".toMediaType()),
+                    text = "".toRequestBody("text/plain".toMediaType()), // Пустой текст, только медиа
+                    messageHashId = messageHashId.toRequestBody("text/plain".toMediaType()),
+                    file = filePart
+                )
+            } else {
+                // Для групп пока используем старый метод (TODO: добавить поддержку групп)
+                Log.e(TAG, "Отправка медиа в группы пока не поддерживается")
+                return@withContext UploadResult.Error("Отправка медиа в группы пока не поддерживается")
+            }
 
             when (response.apiStatus) {
                 200 -> {
-                    if (response.mediaId != null && response.url != null) {
-                        Log.d(TAG, "Медіа завантажено: ${response.url}")
-                        UploadResult.Success(response.mediaId, response.url, response.thumbnail)
+                    // Получаем информацию о медиа из отправленного сообщения
+                    val firstMessage = response.messages?.firstOrNull()
+                    if (firstMessage != null && !firstMessage.mediaUrl.isNullOrEmpty()) {
+                        val mediaId = firstMessage.id.toString()
+                        Log.d(TAG, "Медіа завантажено: ${firstMessage.mediaUrl}")
+                        UploadResult.Success(mediaId, firstMessage.mediaUrl!!, null)
                     } else {
-                        UploadResult.Error("Невідповідь від серверу: mediaId або url null")
+                        UploadResult.Error("Невідповідь від серверу: media URL null")
                     }
                 }
                 400 -> UploadResult.Error(response.errorMessage ?: "Помилка запиту")

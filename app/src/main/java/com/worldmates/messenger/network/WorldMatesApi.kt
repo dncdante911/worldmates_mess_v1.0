@@ -158,6 +158,17 @@ interface WorldMatesApi {
         @Field("message_hash_id") messageHashId: String
     ): MessageResponse
 
+    // Отправка сообщения с медиа-файлом
+    @Multipart
+    @POST("?type=send-message")
+    suspend fun sendMessageWithMedia(
+        @Query("access_token") accessToken: String,
+        @Part("user_id") recipientId: RequestBody,
+        @Part("text") text: RequestBody,
+        @Part("message_hash_id") messageHashId: RequestBody,
+        @Part file: MultipartBody.Part
+    ): MessageResponse
+
     @FormUrlEncoded
     @POST("?type=send_group_message")
     suspend fun sendGroupMessage(

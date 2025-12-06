@@ -89,7 +89,19 @@ class MessagesViewModel(application: Application) :
                             msg.encryptedText,
                             msg.timeStamp
                         )
-                        msg.copy(decryptedText = decryptedText)
+                        // Расшифровываем mediaUrl, если он есть и зашифрован
+                        val decryptedMediaUrl = if (!msg.mediaUrl.isNullOrEmpty()) {
+                            DecryptionUtility.decryptMessageOrOriginal(
+                                msg.mediaUrl!!,
+                                msg.timeStamp
+                            )
+                        } else {
+                            msg.mediaUrl
+                        }
+                        msg.copy(
+                            decryptedText = decryptedText,
+                            mediaUrl = decryptedMediaUrl
+                        )
                     }
 
                     val currentMessages = _messages.value.toMutableList()
@@ -139,7 +151,19 @@ class MessagesViewModel(application: Application) :
                             msg.encryptedText,
                             msg.timeStamp
                         )
-                        msg.copy(decryptedText = decryptedText)
+                        // Расшифровываем mediaUrl, если он есть и зашифрован
+                        val decryptedMediaUrl = if (!msg.mediaUrl.isNullOrEmpty()) {
+                            DecryptionUtility.decryptMessageOrOriginal(
+                                msg.mediaUrl!!,
+                                msg.timeStamp
+                            )
+                        } else {
+                            msg.mediaUrl
+                        }
+                        msg.copy(
+                            decryptedText = decryptedText,
+                            mediaUrl = decryptedMediaUrl
+                        )
                     }
 
                     val currentMessages = _messages.value.toMutableList()
@@ -203,7 +227,19 @@ class MessagesViewModel(application: Application) :
                                 msg.encryptedText,
                                 msg.timeStamp
                             )
-                            msg.copy(decryptedText = decryptedText)
+                            // Расшифровываем mediaUrl, если он есть и зашифрован
+                            val decryptedMediaUrl = if (!msg.mediaUrl.isNullOrEmpty()) {
+                                DecryptionUtility.decryptMessageOrOriginal(
+                                    msg.mediaUrl!!,
+                                    msg.timeStamp
+                                )
+                            } else {
+                                msg.mediaUrl
+                            }
+                            msg.copy(
+                                decryptedText = decryptedText,
+                                mediaUrl = decryptedMediaUrl
+                            )
                         }
 
                         val currentMessages = _messages.value.toMutableList()
@@ -343,21 +379,38 @@ class MessagesViewModel(application: Application) :
 
     override fun onNewMessage(messageJson: JSONObject) {
         try {
+            val timestamp = messageJson.getLong("time")
+            val encryptedText = messageJson.getString("text")
+            val mediaUrlRaw = messageJson.optString("media", null)
+
+            // Расшифровываем текст
+            val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+                encryptedText,
+                timestamp
+            )
+
+            // Расшифровываем mediaUrl, если он есть и зашифрован
+            val decryptedMediaUrl = if (!mediaUrlRaw.isNullOrEmpty()) {
+                DecryptionUtility.decryptMessageOrOriginal(
+                    mediaUrlRaw,
+                    timestamp
+                )
+            } else {
+                mediaUrlRaw
+            }
+
             val message = Message(
                 id = messageJson.getLong("id"),
                 fromId = messageJson.getLong("from_id"),
                 toId = messageJson.getLong("to_id"),
                 groupId = messageJson.optLong("group_id", 0).takeIf { it != 0L },
-                encryptedText = messageJson.getString("text"),
-                timeStamp = messageJson.getLong("time"),
-                mediaUrl = messageJson.optString("media", null),
+                encryptedText = encryptedText,
+                timeStamp = timestamp,
+                mediaUrl = decryptedMediaUrl,
                 type = messageJson.optString("type", Constants.MESSAGE_TYPE_TEXT),
                 senderName = messageJson.optString("sender_name", null),
                 senderAvatar = messageJson.optString("sender_avatar", null),
-                decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                    messageJson.getString("text"),
-                    messageJson.getLong("time")
-                )
+                decryptedText = decryptedText
             )
 
             // Проверяем, принадлежит ли сообщение текущему диалогу

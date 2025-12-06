@@ -40,11 +40,12 @@ class FileManager(private val context: Context) {
             // Копируем данные
             FileOutputStream(file).use { outputStream ->
                 inputStream.copyTo(outputStream)
+                outputStream.flush() // Убеждаемся что данные записаны
             }
 
             inputStream.close()
 
-            Log.d(TAG, "Файл скопирован в кеш: ${file.absolutePath}")
+            Log.d(TAG, "Файл скопирован в кеш: ${file.absolutePath}, размер: ${file.length()} байт")
             file
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка копирования файла из URI: ${e.message}", e)

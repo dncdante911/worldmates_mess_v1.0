@@ -32,11 +32,11 @@ object Constants {
     const val FCM_TOPIC_CALLS = "worldmates_calls"
     
     // ==================== MEDIA UPLOAD ====================
-    const val MAX_IMAGE_SIZE = 50 * 1024 * 1024L // 50MB
-    const val MAX_VIDEO_SIZE = 5 * 1024 * 1024 * 1024L // 5GB
-    const val MAX_AUDIO_SIZE = 1 * 1024 * 1024 * 1024L // 1GB
-    const val MAX_FILE_SIZE_REGULAR = 2 * 1024 * 1024 * 1024L // 2GB
-    const val MAX_FILE_SIZE_PREMIUM = 10 * 1024 * 1024 * 1024L // 10GB
+    const val MAX_IMAGE_SIZE = 15 * 1024 * 1024L // 15MB
+    const val MAX_VIDEO_SIZE = 1024 * 1024 * 1024L // 1GB (с сжатием)
+    const val MAX_AUDIO_SIZE = 100 * 1024 * 1024L // 100MB
+    const val MAX_FILE_SIZE = 500 * 1024 * 1024L // 500MB для любых файлов
+    const val MAX_FILES_PER_MESSAGE = 15 // Максимум 15 файлов за раз
     
     const val MEDIA_UPLOAD_TIMEOUT = 600 // 10 minutes in seconds
     const val MEDIA_UPLOAD_CHUNK_SIZE = 256 * 1024 // 256KB chunks

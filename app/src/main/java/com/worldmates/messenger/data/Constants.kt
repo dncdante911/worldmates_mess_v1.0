@@ -25,7 +25,7 @@ object Constants {
     const val SOCKET_EVENT_MESSAGE_SEEN = "seen_messages"  // Изменено с message_seen
     const val SOCKET_EVENT_GROUP_MESSAGE = "group_message"
     const val SOCKET_EVENT_USER_ONLINE = "on_user_loggedin"  // Изменено с user_online
-    const val SOCKET_EVENT_USER_OFFLINE = "user_status_change"  // Для офлайн статуса
+    const val SOCKET_EVENT_USER_OFFLINE = "on_user_loggedoff"  // ИСПРАВЛЕНО: было user_status_change
     
     // ==================== PUSH NOTIFICATIONS ====================
     const val FCM_TOPIC_MESSAGES = "worldmates_messages"

@@ -84,6 +84,7 @@ fun WorldMatesTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = WMTypography,
+        shapes = Shapes,
         content = content
     )
 }

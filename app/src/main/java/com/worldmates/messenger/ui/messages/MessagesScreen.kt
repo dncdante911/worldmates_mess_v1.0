@@ -92,8 +92,13 @@ fun MessagesScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // TODO: обработать аудио файл
             Log.d("MessagesScreen", "Вибрано аудіо: $it")
+            val file = fileManager.copyUriToCache(it)
+            if (file != null) {
+                viewModel.uploadAndSendMedia(file, "audio")
+            } else {
+                Log.e("MessagesScreen", "Не вдалося скопіювати аудіо файл")
+            }
         }
     }
 
@@ -101,8 +106,13 @@ fun MessagesScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // TODO: обработать файл
             Log.d("MessagesScreen", "Вибрано файл: $it")
+            val file = fileManager.copyUriToCache(it)
+            if (file != null) {
+                viewModel.uploadAndSendMedia(file, "file")
+            } else {
+                Log.e("MessagesScreen", "Не вдалося скопіювати файл")
+            }
         }
     }
 
@@ -328,6 +338,19 @@ fun MessageBubbleComposable(
 
                 // Определяем тип медиа по URL (для случаев, когда message.type == "text")
                 val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
+
+                // 🔍 ДЕТАЛЬНЕ ЛОГУВАННЯ ДЛЯ ВІДЛАДКИ
+                Log.d("MessageBubble", """
+                    ========== ПОВІДОМЛЕННЯ ==========
+                    ID: ${message.id}
+                    Type: ${message.type}
+                    DecryptedText: ${message.decryptedText}
+                    MediaUrl: ${message.mediaUrl}
+                    DecryptedMediaUrl: ${message.decryptedMediaUrl}
+                    EffectiveMediaUrl: $effectiveMediaUrl
+                    DetectedMediaType: $detectedMediaType
+                    ==================================
+                """.trimIndent())
 
                 // Показываем текст только если это не чистый URL медиа
                 val shouldShowText = message.decryptedText != null &&

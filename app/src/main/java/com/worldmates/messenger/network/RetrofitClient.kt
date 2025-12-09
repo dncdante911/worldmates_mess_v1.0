@@ -3,9 +3,12 @@ package com.worldmates.messenger.network
 import android.util.Log
 import com.worldmates.messenger.data.Constants
 import okhttp3.*
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Converter
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 
 /**
@@ -72,6 +75,52 @@ class ApiKeyInterceptor : Interceptor {
     }
 }
 
+/**
+ * Конвертер, который обрабатывает пустые ответы от сервера.
+ * Если сервер возвращает пустое тело (content-length: 0),
+ * вместо падения с EOFException возвращает объект с ошибкой.
+ */
+class NullOnEmptyConverterFactory : Converter.Factory() {
+    override fun responseBodyConverter(
+        type: Type,
+        annotations: Array<out Annotation>,
+        retrofit: Retrofit
+    ): Converter<ResponseBody, *>? {
+        val delegate = retrofit.nextResponseBodyConverter<Any>(this, type, annotations)
+        return Converter<ResponseBody, Any> { body ->
+            if (body.contentLength() == 0L) {
+                Log.w("NullOnEmptyConverter", "Сервер повернув порожню відповідь (0 bytes)")
+                // Для XhrUploadResponse возвращаем объект с ошибкой
+                if (type == XhrUploadResponse::class.java) {
+                    XhrUploadResponse(
+                        status = 0,
+                        imageUrl = null,
+                        imageSrc = null,
+                        videoUrl = null,
+                        videoSrc = null,
+                        audioUrl = null,
+                        audioSrc = null,
+                        fileUrl = null,
+                        fileSrc = null,
+                        error = "Сервер повернув порожню відповідь"
+                    )
+                } else {
+                    // Для других типов пытаемся вернуть пустой JSON объект
+                    val emptyJson = "{}".toResponseBody(body.contentType())
+                    try {
+                        delegate.convert(emptyJson)
+                    } catch (e: Exception) {
+                        Log.e("NullOnEmptyConverter", "Не вдалося обробити порожній відповідь: ${e.message}")
+                        null
+                    }
+                }
+            } else {
+                delegate.convert(body)
+            }
+        }
+    }
+}
+
 object RetrofitClient {
 
     // Логирование HTTP запросов
@@ -92,9 +141,10 @@ object RetrofitClient {
     val retrofit: Retrofit = Retrofit.Builder()
         .baseUrl(Constants.BASE_URL)
         .client(client)
+        .addConverterFactory(NullOnEmptyConverterFactory()) // Обробка порожніх відповідей ПЕРЕД Gson
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
     // Используем новый интерфейс
-    val apiService: WorldMatesApi = retrofit.create(WorldMatesApi::class.java) // <--- ИЗМЕНЕНО
+    val apiService: WorldMatesApi = retrofit.create(WorldMatesApi::class.java)
 }

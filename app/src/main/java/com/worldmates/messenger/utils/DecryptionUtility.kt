@@ -109,4 +109,86 @@ object DecryptionUtility {
             text
         }
     }
+
+    /**
+     * Дешифрует URL медиа-файла, если он зашифрован.
+     * URL может быть:
+     * - Обычным URL (http://, https://) - возвращается как есть
+     * - Base64 зашифрованным URL - дешифруется
+     * - Относительным путём к файлу - возвращается как есть
+     *
+     * @param mediaUrl URL или зашифрованная строка
+     * @param timestamp Unix-метка времени сообщения
+     * @return Дешифрованный URL или исходный URL
+     */
+    fun decryptMediaUrl(mediaUrl: String?, timestamp: Long): String? {
+        if (mediaUrl.isNullOrEmpty()) return mediaUrl
+
+        // Если это обычный URL - возвращаем как есть
+        if (mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://")) {
+            Log.d("DecryptionUtility", "URL вже розшифрований: $mediaUrl")
+            return mediaUrl
+        }
+
+        // Если это путь к файлу на сервере (начинается с /)
+        if (mediaUrl.startsWith("/")) {
+            Log.d("DecryptionUtility", "Це шлях до файлу: $mediaUrl")
+            return mediaUrl
+        }
+
+        // Проверяем, похоже ли это на Base64
+        if (!isBase64(mediaUrl)) {
+            Log.d("DecryptionUtility", "Media URL не Base64, повертаю як є: $mediaUrl")
+            return mediaUrl
+        }
+
+        Log.d("DecryptionUtility", "Спроба розшифровки media URL: $mediaUrl")
+
+        // Пытаемся расшифровать
+        val decrypted = decryptMessage(mediaUrl, timestamp)
+
+        return if (!decrypted.isNullOrEmpty()) {
+            Log.d("DecryptionUtility", "Media URL розшифровано: $decrypted")
+            decrypted
+        } else {
+            Log.d("DecryptionUtility", "Не вдалося розшифрувати media URL, повертаю оригінал")
+            mediaUrl
+        }
+    }
+
+    /**
+     * Проверяет, содержит ли текст зашифрованный URL внутри.
+     * Иногда URL медиа-файла может быть внутри зашифрованного текста сообщения.
+     *
+     * @param decryptedText Расшифрованный текст сообщения
+     * @return URL, если найден, иначе null
+     */
+    fun extractMediaUrlFromText(decryptedText: String?): String? {
+        if (decryptedText.isNullOrEmpty()) return null
+
+        // Ищем URL в тексте
+        val urlPattern = "(https?://[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+)".toRegex()
+        val match = urlPattern.find(decryptedText)
+
+        return match?.value?.let { url ->
+            // Проверяем, является ли это URL медиа-файла
+            if (url.contains("/upload/photos/") ||
+                url.contains("/upload/videos/") ||
+                url.contains("/upload/files/") ||
+                url.contains("/upload/sounds/") ||
+                url.contains(".jpg") ||
+                url.contains(".jpeg") ||
+                url.contains(".png") ||
+                url.contains(".gif") ||
+                url.contains(".mp4") ||
+                url.contains(".mp3") ||
+                url.contains(".wav") ||
+                url.contains(".webm")) {
+                Log.d("DecryptionUtility", "Знайдено URL медіа у тексті: $url")
+                url
+            } else {
+                null
+            }
+        }
+    }
 }

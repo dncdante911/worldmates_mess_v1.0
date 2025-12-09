@@ -44,6 +44,7 @@ data class Message(
     @SerializedName("is_read") val isRead: Boolean = false,
     @SerializedName("read_at") val readAt: Long? = null,
     val decryptedText: String? = null,
+    val decryptedMediaUrl: String? = null, // Розшифрований URL медіа (для веб-версії)
     val isLocalPending: Boolean = false // Для локально надісланих повідомлень, що чекають
 )
 

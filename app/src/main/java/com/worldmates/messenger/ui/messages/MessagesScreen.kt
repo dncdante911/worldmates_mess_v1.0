@@ -316,10 +316,13 @@ fun MessageBubbleComposable(
                     )
                 }
 
+                // Получаем URL медиа (приоритет: decryptedMediaUrl, затем mediaUrl)
+                val effectiveMediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+
                 // Image
-                if (!message.mediaUrl.isNullOrEmpty() && message.type == "image") {
+                if (!effectiveMediaUrl.isNullOrEmpty() && message.type == "image") {
                     AsyncImage(
-                        model = message.mediaUrl,
+                        model = effectiveMediaUrl,
                         contentDescription = "Media",
                         modifier = Modifier
                             .fillMaxWidth()
@@ -331,7 +334,7 @@ fun MessageBubbleComposable(
                 }
 
                 // Video (thumbnail)
-                if (!message.mediaUrl.isNullOrEmpty() && message.type == "video") {
+                if (!effectiveMediaUrl.isNullOrEmpty() && message.type == "video") {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -351,11 +354,12 @@ fun MessageBubbleComposable(
                 }
 
                 // Voice message player
-                if (message.type == "voice" && !message.mediaUrl.isNullOrEmpty()) {
+                if (message.type == "voice" && !effectiveMediaUrl.isNullOrEmpty()) {
                     VoiceMessagePlayer(
                         message = message,
                         voicePlayer = voicePlayer,
-                        textColor = textColor
+                        textColor = textColor,
+                        mediaUrl = effectiveMediaUrl
                     )
                 }
 
@@ -374,7 +378,8 @@ fun MessageBubbleComposable(
 fun VoiceMessagePlayer(
     message: Message,
     voicePlayer: VoicePlayer,
-    textColor: Color
+    textColor: Color,
+    mediaUrl: String
 ) {
     val playbackState by voicePlayer.playbackState.collectAsState()
     val currentPosition by voicePlayer.currentPosition.collectAsState()
@@ -393,14 +398,14 @@ fun VoiceMessagePlayer(
                     if (playbackState == VoicePlayer.PlaybackState.Playing) {
                         voicePlayer.pause()
                     } else {
-                        voicePlayer.play(message.mediaUrl!!)
+                        voicePlayer.play(mediaUrl)
                     }
                 }
             },
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
-                imageVector = if (playbackState == VoicePlayer.PlaybackState.Playing) 
+                imageVector = if (playbackState == VoicePlayer.PlaybackState.Playing)
                     Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = "Play",
                 tint = textColor,

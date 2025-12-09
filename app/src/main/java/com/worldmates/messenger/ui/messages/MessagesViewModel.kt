@@ -85,11 +85,7 @@ class MessagesViewModel(application: Application) :
 
                 if (response.apiStatus == 200 && response.messages != null) {
                     val decryptedMessages = response.messages!!.map { msg ->
-                        val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                            msg.encryptedText,
-                            msg.timeStamp
-                        )
-                        msg.copy(decryptedText = decryptedText)
+                        decryptMessageFully(msg)
                     }
 
                     val currentMessages = _messages.value.toMutableList()
@@ -135,11 +131,7 @@ class MessagesViewModel(application: Application) :
 
                 if (response.apiStatus == 200 && response.messages != null) {
                     val decryptedMessages = response.messages!!.map { msg ->
-                        val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                            msg.encryptedText,
-                            msg.timeStamp
-                        )
-                        msg.copy(decryptedText = decryptedText)
+                        decryptMessageFully(msg)
                     }
 
                     val currentMessages = _messages.value.toMutableList()
@@ -199,11 +191,7 @@ class MessagesViewModel(application: Application) :
                     // Если API вернул сообщения, добавляем их в список
                     if (response.messages != null && response.messages.isNotEmpty()) {
                         val decryptedMessages = response.messages.map { msg ->
-                            val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                                msg.encryptedText,
-                                msg.timeStamp
-                            )
-                            msg.copy(decryptedText = decryptedText)
+                            decryptMessageFully(msg)
                         }
 
                         val currentMessages = _messages.value.toMutableList()
@@ -343,21 +331,33 @@ class MessagesViewModel(application: Application) :
 
     override fun onNewMessage(messageJson: JSONObject) {
         try {
+            val timestamp = messageJson.getLong("time")
+            val encryptedText = messageJson.getString("text")
+            val mediaUrl = messageJson.optString("media", null)
+
+            // Дешифруем текст
+            val decryptedText = DecryptionUtility.decryptMessageOrOriginal(encryptedText, timestamp)
+
+            // Дешифруем URL медиа
+            val decryptedMediaUrl = DecryptionUtility.decryptMediaUrl(mediaUrl, timestamp)
+
+            // Пытаемся извлечь URL медиа из текста, если mediaUrl пуст
+            val finalMediaUrl = decryptedMediaUrl
+                ?: DecryptionUtility.extractMediaUrlFromText(decryptedText)
+
             val message = Message(
                 id = messageJson.getLong("id"),
                 fromId = messageJson.getLong("from_id"),
                 toId = messageJson.getLong("to_id"),
                 groupId = messageJson.optLong("group_id", 0).takeIf { it != 0L },
-                encryptedText = messageJson.getString("text"),
-                timeStamp = messageJson.getLong("time"),
-                mediaUrl = messageJson.optString("media", null),
+                encryptedText = encryptedText,
+                timeStamp = timestamp,
+                mediaUrl = mediaUrl,
                 type = messageJson.optString("type", Constants.MESSAGE_TYPE_TEXT),
                 senderName = messageJson.optString("sender_name", null),
                 senderAvatar = messageJson.optString("sender_avatar", null),
-                decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                    messageJson.getString("text"),
-                    messageJson.getLong("time")
-                )
+                decryptedText = decryptedText,
+                decryptedMediaUrl = finalMediaUrl
             )
 
             // Проверяем, принадлежит ли сообщение текущему диалогу
@@ -429,6 +429,33 @@ class MessagesViewModel(application: Application) :
 
     fun clearError() {
         _error.value = null
+    }
+
+    /**
+     * Полностью дешифрует сообщение: текст и URL медиа.
+     * Также пытается извлечь URL медиа из текста сообщения.
+     */
+    private fun decryptMessageFully(msg: Message): Message {
+        // Дешифруем текст
+        val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+            msg.encryptedText,
+            msg.timeStamp
+        )
+
+        // Дешифруем URL медиа
+        val decryptedMediaUrl = DecryptionUtility.decryptMediaUrl(
+            msg.mediaUrl,
+            msg.timeStamp
+        )
+
+        // Пытаемся извлечь URL медиа из текста, если mediaUrl пуст
+        val finalMediaUrl = decryptedMediaUrl
+            ?: DecryptionUtility.extractMediaUrlFromText(decryptedText)
+
+        return msg.copy(
+            decryptedText = decryptedText,
+            decryptedMediaUrl = finalMediaUrl
+        )
     }
 
     override fun onCleared() {

@@ -251,14 +251,24 @@ class VoicePlayer(private val context: Context) {
     }
 
     /**
-     * Начинает воспроизведение файла
+     * Начинает воспроизведение файла или URL
      */
-    suspend fun play(filePath: String): Boolean = withContext(Dispatchers.Default) {
+    suspend fun play(filePathOrUrl: String): Boolean = withContext(Dispatchers.Default) {
         return@withContext try {
             stop() // Останавливаем предыдущее воспроизведение
 
             mediaPlayer = MediaPlayer().apply {
-                setDataSource(filePath)
+                // Проверяем является ли это URL или локальный файл
+                if (filePathOrUrl.startsWith("http://") || filePathOrUrl.startsWith("https://")) {
+                    // Это URL - используем setDataSource с context и Uri
+                    Log.d(TAG, "Playing from URL: $filePathOrUrl")
+                    setDataSource(context, android.net.Uri.parse(filePathOrUrl))
+                } else {
+                    // Это локальный файл
+                    Log.d(TAG, "Playing from file: $filePathOrUrl")
+                    setDataSource(filePathOrUrl)
+                }
+
                 prepare()
                 start()
 
@@ -267,7 +277,7 @@ class VoicePlayer(private val context: Context) {
             }
 
             updatePosition()
-            Log.d(TAG, "Playback started: $filePath")
+            Log.d(TAG, "Playback started: $filePathOrUrl")
             true
         } catch (e: IOException) {
             Log.e(TAG, "Error playing audio: ${e.message}", e)

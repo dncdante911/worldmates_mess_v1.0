@@ -129,10 +129,19 @@ class MediaUploader(private val context: Context) {
 
             if (mediaUrl.isNullOrEmpty()) {
                 Log.e(TAG, "Сервер не повернув URL файлу (статус успішний, але URL пустий)")
-                return@withContext UploadResult.Error("Сервер прийняв файл, але не повернув URL для файлу")
+                Log.d(TAG, "Це може бути зашифрований медіа-файл з веб-версії")
+                return@withContext UploadResult.Error("Сервер прийняв файл, але не повернув URL. Можливо, файл зашифровано.")
             }
 
             Log.d(TAG, "Файл завантажено на сервер: $mediaUrl")
+
+            // Проверяем, нужно ли расшифровать URL (если он начинается с Base64)
+            val finalMediaUrl = if (mediaUrl.matches(Regex("^[A-Za-z0-9+/]+=*$")) && mediaUrl.length % 4 == 0) {
+                Log.d(TAG, "URL виглядає як Base64, може потребувати розшифровки")
+                mediaUrl
+            } else {
+                mediaUrl
+            }
 
             // Шаг 2: Отправляем сообщение с URL загруженного файла
             if (recipientId != null) {
@@ -152,7 +161,7 @@ class MediaUploader(private val context: Context) {
                             Log.d(TAG, "Повідомлення з медіа відправлено успішно")
                             UploadResult.Success(
                                 mediaId = firstMessage.id.toString(),
-                                url = mediaUrl,
+                                url = finalMediaUrl,
                                 thumbnail = null
                             )
                         } else {
@@ -178,7 +187,7 @@ class MediaUploader(private val context: Context) {
                         Log.d(TAG, "Повідомлення з медіа в групу відправлено успішно")
                         UploadResult.Success(
                             mediaId = messageResponse.messageId?.toString() ?: "",
-                            url = mediaUrl,
+                            url = finalMediaUrl,
                             thumbnail = null
                         )
                     }

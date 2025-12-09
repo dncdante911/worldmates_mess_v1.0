@@ -225,16 +225,28 @@ class MediaUploader(private val context: Context) {
         // Вызываем соответствующий xhr endpoint
         return when (mediaType) {
             Constants.MESSAGE_TYPE_IMAGE -> {
-                RetrofitClient.apiService.uploadImage(accessToken, filePart)
+                RetrofitClient.apiService.uploadImage(
+                    accessToken = accessToken,
+                    image = filePart
+                )
             }
             Constants.MESSAGE_TYPE_VIDEO -> {
-                RetrofitClient.apiService.uploadVideo(accessToken, filePart)
+                RetrofitClient.apiService.uploadVideo(
+                    accessToken = accessToken,
+                    video = filePart
+                )
             }
             Constants.MESSAGE_TYPE_AUDIO, Constants.MESSAGE_TYPE_VOICE -> {
-                RetrofitClient.apiService.uploadAudio(accessToken, filePart)
+                RetrofitClient.apiService.uploadAudio(
+                    accessToken = accessToken,
+                    audio = filePart
+                )
             }
             else -> {
-                RetrofitClient.apiService.uploadFile(accessToken, filePart)
+                RetrofitClient.apiService.uploadFile(
+                    accessToken = accessToken,
+                    file = filePart
+                )
             }
         }
     }

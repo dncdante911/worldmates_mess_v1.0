@@ -314,6 +314,7 @@ data class MessageResponse(
     @SerializedName("api_text") val apiText: String?, // "success" или "failed"
     @SerializedName("api_version") val apiVersion: String?,
     @SerializedName("messages") val messages: List<Message>?,
+    @SerializedName("message_data") val messageData: List<Message>?, // API иногда возвращает message_data
     @SerializedName("message_id") val messageId: Long?,
     @SerializedName("errors") val errors: ErrorDetails?,
     @SerializedName("error_code") val errorCode: Int?,
@@ -322,6 +323,10 @@ data class MessageResponse(
     // Для совместимости с кодом, проверяющим apiStatus как Int
     val apiStatus: Int
         get() = apiStatusString?.toIntOrNull() ?: 400
+
+    // Универсальный геттер для получения сообщений (из messages или message_data)
+    val allMessages: List<Message>?
+        get() = messages ?: messageData
 }
 
 data class ErrorDetails(

@@ -270,16 +270,17 @@ class MessagesViewModel(application: Application) :
 
                 when (result) {
                     is MediaUploader.UploadResult.Success -> {
-                        // Отправляем сообщение с медиа
-                        sendMediaMessage(
-                            mediaUrl = result.url,
-                            mediaType = mediaType,
-                            caption = ""
-                        )
                         _uploadProgress.value = 0
                         _error.value = null
                         Log.d("MessagesViewModel", "Медіа завантажено: ${result.url}")
-                        
+
+                        // Обновляем список сообщений для автообновления
+                        if (groupId != 0L) {
+                            fetchGroupMessages()
+                        } else {
+                            fetchMessages()
+                        }
+
                         // Чистимо файл
                         if (file.exists()) {
                             file.delete()

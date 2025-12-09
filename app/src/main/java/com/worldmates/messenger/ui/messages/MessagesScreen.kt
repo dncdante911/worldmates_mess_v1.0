@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
+import com.worldmates.messenger.ui.media.FullscreenImageViewer
+import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.FileManager
@@ -290,6 +292,9 @@ fun MessageBubbleComposable(
     val currentPosition by voicePlayer.currentPosition.collectAsState()
     val duration by voicePlayer.duration.collectAsState()
 
+    var showFullscreenImage by remember { mutableStateOf(false) }
+    var showVideoPlayer by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -348,9 +353,18 @@ fun MessageBubbleComposable(
                             .fillMaxWidth()
                             .heightIn(max = 200.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .padding(top = if (shouldShowText) 8.dp else 0.dp),
+                            .padding(top = if (shouldShowText) 8.dp else 0.dp)
+                            .clickable { showFullscreenImage = true },
                         contentScale = ContentScale.Crop
                     )
+
+                    // Полноэкранный просмотр изображения
+                    if (showFullscreenImage) {
+                        FullscreenImageViewer(
+                            imageUrl = effectiveMediaUrl,
+                            onDismiss = { showFullscreenImage = false }
+                        )
+                    }
                 }
 
                 // Video (thumbnail)
@@ -361,7 +375,8 @@ fun MessageBubbleComposable(
                             .heightIn(max = 200.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color.Gray.copy(alpha = 0.3f))
-                            .padding(top = if (shouldShowText) 8.dp else 0.dp),
+                            .padding(top = if (shouldShowText) 8.dp else 0.dp)
+                            .clickable { showVideoPlayer = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -369,6 +384,14 @@ fun MessageBubbleComposable(
                             contentDescription = "Play",
                             tint = Color.White,
                             modifier = Modifier.size(48.dp)
+                        )
+                    }
+
+                    // Полноэкранный видеоплеер
+                    if (showVideoPlayer) {
+                        FullscreenVideoPlayer(
+                            videoUrl = effectiveMediaUrl,
+                            onDismiss = { showVideoPlayer = false }
                         )
                     }
                 }

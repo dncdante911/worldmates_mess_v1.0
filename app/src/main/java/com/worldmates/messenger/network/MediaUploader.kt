@@ -104,9 +104,18 @@ class MediaUploader(private val context: Context) {
             Log.d(TAG, "Крок 1: Завантаження файлу на сервер...")
             val uploadResponse = uploadFileToServer(accessToken, file, mediaType, onProgress)
 
+            // Логирование деталей ответа для отладки
+            Log.d(TAG, "Статус завантаження: ${uploadResponse.status}")
+            Log.d(TAG, "Помилка: ${uploadResponse.error}")
+            Log.d(TAG, "ImageURL: ${uploadResponse.imageUrl}")
+            Log.d(TAG, "VideoURL: ${uploadResponse.videoUrl}")
+            Log.d(TAG, "AudioURL: ${uploadResponse.audioUrl}")
+            Log.d(TAG, "FileURL: ${uploadResponse.fileUrl}")
+
             if (uploadResponse.status != 200) {
-                Log.e(TAG, "Помилка завантаження файлу: ${uploadResponse.error}")
-                return@withContext UploadResult.Error(uploadResponse.error ?: "Помилка завантаження файлу")
+                val errorMessage = uploadResponse.error ?: "Невідома помилка завантаження (статус: ${uploadResponse.status})"
+                Log.e(TAG, "Помилка завантаження файлу: $errorMessage")
+                return@withContext UploadResult.Error(errorMessage)
             }
 
             // Получаем URL загруженного файла
@@ -119,8 +128,8 @@ class MediaUploader(private val context: Context) {
             }
 
             if (mediaUrl.isNullOrEmpty()) {
-                Log.e(TAG, "Сервер не повернув URL файлу")
-                return@withContext UploadResult.Error("Сервер не повернув URL файлу")
+                Log.e(TAG, "Сервер не повернув URL файлу (статус успішний, але URL пустий)")
+                return@withContext UploadResult.Error("Сервер прийняв файл, але не повернув URL для файлу")
             }
 
             Log.d(TAG, "Файл завантажено на сервер: $mediaUrl")

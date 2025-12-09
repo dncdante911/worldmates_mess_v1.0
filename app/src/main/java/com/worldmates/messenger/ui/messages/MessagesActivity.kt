@@ -37,6 +37,8 @@ import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.network.FileManager
+import com.worldmates.messenger.ui.media.FullscreenImageViewer
+import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
 import com.worldmates.messenger.ui.theme.WorldMatesTheme
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
@@ -155,6 +157,36 @@ fun MessagesScreenContent(
         showMediaOptions = false
     }
 
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            Log.d("MessagesActivity", "Вибрано аудіо: $it")
+            val file = fileManager.copyUriToCache(it)
+            if (file != null) {
+                viewModel.uploadAndSendMedia(file, "audio")
+            } else {
+                Log.e("MessagesActivity", "Не вдалося скопіювати аудіо файл")
+            }
+        }
+        showMediaOptions = false
+    }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            Log.d("MessagesActivity", "Вибрано файл: $it")
+            val file = fileManager.copyUriToCache(it)
+            if (file != null) {
+                viewModel.uploadAndSendMedia(file, "file")
+            } else {
+                Log.e("MessagesActivity", "Не вдалося скопіювати файл")
+            }
+        }
+        showMediaOptions = false
+    }
+
     val permissionsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -259,8 +291,9 @@ fun MessagesScreenContent(
             MediaOptionsBar(
                 onImageClick = { imagePickerLauncher.launch("image/*") },
                 onVideoClick = { videoPickerLauncher.launch("video/*") },
+                onAudioClick = { audioPickerLauncher.launch("audio/*") },
                 onLocationClick = { /* TODO */ },
-                onFileClick = { /* TODO */ }
+                onFileClick = { filePickerLauncher.launch("*/*") }
             )
         }
 
@@ -384,6 +417,9 @@ fun MessageBubbleRow(
     val bgColor = if (isOwn) Color(0xFF0084FF) else Color(0xFFE5E5EA)
     val textColor = if (isOwn) Color.White else Color.Black
 
+    var showFullscreenImage by remember { mutableStateOf(false) }
+    var showVideoPlayer by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -409,37 +445,83 @@ fun MessageBubbleRow(
                     )
                 }
 
+                // ========== ЛОГІКА ВИЗНАЧЕННЯ МЕДІА ==========
+                // 1. Пытаемся использовать decryptedMediaUrl
+                var effectiveMediaUrl = message.decryptedMediaUrl
+
+                // 2. Если пусто, проверяем mediaUrl
+                if (effectiveMediaUrl.isNullOrEmpty()) {
+                    effectiveMediaUrl = message.mediaUrl
+                }
+
+                // 3. Если все еще пусто, пытаемся извлечь URL из decryptedText
+                if (effectiveMediaUrl.isNullOrEmpty() && !message.decryptedText.isNullOrEmpty()) {
+                    effectiveMediaUrl = extractMediaUrlFromText(message.decryptedText!!)
+                }
+
+                // Определяем тип медиа
+                val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
+
+                // 🔍 ДЕТАЛЬНЕ ЛОГУВАННЯ
+                Log.d("MessageBubbleRow", """
+                    ========== ПОВІДОМЛЕННЯ ==========
+                    ID: ${message.id}
+                    Type: ${message.type}
+                    DecryptedText: ${message.decryptedText}
+                    MediaUrl: ${message.mediaUrl}
+                    DecryptedMediaUrl: ${message.decryptedMediaUrl}
+                    EffectiveMediaUrl: $effectiveMediaUrl
+                    DetectedMediaType: $detectedMediaType
+                    ==================================
+                """.trimIndent())
+
+                // Показываем текст только если это не чистый URL медиа
+                val shouldShowText = message.decryptedText != null &&
+                    message.decryptedText!!.isNotEmpty() &&
+                    !isOnlyMediaUrl(message.decryptedText!!) &&
+                    detectedMediaType == "text"
+
                 // Text content
-                if (message.decryptedText != null && message.decryptedText!!.isNotEmpty()) {
+                if (shouldShowText) {
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
                         fontSize = 14.sp,
-                        modifier = Modifier.padding(bottom = if (message.mediaUrl != null) 8.dp else 0.dp)
+                        modifier = Modifier.padding(bottom = if (!effectiveMediaUrl.isNullOrEmpty()) 8.dp else 0.dp)
                     )
                 }
 
-                // Image
-                if (message.type == Constants.MESSAGE_TYPE_IMAGE && !message.mediaUrl.isNullOrEmpty()) {
+                // ========== IMAGE ==========
+                if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "image") {
                     AsyncImage(
-                        model = message.mediaUrl,
+                        model = effectiveMediaUrl,
                         contentDescription = "Image",
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 200.dp)
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showFullscreenImage = true },
                         contentScale = ContentScale.Crop
                     )
+
+                    // Fullscreen viewer
+                    if (showFullscreenImage) {
+                        FullscreenImageViewer(
+                            imageUrl = effectiveMediaUrl,
+                            onDismiss = { showFullscreenImage = false }
+                        )
+                    }
                 }
 
-                // Video thumbnail
-                if (message.type == Constants.MESSAGE_TYPE_VIDEO && !message.mediaUrl.isNullOrEmpty()) {
+                // ========== VIDEO ==========
+                if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "video") {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 200.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Gray.copy(alpha = 0.3f)),
+                            .background(Color.Gray.copy(alpha = 0.3f))
+                            .clickable { showVideoPlayer = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -449,10 +531,20 @@ fun MessageBubbleRow(
                             modifier = Modifier.size(48.dp)
                         )
                     }
+
+                    // Fullscreen video player
+                    if (showVideoPlayer) {
+                        FullscreenVideoPlayer(
+                            videoUrl = effectiveMediaUrl,
+                            onDismiss = { showVideoPlayer = false }
+                        )
+                    }
                 }
 
-                // Voice message
-                if (message.type == Constants.MESSAGE_TYPE_VOICE && !message.mediaUrl.isNullOrEmpty()) {
+                // ========== VOICE/AUDIO ==========
+                if (!effectiveMediaUrl.isNullOrEmpty() &&
+                    (detectedMediaType == "voice" || detectedMediaType == "audio" ||
+                     message.type == Constants.MESSAGE_TYPE_VOICE)) {
                     VoiceMessagePlayerUI(
                         message = message,
                         voicePlayer = voicePlayer,
@@ -532,6 +624,7 @@ fun VoiceMessagePlayerUI(
 fun MediaOptionsBar(
     onImageClick: () -> Unit,
     onVideoClick: () -> Unit,
+    onAudioClick: () -> Unit,
     onLocationClick: () -> Unit,
     onFileClick: () -> Unit
 ) {
@@ -545,6 +638,7 @@ fun MediaOptionsBar(
     ) {
         MediaOptionButton(Icons.Default.Image, "Фото", onImageClick)
         MediaOptionButton(Icons.Default.VideoLibrary, "Відео", onVideoClick)
+        MediaOptionButton(Icons.Default.AudioFile, "Аудіо", onAudioClick)
         MediaOptionButton(Icons.Default.LocationOn, "Локація", onLocationClick)
         MediaOptionButton(Icons.Default.AttachFile, "Файл", onFileClick)
     }
@@ -647,4 +741,109 @@ fun MessageInputBar(
 private fun formatTime(timestamp: Long): String {
     val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp * 1000))
+}
+
+/**
+ * Определяет тип медиа по URL или явному типу сообщения
+ */
+private fun detectMediaType(url: String?, messageType: String): String {
+    // Если тип явно указан и это не "text", используем его
+    if (messageType != "text" && messageType.isNotEmpty()) {
+        return messageType
+    }
+
+    // Если URL пустой, возвращаем "text"
+    if (url.isNullOrEmpty()) {
+        return "text"
+    }
+
+    val lowerUrl = url.lowercase()
+
+    return when {
+        // Изображения
+        lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
+        lowerUrl.endsWith(".png") || lowerUrl.endsWith(".gif") ||
+        lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".bmp") ||
+        lowerUrl.contains("/upload/photos/") -> "image"
+
+        // Видео
+        lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".webm") ||
+        lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".avi") ||
+        lowerUrl.endsWith(".mkv") || lowerUrl.contains("/upload/videos/") -> "video"
+
+        // Аудио
+        lowerUrl.endsWith(".mp3") || lowerUrl.endsWith(".wav") ||
+        lowerUrl.endsWith(".ogg") || lowerUrl.endsWith(".m4a") ||
+        lowerUrl.endsWith(".aac") || lowerUrl.contains("/upload/sounds/") -> "audio"
+
+        // Файлы
+        lowerUrl.endsWith(".pdf") || lowerUrl.endsWith(".doc") ||
+        lowerUrl.endsWith(".docx") || lowerUrl.endsWith(".xls") ||
+        lowerUrl.endsWith(".xlsx") || lowerUrl.endsWith(".zip") ||
+        lowerUrl.endsWith(".rar") || lowerUrl.contains("/upload/files/") -> "file"
+
+        else -> "text"
+    }
+}
+
+/**
+ * Извлекает URL медиа-файла из текста сообщения
+ */
+private fun extractMediaUrlFromText(text: String): String? {
+    val trimmed = text.trim()
+
+    // Проверяем, является ли весь текст URL
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        val lowerText = trimmed.lowercase()
+        if (lowerText.contains("/upload/photos/") ||
+            lowerText.contains("/upload/videos/") ||
+            lowerText.contains("/upload/sounds/") ||
+            lowerText.contains("/upload/files/") ||
+            lowerText.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|mp3|wav|ogg|pdf|doc|docx)$"))) {
+            return trimmed
+        }
+    }
+
+    // Пытаемся найти URL медиа внутри текста
+    val urlPattern = "(https?://[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+)".toRegex()
+    val match = urlPattern.find(trimmed)
+
+    return match?.value?.let { url ->
+        val lowerUrl = url.lowercase()
+        if (lowerUrl.contains("/upload/photos/") ||
+            lowerUrl.contains("/upload/videos/") ||
+            lowerUrl.contains("/upload/sounds/") ||
+            lowerUrl.contains("/upload/files/") ||
+            lowerUrl.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|mp3|wav|ogg|pdf|doc|docx)$"))) {
+            url
+        } else {
+            null
+        }
+    }
+}
+
+/**
+ * Проверяет, является ли текст только URL медиа-файла
+ */
+private fun isOnlyMediaUrl(text: String): Boolean {
+    val trimmed = text.trim()
+
+    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+        return false
+    }
+
+    val lowerText = trimmed.lowercase()
+    val isMediaUrl = lowerText.contains("/upload/photos/") ||
+        lowerText.contains("/upload/videos/") ||
+        lowerText.contains("/upload/sounds/") ||
+        lowerText.contains("/upload/files/") ||
+        lowerText.endsWith(".jpg") ||
+        lowerText.endsWith(".jpeg") ||
+        lowerText.endsWith(".png") ||
+        lowerText.endsWith(".gif") ||
+        lowerText.endsWith(".mp4") ||
+        lowerText.endsWith(".mp3") ||
+        lowerText.endsWith(".webm")
+
+    return isMediaUrl && !trimmed.contains(" ") && !trimmed.contains("\n")
 }

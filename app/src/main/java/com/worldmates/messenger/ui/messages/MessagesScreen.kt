@@ -307,8 +307,19 @@ fun MessageBubbleComposable(
             Column(
                 modifier = Modifier.padding(10.dp)
             ) {
+                // Получаем URL медиа (приоритет: decryptedMediaUrl, затем mediaUrl)
+                val effectiveMediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+
+                // Определяем тип медиа по URL (для случаев, когда message.type == "text")
+                val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
+
+                // Показываем текст только если это не чистый URL медиа
+                val shouldShowText = message.decryptedText != null &&
+                    message.decryptedText!!.isNotEmpty() &&
+                    !isOnlyMediaUrl(message.decryptedText!!)
+
                 // Text message
-                if (message.decryptedText != null && message.decryptedText!!.isNotEmpty()) {
+                if (shouldShowText) {
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
@@ -316,11 +327,8 @@ fun MessageBubbleComposable(
                     )
                 }
 
-                // Получаем URL медиа (приоритет: decryptedMediaUrl, затем mediaUrl)
-                val effectiveMediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
-
-                // Image
-                if (!effectiveMediaUrl.isNullOrEmpty() && message.type == "image") {
+                // Image - показываем если тип "image" или если URL указывает на изображение
+                if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "image") {
                     AsyncImage(
                         model = effectiveMediaUrl,
                         contentDescription = "Media",
@@ -328,20 +336,20 @@ fun MessageBubbleComposable(
                             .fillMaxWidth()
                             .heightIn(max = 200.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .padding(top = if (message.decryptedText != null) 8.dp else 0.dp),
+                            .padding(top = if (shouldShowText) 8.dp else 0.dp),
                         contentScale = ContentScale.Crop
                     )
                 }
 
                 // Video (thumbnail)
-                if (!effectiveMediaUrl.isNullOrEmpty() && message.type == "video") {
+                if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "video") {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 200.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color.Gray.copy(alpha = 0.3f))
-                            .padding(top = if (message.decryptedText != null) 8.dp else 0.dp),
+                            .padding(top = if (shouldShowText) 8.dp else 0.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -353,14 +361,38 @@ fun MessageBubbleComposable(
                     }
                 }
 
-                // Voice message player
-                if (message.type == "voice" && !effectiveMediaUrl.isNullOrEmpty()) {
+                // Voice/Audio message player
+                if (!effectiveMediaUrl.isNullOrEmpty() &&
+                    (detectedMediaType == "voice" || detectedMediaType == "audio")) {
                     VoiceMessagePlayer(
                         message = message,
                         voicePlayer = voicePlayer,
                         textColor = textColor,
                         mediaUrl = effectiveMediaUrl
                     )
+                }
+
+                // File attachment
+                if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "file") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = if (shouldShowText) 8.dp else 0.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.InsertDriveFile,
+                            contentDescription = "File",
+                            tint = textColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = effectiveMediaUrl.substringAfterLast("/"),
+                            color = textColor,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
 
                 Text(
@@ -646,4 +678,80 @@ fun MediaOptionButton(
 private fun formatTime(timestamp: Long): String {
     val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
     return sdf.format(java.util.Date(timestamp * 1000))
+}
+
+/**
+ * Определяет тип медиа по URL или явному типу сообщения.
+ * Если message.type указан явно (не "text"), используем его.
+ * Иначе определяем по расширению файла или пути в URL.
+ */
+private fun detectMediaType(url: String?, messageType: String): String {
+    // Если тип явно указан и это не "text", используем его
+    if (messageType != "text" && messageType.isNotEmpty()) {
+        return messageType
+    }
+
+    // Если URL пустой, возвращаем "text"
+    if (url.isNullOrEmpty()) {
+        return "text"
+    }
+
+    val lowerUrl = url.lowercase()
+
+    // Определяем по расширению файла
+    return when {
+        // Изображения
+        lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
+        lowerUrl.endsWith(".png") || lowerUrl.endsWith(".gif") ||
+        lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".bmp") ||
+        lowerUrl.contains("/upload/photos/") -> "image"
+
+        // Видео
+        lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".webm") ||
+        lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".avi") ||
+        lowerUrl.endsWith(".mkv") || lowerUrl.contains("/upload/videos/") -> "video"
+
+        // Аудио/Голос
+        lowerUrl.endsWith(".mp3") || lowerUrl.endsWith(".wav") ||
+        lowerUrl.endsWith(".ogg") || lowerUrl.endsWith(".m4a") ||
+        lowerUrl.endsWith(".aac") || lowerUrl.contains("/upload/sounds/") -> "audio"
+
+        // Файлы
+        lowerUrl.endsWith(".pdf") || lowerUrl.endsWith(".doc") ||
+        lowerUrl.endsWith(".docx") || lowerUrl.endsWith(".xls") ||
+        lowerUrl.endsWith(".xlsx") || lowerUrl.endsWith(".zip") ||
+        lowerUrl.endsWith(".rar") || lowerUrl.contains("/upload/files/") -> "file"
+
+        else -> "text"
+    }
+}
+
+/**
+ * Проверяет, является ли текст только URL медиа-файла.
+ * Если да, не нужно показывать текст отдельно (покажем только медиа).
+ */
+private fun isOnlyMediaUrl(text: String): Boolean {
+    val trimmed = text.trim()
+
+    // Если текст не похож на URL, это не чистый URL
+    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+        return false
+    }
+
+    // Проверяем, содержит ли URL только медиа-ресурс без дополнительного текста
+    val lowerText = trimmed.lowercase()
+    val isMediaUrl = lowerText.contains("/upload/photos/") ||
+        lowerText.contains("/upload/videos/") ||
+        lowerText.contains("/upload/sounds/") ||
+        lowerText.contains("/upload/files/") ||
+        lowerText.endsWith(".jpg") ||
+        lowerText.endsWith(".jpeg") ||
+        lowerText.endsWith(".png") ||
+        lowerText.endsWith(".gif") ||
+        lowerText.endsWith(".mp4") ||
+        lowerText.endsWith(".mp3") ||
+        lowerText.endsWith(".webm")
+
+    // Если это URL медиа и нет дополнительного текста после URL
+    return isMediaUrl && !trimmed.contains(" ") && !trimmed.contains("\n")
 }

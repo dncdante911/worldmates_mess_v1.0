@@ -307,8 +307,19 @@ fun MessageBubbleComposable(
             Column(
                 modifier = Modifier.padding(10.dp)
             ) {
-                // Получаем URL медиа (приоритет: decryptedMediaUrl, затем mediaUrl)
-                val effectiveMediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+                // Получаем URL медиа из разных источников
+                // 1. Сначала пытаемся использовать decryptedMediaUrl
+                var effectiveMediaUrl = message.decryptedMediaUrl
+
+                // 2. Если пусто, проверяем mediaUrl
+                if (effectiveMediaUrl.isNullOrEmpty()) {
+                    effectiveMediaUrl = message.mediaUrl
+                }
+
+                // 3. Если все еще пусто, пытаемся извлечь URL из decryptedText
+                if (effectiveMediaUrl.isNullOrEmpty() && !message.decryptedText.isNullOrEmpty()) {
+                    effectiveMediaUrl = extractMediaUrlFromText(message.decryptedText!!)
+                }
 
                 // Определяем тип медиа по URL (для случаев, когда message.type == "text")
                 val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
@@ -316,7 +327,8 @@ fun MessageBubbleComposable(
                 // Показываем текст только если это не чистый URL медиа
                 val shouldShowText = message.decryptedText != null &&
                     message.decryptedText!!.isNotEmpty() &&
-                    !isOnlyMediaUrl(message.decryptedText!!)
+                    !isOnlyMediaUrl(message.decryptedText!!) &&
+                    detectedMediaType == "text"  // Не показываем текст, если это URL медиа
 
                 // Text message
                 if (shouldShowText) {
@@ -723,6 +735,43 @@ private fun detectMediaType(url: String?, messageType: String): String {
         lowerUrl.endsWith(".rar") || lowerUrl.contains("/upload/files/") -> "file"
 
         else -> "text"
+    }
+}
+
+/**
+ * Извлекает URL медиа-файла из текста сообщения.
+ * Возвращает URL если он найден, иначе null.
+ */
+private fun extractMediaUrlFromText(text: String): String? {
+    val trimmed = text.trim()
+
+    // Проверяем, является ли весь текст URL
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        val lowerText = trimmed.lowercase()
+        if (lowerText.contains("/upload/photos/") ||
+            lowerText.contains("/upload/videos/") ||
+            lowerText.contains("/upload/sounds/") ||
+            lowerText.contains("/upload/files/") ||
+            lowerText.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|mp3|wav|ogg|pdf|doc|docx)$"))) {
+            return trimmed
+        }
+    }
+
+    // Пытаемся найти URL медиа внутри текста
+    val urlPattern = "(https?://[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+)".toRegex()
+    val match = urlPattern.find(trimmed)
+
+    return match?.value?.let { url ->
+        val lowerUrl = url.lowercase()
+        if (lowerUrl.contains("/upload/photos/") ||
+            lowerUrl.contains("/upload/videos/") ||
+            lowerUrl.contains("/upload/sounds/") ||
+            lowerUrl.contains("/upload/files/") ||
+            lowerUrl.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|mp3|wav|ogg|pdf|doc|docx)$"))) {
+            url
+        } else {
+            null
+        }
     }
 }
 

@@ -156,7 +156,7 @@ class MediaUploader(private val context: Context) {
 
                 when (messageResponse.apiStatus) {
                     200 -> {
-                        val firstMessage = messageResponse.messages?.firstOrNull()
+                        val firstMessage = messageResponse.allMessages?.firstOrNull()
                         if (firstMessage != null) {
                             Log.d(TAG, "Повідомлення з медіа відправлено успішно")
                             UploadResult.Success(
@@ -165,6 +165,7 @@ class MediaUploader(private val context: Context) {
                                 thumbnail = null
                             )
                         } else {
+                            Log.e(TAG, "API повернув 200, але список повідомлень пустий")
                             UploadResult.Error("Повідомлення відправлено, але не отримано відповідь")
                         }
                     }

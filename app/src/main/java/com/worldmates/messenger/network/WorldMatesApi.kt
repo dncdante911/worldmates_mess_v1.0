@@ -62,87 +62,105 @@ interface WorldMatesApi {
         @Field("before_message_id") beforeMessageId: Long = 0
     ): MessageListResponse
 
-    // ==================== GROUPS ====================
+    // ==================== GROUP CHATS (Messenger Groups) ====================
+    // Uses /api/group-chat endpoint with 'type' parameter
 
     @FormUrlEncoded
-    @POST("?type=get_groups")
+    @POST("/api/group-chat")
     suspend fun getGroups(
         @Query("access_token") accessToken: String,
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "get_list",
         @Field("limit") limit: Int = 50,
         @Field("offset") offset: Int = 0
     ): GroupListResponse
 
     @FormUrlEncoded
-    @POST("?type=get_group_details")
+    @POST("/api/group-chat")
     suspend fun getGroupDetails(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "get_by_id",
+        @Field("id") groupId: Long
     ): GroupDetailResponse
 
     @FormUrlEncoded
-    @POST("?type=create_group")
+    @POST("/api/group-chat")
     suspend fun createGroup(
         @Query("access_token") accessToken: String,
-        @Field("name") name: String,
-        @Field("description") description: String? = null,
-        @Field("is_private") isPrivate: Int = 0,
-        @Field("member_ids") memberIds: String = "" // JSON array or comma-separated
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "create",
+        @Field("group_name") name: String,
+        @Field("parts") memberIds: String = "", // Comma-separated user IDs
+        @Field("group_type") groupType: String = "group" // "group" or "channel"
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("?type=update_group")
+    @POST("/api/group-chat")
     suspend fun updateGroup(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
-        @Field("name") name: String? = null,
-        @Field("description") description: String? = null,
-        @Field("avatar") avatarUrl: String? = null
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "edit",
+        @Field("id") groupId: Long,
+        @Field("group_name") name: String
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("?type=delete_group")
+    @POST("/api/group-chat")
     suspend fun deleteGroup(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "delete",
+        @Field("id") groupId: Long
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("?type=add_group_member")
+    @POST("/api/group-chat")
     suspend fun addGroupMember(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
-        @Field("user_id") userId: Long
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "add_user",
+        @Field("id") groupId: Long,
+        @Field("parts") userIds: String // Comma-separated user IDs
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("?type=remove_group_member")
+    @POST("/api/group-chat")
     suspend fun removeGroupMember(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
-        @Field("user_id") userId: Long
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "remove_user",
+        @Field("id") groupId: Long,
+        @Field("parts") userIds: String // Comma-separated user IDs
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("?type=set_group_admin")
+    @POST("/api/group-chat")
     suspend fun setGroupAdmin(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "set_admin",
+        @Field("id") groupId: Long,
         @Field("user_id") userId: Long,
-        @Field("role") role: String = "admin" // "admin", "moderator", "member"
+        @Field("role") role: String = "admin"
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("?type=leave_group")
+    @POST("/api/group-chat")
     suspend fun leaveGroup(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "leave",
+        @Field("id") groupId: Long
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("?type=get_group_members")
+    @POST("/api/group-chat")
     suspend fun getGroupMembers(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
+        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
+        @Field("type") type: String = "get_members",
+        @Field("id") groupId: Long,
         @Field("limit") limit: Int = 100,
         @Field("offset") offset: Int = 0
     ): GroupDetailResponse

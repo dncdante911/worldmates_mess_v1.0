@@ -160,11 +160,11 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Group Chat API: uses 'group_name' and 'parts' parameters
+                // Note: description is not supported in group-chat API (only in social groups)
                 val response = RetrofitClient.apiService.createGroup(
                     accessToken = UserSession.accessToken!!,
                     name = name,
-                    description = description.ifBlank { null },
-                    isPrivate = if (isPrivate) 1 else 0,
                     memberIds = memberIds.joinToString(",")
                 )
 

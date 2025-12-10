@@ -85,6 +85,10 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                                     msg.encryptedText,
                                     msg.timeStamp
                                 )
+                                Log.d("ChatsViewModel", "🔐 Дешифрування для ${chat.username}:")
+                                Log.d("ChatsViewModel", "   Зашифровано: ${msg.encryptedText}")
+                                Log.d("ChatsViewModel", "   Timestamp: ${msg.timeStamp}")
+                                Log.d("ChatsViewModel", "   Дешифровано: $decryptedText")
                                 msg.copy(decryptedText = decryptedText)
                             }
                             chat.copy(lastMessage = lastMessage)

@@ -51,7 +51,7 @@ try {
         exit();
     }
 
-    $allowed_types = array('audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/m4a', 'audio/mp4', 'audio/x-m4a', 'audio/mp4a-latm', 'audio/3gpp', 'audio/3gpp2', 'video/3gpp', 'application/octet-stream');
+    $allowed_types = array('audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/m4a', 'audio/mp4', 'audio/x-m4a', 'audio/mp4a-latm', 'audio/3gpp', 'audio/3gpp2', 'video/3gpp', 'video/mp4', 'application/octet-stream');
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $detected_type = finfo_file($finfo, $tmp_name);
     finfo_close($finfo);

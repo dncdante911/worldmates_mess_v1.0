@@ -51,7 +51,7 @@ try {
         exit();
     }
 
-    $allowed_types = array('audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/m4a');
+    $allowed_types = array('audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/m4a', 'audio/mp4', 'audio/x-m4a', 'audio/mp4a-latm');
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $detected_type = finfo_file($finfo, $tmp_name);
     finfo_close($finfo);

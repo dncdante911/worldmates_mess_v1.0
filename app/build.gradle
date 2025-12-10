@@ -36,16 +36,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-        // Отключаем incremental compilation для обхода JDK image transform проблемы
-        incremental = false
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     kotlinOptions {
-        jvmTarget = '17'
-        // Отключаем incremental compilation в Kotlin тоже
-        freeCompilerArgs += ['-Xno-call-assertions', '-Xno-param-assertions', '-Xno-receiver-assertions']
+        jvmTarget = '21'
     }
 
     buildFeatures {
@@ -54,6 +50,7 @@ android {
     }
 
     composeOptions {
+        // Kotlin 2.0+ автоматично управляє версією Compose Compiler
         kotlinCompilerExtensionVersion = "1.5.14"
     }
 

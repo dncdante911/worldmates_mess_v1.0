@@ -127,9 +127,19 @@ fun ChatsScreen(
     val groups by groupsViewModel.groupList.collectAsState()
     val isLoadingGroups by groupsViewModel.isLoading.collectAsState()
     val errorGroups by groupsViewModel.error.collectAsState()
+    val availableUsers by groupsViewModel.availableUsers.collectAsState()
+    val isCreatingGroup by groupsViewModel.isCreatingGroup.collectAsState()
 
     var searchText by remember { mutableStateOf("") }
     var showGroups by remember { mutableStateOf(false) }
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
+
+    // Load available users when switching to groups tab
+    LaunchedEffect(showGroups) {
+        if (showGroups) {
+            groupsViewModel.loadAvailableUsers()
+        }
+    }
 
     val filteredChats = chats.filter {
         it.username.contains(searchText, ignoreCase = true)
@@ -138,11 +148,28 @@ fun ChatsScreen(
         it.name.contains(searchText, ignoreCase = true)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-    ) {
+    Scaffold(
+        floatingActionButton = {
+            if (showGroups) {
+                FloatingActionButton(
+                    onClick = { showCreateGroupDialog = true },
+                    containerColor = Color(0xFF0084FF)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Створити групу",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color(0xFFF5F5F5))
+        ) {
         // Header
         TopAppBar(
             title = { Text("Повідомлення") },
@@ -303,7 +330,7 @@ fun ChatsScreen(
                         }
                     }
                 } else if (filteredGroups.isEmpty()) {
-                    EmptyGroupsState()
+                    EmptyGroupsState(onCreateClick = { showCreateGroupDialog = true })
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth()
@@ -334,6 +361,27 @@ fun ChatsScreen(
                 }
             }
         }
+
+        // Create Group Dialog
+        if (showCreateGroupDialog) {
+            com.worldmates.messenger.ui.groups.CreateGroupDialog(
+                onDismiss = { showCreateGroupDialog = false },
+                availableUsers = availableUsers,
+                onCreateGroup = { name, description, memberIds, isPrivate ->
+                    groupsViewModel.createGroup(
+                        name = name,
+                        description = description,
+                        memberIds = memberIds,
+                        isPrivate = isPrivate,
+                        onSuccess = {
+                            showCreateGroupDialog = false
+                        }
+                    )
+                },
+                isLoading = isCreatingGroup
+            )
+        }
+    }
     }
 }
 
@@ -549,7 +597,7 @@ fun GroupItemRow(
 }
 
 @Composable
-fun EmptyGroupsState() {
+fun EmptyGroupsState(onCreateClick: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -576,6 +624,32 @@ fun EmptyGroupsState() {
             color = Color.Gray,
             modifier = Modifier.padding(top = 8.dp)
         )
+
+        // Велика кнопка створення групи
+        Button(
+            onClick = onCreateClick,
+            modifier = Modifier
+                .padding(top = 24.dp)
+                .fillMaxWidth(0.8f)
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF0084FF)
+            )
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Створити групу",
+                fontSize = 16.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 

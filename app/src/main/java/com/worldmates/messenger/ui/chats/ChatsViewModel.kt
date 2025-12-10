@@ -89,7 +89,10 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                                 Log.d("ChatsViewModel", "   Зашифровано: ${msg.encryptedText}")
                                 Log.d("ChatsViewModel", "   Timestamp: ${msg.timeStamp}")
                                 Log.d("ChatsViewModel", "   Дешифровано: $decryptedText")
-                                msg.copy(decryptedText = decryptedText)
+
+                                // Конвертуємо URL медіа в зрозумілі мітки
+                                val displayText = convertMediaUrlToLabel(decryptedText)
+                                msg.copy(decryptedText = displayText)
                             }
                             chat.copy(lastMessage = lastMessage)
                         }
@@ -196,6 +199,35 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
      */
     fun clearError() {
         _error.value = null
+    }
+
+    /**
+     * Конвертує URL медіа в зрозумілі мітки для відображення в списку чатів
+     */
+    private fun convertMediaUrlToLabel(text: String): String {
+        if (!text.startsWith("http://") && !text.startsWith("https://")) {
+            return text
+        }
+
+        val lowerText = text.lowercase()
+
+        return when {
+            lowerText.contains("/upload/photos/") ||
+            lowerText.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp|bmp)$")) -> "📷 Зображення"
+
+            lowerText.contains("/upload/videos/") ||
+            lowerText.matches(Regex(".*\\.(mp4|webm|mov|avi|mkv)$")) -> "🎬 Відео"
+
+            lowerText.contains("/upload/sounds/") ||
+            lowerText.matches(Regex(".*\\.(mp3|wav|ogg|m4a|aac)$")) -> "🎵 Аудіо"
+
+            lowerText.matches(Regex(".*\\.gif$")) -> "🎞️ GIF"
+
+            lowerText.contains("/upload/files/") ||
+            lowerText.matches(Regex(".*\\.(pdf|doc|docx|xls|xlsx|zip|rar)$")) -> "📎 Файл"
+
+            else -> text
+        }
     }
 
     override fun onCleared() {

@@ -9,9 +9,9 @@ import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.CreateGroupRequest
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.data.model.GroupMember
-import com.worldmates.messenger.data.model.User
 import com.worldmates.messenger.data.model.toGroup
 import com.worldmates.messenger.network.RetrofitClient
+import com.worldmates.messenger.network.SearchUser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -27,8 +27,8 @@ class GroupsViewModel : ViewModel() {
     private val _groupMembers = MutableStateFlow<List<GroupMember>>(emptyList())
     val groupMembers: StateFlow<List<GroupMember>> = _groupMembers
 
-    private val _availableUsers = MutableStateFlow<List<User>>(emptyList())
-    val availableUsers: StateFlow<List<User>> = _availableUsers
+    private val _availableUsers = MutableStateFlow<List<SearchUser>>(emptyList())
+    val availableUsers: StateFlow<List<SearchUser>> = _availableUsers
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -126,10 +126,10 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Використовуємо існуючий API для отримання користувачів (followers/following)
-                val response = RetrofitClient.apiService.getFollowers(
+                // Використовуємо searchUsers з порожнім запитом для отримання всіх користувачів
+                val response = RetrofitClient.apiService.searchUsers(
                     accessToken = UserSession.accessToken!!,
-                    userId = UserSession.userId?.toLong() ?: 0L,
+                    query = "",
                     limit = 1000
                 )
 
@@ -147,7 +147,7 @@ class GroupsViewModel : ViewModel() {
     fun createGroup(
         name: String,
         description: String,
-        memberIds: List<Int>,
+        memberIds: List<Long>,
         isPrivate: Boolean,
         onSuccess: () -> Unit
     ) {
@@ -165,7 +165,7 @@ class GroupsViewModel : ViewModel() {
                     name = name,
                     description = description.ifBlank { null },
                     isPrivate = if (isPrivate) 1 else 0,
-                    memberIds = memberIds.map { it.toLong() }.joinToString(",")
+                    memberIds = memberIds.joinToString(",")
                 )
 
                 if (response.apiStatus == 200) {

@@ -188,9 +188,7 @@ class GroupsViewModel : ViewModel() {
 
     fun updateGroup(
         groupId: Long,
-        name: String?,
-        description: String?,
-        avatarUrl: String?
+        name: String
     ) {
         if (UserSession.accessToken == null) {
             _error.value = "Користувач не авторизований"
@@ -201,12 +199,11 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Group Chat API: only group_name can be updated
                 val response = RetrofitClient.apiService.updateGroup(
                     accessToken = UserSession.accessToken!!,
                     groupId = groupId,
-                    name = name,
-                    description = description,
-                    avatarUrl = avatarUrl
+                    name = name
                 )
 
                 if (response.apiStatus == 200) {
@@ -267,10 +264,11 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Group Chat API: uses 'parts' parameter (comma-separated user IDs)
                 val response = RetrofitClient.apiService.addGroupMember(
                     accessToken = UserSession.accessToken!!,
                     groupId = groupId,
-                    userId = userId
+                    userIds = userId.toString()
                 )
 
                 if (response.apiStatus == 200) {
@@ -295,10 +293,11 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Group Chat API: uses 'parts' parameter (comma-separated user IDs)
                 val response = RetrofitClient.apiService.removeGroupMember(
                     accessToken = UserSession.accessToken!!,
                     groupId = groupId,
-                    userId = userId
+                    userIds = userId.toString()
                 )
 
                 if (response.apiStatus == 200) {

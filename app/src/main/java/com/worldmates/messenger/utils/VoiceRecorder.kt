@@ -238,6 +238,9 @@ class VoicePlayer(private val context: Context) {
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration
 
+    private val _currentPlayingUrl = MutableStateFlow<String?>(null)
+    val currentPlayingUrl: StateFlow<String?> = _currentPlayingUrl
+
     sealed class PlaybackState {
         object Idle : PlaybackState()
         object Playing : PlaybackState()
@@ -274,6 +277,7 @@ class VoicePlayer(private val context: Context) {
 
                 _duration.value = duration.toLong()
                 _playbackState.value = PlaybackState.Playing
+                _currentPlayingUrl.value = filePathOrUrl
             }
 
             updatePosition()
@@ -343,6 +347,7 @@ class VoicePlayer(private val context: Context) {
             mediaPlayer = null
             _playbackState.value = PlaybackState.Stopped
             _currentPosition.value = 0
+            _currentPlayingUrl.value = null
             Log.d(TAG, "Playback stopped")
             true
         } catch (e: Exception) {

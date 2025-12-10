@@ -694,7 +694,12 @@ fun VoiceMessagePlayerUI(
     val playbackState by voicePlayer.playbackState.collectAsState()
     val currentPosition by voicePlayer.currentPosition.collectAsState()
     val duration by voicePlayer.duration.collectAsState()
+    val currentPlayingUrl by voicePlayer.currentPlayingUrl.collectAsState()
     val scope = rememberCoroutineScope()
+
+    // Визначаємо, чи це саме той трек, що зараз грає
+    val isThisTrackPlaying = currentPlayingUrl == mediaUrl
+    val isPlaying = isThisTrackPlaying && playbackState == VoicePlayer.PlaybackState.Playing
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -705,7 +710,7 @@ fun VoiceMessagePlayerUI(
         IconButton(
             onClick = {
                 scope.launch {
-                    if (playbackState == VoicePlayer.PlaybackState.Playing) {
+                    if (isPlaying) {
                         voicePlayer.pause()
                     } else {
                         voicePlayer.play(mediaUrl)
@@ -715,8 +720,7 @@ fun VoiceMessagePlayerUI(
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
-                imageVector = if (playbackState == VoicePlayer.PlaybackState.Playing)
-                    Icons.Default.Pause else Icons.Default.PlayArrow,
+                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = "Play",
                 tint = textColor,
                 modifier = Modifier.size(20.dp)
@@ -724,16 +728,16 @@ fun VoiceMessagePlayerUI(
         }
 
         Slider(
-            value = currentPosition.toFloat(),
-            onValueChange = { voicePlayer.seek(it.toLong()) },
-            valueRange = 0f..duration.toFloat(),
+            value = if (isThisTrackPlaying) currentPosition.toFloat() else 0f,
+            onValueChange = { if (isThisTrackPlaying) voicePlayer.seek(it.toLong()) },
+            valueRange = 0f..(if (isThisTrackPlaying) duration.toFloat() else 100f),
             modifier = Modifier
                 .weight(1f)
                 .height(4.dp)
         )
 
         Text(
-            text = voicePlayer.formatTime(duration),
+            text = voicePlayer.formatTime(if (isThisTrackPlaying) duration else 0),
             color = textColor,
             fontSize = 10.sp,
             modifier = Modifier.padding(start = 4.dp)

@@ -282,6 +282,8 @@ fun FullscreenVideoPlayer(
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(true) }
     var showControls by remember { mutableStateOf(true) }
+    var currentPosition by remember { mutableStateOf(0L) }
+    var duration by remember { mutableStateOf(0L) }
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -297,6 +299,15 @@ fun FullscreenVideoPlayer(
                     isPlaying = playing
                 }
             })
+        }
+    }
+
+    // Оновлення позиції та тривалості
+    LaunchedEffect(exoPlayer) {
+        while (true) {
+            currentPosition = exoPlayer.currentPosition
+            duration = exoPlayer.duration.coerceAtLeast(0)
+            kotlinx.coroutines.delay(100)
         }
     }
 
@@ -435,8 +446,78 @@ fun FullscreenVideoPlayer(
                     }
                 }
             }
+
+            // 📊 НИЖНІЙ БАР З ЧАСОВОЮ ШКАЛОЮ
+            AnimatedVisibility(
+                visible = showControls,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.7f)
+                                )
+                            )
+                        )
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Слайдер
+                        Slider(
+                            value = currentPosition.toFloat(),
+                            onValueChange = { newPosition ->
+                                exoPlayer.seekTo(newPosition.toLong())
+                            },
+                            valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = Color(0xFF0084FF),
+                                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Час
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = formatVideoTime(currentPosition),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = formatVideoTime(duration),
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+// Функція для форматування часу відео (MM:SS)
+private fun formatVideoTime(millis: Long): String {
+    if (millis <= 0) return "0:00"
+    val totalSeconds = millis / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format("%d:%02d", minutes, seconds)
 }
 
 /**

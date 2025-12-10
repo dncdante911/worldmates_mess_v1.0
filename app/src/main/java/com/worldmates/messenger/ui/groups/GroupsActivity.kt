@@ -74,6 +74,15 @@ fun GroupsScreenWrapper(
     val groups by viewModel.groupList.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val availableUsers by viewModel.availableUsers.collectAsState()
+    val isCreatingGroup by viewModel.isCreatingGroup.collectAsState()
+
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    // Load available users when screen opens
+    LaunchedEffect(Unit) {
+        viewModel.loadAvailableUsers()
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -84,11 +93,31 @@ fun GroupsScreenWrapper(
                 }
             },
             actions = {
-                IconButton(onClick = { /* TODO: Створити групу */ }) {
+                IconButton(onClick = { showCreateDialog = true }) {
                     Icon(Icons.Default.Add, contentDescription = "New Group")
                 }
             }
         )
+
+        // Create Group Dialog
+        if (showCreateDialog) {
+            CreateGroupDialog(
+                onDismiss = { showCreateDialog = false },
+                availableUsers = availableUsers,
+                onCreateGroup = { name, description, memberIds, isPrivate ->
+                    viewModel.createGroup(
+                        name = name,
+                        description = description,
+                        memberIds = memberIds,
+                        isPrivate = isPrivate,
+                        onSuccess = {
+                            showCreateDialog = false
+                        }
+                    )
+                },
+                isLoading = isCreatingGroup
+            )
+        }
 
         if (isLoading && groups.isEmpty()) {
             Box(

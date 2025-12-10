@@ -264,7 +264,8 @@ fun MessagesScreenContent(
                 MessageBubbleRow(
                     message = message,
                     voicePlayer = voicePlayer,
-                    fileManager = fileManager
+                    fileManager = fileManager,
+                    viewModel = viewModel
                 )
             }
         }
@@ -411,7 +412,8 @@ fun MessagesTopBar(
 fun MessageBubbleRow(
     message: Message,
     voicePlayer: VoicePlayer,
-    fileManager: FileManager
+    fileManager: FileManager,
+    viewModel: MessagesViewModel
 ) {
     val isOwn = message.fromId == UserSession.userId
     val bgColor = if (isOwn) Color(0xFF0084FF) else Color(0xFFE5E5EA)
@@ -419,6 +421,10 @@ fun MessageBubbleRow(
 
     var showFullscreenImage by remember { mutableStateOf(false) }
     var showVideoPlayer by remember { mutableStateOf(false) }
+    var showMessageMenu by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var editText by remember { mutableStateOf("") }
 
     Row(
         modifier = Modifier
@@ -429,7 +435,11 @@ fun MessageBubbleRow(
         Surface(
             modifier = Modifier
                 .widthIn(max = 280.dp)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 8.dp)
+                .combinedClickable(
+                    onClick = { },
+                    onLongClick = { showMessageMenu = true }
+                ),
             shape = RoundedCornerShape(12.dp),
             color = bgColor
         ) {
@@ -561,6 +571,115 @@ fun MessageBubbleRow(
                 )
             }
         }
+    }
+
+    // ========== МЕНЮ ПОВІДОМЛЕННЯ (ДОВГЕ НАТИСКАННЯ) ==========
+    if (showMessageMenu) {
+        AlertDialog(
+            onDismissRequest = { showMessageMenu = false },
+            title = { Text("Дії з повідомленням") },
+            text = {
+                Column {
+                    // Редагувати (тільки свої текстові повідомлення)
+                    if (isOwn && message.decryptedText?.isNotEmpty() == true) {
+                        TextButton(
+                            onClick = {
+                                editText = message.decryptedText ?: ""
+                                showMessageMenu = false
+                                showEditDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Редагувати")
+                        }
+                    }
+
+                    // Видалити
+                    TextButton(
+                        onClick = {
+                            showMessageMenu = false
+                            showDeleteDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Видалити", color = Color.Red)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMessageMenu = false }) {
+                    Text("Скасувати")
+                }
+            }
+        )
+    }
+
+    // ========== ДІАЛОГ РЕДАГУВАННЯ ==========
+    if (showEditDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Редагувати повідомлення") },
+            text = {
+                TextField(
+                    value = editText,
+                    onValueChange = { editText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Введіть текст...") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (editText.isNotBlank()) {
+                            viewModel.editMessage(message.id, editText)
+                            showEditDialog = false
+                        }
+                    }
+                ) {
+                    Text("Зберегти")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
+                    Text("Скасувати")
+                }
+            }
+        )
+    }
+
+    // ========== ДІАЛОГ ВИДАЛЕННЯ ==========
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Видалити повідомлення?") },
+            text = {
+                Text(
+                    if (isOwn)
+                        "Це повідомлення буде видалено для всіх учасників розмови."
+                    else
+                        "Це повідомлення буде видалено тільки для вас."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteMessage(message.id)
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Видалити", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Скасувати")
+                }
+            }
+        )
     }
 }
 

@@ -235,6 +235,95 @@ class MessagesViewModel(application: Application) :
     }
 
     /**
+     * Редагує повідомлення
+     */
+    fun editMessage(messageId: Long, newText: String) {
+        if (UserSession.accessToken == null || newText.isBlank()) {
+            _error.value = "Не можна зберегти порожнє повідомлення"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.editMessage(
+                    accessToken = UserSession.accessToken!!,
+                    messageId = messageId,
+                    newText = newText
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо повідомлення в локальному списку
+                    val currentMessages = _messages.value.toMutableList()
+                    val index = currentMessages.indexOfFirst { it.id == messageId }
+
+                    if (index != -1) {
+                        val updatedMessage = currentMessages[index].copy(
+                            encryptedText = newText,
+                            decryptedText = newText
+                        )
+                        currentMessages[index] = updatedMessage
+                        _messages.value = currentMessages
+                        Log.d("MessagesViewModel", "Повідомлення відредаговано: $messageId")
+                    }
+
+                    _error.value = null
+                } else {
+                    _error.value = response.errors?.errorText ?: "Не вдалося відредагувати повідомлення"
+                    Log.e("MessagesViewModel", "Edit Error: ${response.errors?.errorText}")
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e("MessagesViewModel", "Помилка редагування повідомлення", e)
+            }
+        }
+    }
+
+    /**
+     * Видаляє повідомлення
+     */
+    fun deleteMessage(messageId: Long) {
+        if (UserSession.accessToken == null) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.deleteMessage(
+                    accessToken = UserSession.accessToken!!,
+                    messageId = messageId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Видаляємо повідомлення з локального списку
+                    val currentMessages = _messages.value.toMutableList()
+                    currentMessages.removeAll { it.id == messageId }
+                    _messages.value = currentMessages
+                    Log.d("MessagesViewModel", "Повідомлення видалено: $messageId")
+
+                    _error.value = null
+                } else {
+                    _error.value = response.errors?.errorText ?: "Не вдалося видалити повідомлення"
+                    Log.e("MessagesViewModel", "Delete Error: ${response.errors?.errorText}")
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e("MessagesViewModel", "Помилка видалення повідомлення", e)
+            }
+        }
+    }
+
+    /**
      * Загружает и отправляет медиа-файл
      */
     fun uploadAndSendMedia(file: File, mediaType: String) {

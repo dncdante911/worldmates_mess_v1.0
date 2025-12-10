@@ -84,63 +84,78 @@ fun GroupsScreenWrapper(
         viewModel.loadAvailableUsers()
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Групи") },
-            navigationIcon = {
-                IconButton(onClick = onBackPressed) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Групи") },
+                navigationIcon = {
+                    IconButton(onClick = onBackPressed) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 }
-            },
-            actions = {
-                IconButton(onClick = { showCreateDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "New Group")
-                }
-            }
-        )
-
-        // Create Group Dialog
-        if (showCreateDialog) {
-            CreateGroupDialog(
-                onDismiss = { showCreateDialog = false },
-                availableUsers = availableUsers,
-                onCreateGroup = { name, description, memberIds, isPrivate ->
-                    viewModel.createGroup(
-                        name = name,
-                        description = description,
-                        memberIds = memberIds,
-                        isPrivate = isPrivate,
-                        onSuccess = {
-                            showCreateDialog = false
-                        }
-                    )
-                },
-                isLoading = isCreatingGroup
             )
-        }
-
-        if (isLoading && groups.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showCreateDialog = true },
+                containerColor = Color(0xFF0084FF)
             ) {
-                CircularProgressIndicator()
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Створити групу",
+                    tint = Color.White
+                )
             }
-        } else if (error != null) {
-            Surface(color = Color(0xFFFFCDD2), modifier = Modifier.fillMaxWidth()) {
-                Text(error!!, color = Color.Red, modifier = Modifier.padding(16.dp))
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Create Group Dialog
+            if (showCreateDialog) {
+                CreateGroupDialog(
+                    onDismiss = { showCreateDialog = false },
+                    availableUsers = availableUsers,
+                    onCreateGroup = { name, description, memberIds, isPrivate ->
+                        viewModel.createGroup(
+                            name = name,
+                            description = description,
+                            memberIds = memberIds,
+                            isPrivate = isPrivate,
+                            onSuccess = {
+                                showCreateDialog = false
+                            }
+                        )
+                    },
+                    isLoading = isCreatingGroup
+                )
             }
-        } else if (groups.isEmpty()) {
-            EmptyGroupsState()
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(groups) { group ->
-                    GroupCard(
-                        group = group,
-                        onClick = { onGroupClick(group) }
-                    )
+
+            if (isLoading && groups.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (error != null) {
+                Surface(color = Color(0xFFFFCDD2), modifier = Modifier.fillMaxWidth()) {
+                    Text(error!!, color = Color.Red, modifier = Modifier.padding(16.dp))
+                }
+            } else if (groups.isEmpty()) {
+                EmptyGroupsState()
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(groups) { group ->
+                        GroupCard(
+                            group = group,
+                            onClick = { onGroupClick(group) }
+                        )
+                    }
                 }
             }
         }

@@ -264,7 +264,8 @@ fun MessagesScreenContent(
                 MessageBubbleRow(
                     message = message,
                     voicePlayer = voicePlayer,
-                    fileManager = fileManager
+                    fileManager = fileManager,
+                    viewModel = viewModel
                 )
             }
         }
@@ -411,7 +412,8 @@ fun MessagesTopBar(
 fun MessageBubbleRow(
     message: Message,
     voicePlayer: VoicePlayer,
-    fileManager: FileManager
+    fileManager: FileManager,
+    viewModel: MessagesViewModel
 ) {
     val isOwn = message.fromId == UserSession.userId
     val bgColor = if (isOwn) Color(0xFF0084FF) else Color(0xFFE5E5EA)
@@ -419,6 +421,10 @@ fun MessageBubbleRow(
 
     var showFullscreenImage by remember { mutableStateOf(false) }
     var showVideoPlayer by remember { mutableStateOf(false) }
+    var showMessageMenu by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var editText by remember { mutableStateOf("") }
 
     Row(
         modifier = Modifier
@@ -429,7 +435,11 @@ fun MessageBubbleRow(
         Surface(
             modifier = Modifier
                 .widthIn(max = 280.dp)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 8.dp)
+                .combinedClickable(
+                    onClick = { },
+                    onLongClick = { showMessageMenu = true }
+                ),
             shape = RoundedCornerShape(12.dp),
             color = bgColor
         ) {
@@ -546,7 +556,7 @@ fun MessageBubbleRow(
                     (detectedMediaType == "voice" || detectedMediaType == "audio" ||
                      message.type == Constants.MESSAGE_TYPE_VOICE)) {
                     VoiceMessagePlayerUI(
-                        message = message,
+                        mediaUrl = effectiveMediaUrl,
                         voicePlayer = voicePlayer,
                         textColor = textColor
                     )
@@ -562,11 +572,120 @@ fun MessageBubbleRow(
             }
         }
     }
+
+    // ========== МЕНЮ ПОВІДОМЛЕННЯ (ДОВГЕ НАТИСКАННЯ) ==========
+    if (showMessageMenu) {
+        AlertDialog(
+            onDismissRequest = { showMessageMenu = false },
+            title = { Text("Дії з повідомленням") },
+            text = {
+                Column {
+                    // Редагувати (тільки свої текстові повідомлення)
+                    if (isOwn && message.decryptedText?.isNotEmpty() == true) {
+                        TextButton(
+                            onClick = {
+                                editText = message.decryptedText ?: ""
+                                showMessageMenu = false
+                                showEditDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Редагувати")
+                        }
+                    }
+
+                    // Видалити
+                    TextButton(
+                        onClick = {
+                            showMessageMenu = false
+                            showDeleteDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Видалити", color = Color.Red)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMessageMenu = false }) {
+                    Text("Скасувати")
+                }
+            }
+        )
+    }
+
+    // ========== ДІАЛОГ РЕДАГУВАННЯ ==========
+    if (showEditDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Редагувати повідомлення") },
+            text = {
+                TextField(
+                    value = editText,
+                    onValueChange = { editText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Введіть текст...") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (editText.isNotBlank()) {
+                            viewModel.editMessage(message.id, editText)
+                            showEditDialog = false
+                        }
+                    }
+                ) {
+                    Text("Зберегти")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
+                    Text("Скасувати")
+                }
+            }
+        )
+    }
+
+    // ========== ДІАЛОГ ВИДАЛЕННЯ ==========
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Видалити повідомлення?") },
+            text = {
+                Text(
+                    if (isOwn)
+                        "Це повідомлення буде видалено для всіх учасників розмови."
+                    else
+                        "Це повідомлення буде видалено тільки для вас."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteMessage(message.id)
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Видалити", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Скасувати")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 fun VoiceMessagePlayerUI(
-    message: Message,
+    mediaUrl: String,
     voicePlayer: VoicePlayer,
     textColor: Color
 ) {
@@ -587,7 +706,7 @@ fun VoiceMessagePlayerUI(
                     if (playbackState == VoicePlayer.PlaybackState.Playing) {
                         voicePlayer.pause()
                     } else {
-                        voicePlayer.play(message.mediaUrl!!)
+                        voicePlayer.play(mediaUrl)
                     }
                 }
             },
@@ -747,15 +866,24 @@ private fun formatTime(timestamp: Long): String {
  * Определяет тип медиа по URL или явному типу сообщения
  */
 private fun detectMediaType(url: String?, messageType: String): String {
-    // Игнорируем типы "text", "right_text", "left_text" - проверяем URL
+    // Игнорируем все текстовые типы
     val isTextType = messageType.isEmpty() ||
                      messageType == "text" ||
                      messageType == "right_text" ||
                      messageType == "left_text"
 
-    // Если тип явно указан и это НЕ текстовый тип, используем его
-    if (!isTextType && messageType.isNotEmpty()) {
-        return messageType
+    // Конвертируем left/right варианты в базовые типы
+    val actualType = when (messageType) {
+        "left_image", "right_image" -> "image"
+        "left_video", "right_video" -> "video"
+        "left_audio", "right_audio", "left_voice", "right_voice" -> "audio"
+        "left_file", "right_file" -> "file"
+        else -> messageType
+    }
+
+    // Если получили базовый тип (не текстовый), используем его
+    if (!isTextType && actualType != messageType && actualType.isNotEmpty()) {
+        return actualType
     }
 
     // Если URL пустой, возвращаем "text"

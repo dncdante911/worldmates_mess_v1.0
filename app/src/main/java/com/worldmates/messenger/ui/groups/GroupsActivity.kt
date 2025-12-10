@@ -147,7 +147,7 @@ fun GroupsScreenWrapper(
                     Text(error!!, color = Color.Red, modifier = Modifier.padding(16.dp))
                 }
             } else if (groups.isEmpty()) {
-                EmptyGroupsState()
+                EmptyGroupsState(onCreateClick = { showCreateDialog = true })
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(groups) { group ->
@@ -231,7 +231,7 @@ fun GroupCard(
 }
 
 @Composable
-fun EmptyGroupsState() {
+fun EmptyGroupsState(onCreateClick: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -242,5 +242,30 @@ fun EmptyGroupsState() {
         Text("📭", fontSize = 48.sp, modifier = Modifier.padding(bottom = 16.dp))
         Text("Немаєте груп", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
         Text("Створіть групу для спілкування!", fontSize = 14.sp, color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
+
+        // Велика кнопка створення групи
+        Button(
+            onClick = onCreateClick,
+            modifier = Modifier
+                .padding(top = 24.dp)
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF0084FF)
+            )
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Створити групу",
+                fontSize = 16.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }

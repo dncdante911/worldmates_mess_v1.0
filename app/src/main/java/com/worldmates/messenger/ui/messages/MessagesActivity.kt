@@ -546,7 +546,7 @@ fun MessageBubbleRow(
                     (detectedMediaType == "voice" || detectedMediaType == "audio" ||
                      message.type == Constants.MESSAGE_TYPE_VOICE)) {
                     VoiceMessagePlayerUI(
-                        message = message,
+                        mediaUrl = effectiveMediaUrl,
                         voicePlayer = voicePlayer,
                         textColor = textColor
                     )
@@ -566,7 +566,7 @@ fun MessageBubbleRow(
 
 @Composable
 fun VoiceMessagePlayerUI(
-    message: Message,
+    mediaUrl: String,
     voicePlayer: VoicePlayer,
     textColor: Color
 ) {
@@ -587,7 +587,7 @@ fun VoiceMessagePlayerUI(
                     if (playbackState == VoicePlayer.PlaybackState.Playing) {
                         voicePlayer.pause()
                     } else {
-                        voicePlayer.play(message.mediaUrl!!)
+                        voicePlayer.play(mediaUrl)
                     }
                 }
             },

@@ -9,6 +9,7 @@ import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.CreateGroupRequest
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.data.model.GroupMember
+import com.worldmates.messenger.data.model.User
 import com.worldmates.messenger.data.model.toGroup
 import com.worldmates.messenger.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,8 +27,14 @@ class GroupsViewModel : ViewModel() {
     private val _groupMembers = MutableStateFlow<List<GroupMember>>(emptyList())
     val groupMembers: StateFlow<List<GroupMember>> = _groupMembers
 
+    private val _availableUsers = MutableStateFlow<List<User>>(emptyList())
+    val availableUsers: StateFlow<List<User>> = _availableUsers
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isCreatingGroup = MutableStateFlow(false)
+    val isCreatingGroup: StateFlow<Boolean> = _isCreatingGroup
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
@@ -111,41 +118,69 @@ class GroupsViewModel : ViewModel() {
         }
     }
 
+    fun loadAvailableUsers() {
+        if (UserSession.accessToken == null) {
+            _error.value = "Користувач не авторизований"
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                // Використовуємо існуючий API для отримання користувачів (followers/following)
+                val response = RetrofitClient.apiService.getFollowers(
+                    accessToken = UserSession.accessToken!!,
+                    userId = UserSession.userId?.toLong() ?: 0L,
+                    limit = 1000
+                )
+
+                if (response.apiStatus == 200 && response.users != null) {
+                    _availableUsers.value = response.users!!
+                    Log.d("GroupsViewModel", "Завантажено ${response.users!!.size} користувачів")
+                }
+            } catch (e: Exception) {
+                Log.e("GroupsViewModel", "Помилка завантаження користувачів", e)
+                // Не показуємо помилку користувачу, просто залишаємо список порожнім
+            }
+        }
+    }
+
     fun createGroup(
         name: String,
-        description: String?,
+        description: String,
+        memberIds: List<Int>,
         isPrivate: Boolean,
-        memberIds: List<Long>
+        onSuccess: () -> Unit
     ) {
         if (UserSession.accessToken == null) {
             _error.value = "Користувач не авторизований"
             return
         }
 
-        _isLoading.value = true
+        _isCreatingGroup.value = true
 
         viewModelScope.launch {
             try {
                 val response = RetrofitClient.apiService.createGroup(
                     accessToken = UserSession.accessToken!!,
                     name = name,
-                    description = description,
+                    description = description.ifBlank { null },
                     isPrivate = if (isPrivate) 1 else 0,
-                    memberIds = memberIds.joinToString(",")
+                    memberIds = memberIds.map { it.toLong() }.joinToString(",")
                 )
 
                 if (response.apiStatus == 200) {
                     _error.value = null
                     fetchGroups()
+                    onSuccess()
                     Log.d("GroupsViewModel", "Група створена успішно")
                 } else {
                     _error.value = response.errorMessage ?: "Не вдалося створити групу"
                 }
 
-                _isLoading.value = false
+                _isCreatingGroup.value = false
             } catch (e: Exception) {
                 _error.value = "Помилка: ${e.localizedMessage}"
-                _isLoading.value = false
+                _isCreatingGroup.value = false
                 Log.e("GroupsViewModel", "Помилка створення групи", e)
             }
         }

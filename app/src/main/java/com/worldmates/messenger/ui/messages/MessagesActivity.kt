@@ -747,15 +747,24 @@ private fun formatTime(timestamp: Long): String {
  * Определяет тип медиа по URL или явному типу сообщения
  */
 private fun detectMediaType(url: String?, messageType: String): String {
-    // Игнорируем типы "text", "right_text", "left_text" - проверяем URL
+    // Игнорируем все текстовые типы
     val isTextType = messageType.isEmpty() ||
                      messageType == "text" ||
                      messageType == "right_text" ||
                      messageType == "left_text"
 
-    // Если тип явно указан и это НЕ текстовый тип, используем его
-    if (!isTextType && messageType.isNotEmpty()) {
-        return messageType
+    // Конвертируем left/right варианты в базовые типы
+    val actualType = when (messageType) {
+        "left_image", "right_image" -> "image"
+        "left_video", "right_video" -> "video"
+        "left_audio", "right_audio", "left_voice", "right_voice" -> "audio"
+        "left_file", "right_file" -> "file"
+        else -> messageType
+    }
+
+    // Если получили базовый тип (не текстовый), используем его
+    if (!isTextType && actualType != messageType && actualType.isNotEmpty()) {
+        return actualType
     }
 
     // Если URL пустой, возвращаем "text"

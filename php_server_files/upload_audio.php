@@ -51,13 +51,16 @@ try {
         exit();
     }
 
-    $allowed_types = array('audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/m4a', 'audio/mp4', 'audio/x-m4a', 'audio/mp4a-latm');
+    $allowed_types = array('audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/m4a', 'audio/mp4', 'audio/x-m4a', 'audio/mp4a-latm', 'audio/3gpp', 'audio/3gpp2', 'video/3gpp', 'application/octet-stream');
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $detected_type = finfo_file($finfo, $tmp_name);
     finfo_close($finfo);
 
+    // Логування для дебагу
+    error_log("Audio upload - Detected MIME type: $detected_type, Original filename: $original_name");
+
     if (!in_array($detected_type, $allowed_types)) {
-        $response['error'] = 'Invalid file type. Allowed: MP3, WAV, OGG, AAC, M4A';
+        $response['error'] = 'Invalid file type. Detected: ' . $detected_type . '. Allowed: MP3, WAV, OGG, AAC, M4A';
         echo json_encode($response);
         exit();
     }

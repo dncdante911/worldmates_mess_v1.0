@@ -62,14 +62,17 @@ EXECUTE alterIfNotExists;
 DEALLOCATE PREPARE alterIfNotExists;
 
 -- Extend group_name from VARCHAR(20) to VARCHAR(255)
+SET @currentLength = (
+  SELECT COALESCE(CHARACTER_MAXIMUM_LENGTH, 0)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE
+    TABLE_SCHEMA = @dbname
+    AND TABLE_NAME = @tablename
+    AND COLUMN_NAME = 'group_name'
+  LIMIT 1
+);
 SET @preparedStatement = (SELECT IF(
-  (
-    SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE
-      TABLE_SCHEMA = @dbname
-      AND TABLE_NAME = @tablename
-      AND COLUMN_NAME = 'group_name'
-  ) < 255,
+  @currentLength < 255,
   CONCAT('ALTER TABLE ', @tablename, ' MODIFY COLUMN group_name VARCHAR(255) NOT NULL DEFAULT '''''),
   'SELECT 1'
 ));

@@ -21,21 +21,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
-import com.worldmates.messenger.data.model.User
+import com.worldmates.messenger.network.SearchUser
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGroupDialog(
     onDismiss: () -> Unit,
-    availableUsers: List<User>,
-    onCreateGroup: (name: String, description: String, selectedUserIds: List<Int>, isPrivate: Boolean) -> Unit,
+    availableUsers: List<SearchUser>,
+    onCreateGroup: (name: String, description: String, selectedUserIds: List<Long>, isPrivate: Boolean) -> Unit,
     isLoading: Boolean = false
 ) {
     var groupName by remember { mutableStateOf("") }
     var groupDescription by remember { mutableStateOf("") }
     var isPrivate by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedUsers by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var selectedUsers by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var currentStep by remember { mutableStateOf(CreateGroupStep.GROUP_INFO) }
 
     val filteredUsers = remember(availableUsers, searchQuery) {
@@ -43,7 +43,7 @@ fun CreateGroupDialog(
             availableUsers
         } else {
             availableUsers.filter {
-                it.name.contains(searchQuery, ignoreCase = true) ||
+                (it.name?.contains(searchQuery, ignoreCase = true) == true) ||
                         it.username.contains(searchQuery, ignoreCase = true)
             }
         }
@@ -269,9 +269,9 @@ private fun GroupInfoStep(
 private fun SelectMembersStep(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    filteredUsers: List<User>,
-    selectedUsers: Set<Int>,
-    onUserToggle: (Int) -> Unit
+    filteredUsers: List<SearchUser>,
+    selectedUsers: Set<Long>,
+    onUserToggle: (Long) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize()
@@ -329,7 +329,7 @@ private fun SelectMembersStep(
 
 @Composable
 private fun UserSelectItem(
-    user: User,
+    user: SearchUser,
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
@@ -342,8 +342,8 @@ private fun UserSelectItem(
     ) {
         // Avatar
         AsyncImage(
-            model = user.avatar,
-            contentDescription = user.name,
+            model = user.avatarUrl,
+            contentDescription = user.name ?: user.username,
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape),
@@ -355,7 +355,7 @@ private fun UserSelectItem(
         // User info
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = user.name,
+                text = user.name ?: user.username,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,

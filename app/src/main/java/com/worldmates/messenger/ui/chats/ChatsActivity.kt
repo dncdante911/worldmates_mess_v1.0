@@ -16,12 +16,15 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -75,6 +78,13 @@ class ChatsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Оновлюємо список чатів при поверненні на екран
+        viewModel.fetchChats()
+        groupsViewModel.fetchGroups()
+    }
+
     private fun navigateToMessages(chat: Chat) {
         startActivity(Intent(this, MessagesActivity::class.java).apply {
             putExtra("recipient_id", chat.userId)
@@ -123,6 +133,19 @@ fun ChatsScreen(
     var searchText by remember { mutableStateOf("") }
     var showGroups by remember { mutableStateOf(false) }
 
+    // Pull-to-refresh
+    val pullToRefreshState = rememberPullToRefreshState()
+    if (pullToRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            if (showGroups) {
+                groupsViewModel.fetchGroups()
+            } else {
+                viewModel.fetchChats()
+            }
+            pullToRefreshState.endRefresh()
+        }
+    }
+
     val filteredChats = chats.filter {
         it.username.contains(searchText, ignoreCase = true)
     }
@@ -130,11 +153,16 @@ fun ChatsScreen(
         it.name.contains(searchText, ignoreCase = true)
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .nestedScroll(pullToRefreshState.nestedScrollConnection)
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
+        ) {
         // Header
         TopAppBar(
             title = { Text("Повідомлення") },
@@ -315,6 +343,13 @@ fun ChatsScreen(
                 }
             }
         }
+        }
+
+        // Pull-to-refresh індикатор
+        PullToRefreshContainer(
+            state = pullToRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 

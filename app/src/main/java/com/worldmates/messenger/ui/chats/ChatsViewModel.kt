@@ -59,11 +59,11 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
         viewModelScope.launch {
             try {
-                // Виклик API для отримання ТІЛЬКИ особистих чатів (без груп)
+                // Виклик API для отримання чатів (фільтруємо групи нижче)
                 val response = RetrofitClient.apiService.getChats(
                     accessToken = UserSession.accessToken!!,
                     limit = 50,
-                    dataType = "user", // "user" = тільки 1-on-1 чати, без груп
+                    dataType = "all", // Отримуємо все, фільтруємо групи нижче
                     setOnline = 1
                 )
 

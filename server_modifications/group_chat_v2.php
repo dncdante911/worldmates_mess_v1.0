@@ -473,7 +473,7 @@ switch ($type) {
 
             sendResponse(array(
                 'api_status' => 200,
-                'data' => $messages
+                'messages' => $messages
             ));
 
         } catch (PDOException $e) {

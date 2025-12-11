@@ -258,8 +258,19 @@ switch ($type) {
 
         try {
             $stmt = $db->prepare("
-                SELECT g.*, u.username as creator_username, u.avatar as creator_avatar,
-                       (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND active = '1') as members_count
+                SELECT
+                    g.group_id as id,
+                    g.group_name as name,
+                    g.avatar,
+                    g.description,
+                    g.user_id as admin_id,
+                    CONCAT(u.first_name, ' ', u.last_name) as admin_name,
+                    g.time as created_time,
+                    g.time as updated_time,
+                    (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND active = '1') as members_count,
+                    (g.user_id = ?) as is_admin,
+                    0 as is_private,
+                    1 as is_member
                 FROM Wo_GroupChat g
                 LEFT JOIN Wo_Users u ON g.user_id = u.user_id
                 WHERE g.group_id IN (
@@ -269,14 +280,14 @@ switch ($type) {
                 ORDER BY g.time DESC
                 LIMIT ? OFFSET ?
             ");
-            $stmt->execute([$current_user_id, $limit, $offset]);
+            $stmt->execute([$current_user_id, $current_user_id, $limit, $offset]);
             $groups = $stmt->fetchAll();
 
             logMessage("Found " . count($groups) . " groups");
 
             sendResponse(array(
                 'api_status' => 200,
-                'data' => $groups
+                'groups' => $groups
             ));
 
         } catch (PDOException $e) {

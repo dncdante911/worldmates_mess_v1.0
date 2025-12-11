@@ -9,7 +9,6 @@ import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.CreateGroupRequest
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.data.model.GroupMember
-import com.worldmates.messenger.data.model.toGroup
 import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.SearchUser
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,22 +57,17 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Використовуємо getChats з data_type="groups" замість getGroups
-                val response = RetrofitClient.apiService.getChats(
+                // Використовуємо новий API group_chat_v2.php
+                val response = RetrofitClient.apiService.getGroups(
                     accessToken = UserSession.accessToken!!,
-                    limit = 100,
-                    dataType = "groups"
+                    limit = 100
                 )
 
-                if (response.apiStatus == 200 && response.chats != null) {
-                    // Конвертуємо Chat об'єкти в Group об'єкти
-                    val groups = response.chats!!
-                        .filter { it.isGroup } // Фільтруємо тільки групи
-                        .map { it.toGroup() }
-
-                    _groupList.value = groups
+                if (response.apiStatus == 200 && response.groups != null) {
+                    // Отримуємо готові Group об'єкти з нового API
+                    _groupList.value = response.groups!!
                     _error.value = null
-                    Log.d("GroupsViewModel", "Завантажено ${groups.size} груп")
+                    Log.d("GroupsViewModel", "Завантажено ${response.groups!!.size} груп")
                 } else {
                     _error.value = response.errorMessage ?: "Помилка завантаження груп"
                 }

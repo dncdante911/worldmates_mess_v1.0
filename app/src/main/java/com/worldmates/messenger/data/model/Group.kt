@@ -278,8 +278,8 @@ data class UserResponse(
 fun Chat.toGroup(): Group {
     return Group(
         id = this.id,
-        name = this.username,
-        avatarUrl = this.avatarUrl,
+        name = this.username ?: "Unknown",
+        avatarUrl = this.avatarUrl ?: "",
         description = this.description,
         membersCount = this.membersCount,
         adminId = this.userId, // Використовуємо userId як adminId

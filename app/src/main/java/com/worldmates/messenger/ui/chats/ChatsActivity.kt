@@ -157,7 +157,7 @@ fun ChatsScreen(
     }
 
     val filteredChats = chats.filter {
-        it.username.contains(searchText, ignoreCase = true)
+        it.username?.contains(searchText, ignoreCase = true) == true
     }
     val filteredGroups = groups.filter {
         it.name.contains(searchText, ignoreCase = true)
@@ -469,7 +469,7 @@ fun ChatItemRow(
                 .padding(horizontal = 12.dp)
         ) {
             Text(
-                text = chat.username,
+                text = chat.username ?: "Unknown",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black

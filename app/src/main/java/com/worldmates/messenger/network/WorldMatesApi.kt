@@ -90,7 +90,7 @@ interface WorldMatesApi {
         @Field("group_name") name: String,
         @Field("parts") memberIds: String = "", // Comma-separated user IDs
         @Field("group_type") groupType: String = "group" // "group" or "channel"
-    ): CreateGroupResponse
+    ): CreateGroupResponse?
 
     @FormUrlEncoded
     @POST("/api/v2/endpoints/group_chat.php")

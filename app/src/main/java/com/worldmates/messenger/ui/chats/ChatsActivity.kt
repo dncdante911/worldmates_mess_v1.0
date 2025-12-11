@@ -134,10 +134,25 @@ fun ChatsScreen(
     var showGroups by remember { mutableStateOf(false) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     // Load available users when switching to groups tab
     LaunchedEffect(showGroups) {
         if (showGroups) {
             groupsViewModel.loadAvailableUsers()
+        }
+    }
+
+    // Показуємо помилки через Snackbar
+    LaunchedEffect(errorGroups) {
+        errorGroups?.let { errorMessage ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = errorMessage,
+                    duration = SnackbarDuration.Long
+                )
+            }
         }
     }
 
@@ -149,6 +164,7 @@ fun ChatsScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (showGroups) {
                 FloatingActionButton(

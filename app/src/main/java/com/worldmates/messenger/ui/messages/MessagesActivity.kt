@@ -96,6 +96,7 @@ class MessagesActivity : AppCompatActivity() {
                     recipientName = recipientName,
                     recipientAvatar = recipientAvatar,
                     isGroup = isGroup,
+                    groupId = groupId,
                     onBackPressed = { finish() }
                 )
             }
@@ -121,6 +122,7 @@ fun MessagesScreenContent(
     recipientName: String,
     recipientAvatar: String,
     isGroup: Boolean,
+    groupId: Long,
     onBackPressed: () -> Unit
 ) {
     val messages by viewModel.messages.collectAsState()
@@ -223,13 +225,10 @@ fun MessagesScreenContent(
             onCallClick = { /* TODO: Реалізувати звонки */ },
             onInfoClick = { /* TODO: Інформація про чат */ },
             onGroupNameClick = {
-                if (isGroup) {
-                    val groupId = viewModel.groupId.value
-                    if (groupId != null && groupId != 0L) {
-                        activity.startActivity(Intent(activity, com.worldmates.messenger.ui.groups.GroupDetailsActivity::class.java).apply {
-                            putExtra("group_id", groupId)
-                        })
-                    }
+                if (isGroup && groupId != 0L) {
+                    val intent = Intent(activity, com.worldmates.messenger.ui.groups.GroupDetailsActivity::class.java)
+                    intent.putExtra("group_id", groupId)
+                    activity.startActivity(intent)
                 }
             }
         )

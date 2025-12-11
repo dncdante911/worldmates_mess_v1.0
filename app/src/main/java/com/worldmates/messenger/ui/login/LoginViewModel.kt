@@ -41,6 +41,7 @@ class LoginViewModel : ViewModel() {
                         try {
                             val syncResponse = RetrofitClient.apiService.syncSession(
                                 accessToken = response.accessToken,
+                                userId = response.userId,
                                 platform = "phone"
                             )
                             Log.d("LoginViewModel", "Session synced: ${syncResponse.message}")

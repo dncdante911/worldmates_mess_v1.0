@@ -36,6 +36,7 @@ interface WorldMatesApi {
     @POST("/api/v2/sync_session.php")
     suspend fun syncSession(
         @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long,
         @Field("platform") platform: String = "phone"
     ): SyncSessionResponse
 

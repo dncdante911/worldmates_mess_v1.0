@@ -30,15 +30,15 @@ class LastMessageDeserializer : JsonDeserializer<Message?> {
 // ==================== BASIC MODELS ====================
 
 data class Chat(
-    @SerializedName("id") val id: Long,
-    @SerializedName("user_id") val userId: Long,
-    @SerializedName("username") val username: String,
-    @SerializedName("avatar") val avatarUrl: String,
+    @SerializedName("id") val id: Long = 0,
+    @SerializedName("user_id") val userId: Long = 0,
+    @SerializedName("username") val username: String? = "",
+    @SerializedName("avatar") val avatarUrl: String? = "",
     @SerializedName("last_message")
     @JsonAdapter(LastMessageDeserializer::class)
-    val lastMessage: Message?,
-    @SerializedName("message_count") val unreadCount: Int,
-    @SerializedName("chat_type") val chatType: String, // "user", "group", "channel", "private_group"
+    val lastMessage: Message? = null,
+    @SerializedName("message_count") val unreadCount: Int = 0,
+    @SerializedName("chat_type") val chatType: String? = "user", // "user", "group", "channel", "private_group"
     @SerializedName("is_group") val isGroup: Boolean = false,
     @SerializedName("is_private") val isPrivate: Boolean = false,
     @SerializedName("description") val description: String? = null,

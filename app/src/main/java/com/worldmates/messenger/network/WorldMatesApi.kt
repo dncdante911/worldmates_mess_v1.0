@@ -163,6 +163,25 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): GroupDetailResponse
 
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun getGroupMessages(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_messages",
+        @Field("id") groupId: Long,
+        @Field("limit") limit: Int = 50,
+        @Field("before_message_id") beforeMessageId: Long = 0
+    ): MessageListResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun sendGroupMessage(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "send_message",
+        @Field("id") groupId: Long,
+        @Field("text") text: String
+    ): MessageResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
@@ -183,15 +202,6 @@ interface WorldMatesApi {
         @Part("text") text: RequestBody,
         @Part("message_hash_id") messageHashId: RequestBody,
         @Part file: MultipartBody.Part
-    ): MessageResponse
-
-    @FormUrlEncoded
-    @POST("?type=send_group_message")
-    suspend fun sendGroupMessage(
-        @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
-        @Field("text") text: String,
-        @Field("send_time") sendTime: Long
     ): MessageResponse
 
     @FormUrlEncoded

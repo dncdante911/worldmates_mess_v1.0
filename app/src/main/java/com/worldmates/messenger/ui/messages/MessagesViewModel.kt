@@ -122,9 +122,10 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.getMessages(
+                // Використовуємо НОВИЙ API для групових повідомлень
+                val response = RetrofitClient.apiService.getGroupMessages(
                     accessToken = UserSession.accessToken!!,
-                    recipientId = groupId,
+                    groupId = groupId,
                     limit = Constants.MESSAGES_PAGE_SIZE,
                     beforeMessageId = beforeMessageId
                 )
@@ -170,11 +171,11 @@ class MessagesViewModel(application: Application) :
                 val messageHashId = System.currentTimeMillis().toString()
 
                 val response = if (groupId != 0L) {
+                    // Використовуємо НОВИЙ API для відправки в групу
                     RetrofitClient.apiService.sendGroupMessage(
                         accessToken = UserSession.accessToken!!,
                         groupId = groupId,
-                        text = text,
-                        sendTime = System.currentTimeMillis() / 1000
+                        text = text
                     )
                 } else {
                     RetrofitClient.apiService.sendMessage(

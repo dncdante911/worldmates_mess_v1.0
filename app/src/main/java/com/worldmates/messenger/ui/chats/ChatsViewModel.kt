@@ -59,11 +59,11 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
         viewModelScope.launch {
             try {
-                // Виклик API для отримання чатів
+                // Виклик API для отримання ТІЛЬКИ особистих чатів (без груп)
                 val response = RetrofitClient.apiService.getChats(
                     accessToken = UserSession.accessToken!!,
                     limit = 50,
-                    dataType = "all",
+                    dataType = "user", // "user" = тільки 1-on-1 чати, без груп
                     setOnline = 1
                 )
 
@@ -77,7 +77,10 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                         Log.d("ChatsViewModel", "Отримано ${response.chats.size} чатів")
 
                         // Дешифруємо останнє повідомлення у кожному чаті
-                        val decryptedChats = response.chats.map { chat ->
+                        // Фільтруємо тільки особисті чати (подвійний захист від груп)
+                        val decryptedChats = response.chats
+                            .filter { !it.isGroup } // Виключаємо групи
+                            .map { chat ->
                             Log.d("ChatsViewModel", "Chat: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
 
                             val lastMessage = chat.lastMessage?.let { msg ->

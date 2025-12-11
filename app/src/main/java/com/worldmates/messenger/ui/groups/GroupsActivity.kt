@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,6 +82,8 @@ fun GroupsScreenWrapper(
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var groupToEdit by remember { mutableStateOf<Group?>(null) }
+
+    val context = LocalContext.current
 
     // Load available users when screen opens
     LaunchedEffect(Unit) {
@@ -151,6 +154,13 @@ fun GroupsScreenWrapper(
                     onDelete = {
                         viewModel.deleteGroup(group.id)
                         groupToEdit = null
+                    },
+                    onUploadAvatar = { uri ->
+                        viewModel.uploadGroupAvatar(
+                            groupId = group.id,
+                            imageUri = uri,
+                            context = context
+                        )
                     },
                     isLoading = isLoading
                 )

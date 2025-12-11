@@ -182,6 +182,15 @@ interface WorldMatesApi {
         @Field("text") text: String
     ): MessageResponse
 
+    @Multipart
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun uploadGroupAvatar(
+        @Query("access_token") accessToken: String,
+        @Query("type") type: String = "upload_avatar",
+        @Part("id") groupId: RequestBody,
+        @Part avatar: MultipartBody.Part
+    ): CreateGroupResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded

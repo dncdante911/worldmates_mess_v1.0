@@ -218,9 +218,20 @@ fun MessagesScreenContent(
         MessagesTopBar(
             recipientName = recipientName,
             recipientAvatar = recipientAvatar,
+            isGroup = isGroup,
             onBackPressed = onBackPressed,
             onCallClick = { /* TODO: Реалізувати звонки */ },
-            onInfoClick = { /* TODO: Інформація про чат */ }
+            onInfoClick = { /* TODO: Інформація про чат */ },
+            onGroupNameClick = {
+                if (isGroup) {
+                    val groupId = viewModel.groupId.value
+                    if (groupId != null && groupId != 0L) {
+                        activity.startActivity(Intent(activity, com.worldmates.messenger.ui.groups.GroupDetailsActivity::class.java).apply {
+                            putExtra("group_id", groupId)
+                        })
+                    }
+                }
+            }
         )
 
         // Error message
@@ -358,9 +369,11 @@ fun MessagesScreenContent(
 fun MessagesTopBar(
     recipientName: String,
     recipientAvatar: String,
+    isGroup: Boolean = false,
     onBackPressed: () -> Unit,
     onCallClick: () -> Unit,
-    onInfoClick: () -> Unit
+    onInfoClick: () -> Unit,
+    onGroupNameClick: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -369,6 +382,10 @@ fun MessagesTopBar(
                 modifier = Modifier
                     .fillMaxHeight()
                     .padding(end = 8.dp)
+                    .then(
+                        if (isGroup) Modifier.clickable(onClick = onGroupNameClick)
+                        else Modifier
+                    )
             ) {
                 if (recipientAvatar.isNotEmpty()) {
                     AsyncImage(
@@ -383,7 +400,11 @@ fun MessagesTopBar(
                 }
                 Column {
                     Text(recipientName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("Онлайн", fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
+                    Text(
+                        if (isGroup) "Переглянути деталі групи" else "Онлайн",
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
                 }
             }
         },

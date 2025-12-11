@@ -6,8 +6,10 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -78,6 +80,7 @@ fun GroupsScreenWrapper(
     val isCreatingGroup by viewModel.isCreatingGroup.collectAsState()
 
     var showCreateDialog by remember { mutableStateOf(false) }
+    var groupToEdit by remember { mutableStateOf<Group?>(null) }
 
     // Load available users when screen opens
     LaunchedEffect(Unit) {
@@ -133,6 +136,26 @@ fun GroupsScreenWrapper(
                 )
             }
 
+            // Edit Group Dialog
+            groupToEdit?.let { group ->
+                EditGroupDialog(
+                    group = group,
+                    onDismiss = { groupToEdit = null },
+                    onUpdate = { newName ->
+                        viewModel.updateGroup(
+                            groupId = group.id,
+                            name = newName
+                        )
+                        groupToEdit = null
+                    },
+                    onDelete = {
+                        viewModel.deleteGroup(group.id)
+                        groupToEdit = null
+                    },
+                    isLoading = isLoading
+                )
+            }
+
             if (isLoading && groups.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -153,7 +176,8 @@ fun GroupsScreenWrapper(
                     items(groups) { group ->
                         GroupCard(
                             group = group,
-                            onClick = { onGroupClick(group) }
+                            onClick = { onGroupClick(group) },
+                            onLongClick = { groupToEdit = group }
                         )
                     }
                 }
@@ -162,15 +186,20 @@ fun GroupsScreenWrapper(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GroupCard(
     group: Group,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(12.dp)
             .background(Color.White, RoundedCornerShape(8.dp))
             .padding(12.dp),

@@ -179,8 +179,7 @@ class MediaUploader(private val context: Context) {
                 val messageResponse = RetrofitClient.apiService.sendGroupMessage(
                     accessToken = accessToken,
                     groupId = groupId,
-                    text = mediaUrl,
-                    sendTime = System.currentTimeMillis()
+                    text = mediaUrl
                 )
 
                 when (messageResponse.apiStatus) {

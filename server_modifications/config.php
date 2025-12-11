@@ -22,4 +22,4 @@ define('PDO_OPTIONS', [
 define('LOG_FILE', '/var/www/www-root/data/www/worldmates.club/api/v2/logs/group_chat_v2.log');
 
 // Timezone
-date_default_timezone_set('Europe/Kiev');
+date_default_timezone_set('Europe/Kyiv');

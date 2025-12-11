@@ -446,7 +446,12 @@ switch ($type) {
             // Отримуємо повідомлення
             $sql = "
                 SELECT m.*, u.username, u.avatar,
-                       CONCAT(u.first_name, ' ', u.last_name) as user_name
+                       CONCAT(u.first_name, ' ', u.last_name) as user_name,
+                       CASE
+                           WHEN m.media != '' THEN 'media'
+                           WHEN m.text LIKE 'http%' THEN 'media'
+                           ELSE 'text'
+                       END as type
                 FROM Wo_Messages m
                 LEFT JOIN Wo_Users u ON m.from_id = u.user_id
                 WHERE m.group_id = ?

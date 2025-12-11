@@ -156,9 +156,11 @@ fun ChatsScreen(
         }
     }
 
+    // Фільтруємо тільки особисті чати (НЕ групи)
     val filteredChats = chats.filter {
-        it.username?.contains(searchText, ignoreCase = true) == true
+        !it.isGroup && it.username?.contains(searchText, ignoreCase = true) == true
     }
+    // Фільтруємо групи
     val filteredGroups = groups.filter {
         it.name.contains(searchText, ignoreCase = true)
     }

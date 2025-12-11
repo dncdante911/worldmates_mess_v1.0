@@ -32,6 +32,13 @@ interface WorldMatesApi {
         @Field("android_m_device_id") deviceId: String? = null
     ): AuthResponse
 
+    @FormUrlEncoded
+    @POST("/api/v2/sync_session.php")
+    suspend fun syncSession(
+        @Query("access_token") accessToken: String,
+        @Field("platform") platform: String = "phone"
+    ): SyncSessionResponse
+
     // ==================== CHATS ====================
 
     @FormUrlEncoded

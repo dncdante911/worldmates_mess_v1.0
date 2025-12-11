@@ -162,19 +162,36 @@ class GroupsViewModel : ViewModel() {
             try {
                 // Group Chat API: uses 'group_name' and 'parts' parameters
                 // Note: description is not supported in group-chat API (only in social groups)
+
+                // Додаємо поточного користувача до parts якщо список порожній
+                val allMemberIds = if (memberIds.isEmpty()) {
+                    listOf(UserSession.userId!!)
+                } else {
+                    (memberIds + UserSession.userId!!).distinct()
+                }
+
+                val partsString = allMemberIds.joinToString(",")
+                Log.d("GroupsViewModel", "Створення групи: name=$name, parts=$partsString")
+
                 val response = RetrofitClient.apiService.createGroup(
                     accessToken = UserSession.accessToken!!,
                     name = name,
-                    memberIds = memberIds.joinToString(",")
+                    memberIds = partsString
                 )
 
-                if (response.apiStatus == 200) {
+                Log.d("GroupsViewModel", "Response: $response")
+
+                if (response == null) {
+                    _error.value = "Сервер повернув порожню відповідь"
+                    Log.e("GroupsViewModel", "Response is null!")
+                } else if (response.apiStatus == 200) {
                     _error.value = null
                     fetchGroups()
                     onSuccess()
                     Log.d("GroupsViewModel", "Група створена успішно")
                 } else {
-                    _error.value = response.errorMessage ?: "Не вдалося створити групу"
+                    _error.value = response.errorMessage ?: "Не вдалося створити групу (код: ${response.apiStatus})"
+                    Log.e("GroupsViewModel", "API error: ${response.errorMessage}, code: ${response.errorCode}")
                 }
 
                 _isCreatingGroup.value = false

@@ -63,10 +63,10 @@ interface WorldMatesApi {
     ): MessageListResponse
 
     // ==================== GROUP CHATS (Messenger Groups) ====================
-    // Uses /api/group-chat endpoint with 'type' parameter
+    // Uses /api/v2/endpoints/group_chat.php endpoint with 'type' parameter
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun getGroups(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -76,7 +76,7 @@ interface WorldMatesApi {
     ): GroupListResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun getGroupDetails(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -85,7 +85,7 @@ interface WorldMatesApi {
     ): GroupDetailResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun createGroup(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -96,7 +96,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun updateGroup(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -106,7 +106,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun deleteGroup(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -115,7 +115,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun addGroupMember(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -125,7 +125,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun removeGroupMember(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -135,7 +135,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun setGroupAdmin(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -146,7 +146,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun leaveGroup(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,
@@ -155,7 +155,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/group-chat")
+    @POST("/api/v2/endpoints/group_chat.php")
     suspend fun getGroupMembers(
         @Query("access_token") accessToken: String,
         @Field("server_key") serverKey: String = Constants.SERVER_KEY,

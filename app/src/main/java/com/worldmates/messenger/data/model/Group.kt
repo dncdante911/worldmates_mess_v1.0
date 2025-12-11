@@ -1,6 +1,31 @@
 package com.worldmates.messenger.data.model
 
+import com.google.gson.*
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
+import java.lang.reflect.Type
+
+// ==================== CUSTOM DESERIALIZERS ====================
+
+/**
+ * Custom deserializer для last_message, який обробляє як об'єкт так і масив
+ * API іноді повертає [] замість null
+ */
+class LastMessageDeserializer : JsonDeserializer<Message?> {
+    override fun deserialize(
+        json: JsonElement?,
+        typeOfT: Type?,
+        context: JsonDeserializationContext?
+    ): Message? {
+        return when {
+            json == null || json.isJsonNull -> null
+            json.isJsonArray && json.asJsonArray.size() == 0 -> null
+            json.isJsonObject -> context?.deserialize(json, Message::class.java)
+            else -> null
+        }
+    }
+}
 
 // ==================== BASIC MODELS ====================
 
@@ -9,7 +34,9 @@ data class Chat(
     @SerializedName("user_id") val userId: Long,
     @SerializedName("username") val username: String,
     @SerializedName("avatar") val avatarUrl: String,
-    @SerializedName("last_message") val lastMessage: Message?,
+    @SerializedName("last_message")
+    @JsonAdapter(LastMessageDeserializer::class)
+    val lastMessage: Message?,
     @SerializedName("message_count") val unreadCount: Int,
     @SerializedName("chat_type") val chatType: String, // "user", "group", "channel", "private_group"
     @SerializedName("is_group") val isGroup: Boolean = false,

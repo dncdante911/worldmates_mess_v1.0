@@ -84,11 +84,19 @@
 
         <!-- Groups Activity -->
         <activity
-            android:name=".ui.gpoups.GroupsActivity"
+            android:name=".ui.groups.GroupsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.chats.ChatsActivity" />
+
+        <!-- Group Details Activity -->
+        <activity
+            android:name=".ui.groups.GroupDetailsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:parentActivityName=".ui.groups.GroupsActivity" />
 
         <!-- Settings Activity -->
         <activity

@@ -57,7 +57,8 @@ function sendResponse($data) {
 function sendError($code, $message) {
     sendResponse(array(
         'api_status' => $code,
-        'error' => $message
+        'error_code' => $code,
+        'error_message' => $message
     ));
 }
 
@@ -444,18 +445,34 @@ switch ($type) {
     // ADD_MEMBER - Додати учасника
     // ==========================================
     case 'add_member':
+    case 'add_user':  // Сумісність з Android
         logMessage("--- ADD MEMBER ---");
 
         if (empty($_POST['id'])) {
             sendError(400, 'id (group_id) is required');
         }
 
-        if (empty($_POST['user_id'])) {
-            sendError(400, 'user_id is required');
+        // Підтримка як 'user_id', так і 'parts' для сумісності
+        $user_to_add = null;
+        if (!empty($_POST['user_id'])) {
+            $user_to_add = $_POST['user_id'];
+        } elseif (!empty($_POST['parts'])) {
+            $user_to_add = $_POST['parts'];
+        }
+
+        if (empty($user_to_add)) {
+            sendError(400, 'user_id or parts is required');
         }
 
         $group_id = intval($_POST['id']);
-        $new_user_id = intval($_POST['user_id']);
+
+        // Обробка одного або кількох користувачів
+        $user_ids = array_filter(array_map('trim', explode(',', $user_to_add)));
+        if (empty($user_ids)) {
+            sendError(400, 'Invalid user_id or parts');
+        }
+
+        $new_user_id = intval($user_ids[0]); // Для поточної логіки беремо першого
 
         try {
             // Перевіряємо чи користувач вже є учасником
@@ -499,18 +516,34 @@ switch ($type) {
     // REMOVE_MEMBER - Видалити учасника
     // ==========================================
     case 'remove_member':
+    case 'remove_user':  // Сумісність з Android
         logMessage("--- REMOVE MEMBER ---");
 
         if (empty($_POST['id'])) {
             sendError(400, 'id (group_id) is required');
         }
 
-        if (empty($_POST['user_id'])) {
-            sendError(400, 'user_id is required');
+        // Підтримка як 'user_id', так і 'parts' для сумісності
+        $user_to_remove = null;
+        if (!empty($_POST['user_id'])) {
+            $user_to_remove = $_POST['user_id'];
+        } elseif (!empty($_POST['parts'])) {
+            $user_to_remove = $_POST['parts'];
+        }
+
+        if (empty($user_to_remove)) {
+            sendError(400, 'user_id or parts is required');
         }
 
         $group_id = intval($_POST['id']);
-        $remove_user_id = intval($_POST['user_id']);
+
+        // Обробка одного або кількох користувачів
+        $user_ids = array_filter(array_map('trim', explode(',', $user_to_remove)));
+        if (empty($user_ids)) {
+            sendError(400, 'Invalid user_id or parts');
+        }
+
+        $remove_user_id = intval($user_ids[0]); // Для поточної логіки беремо першого
 
         try {
             // Перевіряємо чи поточний користувач є створювачем групи

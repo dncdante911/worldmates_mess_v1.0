@@ -36,6 +36,19 @@ class LoginViewModel : ViewModel() {
                     response.apiStatus == 200 && response.accessToken != null && response.userId != null -> {
                         // Успішний вхід
                         UserSession.saveSession(response.accessToken, response.userId)
+
+                        // Синхронізуємо токен з сервером
+                        try {
+                            val syncResponse = RetrofitClient.apiService.syncSession(
+                                accessToken = response.accessToken,
+                                platform = "phone"
+                            )
+                            Log.d("LoginViewModel", "Session synced: ${syncResponse.message}")
+                        } catch (e: Exception) {
+                            Log.w("LoginViewModel", "Failed to sync session: ${e.message}")
+                            // Не критична помилка, продовжуємо
+                        }
+
                         _loginState.value = LoginState.Success
                         Log.d("LoginViewModel", "Успішно увійшли! User ID: ${response.userId}")
                     }

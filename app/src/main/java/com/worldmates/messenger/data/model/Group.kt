@@ -269,6 +269,16 @@ data class UserResponse(
     @SerializedName("error_message") val errorMessage: String?
 )
 
+data class SyncSessionResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("user_id") val userId: Long?,
+    @SerializedName("session_id") val sessionId: Long?,
+    @SerializedName("platform") val platform: String?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
 // ==================== EXTENSION FUNCTIONS ====================
 
 /**

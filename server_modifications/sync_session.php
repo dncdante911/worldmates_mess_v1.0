@@ -33,6 +33,7 @@ logMessage("Method: {$_SERVER['REQUEST_METHOD']}");
 
 // Отримуємо параметри
 $access_token = isset($_GET['access_token']) ? $_GET['access_token'] : '';
+$user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
 $platform = isset($_POST['platform']) ? $_POST['platform'] : 'phone';
 
 if (empty($access_token)) {
@@ -40,7 +41,13 @@ if (empty($access_token)) {
     sendError(400, 'access_token is required');
 }
 
+if (empty($user_id)) {
+    logMessage("ERROR: user_id missing");
+    sendError(400, 'user_id is required');
+}
+
 logMessage("Access token: " . substr($access_token, 0, 20) . "...");
+logMessage("User ID: $user_id");
 logMessage("Platform: $platform");
 
 // Підключення до БД
@@ -62,36 +69,17 @@ try {
 }
 
 try {
-    // Перевіряємо чи існує користувач з таким токеном
-    // WoWonder зберігає access_token в різних місцях, спробуємо знайти user_id
+    // Перевіряємо чи користувач існує та активний
+    $stmt = $db->prepare("SELECT user_id, username FROM Wo_Users WHERE user_id = ? AND active = '1' LIMIT 1");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
 
-    // Спосіб 1: Пошук через wo_tokens (якщо є)
-    $stmt = $db->prepare("SELECT user_id FROM wo_tokens WHERE token = ? LIMIT 1");
-    $stmt->execute([$access_token]);
-    $token_data = $stmt->fetch();
-
-    if (!$token_data) {
-        // Спосіб 2: Пошук через wo_appssessions (можливо вже є)
-        $stmt = $db->prepare("SELECT user_id FROM wo_appssessions WHERE session_id = ? LIMIT 1");
-        $stmt->execute([$access_token]);
-        $session_data = $stmt->fetch();
-
-        if ($session_data) {
-            logMessage("Session already exists for user_id: " . $session_data['user_id']);
-            sendResponse(array(
-                'api_status' => 200,
-                'message' => 'Session already exists',
-                'user_id' => $session_data['user_id']
-            ));
-        }
-
-        // Якщо не знайдено - повертаємо помилку, бо не можемо визначити user_id
-        logMessage("ERROR: Cannot find user_id for this token");
-        sendError(404, 'Token not found in database. Please login again.');
+    if (!$user) {
+        logMessage("ERROR: User not found or inactive: user_id=$user_id");
+        sendError(404, 'User not found or inactive');
     }
 
-    $user_id = $token_data['user_id'];
-    logMessage("Found user_id: $user_id");
+    logMessage("User found: {$user['username']}");
 
     // Перевіряємо чи вже існує сесія з таким токеном
     $stmt = $db->prepare("SELECT id FROM wo_appssessions WHERE session_id = ? LIMIT 1");

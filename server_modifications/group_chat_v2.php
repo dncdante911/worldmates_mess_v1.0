@@ -99,23 +99,42 @@ try {
     sendError(500, 'Database connection failed');
 }
 
-// Отримуємо користувача з токену
+// Отримуємо користувача з токену (session_id з wo_appssessions)
 try {
+    // Крок 1: Перевіряємо сесію в wo_appssessions
     $stmt = $db->prepare("
-        SELECT user_id, username, email, name, avatar, active
-        FROM Wo_Users
-        WHERE access_token = ? AND active = '1'
+        SELECT user_id, platform, time
+        FROM wo_appssessions
+        WHERE session_id = ?
         LIMIT 1
     ");
     $stmt->execute([$access_token]);
+    $session = $stmt->fetch();
+
+    if (!$session) {
+        logMessage("ERROR: Invalid session_id (access_token)");
+        sendError(401, 'Invalid access_token - session not found');
+    }
+
+    $current_user_id = $session['user_id'];
+    logMessage("Session found: user_id={$current_user_id}, platform={$session['platform']}");
+
+    // Крок 2: Отримуємо дані користувача
+    $stmt = $db->prepare("
+        SELECT user_id, username, email, first_name, last_name, avatar, active
+        FROM Wo_Users
+        WHERE user_id = ? AND active = '1'
+        LIMIT 1
+    ");
+    $stmt->execute([$current_user_id]);
     $user = $stmt->fetch();
 
     if (!$user) {
-        logMessage("ERROR: Invalid access_token");
-        sendError(401, 'Invalid access_token');
+        logMessage("ERROR: User not found or inactive: user_id={$current_user_id}");
+        sendError(401, 'User not found or inactive');
     }
 
-    $current_user_id = $user['user_id'];
+    $user['name'] = trim($user['first_name'] . ' ' . $user['last_name']);
     logMessage("User authenticated: ID={$current_user_id}, username={$user['username']}");
 
 } catch (PDOException $e) {

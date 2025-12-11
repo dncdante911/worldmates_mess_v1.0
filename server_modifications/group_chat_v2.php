@@ -221,7 +221,8 @@ switch ($type) {
 
             // Отримуємо учасників
             $stmt = $db->prepare("
-                SELECT u.user_id, u.username, u.avatar, u.name
+                SELECT u.user_id, u.username, u.avatar,
+                       CONCAT(u.first_name, ' ', u.last_name) as name
                 FROM Wo_GroupChatUsers gcu
                 LEFT JOIN Wo_Users u ON gcu.user_id = u.user_id
                 WHERE gcu.group_id = ? AND gcu.active = '1'
@@ -323,7 +324,8 @@ switch ($type) {
 
             // Отримуємо учасників
             $stmt = $db->prepare("
-                SELECT u.user_id, u.username, u.avatar, u.name
+                SELECT u.user_id, u.username, u.avatar,
+                       CONCAT(u.first_name, ' ', u.last_name) as name
                 FROM Wo_GroupChatUsers gcu
                 LEFT JOIN Wo_Users u ON gcu.user_id = u.user_id
                 WHERE gcu.group_id = ? AND gcu.active = '1'
@@ -424,7 +426,8 @@ switch ($type) {
 
             // Отримуємо повідомлення
             $sql = "
-                SELECT m.*, u.username, u.avatar, u.name as user_name
+                SELECT m.*, u.username, u.avatar,
+                       CONCAT(u.first_name, ' ', u.last_name) as user_name
                 FROM Wo_Messages m
                 LEFT JOIN Wo_Users u ON m.from_id = u.user_id
                 WHERE m.group_id = ?

@@ -69,7 +69,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun getGroups(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "get_list",
         @Field("limit") limit: Int = 50,
         @Field("offset") offset: Int = 0
@@ -79,7 +78,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun getGroupDetails(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "get_by_id",
         @Field("id") groupId: Long
     ): GroupDetailResponse
@@ -88,7 +86,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun createGroup(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "create",
         @Field("group_name") name: String,
         @Field("parts") memberIds: String = "", // Comma-separated user IDs
@@ -99,7 +96,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun updateGroup(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "edit",
         @Field("id") groupId: Long,
         @Field("group_name") name: String
@@ -109,7 +105,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun deleteGroup(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "delete",
         @Field("id") groupId: Long
     ): CreateGroupResponse
@@ -118,7 +113,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun addGroupMember(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "add_user",
         @Field("id") groupId: Long,
         @Field("parts") userIds: String // Comma-separated user IDs
@@ -128,7 +122,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun removeGroupMember(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "remove_user",
         @Field("id") groupId: Long,
         @Field("parts") userIds: String // Comma-separated user IDs
@@ -138,7 +131,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun setGroupAdmin(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "set_admin",
         @Field("id") groupId: Long,
         @Field("user_id") userId: Long,
@@ -149,7 +141,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun leaveGroup(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "leave",
         @Field("id") groupId: Long
     ): CreateGroupResponse
@@ -158,7 +149,6 @@ interface WorldMatesApi {
     @POST("/api/v2/endpoints/group_chat.php")
     suspend fun getGroupMembers(
         @Query("access_token") accessToken: String,
-        @Field("server_key") serverKey: String = Constants.SERVER_KEY,
         @Field("type") type: String = "get_members",
         @Field("id") groupId: Long,
         @Field("limit") limit: Int = 100,

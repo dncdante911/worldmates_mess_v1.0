@@ -1,0 +1,637 @@
+<?php
+/**
+ * ========================================
+ * WORLDMATES GROUP CHAT API V2
+ * ========================================
+ *
+ * Власний API для групових чатів, написаний з нуля
+ * Простий, зрозумілий, надійний код
+ *
+ * ЕНДПОІНТИ:
+ * - create        - створити групу
+ * - get_list      - список груп користувача
+ * - get_by_id     - деталі групи
+ * - send_message  - надіслати повідомлення
+ * - get_messages  - отримати повідомлення
+ * - add_member    - додати учасника
+ * - remove_member - видалити учасника
+ * - leave         - вийти з групи
+ * - delete        - видалити групу
+ *
+ * @author WorldMates Team
+ * @version 2.0
+ */
+
+// Підключаємо конфігурацію БД
+require_once('./config.php');
+
+// Налаштування для розробки (вимкніть на продакшені!)
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Не показувати помилки в браузері
+ini_set('log_errors', 1);
+ini_set('error_log', '/var/www/www-root/data/www/worldmates.club/api/v2/logs/php_errors.log');
+
+// Заголовки
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Логування
+$log_file = '/var/www/www-root/data/www/worldmates.club/api/v2/logs/group_chat_v2.log';
+
+function logMessage($message) {
+    global $log_file;
+    $timestamp = date('Y-m-d H:i:s');
+    $log_entry = "[$timestamp] $message\n";
+    @file_put_contents($log_file, $log_entry, FILE_APPEND);
+}
+
+// Функція для відповіді
+function sendResponse($data) {
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
+// Функція для помилки
+function sendError($code, $message) {
+    sendResponse(array(
+        'api_status' => $code,
+        'error' => $message
+    ));
+}
+
+// ==============================================
+// АВТОРИЗАЦІЯ
+// ==============================================
+
+logMessage("=== NEW REQUEST ===");
+logMessage("Method: {$_SERVER['REQUEST_METHOD']}");
+logMessage("URI: {$_SERVER['REQUEST_URI']}");
+logMessage("POST: " . json_encode($_POST));
+logMessage("GET: " . json_encode($_GET));
+
+// Перевірка access_token
+if (empty($_GET['access_token'])) {
+    logMessage("ERROR: access_token missing");
+    sendError(401, 'access_token is required');
+}
+
+$access_token = $_GET['access_token'];
+logMessage("Access token: " . substr($access_token, 0, 10) . "...");
+
+// Підключення до БД
+try {
+    $db = new PDO(
+        "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+        DB_USER,
+        DB_PASS,
+        array(
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        )
+    );
+    logMessage("DB connected successfully");
+} catch (PDOException $e) {
+    logMessage("DB ERROR: " . $e->getMessage());
+    sendError(500, 'Database connection failed');
+}
+
+// Отримуємо користувача з токену
+try {
+    $stmt = $db->prepare("
+        SELECT user_id, username, email, name, avatar, active
+        FROM Wo_Users
+        WHERE access_token = ? AND active = '1'
+        LIMIT 1
+    ");
+    $stmt->execute([$access_token]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        logMessage("ERROR: Invalid access_token");
+        sendError(401, 'Invalid access_token');
+    }
+
+    $current_user_id = $user['user_id'];
+    logMessage("User authenticated: ID={$current_user_id}, username={$user['username']}");
+
+} catch (PDOException $e) {
+    logMessage("AUTH ERROR: " . $e->getMessage());
+    sendError(500, 'Authentication failed');
+}
+
+// ==============================================
+// РОУТИНГ
+// ==============================================
+
+$type = isset($_POST['type']) ? $_POST['type'] : '';
+logMessage("Action type: $type");
+
+switch ($type) {
+
+    // ==========================================
+    // CREATE - Створити групу
+    // ==========================================
+    case 'create':
+        logMessage("--- CREATE GROUP ---");
+
+        // Валідація
+        if (empty($_POST['group_name'])) {
+            sendError(400, 'group_name is required');
+        }
+
+        $group_name = trim($_POST['group_name']);
+        $group_type = isset($_POST['group_type']) ? $_POST['group_type'] : 'group';
+        $parts = isset($_POST['parts']) ? $_POST['parts'] : '';
+
+        // Перевірка довжини назви
+        $name_length = mb_strlen($group_name, 'UTF-8');
+        if ($name_length < 4 || $name_length > 25) {
+            sendError(400, 'group_name must be between 4 and 25 characters');
+        }
+
+        logMessage("Group name: $group_name");
+        logMessage("Group type: $group_type");
+        logMessage("Parts: $parts");
+
+        try {
+            // Створюємо групу
+            $time = time();
+            $stmt = $db->prepare("
+                INSERT INTO Wo_GroupChat (user_id, group_name, avatar, time, type)
+                VALUES (?, ?, 'upload/photos/d-group.jpg', ?, ?)
+            ");
+            $stmt->execute([$current_user_id, $group_name, $time, $group_type]);
+            $group_id = $db->lastInsertId();
+
+            logMessage("Group created: ID=$group_id");
+
+            // Додаємо учасників
+            $member_ids = array_filter(array_map('trim', explode(',', $parts)));
+
+            // Завжди додаємо створювача
+            if (!in_array($current_user_id, $member_ids)) {
+                $member_ids[] = $current_user_id;
+            }
+
+            logMessage("Adding members: " . implode(',', $member_ids));
+
+            $stmt = $db->prepare("
+                INSERT INTO Wo_GroupChatUsers (user_id, group_id, active)
+                VALUES (?, ?, '1')
+            ");
+
+            foreach ($member_ids as $member_id) {
+                if (!empty($member_id) && is_numeric($member_id)) {
+                    $stmt->execute([$member_id, $group_id]);
+                }
+            }
+
+            // Отримуємо створену групу
+            $stmt = $db->prepare("
+                SELECT g.*, u.username as creator_username, u.avatar as creator_avatar
+                FROM Wo_GroupChat g
+                LEFT JOIN Wo_Users u ON g.user_id = u.user_id
+                WHERE g.group_id = ?
+            ");
+            $stmt->execute([$group_id]);
+            $group = $stmt->fetch();
+
+            // Отримуємо учасників
+            $stmt = $db->prepare("
+                SELECT u.user_id, u.username, u.avatar, u.name
+                FROM Wo_GroupChatUsers gcu
+                LEFT JOIN Wo_Users u ON gcu.user_id = u.user_id
+                WHERE gcu.group_id = ? AND gcu.active = '1'
+            ");
+            $stmt->execute([$group_id]);
+            $members = $stmt->fetchAll();
+
+            $group['members'] = $members;
+            $group['members_count'] = count($members);
+
+            logMessage("SUCCESS: Group created with " . count($members) . " members");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'message' => 'Group created successfully',
+                'data' => $group
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("CREATE ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to create group: ' . $e->getMessage());
+        }
+        break;
+
+    // ==========================================
+    // GET_LIST - Список груп користувача
+    // ==========================================
+    case 'get_list':
+        logMessage("--- GET LIST ---");
+
+        $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 50;
+        $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
+
+        try {
+            $stmt = $db->prepare("
+                SELECT g.*, u.username as creator_username, u.avatar as creator_avatar,
+                       (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND active = '1') as members_count
+                FROM Wo_GroupChat g
+                LEFT JOIN Wo_Users u ON g.user_id = u.user_id
+                WHERE g.group_id IN (
+                    SELECT group_id FROM Wo_GroupChatUsers
+                    WHERE user_id = ? AND active = '1'
+                )
+                ORDER BY g.time DESC
+                LIMIT ? OFFSET ?
+            ");
+            $stmt->execute([$current_user_id, $limit, $offset]);
+            $groups = $stmt->fetchAll();
+
+            logMessage("Found " . count($groups) . " groups");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'data' => $groups
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("GET_LIST ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to get groups');
+        }
+        break;
+
+    // ==========================================
+    // GET_BY_ID - Деталі групи
+    // ==========================================
+    case 'get_by_id':
+        logMessage("--- GET BY ID ---");
+
+        if (empty($_POST['id'])) {
+            sendError(400, 'id is required');
+        }
+
+        $group_id = intval($_POST['id']);
+
+        try {
+            // Перевіряємо чи користувач є учасником
+            $stmt = $db->prepare("
+                SELECT * FROM Wo_GroupChatUsers
+                WHERE group_id = ? AND user_id = ? AND active = '1'
+            ");
+            $stmt->execute([$group_id, $current_user_id]);
+            if (!$stmt->fetch()) {
+                sendError(403, 'You are not a member of this group');
+            }
+
+            // Отримуємо групу
+            $stmt = $db->prepare("
+                SELECT g.*, u.username as creator_username, u.avatar as creator_avatar
+                FROM Wo_GroupChat g
+                LEFT JOIN Wo_Users u ON g.user_id = u.user_id
+                WHERE g.group_id = ?
+            ");
+            $stmt->execute([$group_id]);
+            $group = $stmt->fetch();
+
+            if (!$group) {
+                sendError(404, 'Group not found');
+            }
+
+            // Отримуємо учасників
+            $stmt = $db->prepare("
+                SELECT u.user_id, u.username, u.avatar, u.name
+                FROM Wo_GroupChatUsers gcu
+                LEFT JOIN Wo_Users u ON gcu.user_id = u.user_id
+                WHERE gcu.group_id = ? AND gcu.active = '1'
+            ");
+            $stmt->execute([$group_id]);
+            $members = $stmt->fetchAll();
+
+            $group['members'] = $members;
+            $group['members_count'] = count($members);
+
+            sendResponse(array(
+                'api_status' => 200,
+                'data' => $group
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("GET_BY_ID ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to get group');
+        }
+        break;
+
+    // ==========================================
+    // SEND_MESSAGE - Надіслати повідомлення
+    // ==========================================
+    case 'send_message':
+        logMessage("--- SEND MESSAGE ---");
+
+        if (empty($_POST['id'])) {
+            sendError(400, 'id (group_id) is required');
+        }
+
+        if (empty($_POST['text']) && empty($_POST['media'])) {
+            sendError(400, 'text or media is required');
+        }
+
+        $group_id = intval($_POST['id']);
+        $text = isset($_POST['text']) ? $_POST['text'] : '';
+        $media = isset($_POST['media']) ? $_POST['media'] : '';
+
+        try {
+            // Перевіряємо чи користувач є учасником
+            $stmt = $db->prepare("
+                SELECT * FROM Wo_GroupChatUsers
+                WHERE group_id = ? AND user_id = ? AND active = '1'
+            ");
+            $stmt->execute([$group_id, $current_user_id]);
+            if (!$stmt->fetch()) {
+                sendError(403, 'You are not a member of this group');
+            }
+
+            // Створюємо повідомлення
+            $time = time();
+            $stmt = $db->prepare("
+                INSERT INTO Wo_Messages (from_id, group_id, to_id, text, media, time, seen)
+                VALUES (?, ?, 0, ?, ?, ?, 0)
+            ");
+            $stmt->execute([$current_user_id, $group_id, $text, $media, $time]);
+            $message_id = $db->lastInsertId();
+
+            logMessage("Message sent: ID=$message_id");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'message' => 'Message sent successfully',
+                'message_id' => $message_id
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("SEND_MESSAGE ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to send message');
+        }
+        break;
+
+    // ==========================================
+    // GET_MESSAGES - Отримати повідомлення
+    // ==========================================
+    case 'get_messages':
+        logMessage("--- GET MESSAGES ---");
+
+        if (empty($_POST['id'])) {
+            sendError(400, 'id (group_id) is required');
+        }
+
+        $group_id = intval($_POST['id']);
+        $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 50;
+        $before_message_id = isset($_POST['before_message_id']) ? intval($_POST['before_message_id']) : 0;
+
+        try {
+            // Перевіряємо чи користувач є учасником
+            $stmt = $db->prepare("
+                SELECT * FROM Wo_GroupChatUsers
+                WHERE group_id = ? AND user_id = ? AND active = '1'
+            ");
+            $stmt->execute([$group_id, $current_user_id]);
+            if (!$stmt->fetch()) {
+                sendError(403, 'You are not a member of this group');
+            }
+
+            // Отримуємо повідомлення
+            $sql = "
+                SELECT m.*, u.username, u.avatar, u.name as user_name
+                FROM Wo_Messages m
+                LEFT JOIN Wo_Users u ON m.from_id = u.user_id
+                WHERE m.group_id = ?
+            ";
+
+            $params = [$group_id];
+
+            if ($before_message_id > 0) {
+                $sql .= " AND m.id < ?";
+                $params[] = $before_message_id;
+            }
+
+            $sql .= " ORDER BY m.id DESC LIMIT ?";
+            $params[] = $limit;
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $messages = $stmt->fetchAll();
+
+            // Розвертаємо для хронологічного порядку
+            $messages = array_reverse($messages);
+
+            logMessage("Found " . count($messages) . " messages");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'data' => $messages
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("GET_MESSAGES ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to get messages');
+        }
+        break;
+
+    // ==========================================
+    // ADD_MEMBER - Додати учасника
+    // ==========================================
+    case 'add_member':
+        logMessage("--- ADD MEMBER ---");
+
+        if (empty($_POST['id'])) {
+            sendError(400, 'id (group_id) is required');
+        }
+
+        if (empty($_POST['user_id'])) {
+            sendError(400, 'user_id is required');
+        }
+
+        $group_id = intval($_POST['id']);
+        $new_user_id = intval($_POST['user_id']);
+
+        try {
+            // Перевіряємо чи користувач вже є учасником
+            $stmt = $db->prepare("
+                SELECT * FROM Wo_GroupChatUsers
+                WHERE group_id = ? AND user_id = ?
+            ");
+            $stmt->execute([$group_id, $new_user_id]);
+
+            if ($stmt->fetch()) {
+                // Оновлюємо active якщо був деактивований
+                $stmt = $db->prepare("
+                    UPDATE Wo_GroupChatUsers
+                    SET active = '1'
+                    WHERE group_id = ? AND user_id = ?
+                ");
+                $stmt->execute([$group_id, $new_user_id]);
+            } else {
+                // Додаємо нового учасника
+                $stmt = $db->prepare("
+                    INSERT INTO Wo_GroupChatUsers (user_id, group_id, active, time)
+                    VALUES (?, ?, '1', ?)
+                ");
+                $stmt->execute([$new_user_id, $group_id, time()]);
+            }
+
+            logMessage("Member added: user_id=$new_user_id to group_id=$group_id");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'message' => 'Member added successfully'
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("ADD_MEMBER ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to add member');
+        }
+        break;
+
+    // ==========================================
+    // REMOVE_MEMBER - Видалити учасника
+    // ==========================================
+    case 'remove_member':
+        logMessage("--- REMOVE MEMBER ---");
+
+        if (empty($_POST['id'])) {
+            sendError(400, 'id (group_id) is required');
+        }
+
+        if (empty($_POST['user_id'])) {
+            sendError(400, 'user_id is required');
+        }
+
+        $group_id = intval($_POST['id']);
+        $remove_user_id = intval($_POST['user_id']);
+
+        try {
+            // Перевіряємо чи поточний користувач є створювачем групи
+            $stmt = $db->prepare("SELECT user_id FROM Wo_GroupChat WHERE group_id = ?");
+            $stmt->execute([$group_id]);
+            $group = $stmt->fetch();
+
+            if ($group['user_id'] != $current_user_id) {
+                sendError(403, 'Only group creator can remove members');
+            }
+
+            // Видаляємо учасника
+            $stmt = $db->prepare("
+                UPDATE Wo_GroupChatUsers
+                SET active = '0'
+                WHERE group_id = ? AND user_id = ?
+            ");
+            $stmt->execute([$group_id, $remove_user_id]);
+
+            logMessage("Member removed: user_id=$remove_user_id from group_id=$group_id");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'message' => 'Member removed successfully'
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("REMOVE_MEMBER ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to remove member');
+        }
+        break;
+
+    // ==========================================
+    // LEAVE - Вийти з групи
+    // ==========================================
+    case 'leave':
+        logMessage("--- LEAVE GROUP ---");
+
+        if (empty($_POST['id'])) {
+            sendError(400, 'id (group_id) is required');
+        }
+
+        $group_id = intval($_POST['id']);
+
+        try {
+            $stmt = $db->prepare("
+                UPDATE Wo_GroupChatUsers
+                SET active = '0'
+                WHERE group_id = ? AND user_id = ?
+            ");
+            $stmt->execute([$group_id, $current_user_id]);
+
+            logMessage("User left group: user_id=$current_user_id from group_id=$group_id");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'message' => 'Left group successfully'
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("LEAVE ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to leave group');
+        }
+        break;
+
+    // ==========================================
+    // DELETE - Видалити групу
+    // ==========================================
+    case 'delete':
+        logMessage("--- DELETE GROUP ---");
+
+        if (empty($_POST['id'])) {
+            sendError(400, 'id (group_id) is required');
+        }
+
+        $group_id = intval($_POST['id']);
+
+        try {
+            // Перевіряємо чи користувач є створювачем
+            $stmt = $db->prepare("SELECT user_id FROM Wo_GroupChat WHERE group_id = ?");
+            $stmt->execute([$group_id]);
+            $group = $stmt->fetch();
+
+            if (!$group) {
+                sendError(404, 'Group not found');
+            }
+
+            if ($group['user_id'] != $current_user_id) {
+                sendError(403, 'Only group creator can delete the group');
+            }
+
+            // Видаляємо групу
+            $stmt = $db->prepare("DELETE FROM Wo_GroupChat WHERE group_id = ?");
+            $stmt->execute([$group_id]);
+
+            // Видаляємо всіх учасників
+            $stmt = $db->prepare("DELETE FROM Wo_GroupChatUsers WHERE group_id = ?");
+            $stmt->execute([$group_id]);
+
+            // Видаляємо повідомлення
+            $stmt = $db->prepare("DELETE FROM Wo_Messages WHERE group_id = ?");
+            $stmt->execute([$group_id]);
+
+            logMessage("Group deleted: group_id=$group_id");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'message' => 'Group deleted successfully'
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("DELETE ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to delete group');
+        }
+        break;
+
+    // ==========================================
+    // UNKNOWN TYPE
+    // ==========================================
+    default:
+        logMessage("ERROR: Unknown type: $type");
+        sendError(400, "Unknown action type: $type");
+        break;
+}

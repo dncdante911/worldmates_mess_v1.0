@@ -387,6 +387,68 @@ class GroupsViewModel : ViewModel() {
         }
     }
 
+    fun uploadGroupAvatar(groupId: Long, imageUri: android.net.Uri, context: android.content.Context) {
+        if (UserSession.accessToken == null) {
+            _error.value = "Користувач не авторизований"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                // Конвертуємо Uri в File
+                val file = java.io.File(context.cacheDir, "avatar_${System.currentTimeMillis()}.jpg")
+                context.contentResolver.openInputStream(imageUri)?.use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                // Створюємо RequestBody для groupId
+                val groupIdBody = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("text/plain"),
+                    groupId.toString()
+                )
+
+                // Створюємо MultipartBody.Part для аватарки
+                val requestFile = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("image/*"),
+                    file
+                )
+                val avatarPart = okhttp3.MultipartBody.Part.createFormData(
+                    "avatar",
+                    file.name,
+                    requestFile
+                )
+
+                // Відправляємо запит
+                val response = RetrofitClient.apiService.uploadGroupAvatar(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupIdBody,
+                    avatar = avatarPart
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    fetchGroups() // Оновлюємо список груп
+                    Log.d("GroupsViewModel", "Аватарка завантажена успішно")
+                } else {
+                    _error.value = response.errorMessage ?: "Не вдалося завантажити аватарку"
+                }
+
+                // Видаляємо тимчасовий файл
+                file.delete()
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e("GroupsViewModel", "Помилка завантаження аватарки", e)
+            }
+        }
+    }
+
     fun clearError() {
         _error.value = null
     }

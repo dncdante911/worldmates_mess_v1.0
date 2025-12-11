@@ -707,6 +707,92 @@ switch ($type) {
         break;
 
     // ==========================================
+    // UPLOAD_AVATAR - Завантажити аватарку групи
+    // ==========================================
+    case 'upload_avatar':
+        logMessage("--- UPLOAD AVATAR ---");
+
+        if (empty($_POST['id'])) {
+            sendError(400, 'id (group_id) is required');
+        }
+
+        $group_id = intval($_POST['id']);
+
+        try {
+            // Перевіряємо чи користувач є адміном
+            $stmt = $db->prepare("SELECT user_id FROM Wo_GroupChat WHERE group_id = ?");
+            $stmt->execute([$group_id]);
+            $group = $stmt->fetch();
+
+            if (!$group) {
+                sendError(404, 'Group not found');
+            }
+
+            if ($group['user_id'] != $current_user_id) {
+                sendError(403, 'Only group admin can change avatar');
+            }
+
+            // Перевіряємо чи файл завантажено
+            if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] != UPLOAD_ERR_OK) {
+                sendError(400, 'Avatar file is required');
+            }
+
+            $file = $_FILES['avatar'];
+
+            // Перевіряємо тип файлу
+            $allowed_types = array('image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp');
+            $file_type = mime_content_type($file['tmp_name']);
+
+            if (!in_array($file_type, $allowed_types)) {
+                sendError(400, 'Invalid file type. Only images allowed');
+            }
+
+            // Перевіряємо розмір (макс 5MB)
+            if ($file['size'] > 5 * 1024 * 1024) {
+                sendError(400, 'File too large. Maximum 5MB');
+            }
+
+            // Створюємо директорію якщо не існує
+            $upload_dir = '../upload/photos/' . date('Y/m') . '/';
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+
+            // Генеруємо унікальне ім'я файлу
+            $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $new_filename = 'group_' . $group_id . '_' . time() . '.' . $file_extension;
+            $relative_path = 'upload/photos/' . date('Y/m') . '/' . $new_filename;
+            $absolute_path = $upload_dir . $new_filename;
+
+            // Переміщуємо файл
+            if (!move_uploaded_file($file['tmp_name'], $absolute_path)) {
+                sendError(500, 'Failed to upload file');
+            }
+
+            // Видаляємо стару аватарку якщо існує
+            if (!empty($group['avatar']) && file_exists('../' . $group['avatar'])) {
+                @unlink('../' . $group['avatar']);
+            }
+
+            // Оновлюємо avatar в БД
+            $stmt = $db->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE group_id = ?");
+            $stmt->execute([$relative_path, $group_id]);
+
+            logMessage("Avatar uploaded: $relative_path");
+
+            sendResponse(array(
+                'api_status' => 200,
+                'message' => 'Avatar uploaded successfully',
+                'avatar' => $relative_path
+            ));
+
+        } catch (PDOException $e) {
+            logMessage("UPLOAD_AVATAR ERROR: " . $e->getMessage());
+            sendError(500, 'Failed to upload avatar');
+        }
+        break;
+
+    // ==========================================
     // UNKNOWN TYPE
     // ==========================================
     default:

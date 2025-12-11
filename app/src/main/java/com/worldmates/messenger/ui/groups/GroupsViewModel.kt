@@ -14,6 +14,7 @@ import com.worldmates.messenger.network.SearchUser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
 
 class GroupsViewModel : ViewModel() {
 
@@ -407,13 +408,13 @@ class GroupsViewModel : ViewModel() {
 
                 // Створюємо RequestBody для groupId
                 val groupIdBody = okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("text/plain"),
+                    "text/plain".toMediaType(),
                     groupId.toString()
                 )
 
                 // Створюємо MultipartBody.Part для аватарки
                 val requestFile = okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("image/*"),
+                    "image/*".toMediaType(),
                     file
                 )
                 val avatarPart = okhttp3.MultipartBody.Part.createFormData(

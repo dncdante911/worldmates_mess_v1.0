@@ -283,6 +283,14 @@ switch ($type) {
             $stmt->execute([$current_user_id, $current_user_id, $limit, $offset]);
             $groups = $stmt->fetchAll();
 
+            // Конвертуємо числові поля в boolean для правильного JSON
+            foreach ($groups as &$group) {
+                $group['is_admin'] = (bool)$group['is_admin'];
+                $group['is_private'] = (bool)$group['is_private'];
+                $group['is_member'] = (bool)$group['is_member'];
+                $group['members_count'] = (int)$group['members_count'];
+            }
+
             logMessage("Found " . count($groups) . " groups");
 
             sendResponse(array(

@@ -2,6 +2,7 @@ package com.worldmates.messenger.ui.theme
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -18,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+private const val TAG = "ThemeManager"
 
 /**
  * Состояние темы приложения
@@ -51,7 +54,7 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = ThemeState()
     )
 
@@ -59,6 +62,7 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
      * Установить вариант темы
      */
     fun setThemeVariant(variant: ThemeVariant) {
+        Log.d(TAG, "Setting theme variant: ${variant.name}")
         viewModelScope.launch {
             repository.setThemeVariant(variant)
         }
@@ -173,8 +177,8 @@ object ThemeManager {
 @Composable
 fun rememberThemeState(): ThemeState {
     val context = LocalContext.current
-    val viewModel = remember { ThemeManager.getViewModel(context) }
-    val themeState by viewModel.themeState.collectAsState()
+    val viewModel = remember(context) { ThemeManager.getViewModel(context) }
+    val themeState by viewModel.themeState.collectAsState(initial = ThemeState())
     val systemInDarkTheme = isSystemInDarkTheme()
 
     // Если включено следование системной теме, используем системную настройку
@@ -191,7 +195,7 @@ fun rememberThemeState(): ThemeState {
 @Composable
 fun rememberThemeViewModel(): ThemeViewModel {
     val context = LocalContext.current
-    return remember { ThemeManager.getViewModel(context) }
+    return remember(context) { ThemeManager.getViewModel(context) }
 }
 
 /**
@@ -202,6 +206,8 @@ fun WorldMatesThemedApp(
     content: @Composable () -> Unit
 ) {
     val themeState = rememberThemeState()
+
+    Log.d(TAG, "Applying theme: variant=${themeState.variant.name}, dark=${themeState.isDark}, dynamic=${themeState.useDynamicColor}")
 
     WorldMatesTheme(
         darkTheme = themeState.isDark,

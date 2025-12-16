@@ -32,8 +32,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.worldmates.messenger.ui.chats.ChatsActivity
 import com.worldmates.messenger.ui.components.GradientButton
-import com.worldmates.messenger.ui.theme.ThemeManager
-import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
+import com.worldmates.messenger.ui.theme.*
 import kotlinx.coroutines.launch
 
 class RegisterActivity : AppCompatActivity() {

@@ -33,7 +33,9 @@ import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Chat
 import com.worldmates.messenger.ui.messages.MessagesActivity
+import com.worldmates.messenger.ui.theme.AnimatedGradientBackground
 import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.WMColors
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 
 class ChatsActivity : AppCompatActivity() {
@@ -169,7 +171,16 @@ fun ChatsScreen(
         it.name.contains(searchText, ignoreCase = true)
     }
 
-    Scaffold(
+    // Динамический градиентный фон
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Анимированный фон с градиентом темы
+        AnimatedGradientBackground(
+            brush = WMColors.extendedColors.backgroundGradient,
+            animated = true
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent,  // Прозрачный фон для Scaffold
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (showGroups) {
@@ -403,8 +414,8 @@ fun ChatsScreen(
                 isLoading = isCreatingGroup
             )
         }
-    }
-    }
+        }  // Конец Scaffold
+    }  // Конец Box с фоном
 }
 
 @Composable

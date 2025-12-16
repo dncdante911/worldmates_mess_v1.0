@@ -15,11 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 /**
- * Дополнительные цвета WorldMates, не входящие в стандартную Material3 палитру
+ * Дополнительные цвета и эффекты WorldMates
+ * Включает динамические фоны для каждой темы
  */
 @Immutable
 data class ExtendedColors(
@@ -33,11 +35,12 @@ data class ExtendedColors(
     val offlineGray: Color,
     val unreadBadge: Color,
     val typingIndicator: Color,
-    val searchBarBackground: Color
+    val searchBarBackground: Color,
+    val backgroundGradient: Brush  // Динамический градиентный фон
 )
 
 /**
- * CompositionLocal для расширенных цветов
+ * CompositionLocal для расширенных цветов и эффектов
  */
 val LocalExtendedColors = staticCompositionLocalOf {
     ExtendedColors(
@@ -51,7 +54,8 @@ val LocalExtendedColors = staticCompositionLocalOf {
         offlineGray = Color.Unspecified,
         unreadBadge = Color.Unspecified,
         typingIndicator = Color.Unspecified,
-        searchBarBackground = Color.Unspecified
+        searchBarBackground = Color.Unspecified,
+        backgroundGradient = Brush.linearGradient(listOf(Color.Black, Color.Black))
     )
 }
 
@@ -133,7 +137,7 @@ private fun createDarkColorScheme(palette: ThemePalette): ColorScheme {
 }
 
 /**
- * Создать расширенные цвета для заданного варианта темы
+ * Создать расширенные цвета и эффекты для заданного варианта темы
  */
 private fun createExtendedColors(
     palette: ThemePalette,
@@ -150,7 +154,8 @@ private fun createExtendedColors(
         offlineGray = OfflineGray,
         unreadBadge = UnreadBadge,
         typingIndicator = palette.primary,
-        searchBarBackground = if (isDark) SearchBarBackgroundDark else SearchBarBackground
+        searchBarBackground = if (isDark) SearchBarBackgroundDark else SearchBarBackground,
+        backgroundGradient = palette.backgroundGradient  // Динамический градиентный фон
     )
 }
 
@@ -197,7 +202,8 @@ fun WorldMatesTheme(
     // Создаем расширенные цвета
     val extendedColors = when {
         themeVariant == ThemeVariant.MATERIAL_YOU && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            // Для Material You используем палитру из colorScheme
+            // Для Material You используем палитру из colorScheme + градиент из варианта
+            val materialYouPalette = ThemeVariant.MATERIAL_YOU.getPalette()
             ExtendedColors(
                 messageBubbleOwn = colorScheme.primary,
                 messageBubbleOther = if (darkTheme) Color(0xFF2C2C2C) else Color(0xFFE5E5EA),
@@ -209,7 +215,8 @@ fun WorldMatesTheme(
                 offlineGray = OfflineGray,
                 unreadBadge = UnreadBadge,
                 typingIndicator = colorScheme.primary,
-                searchBarBackground = if (darkTheme) SearchBarBackgroundDark else SearchBarBackground
+                searchBarBackground = if (darkTheme) SearchBarBackgroundDark else SearchBarBackground,
+                backgroundGradient = materialYouPalette.backgroundGradient  // Градиент для Material You
             )
         }
         else -> {

@@ -5,102 +5,115 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 /**
- * Формы для современного дизайна в стиле Material Design 3
- * Telegram-подобные скруглённые углы
+ * Формы для современного футуристичного дизайна
+ * Увеличенные скругления в стиле iOS/Telegram для более мягкого и современного вида
  */
 val Shapes = Shapes(
-    // Экстрамалые формы (чипы, бейджи)
-    extraSmall = RoundedCornerShape(4.dp),
+    // Экстрамалые формы (чипы, бейджи) - увеличены для мягкости
+    extraSmall = RoundedCornerShape(6.dp),
 
-    // Малые формы (кнопки, карточки сообщений)
-    small = RoundedCornerShape(12.dp),
+    // Малые формы (кнопки, карточки сообщений) - более округлые
+    small = RoundedCornerShape(14.dp),
 
-    // Средние формы (диалоги, bottom sheets)
-    medium = RoundedCornerShape(16.dp),
+    // Средние формы (диалоги, bottom sheets) - современные скругления
+    medium = RoundedCornerShape(18.dp),
 
-    // Большие формы (модальные окна, карточки медиа)
-    large = RoundedCornerShape(20.dp),
+    // Большие формы (модальные окна, карточки медиа) - выразительные
+    large = RoundedCornerShape(24.dp),
 
-    // Экстрабольшие формы (полноэкранные карточки)
-    extraLarge = RoundedCornerShape(28.dp)
+    // Экстрабольшие формы (полноэкранные карточки) - максимально мягкие
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 /**
- * Кастомные формы для специфичных элементов
+ * Кастомные формы для специфичных элементов - Современный футуристичный стиль
  */
 object WMShapes {
-    // Собственные сообщения (скруглены все углы кроме правого нижнего)
+    // Собственные сообщения (скруглены все углы кроме правого нижнего) - увеличены для мягкости
     val ownMessageBubble = RoundedCornerShape(
-        topStart = 18.dp,
-        topEnd = 18.dp,
-        bottomStart = 18.dp,
-        bottomEnd = 4.dp
+        topStart = 20.dp,
+        topEnd = 20.dp,
+        bottomStart = 20.dp,
+        bottomEnd = 6.dp  // Небольшой "хвостик" для указания направления
     )
 
-    // Чужие сообщения (скруглены все углы кроме левого нижнего)
+    // Чужие сообщения (скруглены все углы кроме левого нижнего) - увеличены для мягкости
     val otherMessageBubble = RoundedCornerShape(
-        topStart = 18.dp,
-        topEnd = 18.dp,
-        bottomStart = 4.dp,
-        bottomEnd = 18.dp
+        topStart = 20.dp,
+        topEnd = 20.dp,
+        bottomStart = 6.dp,  // Небольшой "хвостик" для указания направления
+        bottomEnd = 20.dp
     )
 
-    // Голосовое сообщение
-    val voiceMessage = RoundedCornerShape(20.dp)
+    // Голосовое сообщение - более округлое для выделения
+    val voiceMessage = RoundedCornerShape(24.dp)
 
-    // Медиа-сообщения (фото/видео)
-    val mediaMessage = RoundedCornerShape(12.dp)
+    // Медиа-сообщения (фото/видео) - современные скругления
+    val mediaMessage = RoundedCornerShape(16.dp)
 
-    // Файлы
-    val fileAttachment = RoundedCornerShape(14.dp)
+    // Файлы - увеличенные скругления
+    val fileAttachment = RoundedCornerShape(16.dp)
 
-    // Аватар пользователя
+    // Аватар пользователя - идеально круглый
     val avatar = RoundedCornerShape(50) // Круглый
 
-    // Аватар группы
-    val groupAvatar = RoundedCornerShape(16.dp) // Скруглённый квадрат
+    // Аватар группы - более округлый квадрат
+    val groupAvatar = RoundedCornerShape(20.dp) // Скруглённый квадрат
 
-    // Поле ввода сообщения
-    val messageInput = RoundedCornerShape(24.dp)
+    // Поле ввода сообщения - pill-образная форма
+    val messageInput = RoundedCornerShape(26.dp)
 
-    // Кнопки
-    val button = RoundedCornerShape(12.dp)
+    // Кнопки - современные скругления
+    val button = RoundedCornerShape(14.dp)
     val roundButton = RoundedCornerShape(50) // Круглая кнопка
+    val pillButton = RoundedCornerShape(28.dp) // Pill-образная кнопка
 
-    // Карточка чата в списке
+    // Карточка чата в списке - минимальное скругление для чистоты списка
     val chatCard = RoundedCornerShape(0.dp) // Без скругления (как в Telegram)
 
-    // Карточка группы
-    val groupCard = RoundedCornerShape(16.dp)
+    // Карточка группы - увеличенные скругления
+    val groupCard = RoundedCornerShape(20.dp)
 
-    // Диалоговые окна
-    val dialog = RoundedCornerShape(28.dp)
+    // Диалоговые окна - максимально мягкие
+    val dialog = RoundedCornerShape(32.dp)
 
-    // Bottom Sheet
+    // Bottom Sheet - выразительные верхние углы
     val bottomSheet = RoundedCornerShape(
-        topStart = 28.dp,
-        topEnd = 28.dp,
+        topStart = 32.dp,
+        topEnd = 32.dp,
         bottomStart = 0.dp,
         bottomEnd = 0.dp
     )
 
-    // Бейдж непрочитанных
-    val unreadBadge = RoundedCornerShape(12.dp)
+    // Бейдж непрочитанных - pill-образный
+    val unreadBadge = RoundedCornerShape(14.dp)
 
-    // Индикатор "печатает"
-    val typingIndicator = RoundedCornerShape(8.dp)
+    // Индикатор "печатает" - мягкие скругления
+    val typingIndicator = RoundedCornerShape(10.dp)
 
-    // Превью медиа
-    val mediaPreview = RoundedCornerShape(8.dp)
+    // Превью медиа - современные скругления
+    val mediaPreview = RoundedCornerShape(12.dp)
 
-    // Реакции на сообщения
-    val reaction = RoundedCornerShape(16.dp)
+    // Реакции на сообщения - pill-образные
+    val reaction = RoundedCornerShape(18.dp)
 
-    // Панель выбора эмодзи
+    // Панель выбора эмодзи - мягкие верхние углы
     val emojiPanel = RoundedCornerShape(
-        topStart = 16.dp,
-        topEnd = 16.dp,
+        topStart = 20.dp,
+        topEnd = 20.dp,
         bottomStart = 0.dp,
         bottomEnd = 0.dp
     )
+
+    // Карточки настроек - современные скругления
+    val settingsCard = RoundedCornerShape(18.dp)
+
+    // Модальные карточки - выразительные скругления
+    val modalCard = RoundedCornerShape(24.dp)
+
+    // Поисковая строка - pill-образная
+    val searchBar = RoundedCornerShape(28.dp)
+
+    // Чипы и теги - мягкие скругления
+    val chip = RoundedCornerShape(12.dp)
 }

@@ -33,6 +33,8 @@ import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.ui.theme.WMShapes
 import com.worldmates.messenger.ui.theme.MessageBubbleOwn
 import com.worldmates.messenger.ui.theme.MessageBubbleOther
+import com.worldmates.messenger.ui.theme.WMGradients
+import androidx.compose.ui.draw.shadow
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
 import kotlinx.coroutines.launch
@@ -311,13 +313,24 @@ fun MessageBubbleComposable(
             .padding(vertical = 2.dp),
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
     ) {
-        Surface(
+        // Современный пузырь с градиентом для собственных сообщений
+        Box(
             modifier = Modifier
                 .widthIn(max = 280.dp)
-                .padding(horizontal = 8.dp),
-            shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble,
-            color = bgColor,
-            shadowElevation = 1.dp
+                .padding(horizontal = 8.dp)
+                .shadow(
+                    elevation = if (isOwn) 3.dp else 1.dp,
+                    shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble,
+                    clip = false
+                )
+                .clip(if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble)
+                .background(
+                    brush = if (isOwn) WMGradients.buttonGradient else null,
+                    shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble
+                )
+                .then(
+                    if (!isOwn) Modifier.background(bgColor) else Modifier
+                )
         ) {
             Column(
                 modifier = Modifier.padding(10.dp)

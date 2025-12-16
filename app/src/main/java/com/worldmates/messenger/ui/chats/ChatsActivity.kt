@@ -33,7 +33,8 @@ import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Chat
 import com.worldmates.messenger.ui.messages.MessagesActivity
-import com.worldmates.messenger.ui.theme.WorldMatesTheme
+import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 
 class ChatsActivity : AppCompatActivity() {
 
@@ -43,11 +44,14 @@ class ChatsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Инициализируем ThemeManager
+        ThemeManager.initialize(this)
+
         viewModel = ViewModelProvider(this).get(ChatsViewModel::class.java)
         groupsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.groups.GroupsViewModel::class.java)
 
         setContent {
-            WorldMatesTheme {
+            WorldMatesThemedApp {
                 // Обробка необхідності перелогіну
                 val needsRelogin by viewModel.needsRelogin.collectAsState()
 

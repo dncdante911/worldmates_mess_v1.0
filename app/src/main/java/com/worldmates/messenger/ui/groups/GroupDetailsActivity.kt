@@ -35,7 +35,8 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.data.model.GroupMember
-import com.worldmates.messenger.ui.theme.WorldMatesTheme
+import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -53,10 +54,13 @@ class GroupDetailsActivity : AppCompatActivity() {
             return
         }
 
+        // Инициализируем ThemeManager
+        ThemeManager.initialize(this)
+
         viewModel = ViewModelProvider(this).get(GroupsViewModel::class.java)
 
         setContent {
-            WorldMatesTheme {
+            WorldMatesThemedApp {
                 GroupDetailsScreen(
                     groupId = groupId,
                     viewModel = viewModel,

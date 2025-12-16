@@ -27,7 +27,9 @@ import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.ui.login.LoginActivity
-import com.worldmates.messenger.ui.theme.WorldMatesTheme
+import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.ThemeSettingsScreen
+import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -36,19 +38,31 @@ class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Инициализируем ThemeManager
+        ThemeManager.initialize(this)
+
         viewModel = ViewModelProvider(this).get(SettingsViewModel::class.java)
 
         setContent {
-            WorldMatesTheme {
-                SettingsScreen(
-                    viewModel = viewModel,
-                    onBackPressed = { finish() },
-                    onLogout = {
-                        UserSession.clearSession()
-                        startActivity(Intent(this, LoginActivity::class.java))
-                        finishAffinity()
-                    }
-                )
+            var showThemeSettings by remember { mutableStateOf(false) }
+
+            WorldMatesThemedApp {
+                if (showThemeSettings) {
+                    ThemeSettingsScreen(
+                        onBackClick = { showThemeSettings = false }
+                    )
+                } else {
+                    SettingsScreen(
+                        viewModel = viewModel,
+                        onBackPressed = { finish() },
+                        onThemeClick = { showThemeSettings = true },
+                        onLogout = {
+                            UserSession.clearSession()
+                            startActivity(Intent(this, LoginActivity::class.java))
+                            finishAffinity()
+                        }
+                    )
+                }
             }
         }
     }
@@ -59,6 +73,7 @@ class SettingsActivity : AppCompatActivity() {
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBackPressed: () -> Unit,
+    onThemeClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     val username = UserSession.username ?: "Користувач"
@@ -166,8 +181,8 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.DarkMode,
                     title = "Тема",
-                    subtitle = "Світла",
-                    onClick = { /* TODO */ }
+                    subtitle = "Налаштування кольорів",
+                    onClick = onThemeClick
                 )
             }
             item {

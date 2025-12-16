@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
+import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import org.webrtc.MediaStream
 import org.webrtc.SurfaceViewRenderer
 
@@ -46,13 +48,18 @@ class CallsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Инициализируем ThemeManager
+        ThemeManager.initialize(this)
+
         callsViewModel = ViewModelProvider(this).get(CallsViewModel::class.java)
 
         // Запросити дозволи
         requestPermissions()
 
         setContent {
-            CallsScreen(callsViewModel, this)
+            WorldMatesThemedApp {
+                CallsScreen(callsViewModel, this)
+            }
         }
     }
 

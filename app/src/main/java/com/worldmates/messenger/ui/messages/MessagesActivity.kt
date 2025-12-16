@@ -40,7 +40,8 @@ import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.ui.media.FullscreenImageViewer
 import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
-import com.worldmates.messenger.ui.theme.WorldMatesTheme
+import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
 import kotlinx.coroutines.launch
@@ -85,8 +86,11 @@ class MessagesActivity : AppCompatActivity() {
             viewModel.initialize(recipientId)
         }
 
+        // Инициализируем ThemeManager
+        ThemeManager.initialize(this)
+
         setContent {
-            WorldMatesTheme {
+            WorldMatesThemedApp {
                 MessagesScreenContent(
                     activity = this,
                     viewModel = viewModel,

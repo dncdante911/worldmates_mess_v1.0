@@ -102,15 +102,15 @@ data class ThemePalette(
 fun ThemeVariant.getPalette(): ThemePalette {
     return when (this) {
         ThemeVariant.CLASSIC -> ThemePalette(
-            primary = Color(0xFF0084FF),
-            primaryDark = Color(0xFF0066CC),
-            primaryLight = Color(0xFF4DA6FF),
-            secondary = Color(0xFF03DAC6),
-            secondaryDark = Color(0xFF00B3A5),
-            secondaryLight = Color(0xFF5FFFF0),
-            messageBubbleOwn = Color(0xFF0084FF),
-            messageBubbleOther = Color(0xFFE5E5EA),
-            accent = Color(0xFF0084FF)
+            primary = Color(0xFF0A84FF),  // Более яркий iOS-стиль синий
+            primaryDark = Color(0xFF0040DD),  // Глубокий электрический синий
+            primaryLight = Color(0xFF5AC8FA),  // Светло-голубой
+            secondary = Color(0xFF00D4FF),  // Яркий циан
+            secondaryDark = Color(0xFF00A0C8),  // Темный циан
+            secondaryLight = Color(0xFF64D2FF),  // Светлый циан
+            messageBubbleOwn = Color(0xFF0A84FF),  // Синий для своих сообщений
+            messageBubbleOther = Color(0xFFE9ECEF),  // Светло-серый для чужих
+            accent = Color(0xFF5AC8FA)  // Акцентный голубой
         )
 
         ThemeVariant.OCEAN -> ThemePalette(

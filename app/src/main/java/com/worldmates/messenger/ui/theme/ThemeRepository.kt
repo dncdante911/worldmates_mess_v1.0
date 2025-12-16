@@ -68,7 +68,7 @@ class ThemeRepository(private val context: Context) {
      */
     val systemTheme: Flow<Boolean> = context.themeDataStore.data
         .map { preferences ->
-            val system = preferences[SYSTEM_THEME_KEY] ?: true
+            val system = preferences[SYSTEM_THEME_KEY] ?: false  // Изменено с true на false
             Log.d(TAG, "Reading system theme: $system")
             system
         }

@@ -29,7 +29,7 @@ data class ThemeState(
     val variant: ThemeVariant = ThemeVariant.CLASSIC,
     val isDark: Boolean = false,
     val useDynamicColor: Boolean = false,
-    val useSystemTheme: Boolean = true
+    val useSystemTheme: Boolean = false  // Изменено с true на false
 )
 
 /**

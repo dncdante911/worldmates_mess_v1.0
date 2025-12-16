@@ -3,6 +3,7 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+    id 'org.jetbrains.kotlin.plugin.compose'  // КРИТИЧНО для Kotlin 2.0+ и Compose
     // Временно отключен до настройки Firebase
     // id 'com.google.gms.google-services'
 }
@@ -49,10 +50,8 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        // Kotlin 2.0+ автоматично управляє версією Compose Compiler
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
+    // Начиная с Kotlin 2.0, версия Compose Compiler управляется плагином
+    // composeOptions больше не нужен - плагин все делает автоматически
 
     packagingOptions {
         resources {

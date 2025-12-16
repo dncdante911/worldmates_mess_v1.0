@@ -48,7 +48,9 @@ class ThemeRepository(private val context: Context) {
      */
     val darkTheme: Flow<Boolean> = context.themeDataStore.data
         .map { preferences ->
-            preferences[DARK_THEME_KEY] ?: false
+            val dark = preferences[DARK_THEME_KEY] ?: false
+            Log.d(TAG, "Reading dark theme: $dark")
+            dark
         }
 
     /**
@@ -56,7 +58,9 @@ class ThemeRepository(private val context: Context) {
      */
     val dynamicColor: Flow<Boolean> = context.themeDataStore.data
         .map { preferences ->
-            preferences[DYNAMIC_COLOR_KEY] ?: false
+            val dynamic = preferences[DYNAMIC_COLOR_KEY] ?: false
+            Log.d(TAG, "Reading dynamic color: $dynamic")
+            dynamic
         }
 
     /**
@@ -64,7 +68,9 @@ class ThemeRepository(private val context: Context) {
      */
     val systemTheme: Flow<Boolean> = context.themeDataStore.data
         .map { preferences ->
-            preferences[SYSTEM_THEME_KEY] ?: true
+            val system = preferences[SYSTEM_THEME_KEY] ?: true
+            Log.d(TAG, "Reading system theme: $system")
+            system
         }
 
     /**

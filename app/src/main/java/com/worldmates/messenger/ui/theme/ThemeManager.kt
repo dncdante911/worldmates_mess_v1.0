@@ -46,6 +46,7 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
         repository.dynamicColor,
         repository.systemTheme
     ) { variant, dark, dynamic, system ->
+        Log.d(TAG, "ThemeState updated: variant=$variant, dark=$dark, dynamic=$dynamic, system=$system")
         ThemeState(
             variant = variant,
             isDark = dark,
@@ -54,7 +55,7 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Eagerly,
+        started = SharingStarted.Lazily,
         initialValue = ThemeState()
     )
 
@@ -177,9 +178,14 @@ object ThemeManager {
 @Composable
 fun rememberThemeState(): ThemeState {
     val context = LocalContext.current
-    val viewModel = remember(context) { ThemeManager.getViewModel(context) }
-    val themeState by viewModel.themeState.collectAsState(initial = ThemeState())
+    val viewModel = remember {
+        Log.d(TAG, "Creating/getting ThemeViewModel")
+        ThemeManager.getViewModel(context)
+    }
+    val themeState by viewModel.themeState.collectAsState()
     val systemInDarkTheme = isSystemInDarkTheme()
+
+    Log.d(TAG, "rememberThemeState: variant=${themeState.variant.name}, dark=${themeState.isDark}, system=${themeState.useSystemTheme}")
 
     // Если включено следование системной теме, используем системную настройку
     return if (themeState.useSystemTheme) {
@@ -195,7 +201,10 @@ fun rememberThemeState(): ThemeState {
 @Composable
 fun rememberThemeViewModel(): ThemeViewModel {
     val context = LocalContext.current
-    return remember(context) { ThemeManager.getViewModel(context) }
+    return remember {
+        Log.d(TAG, "Getting ThemeViewModel in rememberThemeViewModel")
+        ThemeManager.getViewModel(context)
+    }
 }
 
 /**

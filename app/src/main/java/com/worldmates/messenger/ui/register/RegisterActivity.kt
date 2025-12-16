@@ -32,7 +32,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.worldmates.messenger.ui.chats.ChatsActivity
 import com.worldmates.messenger.ui.components.GradientButton
-import com.worldmates.messenger.ui.theme.*
+import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import kotlinx.coroutines.launch
 
 class RegisterActivity : AppCompatActivity() {
@@ -44,8 +45,11 @@ class RegisterActivity : AppCompatActivity() {
 
         viewModel = ViewModelProvider(this).get(RegisterViewModel::class.java)
 
+        // Инициализируем ThemeManager
+        ThemeManager.initialize(this)
+
         setContent {
-            WorldMatesTheme {
+            WorldMatesThemedApp {
                 RegisterScreen(
                     viewModel = viewModel,
                     onRegisterSuccess = { navigateToChats() },

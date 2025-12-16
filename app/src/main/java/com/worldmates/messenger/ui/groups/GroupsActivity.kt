@@ -33,7 +33,8 @@ import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.ui.messages.MessagesActivity
-import com.worldmates.messenger.ui.theme.WorldMatesTheme
+import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 
 class GroupsActivity : AppCompatActivity() {
 
@@ -42,10 +43,13 @@ class GroupsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Инициализируем ThemeManager
+        ThemeManager.initialize(this)
+
         viewModel = ViewModelProvider(this).get(GroupsViewModel::class.java)
 
         setContent {
-            WorldMatesTheme {
+            WorldMatesThemedApp {
                 GroupsScreenWrapper(
                     viewModel = viewModel,
                     onGroupClick = { group ->

@@ -1,6 +1,7 @@
 package com.worldmates.messenger.ui.theme
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.map
 private val Context.themeDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "theme_preferences"
 )
+
+private const val TAG = "ThemeRepository"
 
 /**
  * Репозиторий для управления настройками темы приложения
@@ -35,7 +38,9 @@ class ThemeRepository(private val context: Context) {
     val themeVariant: Flow<ThemeVariant> = context.themeDataStore.data
         .map { preferences ->
             val ordinal = preferences[THEME_VARIANT_KEY] ?: ThemeVariant.CLASSIC.ordinal
-            ThemeVariant.fromOrdinal(ordinal)
+            val variant = ThemeVariant.fromOrdinal(ordinal)
+            Log.d(TAG, "Reading theme variant: ${variant.name}")
+            variant
         }
 
     /**
@@ -66,6 +71,7 @@ class ThemeRepository(private val context: Context) {
      * Сохранить вариант темы
      */
     suspend fun setThemeVariant(variant: ThemeVariant) {
+        Log.d(TAG, "Saving theme variant: ${variant.name}")
         context.themeDataStore.edit { preferences ->
             preferences[THEME_VARIANT_KEY] = variant.ordinal
         }
@@ -75,6 +81,7 @@ class ThemeRepository(private val context: Context) {
      * Сохранить настройку темной темы
      */
     suspend fun setDarkTheme(dark: Boolean) {
+        Log.d(TAG, "Saving dark theme: $dark")
         context.themeDataStore.edit { preferences ->
             preferences[DARK_THEME_KEY] = dark
         }
@@ -84,6 +91,7 @@ class ThemeRepository(private val context: Context) {
      * Сохранить настройку динамических цветов
      */
     suspend fun setDynamicColor(enabled: Boolean) {
+        Log.d(TAG, "Saving dynamic color: $enabled")
         context.themeDataStore.edit { preferences ->
             preferences[DYNAMIC_COLOR_KEY] = enabled
         }
@@ -93,6 +101,7 @@ class ThemeRepository(private val context: Context) {
      * Сохранить настройку следования системной теме
      */
     suspend fun setSystemTheme(enabled: Boolean) {
+        Log.d(TAG, "Saving system theme: $enabled")
         context.themeDataStore.edit { preferences ->
             preferences[SYSTEM_THEME_KEY] = enabled
         }

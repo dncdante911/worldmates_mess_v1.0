@@ -324,12 +324,19 @@ fun MessageBubbleComposable(
                     clip = false
                 )
                 .clip(if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble)
-                .background(
-                    brush = if (isOwn) WMGradients.buttonGradient else null,
-                    shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble
-                )
                 .then(
-                    if (!isOwn) Modifier.background(bgColor) else Modifier
+                    // Применяем градиент для собственных сообщений, цвет для чужих
+                    if (isOwn) {
+                        Modifier.background(
+                            brush = WMGradients.buttonGradient,
+                            shape = WMShapes.ownMessageBubble
+                        )
+                    } else {
+                        Modifier.background(
+                            color = bgColor,
+                            shape = WMShapes.otherMessageBubble
+                        )
+                    }
                 )
         ) {
             Column(

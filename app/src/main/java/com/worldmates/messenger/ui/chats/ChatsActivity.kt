@@ -414,9 +414,10 @@ fun ChatsScreen(
                 isLoading = isCreatingGroup
             )
         }
-        }  // Конец Scaffold
+    }  // Конец lambda paddingValues для Scaffold
+    }  // Конец Scaffold
     }  // Конец Box с фоном
-}
+}  // Конец функции ChatsScreen
 
 @Composable
 fun SearchBar(

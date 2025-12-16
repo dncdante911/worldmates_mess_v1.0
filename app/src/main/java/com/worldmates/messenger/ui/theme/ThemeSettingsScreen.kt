@@ -119,36 +119,20 @@ fun ThemeSettingsScreen(
                 )
             }
 
-            // Material You (только для Android 12+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                item {
-                    MaterialYouCard(
-                        enabled = themeState.useDynamicColor,
-                        onToggle = { themeViewModel.toggleDynamicColor() }
-                    )
-                }
-            }
-
             // Сетка вариантов тем
             item {
-                AnimatedVisibility(
-                    visible = !themeState.useDynamicColor,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Column {
-                        Text(
-                            text = "Выберите тему",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
+                Column {
+                    Text(
+                        text = "Выберите тему",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
 
-                        ThemeVariantsGrid(
-                            selectedVariant = themeState.variant,
-                            onVariantSelected = { themeViewModel.setThemeVariant(it) }
-                        )
-                    }
+                    ThemeVariantsGrid(
+                        selectedVariant = themeState.variant,
+                        onVariantSelected = { themeViewModel.setThemeVariant(it) }
+                    )
                 }
             }
         }
@@ -316,13 +300,22 @@ fun ThemeVariantsGrid(
     selectedVariant: ThemeVariant,
     onVariantSelected: (ThemeVariant) -> Unit
 ) {
+    // Фильтруем темы: Material You только на Android 12+
+    val availableThemes = ThemeVariant.values().filter { variant ->
+        if (variant == ThemeVariant.MATERIAL_YOU) {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        } else {
+            true
+        }
+    }
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier.height(600.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(ThemeVariant.values().filter { it != ThemeVariant.MATERIAL_YOU }) { variant ->
+        items(availableThemes) { variant ->
             ThemeVariantCard(
                 variant = variant,
                 isSelected = variant == selectedVariant,

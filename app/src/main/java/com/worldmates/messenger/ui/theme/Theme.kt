@@ -175,8 +175,8 @@ fun WorldMatesTheme(
 
     // Определяем цветовую схему
     val colorScheme = when {
-        // Material You (динамические цвета из обоев) - только для Android 12+
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        // Material You (динамические цвета из обоев) - только для варианта MATERIAL_YOU и Android 12+
+        themeVariant == ThemeVariant.MATERIAL_YOU && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) {
                 dynamicDarkColorScheme(context)
             } else {
@@ -196,7 +196,7 @@ fun WorldMatesTheme(
 
     // Создаем расширенные цвета
     val extendedColors = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        themeVariant == ThemeVariant.MATERIAL_YOU && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             // Для Material You используем палитру из colorScheme
             ExtendedColors(
                 messageBubbleOwn = colorScheme.primary,

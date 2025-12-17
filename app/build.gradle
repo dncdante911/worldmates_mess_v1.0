@@ -124,6 +124,9 @@ dependencies {
     // ==================== SERIALIZATION ====================
     implementation 'com.google.code.gson:gson:2.10.1'
 
+    // ==================== PHONE NUMBER ====================
+    implementation 'com.googlecode.libphonenumber:libphonenumber:8.13.26'
+
     // ==================== LOGGING ====================
     implementation 'com.jakewharton.timber:timber:5.0.1'
 

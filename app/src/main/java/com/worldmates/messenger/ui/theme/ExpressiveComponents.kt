@@ -31,7 +31,7 @@ fun GlassmorphicCard(
     backgroundColor: Color = Color.White.copy(alpha = 0.1f),
     borderColor: Color = Color.White.copy(alpha = 0.2f),
     elevation: Dp = 4.dp,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -73,9 +73,10 @@ fun GlassmorphicCard(
             width = 1.dp,
             color = borderColor
         ),
-        interactionSource = interactionSource,
-        content = content
-    )
+        interactionSource = interactionSource
+    ) {
+        content()
+    }
 }
 
 /**
@@ -87,16 +88,16 @@ fun ChatGlassCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable () -> Unit
 ) {
-    val extendedColors = WMColors.extendedColors
+    val colorScheme = MaterialTheme.colorScheme
 
     GlassmorphicCard(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        backgroundColor = extendedColors.surfaceVariant.copy(alpha = 0.15f),
-        borderColor = extendedColors.primary.copy(alpha = 0.15f),
+        backgroundColor = colorScheme.surfaceVariant.copy(alpha = 0.15f),
+        borderColor = colorScheme.primary.copy(alpha = 0.15f),
         elevation = 6.dp,
         content = content
     )
@@ -173,8 +174,8 @@ fun GlassTopAppBar(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
-    backgroundColor: Color = WMColors.extendedColors.surfaceVariant.copy(alpha = 0.85f),
-    contentColor: Color = WMColors.extendedColors.onSurface
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+    contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -298,7 +299,7 @@ fun GlassSearchBar(
     trailingIcon: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val extendedColors = WMColors.extendedColors
+    val colorScheme = MaterialTheme.colorScheme
 
     SearchBar(
         query = query,
@@ -312,8 +313,8 @@ fun GlassSearchBar(
         trailingIcon = trailingIcon,
         shape = RoundedCornerShape(28.dp),
         colors = SearchBarDefaults.colors(
-            containerColor = extendedColors.surfaceVariant.copy(alpha = 0.15f),
-            dividerColor = extendedColors.primary.copy(alpha = 0.1f)
+            containerColor = colorScheme.surfaceVariant.copy(alpha = 0.15f),
+            dividerColor = colorScheme.primary.copy(alpha = 0.1f)
         ),
         tonalElevation = 6.dp,
         shadowElevation = 8.dp,
@@ -345,7 +346,7 @@ fun PulsingBadge(
 
     Badge(
         modifier = modifier.scale(scale),
-        containerColor = WMColors.extendedColors.error,
+        containerColor = MaterialTheme.colorScheme.error,
         contentColor = Color.White
     ) {
         Text(

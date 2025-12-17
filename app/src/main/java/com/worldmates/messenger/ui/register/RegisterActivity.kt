@@ -28,10 +28,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.worldmates.messenger.ui.chats.ChatsActivity
-import com.worldmates.messenger.ui.components.GradientButton
+import com.worldmates.messenger.ui.components.*
 import com.worldmates.messenger.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -41,6 +42,9 @@ class RegisterActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Дозволяємо Compose керувати window insets
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         viewModel = ViewModelProvider(this).get(RegisterViewModel::class.java)
 
@@ -224,6 +228,12 @@ fun RegisterFormCard(
     onRegisterClick: () -> Unit,
     registerState: RegisterState
 ) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var phoneNumber by remember { mutableStateOf("") }
+    var selectedCountry by remember { mutableStateOf(popularCountries[0]) }  // Ukraine by default
+
+    val colorScheme = MaterialTheme.colorScheme
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -233,51 +243,116 @@ fun RegisterFormCard(
                 ambientColor = Color.Black.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.95f)
+        color = colorScheme.surface.copy(alpha = 0.95f)
     ) {
         Column(
             modifier = Modifier.padding(24.dp)
         ) {
-            // Username field
-            OutlinedTextField(
-                value = username,
-                onValueChange = onUsernameChange,
-                label = { Text("Ім'я користувача") },
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = null)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading,
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WMPrimary,
-                    focusedLabelColor = WMPrimary,
-                    cursorColor = WMPrimary
+            // Табы для выбора метода регистрации
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = colorScheme.primary,
+                indicator = { tabPositions ->
+                    if (tabPositions.isNotEmpty() && selectedTab < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = colorScheme.primary
+                        )
+                    }
+                }
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Email") },
+                    icon = { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(20.dp)) }
                 )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Email field
-            OutlinedTextField(
-                value = email,
-                onValueChange = onEmailChange,
-                label = { Text("Email") },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = null)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                enabled = !isLoading,
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WMPrimary,
-                    focusedLabelColor = WMPrimary,
-                    cursorColor = WMPrimary
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Телефон") },
+                    icon = { Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(20.dp)) }
                 )
-            )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Содержимое в зависимости от выбранной вкладки
+            when (selectedTab) {
+                0 -> {
+                    // Регистрация через email + username
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = onUsernameChange,
+                        label = { Text("Ім'я користувача") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading,
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary,
+                            cursorColor = colorScheme.primary
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = onEmailChange,
+                        label = { Text("Email") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, contentDescription = null)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        enabled = !isLoading,
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary,
+                            cursorColor = colorScheme.primary
+                        )
+                    )
+                }
+                1 -> {
+                    // Регистрация через телефон
+                    PhoneInputField(
+                        phoneNumber = phoneNumber,
+                        onPhoneNumberChange = { phoneNumber = it },
+                        selectedCountry = selectedCountry,
+                        onCountryChange = { selectedCountry = it },
+                        enabled = !isLoading,
+                        label = "Номер телефону"
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = username,
+                        onUsernameChange = onUsernameChange,
+                        label = { Text("Ім'я користувача") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading,
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary,
+                            cursorColor = colorScheme.primary
+                        )
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -308,9 +383,9 @@ fun RegisterFormCard(
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WMPrimary,
-                    focusedLabelColor = WMPrimary,
-                    cursorColor = WMPrimary
+                    focusedBorderColor = colorScheme.primary,
+                    focusedLabelColor = colorScheme.primary,
+                    cursorColor = colorScheme.primary
                 )
             )
 
@@ -343,9 +418,9 @@ fun RegisterFormCard(
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WMPrimary,
-                    focusedLabelColor = WMPrimary,
-                    cursorColor = WMPrimary
+                    focusedBorderColor = colorScheme.primary,
+                    focusedLabelColor = colorScheme.primary,
+                    cursorColor = colorScheme.primary
                 ),
                 isError = confirmPassword.isNotEmpty() && password != confirmPassword
             )
@@ -354,7 +429,7 @@ fun RegisterFormCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     "Паролі не співпадають",
-                    color = Error,
+                    color = colorScheme.error,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(start = 16.dp)
                 )
@@ -363,11 +438,27 @@ fun RegisterFormCard(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Register button
+            val registerEnabled = if (selectedTab == 0) {
+                username.isNotEmpty() && email.isNotEmpty() &&
+                password.isNotEmpty() && password == confirmPassword && !isLoading
+            } else {
+                phoneNumber.isNotEmpty() && username.isNotEmpty() &&
+                password.isNotEmpty() && password == confirmPassword && !isLoading
+            }
+
             GradientButton(
                 text = "Зареєструватися",
-                onClick = onRegisterClick,
-                enabled = username.isNotEmpty() && email.isNotEmpty() &&
-                         password.isNotEmpty() && password == confirmPassword && !isLoading,
+                onClick = {
+                    if (selectedTab == 0) {
+                        onRegisterClick()
+                    } else {
+                        // Регистрация через телефон
+                        val fullPhone = getFullPhoneNumber(selectedCountry.dialCode, phoneNumber)
+                        onEmailChange(fullPhone)  // Передаем телефон в email field для API
+                        onRegisterClick()
+                    }
+                },
+                enabled = registerEnabled,
                 isLoading = isLoading,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -378,11 +469,11 @@ fun RegisterFormCard(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    color = Error.copy(alpha = 0.1f)
+                    color = colorScheme.error.copy(alpha = 0.1f)
                 ) {
                     Text(
                         text = registerState.message,
-                        color = Error,
+                        color = colorScheme.error,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(12.dp)
                     )

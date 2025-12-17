@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -30,10 +32,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.worldmates.messenger.ui.chats.ChatsActivity
-import com.worldmates.messenger.ui.components.GradientButton
+import com.worldmates.messenger.ui.components.*
 import com.worldmates.messenger.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -43,6 +46,9 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Дозволяємо Compose керувати window insets
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Проверка автологина
         if (com.worldmates.messenger.data.UserSession.isLoggedIn) {
@@ -280,6 +286,12 @@ fun LoginFormCard(
     onLoginClick: () -> Unit,
     loginState: LoginState
 ) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var phoneNumber by remember { mutableStateOf("") }
+    var selectedCountry by remember { mutableStateOf(popularCountries[0]) }  // Ukraine by default
+
+    val colorScheme = MaterialTheme.colorScheme
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -289,7 +301,7 @@ fun LoginFormCard(
                 ambientColor = Color.Black.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.95f)
+        color = colorScheme.surface.copy(alpha = 0.95f)
     ) {
         Column(
             modifier = Modifier.padding(24.dp)
@@ -298,65 +310,147 @@ fun LoginFormCard(
                 "Вхід",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Username field
-            OutlinedTextField(
-                value = username,
-                onValueChange = onUsernameChange,
-                label = { Text("Ім'я користувача або email") },
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = null)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                enabled = !isLoading,
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WMPrimary,
-                    focusedLabelColor = WMPrimary,
-                    cursorColor = WMPrimary
-                )
+                color = colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password field
-            OutlinedTextField(
-                value = password,
-                onValueChange = onPasswordChange,
-                label = { Text("Пароль") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = onPasswordVisibilityToggle) {
-                        Icon(
-                            if (passwordVisible) Icons.Default.Visibility
-                            else Icons.Default.VisibilityOff,
-                            contentDescription = if (passwordVisible) "Сховати пароль" else "Показати пароль"
+            // Табы для переключения
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = colorScheme.primary,
+                indicator = { tabPositions ->
+                    if (tabPositions.isNotEmpty() && selectedTab < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = colorScheme.primary
                         )
                     }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (passwordVisible)
-                    VisualTransformation.None
-                else
-                    PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                enabled = !isLoading,
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WMPrimary,
-                    focusedLabelColor = WMPrimary,
-                    cursorColor = WMPrimary
+                }
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Логін/Email") },
+                    icon = { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(20.dp)) }
                 )
-            )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Телефон") },
+                    icon = { Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Содержимое в зависимости от выбранной вкладки
+            when (selectedTab) {
+                0 -> {
+                    // Логин через username/email
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = onUsernameChange,
+                        label = { Text("Ім'я користувача або email") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        enabled = !isLoading,
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary,
+                            cursorColor = colorScheme.primary
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Password field
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = onPasswordChange,
+                        label = { Text("Пароль") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Lock, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = onPasswordVisibilityToggle) {
+                                Icon(
+                                    if (passwordVisible) Icons.Default.Visibility
+                                    else Icons.Default.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Сховати пароль" else "Показати пароль"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (passwordVisible)
+                            VisualTransformation.None
+                        else
+                            PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        enabled = !isLoading,
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary,
+                            cursorColor = colorScheme.primary
+                        )
+                    )
+                }
+
+                1 -> {
+                    // Логин через телефон
+                    PhoneInputField(
+                        phoneNumber = phoneNumber,
+                        onPhoneNumberChange = { phoneNumber = it },
+                        selectedCountry = selectedCountry,
+                        onCountryChange = { selectedCountry = it },
+                        enabled = !isLoading,
+                        label = "Номер телефону"
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Password field для телефона
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = onPasswordChange,
+                        label = { Text("Пароль") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Lock, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = onPasswordVisibilityToggle) {
+                                Icon(
+                                    if (passwordVisible) Icons.Default.Visibility
+                                    else Icons.Default.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Сховати пароль" else "Показати пароль"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (passwordVisible)
+                            VisualTransformation.None
+                        else
+                            PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        enabled = !isLoading,
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary,
+                            cursorColor = colorScheme.primary
+                        )
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -367,7 +461,7 @@ fun LoginFormCard(
             ) {
                 Text(
                     "Забули пароль?",
-                    color = WMPrimary,
+                    color = colorScheme.primary,
                     fontSize = 13.sp
                 )
             }
@@ -375,10 +469,25 @@ fun LoginFormCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Login button
+            val loginEnabled = if (selectedTab == 0) {
+                username.isNotEmpty() && password.isNotEmpty() && !isLoading
+            } else {
+                phoneNumber.isNotEmpty() && password.isNotEmpty() && !isLoading
+            }
+
             GradientButton(
                 text = "Увійти",
-                onClick = onLoginClick,
-                enabled = username.isNotEmpty() && password.isNotEmpty() && !isLoading,
+                onClick = {
+                    if (selectedTab == 0) {
+                        onLoginClick()
+                    } else {
+                        // Логин через телефон
+                        val fullPhone = getFullPhoneNumber(selectedCountry.dialCode, phoneNumber)
+                        onUsernameChange(fullPhone)  // Передаем телефон как username
+                        onLoginClick()
+                    }
+                },
+                enabled = loginEnabled,
                 isLoading = isLoading,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -389,11 +498,11 @@ fun LoginFormCard(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    color = Error.copy(alpha = 0.1f)
+                    color = colorScheme.error.copy(alpha = 0.1f)
                 ) {
                     Text(
                         text = loginState.message,
-                        color = Error,
+                        color = colorScheme.error,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(12.dp)
                     )

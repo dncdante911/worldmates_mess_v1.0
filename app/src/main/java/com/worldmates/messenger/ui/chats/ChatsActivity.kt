@@ -177,16 +177,9 @@ fun ChatsScreen(
         it.name.contains(searchText, ignoreCase = true)
     }
 
-    // Динамический градиентный фон
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Анимированный фон с градиентом темы
-        AnimatedGradientBackground(
-            brush = WMColors.extendedColors.backgroundGradient,
-            animated = true
-        )
-
-        Scaffold(
-            containerColor = Color.Transparent,  // Прозрачный фон для Scaffold
+    // Telegram-style - простой цвет фона без градиента
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,  // Цвет фона из темы
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (showGroups) {
@@ -421,7 +414,6 @@ fun ChatsScreen(
         }
     }  // Конец lambda paddingValues для Scaffold
     }  // Конец Scaffold
-    }  // Конец Box с фоном
 }  // Конец функции ChatsScreen
 
 @Composable
@@ -429,10 +421,12 @@ fun SearchBar(
     searchText: String,
     onSearchChange: (String) -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(colorScheme.surface)  // Цвет из темы
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -440,7 +434,7 @@ fun SearchBar(
             Icons.Default.Search,
             contentDescription = "Search",
             modifier = Modifier.padding(horizontal = 12.dp),
-            tint = Color.Gray
+            tint = colorScheme.onSurfaceVariant
         )
 
         TextField(
@@ -448,14 +442,16 @@ fun SearchBar(
             onValueChange = onSearchChange,
             modifier = Modifier
                 .weight(1f)
-                .background(Color(0xFFF0F0F0), RoundedCornerShape(24.dp)),
-            placeholder = { Text("Пошук чатів...") },
+                .background(colorScheme.surfaceVariant, RoundedCornerShape(24.dp)),
+            placeholder = { Text("Пошук чатів...", color = colorScheme.onSurfaceVariant) },
             singleLine = true,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface
             )
         )
     }

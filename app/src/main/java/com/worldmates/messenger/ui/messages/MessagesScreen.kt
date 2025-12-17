@@ -135,16 +135,12 @@ fun MessagesScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Анимированный градиентный фон
-        AnimatedGradientBackground(
-            brush = WMColors.extendedColors.backgroundGradient,
-            animated = true
-        )
-
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+    // Telegram-style - простой фон из темы
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
             // Header
             MessagesHeaderBar(
                 recipientName = recipientName,
@@ -220,8 +216,7 @@ fun MessagesScreen(
             onPickFile = { filePickerLauncher.launch("*/*") },
             showMediaOptions = showMediaOptions
         )
-        }  // Конец Column
-    }  // Конец Box
+    }  // Конец Column
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -233,18 +228,15 @@ fun MessagesHeaderBar(
     isTyping: Boolean,
     onBackPressed: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),  // Прозрачный фон
-        tonalElevation = 1.dp,
-        shadowElevation = 4.dp
-    ) {
-        TopAppBar(
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxHeight()
-                ) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    // Telegram-style AppBar - четкий и читаемый
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxHeight()
+            ) {
                 // Аватар с индикатором онлайн-статуса
                 if (recipientAvatar.isNotEmpty()) {
                     Box {
@@ -270,12 +262,12 @@ fun MessagesHeaderBar(
                 }
                 // Имя и статус "печатает"
                 Column {
-                    Text(recipientName)
+                    Text(recipientName, color = colorScheme.onPrimary)
                     if (isTyping) {
                         Text(
                             text = "печатает...",
                             fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.8f)
+                            color = colorScheme.onPrimary.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -285,26 +277,34 @@ fun MessagesHeaderBar(
             IconButton(onClick = onBackPressed) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back"
+                    contentDescription = "Back",
+                    tint = colorScheme.onPrimary
                 )
             }
         },
         actions = {
             IconButton(onClick = { }) {
-                Icon(Icons.Default.Call, contentDescription = "Call")
+                Icon(
+                    Icons.Default.Call,
+                    contentDescription = "Call",
+                    tint = colorScheme.onPrimary
+                )
             }
             IconButton(onClick = { }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "More")
+                Icon(
+                    Icons.Default.MoreVert,
+                    contentDescription = "More",
+                    tint = colorScheme.onPrimary
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,  // Прозрачный для эффекта glassmorphism
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-            actionIconContentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = colorScheme.primary,  // Цвет темы
+            titleContentColor = colorScheme.onPrimary,
+            navigationIconContentColor = colorScheme.onPrimary,
+            actionIconContentColor = colorScheme.onPrimary
         )
-        )  // Конец TopAppBar
-    }  // Конец Surface
+    )  // Конец TopAppBar
 }
 
 @Composable

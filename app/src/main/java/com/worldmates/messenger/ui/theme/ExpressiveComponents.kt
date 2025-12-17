@@ -92,15 +92,18 @@ fun ChatGlassCard(
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
-    GlassmorphicCard(
+    // Telegram-style карточка - четкая и читаемая
+    Surface(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        backgroundColor = colorScheme.surfaceVariant.copy(alpha = 0.06f),  // Более прозрачно
-        borderColor = colorScheme.primary.copy(alpha = 0.08f),  // Едва заметная граница
-        elevation = 2.dp,  // Меньше elevation для легкости
-        content = content
-    )
+        shape = RoundedCornerShape(12.dp),
+        color = colorScheme.surface,  // Нормальный непрозрачный фон
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
+    ) {
+        content()
+    }
 }
 
 /**
@@ -173,28 +176,23 @@ fun GlassTopAppBar(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
-    actions: @Composable RowScope.() -> Unit = {},
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),  // Более прозрачный
-    contentColor: Color = MaterialTheme.colorScheme.onSurface
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = backgroundColor,
-        tonalElevation = 1.dp,  // Меньше elevation
-        shadowElevation = 4.dp
-    ) {
-        TopAppBar(
-            title = title,
-            navigationIcon = navigationIcon,
-            actions = actions,
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                titleContentColor = contentColor,
-                navigationIconContentColor = contentColor,
-                actionIconContentColor = contentColor
-            )
+    val colorScheme = MaterialTheme.colorScheme
+
+    // Telegram-style AppBar - четкий и читаемый
+    TopAppBar(
+        title = title,
+        navigationIcon = navigationIcon,
+        actions = actions,
+        modifier = modifier,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = colorScheme.primary,  // Цвет темы
+            titleContentColor = colorScheme.onPrimary,  // Контрастный текст
+            navigationIconContentColor = colorScheme.onPrimary,
+            actionIconContentColor = colorScheme.onPrimary
         )
-    }
+    )
 }
 
 /**

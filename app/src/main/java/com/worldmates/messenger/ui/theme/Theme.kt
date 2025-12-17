@@ -1,9 +1,13 @@
 package com.worldmates.messenger.ui.theme
 
+import android.app.Activity
 import android.os.Build
+import android.view.View
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -14,10 +18,15 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 /**
  * Дополнительные цвета и эффекты WorldMates
@@ -225,15 +234,37 @@ fun WorldMatesTheme(
         }
     }
 
-    // Применяем тему
-    CompositionLocalProvider(
-        LocalExtendedColors provides extendedColors
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = WMTypography,
-            shapes = Shapes,
-            content = content
-        )
+    // Обновляем цвета системных баров
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            window.statusBarColor = colorScheme.primary.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
+
+            // Настраиваем цвет иконок статус-бара (темные/светлые)
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
+
+    // Применяем тему с плавной анимацией переходов
+    Crossfade(
+        targetState = Pair(themeVariant, darkTheme),
+        animationSpec = tween(durationMillis = if (animateColors) 400 else 0),
+        label = "Theme transition"
+    ) { (currentVariant, currentDarkTheme) ->
+        CompositionLocalProvider(
+            LocalExtendedColors provides extendedColors
+        ) {
+            MaterialTheme(
+                colorScheme = colorScheme,
+                typography = WMTypography,
+                shapes = Shapes,
+                content = content
+            )
+        }
     }
 }

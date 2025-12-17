@@ -451,8 +451,15 @@ fun MessageBubbleRow(
 ) {
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
-    val bgColor = if (isOwn) colorScheme.primary else colorScheme.surfaceVariant
-    val textColor = if (isOwn) colorScheme.onPrimary else colorScheme.onSurfaceVariant
+    val extendedColors = WMColors.extendedColors
+
+    // Используем расширенные цвета для более яркого и тематичного оформления
+    val bgColor = if (isOwn) {
+        extendedColors.messageBubbleOwn
+    } else {
+        extendedColors.messageBubbleOther
+    }
+    val textColor = if (isOwn) Color.White else colorScheme.onSurfaceVariant
 
     var showFullscreenImage by remember { mutableStateOf(false) }
     var showVideoPlayer by remember { mutableStateOf(false) }
@@ -469,19 +476,35 @@ fun MessageBubbleRow(
     ) {
         Surface(
             modifier = Modifier
-                .widthIn(max = 260.dp)
-                .padding(horizontal = 3.dp)
+                .widthIn(max = 280.dp)
+                .padding(horizontal = 4.dp)
                 .combinedClickable(
                     onClick = { },
                     onLongClick = { showMessageMenu = true }
                 ),
-            shape = RoundedCornerShape(12.dp),
-            color = bgColor
+            // Telegram-style bubbles: rounded on 3 corners, pointed on the side
+            shape = if (isOwn) {
+                RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = 16.dp,
+                    bottomEnd = 4.dp
+                )
+            } else {
+                RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = 4.dp,
+                    bottomEnd = 16.dp
+                )
+            },
+            color = bgColor,
+            shadowElevation = 2.dp
         ) {
             Column(
                 modifier = Modifier.padding(
-                    horizontal = 8.dp,
-                    vertical = 4.dp
+                    horizontal = 12.dp,
+                    vertical = 8.dp
                 )
             ) {
                 // Sender name (для груп)
@@ -536,8 +559,8 @@ fun MessageBubbleRow(
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
-                        fontSize = 15.sp,
-                        lineHeight = 20.sp,
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp,
                         modifier = Modifier.padding(bottom = if (!effectiveMediaUrl.isNullOrEmpty()) 8.dp else 0.dp)
                     )
                 }

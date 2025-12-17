@@ -140,6 +140,7 @@ fun MessagesScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .imePadding()  // Отступ от клавиатуры на уровне всего экрана
     ) {
             // Header
             MessagesHeaderBar(
@@ -340,11 +341,11 @@ fun MessageBubbleComposable(
             .padding(vertical = 1.dp),  // Минимальный отступ
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
     ) {
-        // Telegram-style пузырь - аккуратный и приятный
+        // Telegram-style пузырь - компактный и читабельный
         Box(
             modifier = Modifier
-                .widthIn(max = 280.dp)
-                .padding(horizontal = 4.dp)  // Минимальный отступ
+                .widthIn(max = 260.dp)  // Немного уже для удобства
+                .padding(horizontal = 3.dp)  // Минимальный отступ
                 .clip(if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble)
                 .background(
                     color = bgColor,
@@ -352,7 +353,10 @@ fun MessageBubbleComposable(
                 )
         ) {
             Column(
-                modifier = Modifier.padding(6.dp)  // Аккуратный padding как в Telegram
+                modifier = Modifier.padding(
+                    horizontal = 8.dp,  // Комфортный padding для текста
+                    vertical = 4.dp     // Компактно по вертикали
+                )
             ) {
                 // Получаем URL медиа из разных источников
                 // 1. Сначала пытаемся использовать decryptedMediaUrl
@@ -395,7 +399,8 @@ fun MessageBubbleComposable(
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
-                        fontSize = 14.sp
+                        fontSize = 15.sp,  // Комфортный размер для чтения
+                        lineHeight = 20.sp  // Межстрочный интервал для читабельности
                     )
                 }
 
@@ -579,7 +584,6 @@ fun MessageInputBar(
             .fillMaxWidth()
             .background(colorScheme.surface)  // Цвет из темы
             .navigationBarsPadding()  // Отступ от кнопок навигации
-            .imePadding()  // Отступ от клавиатуры
     ) {
         // Media Options
         if (showMediaOptions) {

@@ -32,6 +32,23 @@ interface WorldMatesApi {
         @Field("android_m_device_id") deviceId: String? = null
     ): AuthResponse
 
+    // ==================== VERIFICATION ====================
+
+    @FormUrlEncoded
+    @POST("?type=send_verification_code")
+    suspend fun sendVerificationCode(
+        @Field("type") type: String, // "email" или "phone"
+        @Field("contact_info") contactInfo: String // email или номер телефона
+    ): VerificationResponse
+
+    @FormUrlEncoded
+    @POST("?type=verify_code")
+    suspend fun verifyCode(
+        @Field("type") type: String, // "email" или "phone"
+        @Field("contact_info") contactInfo: String,
+        @Field("code") code: String
+    ): AuthResponse
+
     @FormUrlEncoded
     @POST("/api/v2/sync_session.php")
     suspend fun syncSession(
@@ -409,4 +426,14 @@ data class XhrUploadResponse(
     @SerializedName("file") val fileUrl: String?, // URL для файлов
     @SerializedName("file_src") val fileSrc: String?, // Путь к файлу
     @SerializedName("error") val error: String?
+)
+
+/**
+ * Response for verification code sending
+ */
+data class VerificationResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
 )

@@ -55,7 +55,14 @@ class RegisterActivity : AppCompatActivity() {
             WorldMatesThemedApp {
                 RegisterScreen(
                     viewModel = viewModel,
-                    onRegisterSuccess = { navigateToChats() },
+                    onRegisterSuccess = { email, phone, username, password ->
+                        navigateToVerification(
+                            if (phone.isNotEmpty()) "phone" else "email",
+                            if (phone.isNotEmpty()) phone else email,
+                            username,
+                            password
+                        )
+                    },
                     onBackToLogin = { finish() }
                 )
             }
@@ -65,12 +72,18 @@ class RegisterActivity : AppCompatActivity() {
             viewModel.registerState.collect { state ->
                 when (state) {
                     is RegisterState.Success -> {
-                        Toast.makeText(
-                            this@RegisterActivity,
-                            "Реєстрація успішна!",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        navigateToChats()
+                        // Переходим на экран верификации вместо прямого входа
+                        val email = intent.getStringExtra("email") ?: ""
+                        val phone = intent.getStringExtra("phone") ?: ""
+                        val username = intent.getStringExtra("username") ?: ""
+                        val password = intent.getStringExtra("password") ?: ""
+
+                        navigateToVerification(
+                            if (phone.isNotEmpty()) "phone" else "email",
+                            if (phone.isNotEmpty()) phone else email,
+                            username,
+                            password
+                        )
                     }
                     is RegisterState.Error -> {
                         Toast.makeText(
@@ -89,13 +102,29 @@ class RegisterActivity : AppCompatActivity() {
         startActivity(Intent(this, ChatsActivity::class.java))
         finish()
     }
+
+    private fun navigateToVerification(
+        verificationType: String,
+        contactInfo: String,
+        username: String,
+        password: String
+    ) {
+        val intent = Intent(this, com.worldmates.messenger.ui.verification.VerificationActivity::class.java)
+        intent.putExtra("verification_type", verificationType)
+        intent.putExtra("contact_info", contactInfo)
+        intent.putExtra("username", username)
+        intent.putExtra("password", password)
+        intent.putExtra("is_registration", true)
+        startActivity(intent)
+        finish()
+    }
 }
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun RegisterScreen(
     viewModel: RegisterViewModel,
-    onRegisterSuccess: () -> Unit,
+    onRegisterSuccess: (email: String, phone: String, username: String, password: String) -> Unit,
     onBackToLogin: () -> Unit
 ) {
     var username by remember { mutableStateOf("") }
@@ -104,8 +133,17 @@ fun RegisterScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var phoneNumber by remember { mutableStateOf("") }
+    var selectedTab by remember { mutableStateOf(0) }
     val registerState by viewModel.registerState.collectAsState()
     val isLoading = registerState is RegisterState.Loading
+
+    // Для отслеживания успешной регистрации
+    LaunchedEffect(registerState) {
+        if (registerState is RegisterState.Success) {
+            onRegisterSuccess(email, phoneNumber, username, password)
+        }
+    }
 
     // Анимация фона
     val infiniteTransition = rememberInfiniteTransition()
@@ -173,11 +211,24 @@ fun RegisterScreen(
                 onPasswordVisibilityToggle = { passwordVisible = !passwordVisible },
                 confirmPasswordVisible = confirmPasswordVisible,
                 onConfirmPasswordVisibilityToggle = { confirmPasswordVisible = !confirmPasswordVisible },
+                phoneNumber = phoneNumber,
+                onPhoneNumberChange = { phoneNumber = it },
+                selectedTab = selectedTab,
+                onTabChange = { selectedTab = it },
                 isLoading = isLoading,
                 onRegisterClick = {
-                    if (username.isNotEmpty() && email.isNotEmpty() &&
-                        password.isNotEmpty() && password == confirmPassword) {
-                        viewModel.register(username, email, password, confirmPassword)
+                    if (selectedTab == 0) {
+                        // Email регистрация
+                        if (username.isNotEmpty() && email.isNotEmpty() &&
+                            password.isNotEmpty() && password == confirmPassword) {
+                            viewModel.register(username, email, password, confirmPassword)
+                        }
+                    } else {
+                        // Phone регистрация
+                        if (username.isNotEmpty() && phoneNumber.isNotEmpty() &&
+                            password.isNotEmpty() && password == confirmPassword) {
+                            viewModel.register(username, phoneNumber, password, confirmPassword)
+                        }
                     }
                 },
                 registerState = registerState
@@ -224,12 +275,14 @@ fun RegisterFormCard(
     onPasswordVisibilityToggle: () -> Unit,
     confirmPasswordVisible: Boolean,
     onConfirmPasswordVisibilityToggle: () -> Unit,
+    phoneNumber: String,
+    onPhoneNumberChange: (String) -> Unit,
+    selectedTab: Int,
+    onTabChange: (Int) -> Unit,
     isLoading: Boolean,
     onRegisterClick: () -> Unit,
     registerState: RegisterState
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
-    var phoneNumber by remember { mutableStateOf("") }
     var selectedCountry by remember { mutableStateOf(popularCountries[0]) }  // Ukraine by default
 
     val colorScheme = MaterialTheme.colorScheme
@@ -264,13 +317,13 @@ fun RegisterFormCard(
             ) {
                 Tab(
                     selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    onClick = { onTabChange(0) },
                     text = { Text("Email") },
                     icon = { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(20.dp)) }
                 )
                 Tab(
                     selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
+                    onClick = { onTabChange(1) },
                     text = { Text("Телефон") },
                     icon = { Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(20.dp)) }
                 )
@@ -325,7 +378,7 @@ fun RegisterFormCard(
                     // Регистрация через телефон
                     PhoneInputField(
                         phoneNumber = phoneNumber,
-                        onPhoneNumberChange = { phoneNumber = it },
+                        onPhoneNumberChange = onPhoneNumberChange,
                         selectedCountry = selectedCountry,
                         onCountryChange = { selectedCountry = it },
                         enabled = !isLoading,
@@ -448,16 +501,7 @@ fun RegisterFormCard(
 
             GradientButton(
                 text = "Зареєструватися",
-                onClick = {
-                    if (selectedTab == 0) {
-                        onRegisterClick()
-                    } else {
-                        // Регистрация через телефон
-                        val fullPhone = getFullPhoneNumber(selectedCountry.dialCode, phoneNumber)
-                        onEmailChange(fullPhone)  // Передаем телефон в email field для API
-                        onRegisterClick()
-                    }
-                },
+                onClick = onRegisterClick,
                 enabled = registerEnabled,
                 isLoading = isLoading,
                 modifier = Modifier.fillMaxWidth()

@@ -65,6 +65,15 @@
             android:windowSoftInputMode="adjustResize"
             android:parentActivityName=".ui.login.LoginActivity" />
 
+        <!-- Verification Activity -->
+        <activity
+            android:name=".ui.verification.VerificationActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:windowSoftInputMode="adjustResize"
+            android:parentActivityName=".ui.register.RegisterActivity" />
+
         <!-- Chats Activity -->
         <activity
             android:name=".ui.chats.ChatsActivity"

@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import coil.compose.AsyncImage
@@ -64,6 +65,9 @@ class MessagesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Дозволяємо Compose керувати window insets (клавіатура, навігація)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Отримуємо параметри
         recipientId = intent.getLongExtra("recipient_id", 0)
@@ -218,7 +222,8 @@ fun MessagesScreenContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
+            .imePadding()  // Підстроювання під клавіатуру
     ) {
         // Header
         MessagesTopBar(
@@ -406,29 +411,32 @@ fun MessagesTopBar(
                     Text(
                         if (isGroup) "Переглянути деталі групи" else "Онлайн",
                         fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                     )
                 }
             }
         },
         navigationIcon = {
             IconButton(onClick = onBackPressed) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
             }
         },
         actions = {
             IconButton(onClick = onCallClick) {
-                Icon(Icons.Default.Call, contentDescription = "Call", tint = Color.White)
+                Icon(Icons.Default.Call, contentDescription = "Call")
             }
             IconButton(onClick = onCallClick) {
-                Icon(Icons.Default.Videocam, contentDescription = "Video Call", tint = Color.White)
+                Icon(Icons.Default.Videocam, contentDescription = "Video Call")
             }
             IconButton(onClick = onInfoClick) {
-                Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                Icon(Icons.Default.MoreVert, contentDescription = "More")
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color(0xFF0084FF)
+            containerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
         )
     )
 }
@@ -442,8 +450,9 @@ fun MessageBubbleRow(
     viewModel: MessagesViewModel
 ) {
     val isOwn = message.fromId == UserSession.userId
-    val bgColor = if (isOwn) Color(0xFF0084FF) else Color(0xFFE5E5EA)
-    val textColor = if (isOwn) Color.White else Color.Black
+    val colorScheme = MaterialTheme.colorScheme
+    val bgColor = if (isOwn) colorScheme.primary else colorScheme.surfaceVariant
+    val textColor = if (isOwn) colorScheme.onPrimary else colorScheme.onSurfaceVariant
 
     var showFullscreenImage by remember { mutableStateOf(false) }
     var showVideoPlayer by remember { mutableStateOf(false) }
@@ -460,8 +469,8 @@ fun MessageBubbleRow(
     ) {
         Surface(
             modifier = Modifier
-                .widthIn(max = 280.dp)
-                .padding(horizontal = 8.dp)
+                .widthIn(max = 260.dp)
+                .padding(horizontal = 3.dp)
                 .combinedClickable(
                     onClick = { },
                     onLongClick = { showMessageMenu = true }
@@ -469,7 +478,12 @@ fun MessageBubbleRow(
             shape = RoundedCornerShape(12.dp),
             color = bgColor
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 8.dp,
+                    vertical = 4.dp
+                )
+            ) {
                 // Sender name (для груп)
                 if (message.senderName != null && message.fromId != UserSession.userId) {
                     Text(
@@ -522,7 +536,8 @@ fun MessageBubbleRow(
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
-                        fontSize = 14.sp,
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp,
                         modifier = Modifier.padding(bottom = if (!effectiveMediaUrl.isNullOrEmpty()) 8.dp else 0.dp)
                     )
                 }
@@ -777,11 +792,13 @@ fun MediaOptionsBar(
     onLocationClick: () -> Unit,
     onFileClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .background(Color.White)
+            .background(colorScheme.surface)
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -846,10 +863,13 @@ fun MessageInputBar(
     onVoiceClick: () -> Unit,
     isLoading: Boolean
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(colorScheme.surface)
+            .navigationBarsPadding()  // Не перекривається навігацією
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -863,25 +883,27 @@ fun MessageInputBar(
             onValueChange = onTextChange,
             modifier = Modifier
                 .weight(1f)
-                .background(Color(0xFFF0F0F0), RoundedCornerShape(24.dp)),
-            placeholder = { Text("Введіть повідомлення...") },
+                .background(colorScheme.surfaceVariant, RoundedCornerShape(24.dp)),
+            placeholder = { Text("Введіть повідомлення...", color = colorScheme.onSurfaceVariant) },
             singleLine = false,
             maxLines = 4,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface
             )
         )
 
         if (messageText.isNotBlank()) {
             IconButton(onClick = onSendClick, enabled = !isLoading) {
-                Icon(Icons.Default.Send, contentDescription = "Send", tint = Color(0xFF0084FF))
+                Icon(Icons.Default.Send, contentDescription = "Send", tint = colorScheme.primary)
             }
         } else {
             IconButton(onClick = onVoiceClick, enabled = !isLoading) {
-                Icon(Icons.Default.Mic, contentDescription = "Voice", tint = Color(0xFF0084FF))
+                Icon(Icons.Default.Mic, contentDescription = "Voice", tint = colorScheme.primary)
             }
         }
     }

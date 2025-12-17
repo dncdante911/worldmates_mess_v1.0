@@ -34,8 +34,14 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Chat
 import com.worldmates.messenger.ui.messages.MessagesActivity
 import com.worldmates.messenger.ui.theme.AnimatedGradientBackground
+import com.worldmates.messenger.ui.theme.ChatGlassCard
+import com.worldmates.messenger.ui.theme.ExpressiveFAB
+import com.worldmates.messenger.ui.theme.ExpressiveIconButton
+import com.worldmates.messenger.ui.theme.GlassTopAppBar
+import com.worldmates.messenger.ui.theme.PulsingBadge
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WMColors
+import com.worldmates.messenger.ui.theme.WMGradients
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 
 class ChatsActivity : AppCompatActivity() {
@@ -184,9 +190,9 @@ fun ChatsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (showGroups) {
-                FloatingActionButton(
+                ExpressiveFAB(
                     onClick = { showCreateGroupDialog = true },
-                    containerColor = Color(0xFF0084FF)
+                    containerColor = WMGradients.buttonGradient
                 ) {
                     Icon(
                         Icons.Default.Add,
@@ -203,14 +209,19 @@ fun ChatsScreen(
                 .padding(paddingValues)
                 .background(Color(0xFFF5F5F5))
         ) {
-        // Header
-        TopAppBar(
-            title = { Text("Повідомлення") },
+        // Glass Header with expressive motion
+        GlassTopAppBar(
+            title = {
+                Text(
+                    "Повідомлення",
+                    fontWeight = FontWeight.Bold
+                )
+            },
             actions = {
                 var showSearchDialog by remember { mutableStateOf(false) }
 
-                // Refresh button
-                IconButton(onClick = {
+                // Refresh button with expressive animation
+                ExpressiveIconButton(onClick = {
                     if (showGroups) {
                         groupsViewModel.fetchGroups()
                     } else {
@@ -220,10 +231,10 @@ fun ChatsScreen(
                     Icon(Icons.Default.Refresh, contentDescription = "Оновити")
                 }
 
-                IconButton(onClick = { showSearchDialog = true }) {
+                ExpressiveIconButton(onClick = { showSearchDialog = true }) {
                     Icon(Icons.Default.Search, contentDescription = "Пошук користувачів")
                 }
-                IconButton(onClick = onSettingsClick) {
+                ExpressiveIconButton(onClick = onSettingsClick) {
                     Icon(Icons.Default.Settings, contentDescription = "Налаштування")
                 }
 
@@ -236,12 +247,7 @@ fun ChatsScreen(
                         }
                     )
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF0084FF),
-                titleContentColor = Color.White,
-                actionIconContentColor = Color.White
-            )
+            }
         )
 
         // Search
@@ -461,65 +467,53 @@ fun ChatItemRow(
     chat: Chat,
     onClick: () -> Unit
 ) {
-    Row(
+    ChatGlassCard(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(12.dp)
-            .background(Color.White, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        // Avatar
-        AsyncImage(
-            model = chat.avatarUrl,
-            contentDescription = chat.username,
+        Row(
             modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
-
-        // Chat info
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 12.dp)
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = chat.username ?: "Unknown",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-
-            Text(
-                text = chat.lastMessage?.decryptedText ?: "Немає повідомлень",
-                fontSize = 13.sp,
-                color = Color.Gray,
-                maxLines = 1,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
-
-        // Unread badge
-        if (chat.unreadCount > 0) {
-            Surface(
+            // Avatar
+            AsyncImage(
+                model = chat.avatarUrl,
+                contentDescription = chat.username,
                 modifier = Modifier
-                    .size(24.dp),
-                shape = CircleShape,
-                color = Color(0xFF0084FF)
+                    .size(56.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+
+            // Chat info
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp)
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Text(
-                        text = chat.unreadCount.toString(),
-                        color = Color.White,
-                        fontSize = 11.sp
-                    )
-                }
+                Text(
+                    text = chat.username ?: "Unknown",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = WMColors.extendedColors.onSurface
+                )
+
+                Text(
+                    text = chat.lastMessage?.decryptedText ?: "Немає повідомлень",
+                    fontSize = 13.sp,
+                    color = WMColors.extendedColors.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // Pulsing badge for unread messages
+            if (chat.unreadCount > 0) {
+                PulsingBadge(count = chat.unreadCount)
             }
         }
     }
@@ -561,69 +555,73 @@ fun GroupItemRow(
     group: com.worldmates.messenger.data.model.Group,
     onClick: () -> Unit
 ) {
-    Row(
+    ChatGlassCard(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(12.dp)
-            .background(Color.White, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        // Avatar
-        AsyncImage(
-            model = group.avatarUrl,
-            contentDescription = group.name,
+        Row(
             modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
-
-        // Group info
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 12.dp)
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = group.name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
+            // Avatar
+            AsyncImage(
+                model = group.avatarUrl,
+                contentDescription = group.name,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
 
-            Row {
+            // Group info
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp)
+            ) {
                 Text(
-                    text = "${group.membersCount} членів",
-                    fontSize = 13.sp,
-                    color = Color.Gray
+                    text = group.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = WMColors.extendedColors.onSurface
                 )
-                if (group.isPrivate) {
+
+                Row {
                     Text(
-                        text = " • Приватна",
+                        text = "${group.membersCount} членів",
                         fontSize = 13.sp,
-                        color = Color.Gray
+                        color = WMColors.extendedColors.onSurfaceVariant
                     )
+                    if (group.isPrivate) {
+                        Text(
+                            text = " • Приватна",
+                            fontSize = 13.sp,
+                            color = WMColors.extendedColors.onSurfaceVariant
+                        )
+                    }
                 }
             }
-        }
 
-        // Admin badge
-        if (group.isAdmin) {
-            Surface(
-                modifier = Modifier.size(24.dp),
-                shape = CircleShape,
-                color = Color(0xFF0084FF)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
+            // Admin badge
+            if (group.isAdmin) {
+                Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = CircleShape,
+                    color = WMColors.extendedColors.primary
                 ) {
-                    Text(
-                        text = "👤",
-                        fontSize = 12.sp
-                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Text(
+                            text = "👑",
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
         }

@@ -499,13 +499,13 @@ fun ChatItemRow(
                     text = chat.username ?: "Unknown",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = WMColors.extendedColors.onSurface
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
                     text = chat.lastMessage?.decryptedText ?: "Немає повідомлень",
                     fontSize = 13.sp,
-                    color = WMColors.extendedColors.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -587,20 +587,20 @@ fun GroupItemRow(
                     text = group.name,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = WMColors.extendedColors.onSurface
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Row {
                     Text(
                         text = "${group.membersCount} членів",
                         fontSize = 13.sp,
-                        color = WMColors.extendedColors.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (group.isPrivate) {
                         Text(
                             text = " • Приватна",
                             fontSize = 13.sp,
-                            color = WMColors.extendedColors.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -611,7 +611,7 @@ fun GroupItemRow(
                 Surface(
                     modifier = Modifier.size(32.dp),
                     shape = CircleShape,
-                    color = WMColors.extendedColors.primary
+                    color = MaterialTheme.colorScheme.primary
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,

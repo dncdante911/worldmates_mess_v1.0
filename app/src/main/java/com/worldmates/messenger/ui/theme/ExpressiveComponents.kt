@@ -96,9 +96,9 @@ fun ChatGlassCard(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        backgroundColor = colorScheme.surfaceVariant.copy(alpha = 0.15f),
-        borderColor = colorScheme.primary.copy(alpha = 0.15f),
-        elevation = 6.dp,
+        backgroundColor = colorScheme.surfaceVariant.copy(alpha = 0.06f),  // Более прозрачно
+        borderColor = colorScheme.primary.copy(alpha = 0.08f),  // Едва заметная граница
+        elevation = 2.dp,  // Меньше elevation для легкости
         content = content
     )
 }
@@ -174,14 +174,14 @@ fun GlassTopAppBar(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),  // Более прозрачный
     contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = backgroundColor,
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp
+        tonalElevation = 1.dp,  // Меньше elevation
+        shadowElevation = 4.dp
     ) {
         TopAppBar(
             title = title,

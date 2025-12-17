@@ -207,7 +207,6 @@ fun ChatsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF5F5F5))
         ) {
         // Glass Header with expressive motion
         GlassTopAppBar(
@@ -471,12 +470,12 @@ fun ChatItemRow(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 8.dp, vertical = 3.dp)  // Компактнее
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(10.dp),  // Меньше внутренний padding
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Avatar
@@ -559,12 +558,12 @@ fun GroupItemRow(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 8.dp, vertical = 3.dp)  // Компактнее
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(10.dp),  // Меньше внутренний padding
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Avatar

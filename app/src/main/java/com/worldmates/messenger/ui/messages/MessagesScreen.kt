@@ -34,6 +34,8 @@ import com.worldmates.messenger.ui.theme.WMShapes
 import com.worldmates.messenger.ui.theme.MessageBubbleOwn
 import com.worldmates.messenger.ui.theme.MessageBubbleOther
 import com.worldmates.messenger.ui.theme.WMGradients
+import com.worldmates.messenger.ui.theme.AnimatedGradientBackground
+import com.worldmates.messenger.ui.theme.WMColors
 import androidx.compose.ui.draw.shadow
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
@@ -133,35 +135,40 @@ fun MessagesScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-    ) {
-        // Header
-        MessagesHeaderBar(
-            recipientName = recipientName,
-            recipientAvatar = recipientAvatar,
-            isOnline = isOnline,
-            isTyping = isTyping,
-            onBackPressed = onBackPressed
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Анимированный градиентный фон
+        AnimatedGradientBackground(
+            brush = WMColors.extendedColors.backgroundGradient,
+            animated = true
         )
 
-        // Messages List
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            reverseLayout = true
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            items(messages.reversed()) { message ->
-                MessageBubbleComposable(
-                    message = message,
-                    voicePlayer = voicePlayer
-                )
+            // Header
+            MessagesHeaderBar(
+                recipientName = recipientName,
+                recipientAvatar = recipientAvatar,
+                isOnline = isOnline,
+                isTyping = isTyping,
+                onBackPressed = onBackPressed
+            )
+
+            // Messages List
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                reverseLayout = true
+            ) {
+                items(messages.reversed()) { message ->
+                    MessageBubbleComposable(
+                        message = message,
+                        voicePlayer = voicePlayer
+                    )
+                }
             }
-        }
 
         // Upload Progress
         if (uploadProgress > 0 && uploadProgress < 100) {
@@ -213,7 +220,8 @@ fun MessagesScreen(
             onPickFile = { filePickerLauncher.launch("*/*") },
             showMediaOptions = showMediaOptions
         )
-    }
+        }  // Конец Column
+    }  // Конец Box
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -225,12 +233,18 @@ fun MessagesHeaderBar(
     isTyping: Boolean,
     onBackPressed: () -> Unit
 ) {
-    TopAppBar(
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxHeight()
-            ) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),  // Прозрачный фон
+        tonalElevation = 1.dp,
+        shadowElevation = 4.dp
+    ) {
+        TopAppBar(
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
                 // Аватар с индикатором онлайн-статуса
                 if (recipientAvatar.isNotEmpty()) {
                     Box {
@@ -284,12 +298,13 @@ fun MessagesHeaderBar(
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color(0xFF0084FF),
-            titleContentColor = Color.White,
-            navigationIconContentColor = Color.White,
-            actionIconContentColor = Color.White
+            containerColor = Color.Transparent,  // Прозрачный для эффекта glassmorphism
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.onSurface
         )
-    )
+        )  // Конец TopAppBar
+    }  // Конец Surface
 }
 
 @Composable
@@ -310,16 +325,16 @@ fun MessageBubbleComposable(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 1.5.dp),  // Уменьшил вертикальный отступ
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
     ) {
         // Современный пузырь с градиентом для собственных сообщений
         Box(
             modifier = Modifier
                 .widthIn(max = 280.dp)
-                .padding(horizontal = 8.dp)
+                .padding(horizontal = 6.dp)  // Уменьшил горизонтальный отступ
                 .shadow(
-                    elevation = if (isOwn) 3.dp else 1.dp,
+                    elevation = if (isOwn) 1.5.dp else 0.5.dp,  // Уменьшил shadow
                     shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble,
                     clip = false
                 )
@@ -333,14 +348,14 @@ fun MessageBubbleComposable(
                         )
                     } else {
                         Modifier.background(
-                            color = bgColor,
+                            color = bgColor.copy(alpha = 0.85f),  // Сделал чуть прозрачнее
                             shape = WMShapes.otherMessageBubble
                         )
                     }
                 )
         ) {
             Column(
-                modifier = Modifier.padding(10.dp)
+                modifier = Modifier.padding(8.dp)  // Уменьшил внутренний padding
             ) {
                 // Получаем URL медиа из разных источников
                 // 1. Сначала пытаемся использовать decryptedMediaUrl

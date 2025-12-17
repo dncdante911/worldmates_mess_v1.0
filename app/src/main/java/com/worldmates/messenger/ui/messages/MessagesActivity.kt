@@ -42,6 +42,7 @@ import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.ui.media.FullscreenImageViewer
 import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
 import com.worldmates.messenger.ui.theme.ThemeManager
+import com.worldmates.messenger.ui.theme.WMColors
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer

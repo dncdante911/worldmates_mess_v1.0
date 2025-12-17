@@ -313,8 +313,20 @@ fun MessageBubbleComposable(
     voicePlayer: VoicePlayer
 ) {
     val isOwn = message.fromId == UserSession.userId
-    val bgColor = if (isOwn) MessageBubbleOwn else MessageBubbleOther
-    val textColor = if (isOwn) Color.White else Color.Black
+    val colorScheme = MaterialTheme.colorScheme
+
+    // Цвета из темы
+    val bgColor = if (isOwn) {
+        colorScheme.primary
+    } else {
+        colorScheme.surfaceVariant
+    }
+    val textColor = if (isOwn) {
+        colorScheme.onPrimary
+    } else {
+        colorScheme.onSurfaceVariant
+    }
+
     val playbackState by voicePlayer.playbackState.collectAsState()
     val currentPosition by voicePlayer.currentPosition.collectAsState()
     val duration by voicePlayer.duration.collectAsState()
@@ -325,37 +337,22 @@ fun MessageBubbleComposable(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.5.dp),  // Уменьшил вертикальный отступ
+            .padding(vertical = 1.dp),  // Минимальный отступ
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
     ) {
-        // Современный пузырь с градиентом для собственных сообщений
+        // Telegram-style пузырь - аккуратный и приятный
         Box(
             modifier = Modifier
                 .widthIn(max = 280.dp)
-                .padding(horizontal = 6.dp)  // Уменьшил горизонтальный отступ
-                .shadow(
-                    elevation = if (isOwn) 1.5.dp else 0.5.dp,  // Уменьшил shadow
-                    shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble,
-                    clip = false
-                )
+                .padding(horizontal = 4.dp)  // Минимальный отступ
                 .clip(if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble)
-                .then(
-                    // Применяем градиент для собственных сообщений, цвет для чужих
-                    if (isOwn) {
-                        Modifier.background(
-                            brush = WMGradients.buttonGradient,
-                            shape = WMShapes.ownMessageBubble
-                        )
-                    } else {
-                        Modifier.background(
-                            color = bgColor.copy(alpha = 0.85f),  // Сделал чуть прозрачнее
-                            shape = WMShapes.otherMessageBubble
-                        )
-                    }
+                .background(
+                    color = bgColor,
+                    shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble
                 )
         ) {
             Column(
-                modifier = Modifier.padding(8.dp)  // Уменьшил внутренний padding
+                modifier = Modifier.padding(6.dp)  // Аккуратный padding как в Telegram
             ) {
                 // Получаем URL медиа из разных источников
                 // 1. Сначала пытаемся использовать decryptedMediaUrl
@@ -575,10 +572,14 @@ fun MessageInputBar(
     onPickFile: () -> Unit,
     showMediaOptions: Boolean
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(colorScheme.surface)  // Цвет из темы
+            .navigationBarsPadding()  // Отступ от кнопок навигации
+            .imePadding()  // Отступ от клавиатуры
     ) {
         // Media Options
         if (showMediaOptions) {
@@ -648,19 +649,30 @@ fun MessageInputBar(
                     onValueChange = onMessageChange,
                     modifier = Modifier
                         .weight(1f)
-                        .background(Color(0xFFF0F0F0), RoundedCornerShape(24.dp))
+                        .background(colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
                         .padding(horizontal = 4.dp),
-                    placeholder = { Text("Введіть повідомлення...") },
+                    placeholder = {
+                        Text(
+                            "Введіть повідомлення...",
+                            color = colorScheme.onSurfaceVariant
+                        )
+                    },
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = colorScheme.onSurface,
+                        unfocusedTextColor = colorScheme.onSurface
                     ),
                     leadingIcon = {
                         IconButton(onClick = onShowMediaOptions) {
-                            Icon(Icons.Default.AttachFile, contentDescription = "Attach")
+                            Icon(
+                                Icons.Default.AttachFile,
+                                contentDescription = "Attach",
+                                tint = colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 )
@@ -673,7 +685,7 @@ fun MessageInputBar(
                         Icon(
                             imageVector = Icons.Default.Send,
                             contentDescription = "Send",
-                            tint = if (isLoading) Color.Gray else Color(0xFF0084FF)
+                            tint = if (isLoading) colorScheme.onSurfaceVariant else colorScheme.primary
                         )
                     }
                 } else {
@@ -684,7 +696,7 @@ fun MessageInputBar(
                         Icon(
                             imageVector = Icons.Default.Mic,
                             contentDescription = "Voice",
-                            tint = Color(0xFF0084FF)
+                            tint = colorScheme.primary
                         )
                     }
                 }

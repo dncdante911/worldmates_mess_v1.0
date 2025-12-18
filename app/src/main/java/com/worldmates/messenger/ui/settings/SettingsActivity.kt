@@ -40,7 +40,10 @@ class SettingsActivity : AppCompatActivity() {
         // Инициализируем ThemeManager
         ThemeManager.initialize(this)
 
-        viewModel = ViewModelProvider(this).get(SettingsViewModel::class.java)
+        viewModel = ViewModelProvider(
+            this,
+            ViewModelProvider.AndroidViewModelFactory.getInstance(application)
+        ).get(SettingsViewModel::class.java)
 
         // Загрузить данные пользователя при открытии настроек
         viewModel.fetchUserData()

@@ -41,6 +41,8 @@ foreach ($required_fields as $key => $value) {
     }
 }
 
+// HYBRID: Определяем тип клиента в начале
+$use_gcm = !empty($_POST['use_gcm']) && $_POST['use_gcm'] == 'true';
 
 if (empty($error_code)) {
     $recipient_id   = Wo_Secure($_POST['user_id']);
@@ -91,9 +93,6 @@ if (empty($error_code)) {
                 $lat = Wo_Secure($_POST['lat']);
             }
 
-            // Определяем тип клиента: WorldMates (GCM) или WoWonder (ECB)
-            $use_gcm = !empty($_POST['use_gcm']) && $_POST['use_gcm'] == 'true';
-
             $message_data = array(
                 'from_id' => Wo_Secure($wo['user']['user_id']),
                 'to_id' => Wo_Secure($recipient_id),
@@ -113,19 +112,22 @@ if (empty($error_code)) {
     		 	// HYBRID: Шифруем в зависимости от типа приложения
     		 	if ($use_gcm && class_exists('CryptoHelper')) {
     		 	    // WorldMates: AES-256-GCM
+    		 	    error_log("send-message.php: Using GCM encryption for: " . substr($plaintext, 0, 20));
     		 	    $encrypted = CryptoHelper::encryptGCM($plaintext, $message_data['time']);
     		 	    if ($encrypted !== false) {
     		 	        $message_data['text'] = $encrypted['text'];
     		 	        $message_data['iv'] = $encrypted['iv'];
     		 	        $message_data['tag'] = $encrypted['tag'];
     		 	        $message_data['cipher_version'] = $encrypted['cipher_version'];
+    		 	        error_log("send-message.php: GCM encryption SUCCESS, iv=" . substr($encrypted['iv'], 0, 10));
     		 	    } else {
-    		 	        error_log("send-message-hybrid.php: GCM encryption failed");
+    		 	        error_log("send-message.php: GCM encryption FAILED");
     		 	        $error_code = 7;
     		 	        $error_message = 'Encryption failed';
     		 	    }
     		 	} else {
     		 	    // Official WoWonder: AES-128-ECB (старый метод)
+    		 	    error_log("send-message.php: Using ECB encryption (use_gcm=" . ($use_gcm ? 'true' : 'false') . ", CryptoHelper=" . (class_exists('CryptoHelper') ? 'exists' : 'NOT FOUND') . ")");
     		 	    $message_data['text'] = openssl_encrypt($plaintext, "AES-128-ECB", $message_data['time']);
     		 	    $message_data['cipher_version'] = 1; // ECB
     		 	}
@@ -139,8 +141,38 @@ if (empty($error_code)) {
             if (!empty($_POST['message_type'])) {
                 $message_data['type_two'] = Wo_Secure($_POST['message_type']);
             }
+
+            // Сохраняем GCM поля отдельно (Wo_RegisterMessage их не поддерживает)
+            $gcm_iv = null;
+            $gcm_tag = null;
+            $gcm_cipher_version = 1;
+
+            if (isset($message_data['iv'])) {
+                $gcm_iv = $message_data['iv'];
+                unset($message_data['iv']);
+            }
+            if (isset($message_data['tag'])) {
+                $gcm_tag = $message_data['tag'];
+                unset($message_data['tag']);
+            }
+            if (isset($message_data['cipher_version'])) {
+                $gcm_cipher_version = $message_data['cipher_version'];
+                unset($message_data['cipher_version']);
+            }
+
             if (empty($error_message)) {
                 $last_id      = Wo_RegisterMessage($message_data);
+
+                // КРИТИЧНО: Обновляем GCM поля в БД после сохранения
+                if (!empty($last_id) && ($gcm_iv !== null || $gcm_cipher_version != 1)) {
+                    $update_result = $db->where('id', $last_id)->update(T_MESSAGES, array(
+                        'iv' => $gcm_iv,
+                        'tag' => $gcm_tag,
+                        'cipher_version' => $gcm_cipher_version
+                    ));
+                    error_log("send-message.php: UPDATE GCM fields for message $last_id, result: " . ($update_result ? 'SUCCESS' : 'FAILED'));
+                    error_log("send-message.php: iv=" . ($gcm_iv ? substr($gcm_iv, 0, 10) : 'NULL') . ", tag=" . ($gcm_tag ? substr($gcm_tag, 0, 10) : 'NULL') . ", version=$gcm_cipher_version");
+                }
             }
         }
         else{
@@ -164,6 +196,7 @@ if (empty($error_code)) {
 
             // Получаем сообщение из БД с GCM полями
             $message_with_gcm = $db->where('id', $last_id)->getOne(T_MESSAGES);
+            error_log("send-message.php: getOne result - iv=" . ($message_with_gcm['iv'] ?? 'NULL') . ", tag=" . ($message_with_gcm['tag'] ?? 'NULL') . ", cipher_version=" . ($message_with_gcm['cipher_version'] ?? 'NULL'));
 
             $send_message_data = Wo_SendMessageNotifier($last_id);
             if ($send_message_data == true) {
@@ -240,6 +273,7 @@ if (empty($error_code)) {
                     $message['iv'] = $message_with_gcm['iv'];
                     $message['tag'] = $message_with_gcm['tag'];
                     $message['cipher_version'] = $message_with_gcm['cipher_version'];
+                    error_log("send-message.php: Returning GCM fields - iv=" . ($message['iv'] ? 'SET' : 'NULL') . ", tag=" . ($message['tag'] ? 'SET' : 'NULL') . ", version=" . $message['cipher_version']);
                 } else {
                     // Для официального WoWonder - расшифровываем обратно в ответе (старая логика)
                     // НЕТ! Официальное приложение само расшифрует ECB на стороне клиента
@@ -247,6 +281,7 @@ if (empty($error_code)) {
                     if (!empty($message_with_gcm)) {
                         $message['cipher_version'] = $message_with_gcm['cipher_version'];
                     }
+                    error_log("send-message.php: Using ECB mode (no GCM fields)");
                 }
 
                 unset($message['or_text']);

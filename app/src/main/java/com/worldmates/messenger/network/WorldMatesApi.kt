@@ -35,19 +35,44 @@ interface WorldMatesApi {
     // ==================== VERIFICATION ====================
 
     @FormUrlEncoded
-    @POST("?type=send_verification_code")
-    suspend fun sendVerificationCode(
-        @Field("type") type: String, // "email" или "phone"
-        @Field("contact_info") contactInfo: String // email или номер телефона
-    ): VerificationResponse
+    @POST("/xhr/index.php?f=register_with_verification")
+    suspend fun registerWithVerification(
+        @Field("username") username: String,
+        @Field("password") password: String,
+        @Field("confirm_password") confirmPassword: String,
+        @Field("verification_type") verificationType: String, // "email" or "phone"
+        @Field("email") email: String? = null,
+        @Field("phone_number") phoneNumber: String? = null,
+        @Field("gender") gender: String = "male"
+    ): RegisterVerificationResponse
 
     @FormUrlEncoded
-    @POST("?type=verify_code")
-    suspend fun verifyCode(
-        @Field("type") type: String, // "email" или "phone"
+    @POST("/xhr/index.php?f=send_verification_code")
+    suspend fun sendVerificationCode(
+        @Field("verification_type") verificationType: String,
         @Field("contact_info") contactInfo: String,
-        @Field("code") code: String
-    ): AuthResponse
+        @Field("username") username: String? = null,
+        @Field("user_id") userId: Long? = null
+    ): SendCodeResponse
+
+    @FormUrlEncoded
+    @POST("/xhr/index.php?f=verify_code")
+    suspend fun verifyCode(
+        @Field("verification_type") verificationType: String,
+        @Field("contact_info") contactInfo: String,
+        @Field("code") code: String,
+        @Field("username") username: String? = null,
+        @Field("user_id") userId: Long? = null
+    ): VerifyCodeResponse
+
+    @FormUrlEncoded
+    @POST("/xhr/index.php?f=resend_verification_code")
+    suspend fun resendVerificationCode(
+        @Field("verification_type") verificationType: String,
+        @Field("contact_info") contactInfo: String,
+        @Field("username") username: String? = null,
+        @Field("user_id") userId: Long? = null
+    ): ResendCodeResponse
 
     @FormUrlEncoded
     @POST("/api/v2/sync_session.php")
@@ -428,8 +453,63 @@ data class XhrUploadResponse(
     @SerializedName("error") val error: String?
 )
 
+// ==================== VERIFICATION RESPONSE MODELS ====================
+
 /**
- * Response for verification code sending
+ * Response for registration with verification
+ */
+data class RegisterVerificationResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("user_id") val userId: Long? = null,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("verification_type") val verificationType: String? = null,
+    @SerializedName("contact_info") val contactInfo: String? = null,
+    @SerializedName("code_length") val codeLength: Int? = null,
+    @SerializedName("expires_in") val expiresIn: Int? = null,
+    @SerializedName("errors") val errors: String? = null
+)
+
+/**
+ * Response for sending verification code
+ */
+data class SendCodeResponse(
+    @SerializedName("status") val status: Int? = null,
+    @SerializedName("api_status") val apiStatus: Int? = null,
+    @SerializedName("message") val message: String?,
+    @SerializedName("code_length") val codeLength: Int? = null,
+    @SerializedName("expires_in") val expiresIn: Int? = null,
+    @SerializedName("errors") val errors: String? = null
+) {
+    val actualStatus: Int
+        get() = apiStatus ?: status ?: 400
+}
+
+/**
+ * Response for verifying code
+ */
+data class VerifyCodeResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("user_id") val userId: Long? = null,
+    @SerializedName("access_token") val accessToken: String? = null,
+    @SerializedName("timezone") val timezone: String? = null,
+    @SerializedName("errors") val errors: String? = null
+)
+
+/**
+ * Response for resending verification code
+ */
+data class ResendCodeResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("code_length") val codeLength: Int? = null,
+    @SerializedName("expires_in") val expiresIn: Int? = null,
+    @SerializedName("errors") val errors: String? = null
+)
+
+/**
+ * Legacy response for verification (deprecated, use specific responses above)
  */
 data class VerificationResponse(
     @SerializedName("api_status") val apiStatus: Int,

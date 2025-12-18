@@ -75,6 +75,7 @@ class VerificationActivity : AppCompatActivity() {
                     viewModel = viewModel,
                     verificationType = verificationType,
                     contactInfo = contactInfo,
+                    username = username,
                     onVerificationSuccess = { navigateToChats() },
                     onBackPressed = { finish() }
                 )
@@ -105,7 +106,7 @@ class VerificationActivity : AppCompatActivity() {
         }
 
         // Автоматически отправляем код при открытии экрана
-        viewModel.sendVerificationCode(verificationType, contactInfo)
+        viewModel.sendVerificationCode(verificationType, contactInfo, username)
     }
 
     private fun navigateToChats() {
@@ -120,6 +121,7 @@ fun VerificationScreen(
     viewModel: VerificationViewModel,
     verificationType: String,
     contactInfo: String,
+    username: String = "",
     onVerificationSuccess: () -> Unit,
     onBackPressed: () -> Unit
 ) {
@@ -239,7 +241,7 @@ fun VerificationScreen(
                         code = newCode
                         // Автоматическая верификация при вводе 6 цифр
                         if (newCode.length == 6) {
-                            viewModel.verifyCode(verificationType, contactInfo, newCode)
+                            viewModel.verifyCode(verificationType, contactInfo, newCode, username)
                         }
                     }
                 },
@@ -253,7 +255,7 @@ fun VerificationScreen(
                 text = "Підтвердити",
                 onClick = {
                     if (code.length == 6) {
-                        viewModel.verifyCode(verificationType, contactInfo, code)
+                        viewModel.verifyCode(verificationType, contactInfo, code, username)
                     }
                 },
                 enabled = code.length == 6 && !isLoading,
@@ -269,7 +271,7 @@ fun VerificationScreen(
             if (canResend) {
                 TextButton(
                     onClick = {
-                        viewModel.sendVerificationCode(verificationType, contactInfo)
+                        viewModel.resendCode(verificationType, contactInfo, username)
                     }
                 ) {
                     Text(

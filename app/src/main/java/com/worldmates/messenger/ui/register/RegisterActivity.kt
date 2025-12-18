@@ -73,17 +73,16 @@ class RegisterActivity : AppCompatActivity() {
             viewModel.registerState.collect { state ->
                 when (state) {
                     is RegisterState.Success -> {
-                        // Переходим на экран верификации вместо прямого входа
-                        val email = intent.getStringExtra("email") ?: ""
-                        val phone = intent.getStringExtra("phone") ?: ""
-                        val username = intent.getStringExtra("username") ?: ""
-                        val password = intent.getStringExtra("password") ?: ""
-
+                        // Старый flow - прямой вход без верификации
+                        navigateToChats()
+                    }
+                    is RegisterState.VerificationRequired -> {
+                        // Новый flow - переход на экран верификации
                         navigateToVerification(
-                            if (phone.isNotEmpty()) "phone" else "email",
-                            if (phone.isNotEmpty()) phone else email,
-                            username,
-                            password
+                            state.verificationType,
+                            state.contactInfo,
+                            state.username,
+                            ""
                         )
                     }
                     is RegisterState.Error -> {

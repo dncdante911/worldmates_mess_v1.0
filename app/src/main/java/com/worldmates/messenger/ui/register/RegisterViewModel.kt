@@ -84,6 +84,138 @@ class RegisterViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Регистрация с верификацией через Email
+     */
+    fun registerWithEmail(
+        username: String,
+        email: String,
+        password: String,
+        confirmPassword: String
+    ) {
+        if (username.isBlank() || email.isBlank() || password.isBlank()) {
+            _registerState.value = RegisterState.Error("Заповніть всі поля")
+            return
+        }
+
+        if (password != confirmPassword) {
+            _registerState.value = RegisterState.Error("Паролі не співпадають")
+            return
+        }
+
+        if (password.length < 6) {
+            _registerState.value = RegisterState.Error("Пароль має містити мінімум 6 символів")
+            return
+        }
+
+        _registerState.value = RegisterState.Loading
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.registerWithVerification(
+                    username = username,
+                    password = password,
+                    confirmPassword = confirmPassword,
+                    verificationType = "email",
+                    email = email,
+                    phoneNumber = null
+                )
+
+                if (response.apiStatus == 200) {
+                    _registerState.value = RegisterState.VerificationRequired(
+                        userId = response.userId ?: 0,
+                        username = response.username ?: username,
+                        verificationType = "email",
+                        contactInfo = email
+                    )
+                    Log.d("RegisterViewModel", "Реєстрація успішна, потрібна верифікація")
+                } else {
+                    val errorMsg = response.errors ?: response.message ?: "Помилка реєстрації"
+                    _registerState.value = RegisterState.Error(errorMsg)
+                    Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                }
+            } catch (e: java.net.ConnectException) {
+                val errorMsg = "Помилка з'єднання. Перевірте мережу"
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "Помилка з'єднання", e)
+            } catch (e: java.net.SocketTimeoutException) {
+                val errorMsg = "Тайм-аут з'єднання. Спробуйте ще раз"
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "Тайм-аут", e)
+            } catch (e: Exception) {
+                val errorMsg = "Помилка мережі: ${e.localizedMessage}"
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "Помилка реєстрації", e)
+            }
+        }
+    }
+
+    /**
+     * Регистрация с верификацией через SMS
+     */
+    fun registerWithPhone(
+        username: String,
+        phoneNumber: String,
+        password: String,
+        confirmPassword: String
+    ) {
+        if (username.isBlank() || phoneNumber.isBlank() || password.isBlank()) {
+            _registerState.value = RegisterState.Error("Заповніть всі поля")
+            return
+        }
+
+        if (password != confirmPassword) {
+            _registerState.value = RegisterState.Error("Паролі не співпадають")
+            return
+        }
+
+        if (password.length < 6) {
+            _registerState.value = RegisterState.Error("Пароль має містити мінімум 6 символів")
+            return
+        }
+
+        _registerState.value = RegisterState.Loading
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.registerWithVerification(
+                    username = username,
+                    password = password,
+                    confirmPassword = confirmPassword,
+                    verificationType = "phone",
+                    email = null,
+                    phoneNumber = phoneNumber
+                )
+
+                if (response.apiStatus == 200) {
+                    _registerState.value = RegisterState.VerificationRequired(
+                        userId = response.userId ?: 0,
+                        username = response.username ?: username,
+                        verificationType = "phone",
+                        contactInfo = phoneNumber
+                    )
+                    Log.d("RegisterViewModel", "Реєстрація успішна, потрібна верифікація")
+                } else {
+                    val errorMsg = response.errors ?: response.message ?: "Помилка реєстрації"
+                    _registerState.value = RegisterState.Error(errorMsg)
+                    Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                }
+            } catch (e: java.net.ConnectException) {
+                val errorMsg = "Помилка з'єднання. Перевірте мережу"
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "Помилка з'єднання", e)
+            } catch (e: java.net.SocketTimeoutException) {
+                val errorMsg = "Тайм-аут з'єднання. Спробуйте ще раз"
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "Тайм-аут", e)
+            } catch (e: Exception) {
+                val errorMsg = "Помилка мережі: ${e.localizedMessage}"
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "Помилка реєстрації", e)
+            }
+        }
+    }
+
     fun resetState() {
         _registerState.value = RegisterState.Idle
     }
@@ -93,5 +225,11 @@ sealed class RegisterState {
     object Idle : RegisterState()
     object Loading : RegisterState()
     object Success : RegisterState()
+    data class VerificationRequired(
+        val userId: Long,
+        val username: String,
+        val verificationType: String,
+        val contactInfo: String
+    ) : RegisterState()
     data class Error(val message: String) : RegisterState()
 }

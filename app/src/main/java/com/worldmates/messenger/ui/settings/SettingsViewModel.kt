@@ -1,8 +1,9 @@
 package com.worldmates.messenger.ui.settings
 
+import android.app.Application
 import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Group
@@ -14,15 +15,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 
-class SettingsViewModel : ViewModel() {
+class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "SettingsViewModel"
     }
 
-    private val api = RetrofitClient.worldMatesApi
+    private val api = RetrofitClient.apiService
+    private val fileManager = FileManager(application.applicationContext)
 
     private val _username = MutableStateFlow(UserSession.username ?: "")
     val username: StateFlow<String> = _username
@@ -297,22 +299,22 @@ class SettingsViewModel : ViewModel() {
                     return@launch
                 }
 
-                // Подготовить файл
-                val inputStream = FileManager.getInputStreamFromUri(uri)
-                val mimeType = FileManager.getMimeType(uri)
-                val fileName = "avatar_${System.currentTimeMillis()}.jpg"
-
-                if (inputStream == null) {
+                // Копировать файл из URI в кеш
+                val file = fileManager.copyUriToCache(uri)
+                if (file == null) {
                     _errorMessage.value = "Не вдалося прочитати файл"
                     _isLoading.value = false
                     return@launch
                 }
 
-                val requestFile = inputStream.readBytes()
-                    .toRequestBody(mimeType?.toMediaTypeOrNull())
+                // Получить MIME-тип
+                val mimeType = fileManager.getMimeType(uri) ?: "image/jpeg"
+
+                // Создать RequestBody из файла
+                val requestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
                 val filePart = MultipartBody.Part.createFormData(
                     "avatar",
-                    fileName,
+                    file.name,
                     requestFile
                 )
 
@@ -320,6 +322,9 @@ class SettingsViewModel : ViewModel() {
                     accessToken = accessToken,
                     avatar = filePart
                 )
+
+                // Удалить временный файл
+                fileManager.deleteFile(file)
 
                 if (response.apiStatus == 200 && response.url != null) {
                     _successMessage.value = "Аватар успішно оновлено"

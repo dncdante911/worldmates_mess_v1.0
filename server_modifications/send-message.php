@@ -187,8 +187,19 @@ if (empty($error_code)) {
 
             error_log("send-message.php: Message saved with ID=$last_id");
 
-            $send_message_data = Wo_SendMessageNotifier($last_id);
-            error_log("send-message.php: Notifier sent");
+            // HYBRID: Пропускаем Notifier для WorldMates (может падать с зашифрованным текстом)
+            $send_message_data = true;
+            if (!$use_gcm) {
+                try {
+                    $send_message_data = Wo_SendMessageNotifier($last_id);
+                    error_log("send-message.php: Notifier sent (WoWonder)");
+                } catch (Exception $e) {
+                    error_log("send-message.php: Notifier error - " . $e->getMessage());
+                    $send_message_data = true; // Продолжаем даже если упало
+                }
+            } else {
+                error_log("send-message.php: Notifier skipped for WorldMates (GCM)");
+            }
 
             if ($send_message_data == true) {
                 $message = Wo_MessageData($last_id);

@@ -401,22 +401,32 @@ switch ($type) {
             // Створюємо повідомлення
             $time = time();
 
-            // Шифруємо текст з використанням AES-256-GCM
+            // HYBRID: Визначаємо тип клієнта (WorldMates GCM або офіційний WoWonder ECB)
+            $use_gcm = !empty($_POST['use_gcm']) && $_POST['use_gcm'] == 'true';
+
             $encrypted_text = $text;
             $iv = null;
             $tag = null;
-            $cipher_version = 1; // За замовчуванням ECB для сумісності
+            $cipher_version = 1; // За замовчуванням ECB
 
             if (!empty($text)) {
-                $encrypted_data = CryptoHelper::encryptGCM($text, $time);
-                if ($encrypted_data !== false) {
-                    $encrypted_text = $encrypted_data['text'];
-                    $iv = $encrypted_data['iv'];
-                    $tag = $encrypted_data['tag'];
-                    $cipher_version = $encrypted_data['cipher_version'];
-                    logMessage("Message encrypted with GCM, IV: " . substr($iv, 0, 10) . "...");
+                if ($use_gcm) {
+                    // WorldMates: AES-256-GCM
+                    $encrypted_data = CryptoHelper::encryptGCM($text, $time);
+                    if ($encrypted_data !== false) {
+                        $encrypted_text = $encrypted_data['text'];
+                        $iv = $encrypted_data['iv'];
+                        $tag = $encrypted_data['tag'];
+                        $cipher_version = $encrypted_data['cipher_version'];
+                        logMessage("Message encrypted with GCM (WorldMates), IV: " . substr($iv, 0, 10) . "...");
+                    } else {
+                        logMessage("WARNING: GCM encryption failed");
+                    }
                 } else {
-                    logMessage("WARNING: GCM encryption failed, storing unencrypted");
+                    // Офіційний WoWonder: AES-128-ECB (старий метод)
+                    $encrypted_text = openssl_encrypt($text, "AES-128-ECB", $time);
+                    $cipher_version = 1;
+                    logMessage("Message encrypted with ECB (WoWonder official)");
                 }
             }
 

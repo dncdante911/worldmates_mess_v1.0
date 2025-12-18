@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.data.model.User
+import com.worldmates.messenger.data.model.toGroup
 import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow

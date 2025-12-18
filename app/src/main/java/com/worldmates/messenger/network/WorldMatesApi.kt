@@ -382,6 +382,88 @@ interface WorldMatesApi {
         @Field("call_id") callId: String,
         @Field("duration") duration: Long
     ): CallResponse
+
+    // ==================== USER PROFILE & SETTINGS ====================
+
+    @FormUrlEncoded
+    @POST("?type=get-user-data")
+    suspend fun getUserData(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long? = null // Если null, вернет данные текущего пользователя
+    ): GetUserDataResponse
+
+    @FormUrlEncoded
+    @POST("?type=update-user-data")
+    suspend fun updateUserData(
+        @Query("access_token") accessToken: String,
+        @Field("first_name") firstName: String? = null,
+        @Field("last_name") lastName: String? = null,
+        @Field("about") about: String? = null,
+        @Field("birthday") birthday: String? = null,
+        @Field("gender") gender: String? = null,
+        @Field("phone_number") phoneNumber: String? = null,
+        @Field("website") website: String? = null,
+        @Field("working") working: String? = null,
+        @Field("address") address: String? = null,
+        @Field("country_id") countryId: String? = null,
+        @Field("city") city: String? = null,
+        @Field("school") school: String? = null,
+        @Field("language") language: String? = null
+    ): UpdateUserDataResponse
+
+    @FormUrlEncoded
+    @POST("?type=update-privacy-settings")
+    suspend fun updatePrivacySettings(
+        @Query("access_token") accessToken: String,
+        @Field("follow_privacy") followPrivacy: String? = null,
+        @Field("friend_privacy") friendPrivacy: String? = null,
+        @Field("post_privacy") postPrivacy: String? = null,
+        @Field("message_privacy") messagePrivacy: String? = null,
+        @Field("confirm_followers") confirmFollowers: String? = null,
+        @Field("show_activities_privacy") showActivitiesPrivacy: String? = null,
+        @Field("birth_privacy") birthPrivacy: String? = null,
+        @Field("visit_privacy") visitPrivacy: String? = null
+    ): UpdateUserDataResponse
+
+    @FormUrlEncoded
+    @POST("?type=update-notification-settings")
+    suspend fun updateNotificationSettings(
+        @Query("access_token") accessToken: String,
+        @Field("email_notification") emailNotification: Int? = null,
+        @Field("e_liked") eLiked: Int? = null,
+        @Field("e_wondered") eWondered: Int? = null,
+        @Field("e_shared") eShared: Int? = null,
+        @Field("e_followed") eFollowed: Int? = null,
+        @Field("e_commented") eCommented: Int? = null,
+        @Field("e_visited") eVisited: Int? = null,
+        @Field("e_liked_page") eLikedPage: Int? = null,
+        @Field("e_mentioned") eMentioned: Int? = null,
+        @Field("e_joined_group") eJoinedGroup: Int? = null,
+        @Field("e_accepted") eAccepted: Int? = null,
+        @Field("e_profile_wall_post") eProfileWallPost: Int? = null
+    ): UpdateUserDataResponse
+
+    @Multipart
+    @POST("?type=update-profile-picture")
+    suspend fun updateProfilePicture(
+        @Query("access_token") accessToken: String,
+        @Part avatar: MultipartBody.Part
+    ): MediaUploadResponse
+
+    @Multipart
+    @POST("?type=update-cover-picture")
+    suspend fun updateCoverPicture(
+        @Query("access_token") accessToken: String,
+        @Part cover: MultipartBody.Part
+    ): MediaUploadResponse
+
+    @FormUrlEncoded
+    @POST("?type=get-my-groups")
+    suspend fun getMyGroups(
+        @Query("access_token") accessToken: String,
+        @Field("limit") limit: Int = 50,
+        @Field("offset") offset: Int = 0
+    ): GroupListResponse
 }
 
 // ==================== RESPONSE MODELS ====================

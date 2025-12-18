@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -43,29 +42,68 @@ class SettingsActivity : AppCompatActivity() {
 
         viewModel = ViewModelProvider(this).get(SettingsViewModel::class.java)
 
+        // Загрузить данные пользователя при открытии настроек
+        viewModel.fetchUserData()
+
         setContent {
-            var showThemeSettings by remember { mutableStateOf(false) }
+            var currentScreen by remember { mutableStateOf<SettingsScreen>(SettingsScreen.Main) }
 
             WorldMatesThemedApp {
-                if (showThemeSettings) {
-                    ThemeSettingsScreen(
-                        onBackClick = { showThemeSettings = false }
-                    )
-                } else {
-                    SettingsScreen(
-                        viewModel = viewModel,
-                        onBackPressed = { finish() },
-                        onThemeClick = { showThemeSettings = true },
-                        onLogout = {
-                            UserSession.clearSession()
-                            startActivity(Intent(this, LoginActivity::class.java))
-                            finishAffinity()
-                        }
-                    )
+                when (currentScreen) {
+                    SettingsScreen.Main -> {
+                        SettingsScreen(
+                            viewModel = viewModel,
+                            onBackPressed = { finish() },
+                            onNavigate = { screen -> currentScreen = screen },
+                            onLogout = {
+                                UserSession.clearSession()
+                                startActivity(Intent(this, LoginActivity::class.java))
+                                finishAffinity()
+                            }
+                        )
+                    }
+                    SettingsScreen.EditProfile -> {
+                        EditProfileScreen(
+                            viewModel = viewModel,
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
+                    SettingsScreen.Privacy -> {
+                        PrivacySettingsScreen(
+                            viewModel = viewModel,
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
+                    SettingsScreen.Notifications -> {
+                        NotificationSettingsScreen(
+                            viewModel = viewModel,
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
+                    SettingsScreen.Theme -> {
+                        ThemeSettingsScreen(
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
+                    SettingsScreen.MyGroups -> {
+                        MyGroupsScreen(
+                            viewModel = viewModel,
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+sealed class SettingsScreen {
+    object Main : SettingsScreen()
+    object EditProfile : SettingsScreen()
+    object Privacy : SettingsScreen()
+    object Notifications : SettingsScreen()
+    object Theme : SettingsScreen()
+    object MyGroups : SettingsScreen()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,12 +111,22 @@ class SettingsActivity : AppCompatActivity() {
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBackPressed: () -> Unit,
-    onThemeClick: () -> Unit,
+    onNavigate: (SettingsScreen) -> Unit,
     onLogout: () -> Unit
 ) {
     val username = UserSession.username ?: "Користувач"
     val avatar = UserSession.avatar
+    val userData by viewModel.userData.collectAsState()
+    val successMessage by viewModel.successMessage.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    // Показать сообщение об успехе
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            kotlinx.coroutines.delay(3000)
+            viewModel.clearSuccess()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -103,13 +151,45 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize()
         ) {
+            // Success Message
+            if (successMessage != null) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFE8F5E9)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = successMessage ?: "",
+                                color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
+                }
+            }
+
             // Profile Section
             item {
                 ProfileSection(
                     username = username,
                     userId = UserSession.userId,
                     avatar = avatar,
-                    onEditProfile = { /* TODO: Navigate to edit profile */ }
+                    email = userData?.email,
+                    about = userData?.about,
+                    onEditProfile = { onNavigate(SettingsScreen.EditProfile) }
                 )
             }
 
@@ -124,20 +204,54 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Person,
                     title = "Редагувати профіль",
-                    onClick = { /* TODO */ }
+                    subtitle = "Змінити особисті дані",
+                    onClick = { onNavigate(SettingsScreen.EditProfile) }
                 )
             }
             item {
                 SettingsItem(
                     icon = Icons.Default.Lock,
                     title = "Конфіденційність",
-                    onClick = { /* TODO */ }
+                    subtitle = "Налаштування приватності",
+                    onClick = { onNavigate(SettingsScreen.Privacy) }
                 )
             }
             item {
                 SettingsItem(
                     icon = Icons.Default.Notifications,
                     title = "Сповіщення",
+                    subtitle = "Керування сповіщеннями",
+                    onClick = { onNavigate(SettingsScreen.Notifications) }
+                )
+            }
+
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+
+            // Social Settings
+            item {
+                SettingsSection(title = "Соціальне")
+            }
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Group,
+                    title = "Мої групи",
+                    subtitle = "${userData?.groupsCount ?: "0"} груп",
+                    onClick = { onNavigate(SettingsScreen.MyGroups) }
+                )
+            }
+            item {
+                SettingsItem(
+                    icon = Icons.Default.People,
+                    title = "Підписники",
+                    subtitle = "${userData?.followersCount ?: "0"} підписників",
+                    onClick = { /* TODO */ }
+                )
+            }
+            item {
+                SettingsItem(
+                    icon = Icons.Default.PersonAdd,
+                    title = "Підписки",
+                    subtitle = "${userData?.followingCount ?: "0"} підписок",
                     onClick = { /* TODO */ }
                 )
             }
@@ -152,6 +266,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Chat,
                     title = "Фон чату",
+                    subtitle = "Налаштувати фон чату",
                     onClick = { /* TODO */ }
                 )
             }
@@ -159,6 +274,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Storage,
                     title = "Сховище даних",
+                    subtitle = "Керування медіа файлами",
                     onClick = { /* TODO */ }
                 )
             }
@@ -173,7 +289,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Language,
                     title = "Мова",
-                    subtitle = "Українська",
+                    subtitle = userData?.language ?: "Українська",
                     onClick = { /* TODO */ }
                 )
             }
@@ -182,7 +298,7 @@ fun SettingsScreen(
                     icon = Icons.Default.DarkMode,
                     title = "Тема",
                     subtitle = "Налаштування кольорів",
-                    onClick = onThemeClick
+                    onClick = { onNavigate(SettingsScreen.Theme) }
                 )
             }
             item {
@@ -192,6 +308,48 @@ fun SettingsScreen(
                     subtitle = "Версія 1.0.0",
                     onClick = { /* TODO */ }
                 )
+            }
+
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+
+            // Account Info (if Pro)
+            if (userData?.isPro == 1) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFD700)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Stars,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    "PRO акаунт",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontSize = 18.sp
+                                )
+                                Text(
+                                    "Дякуємо за підтримку!",
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -240,6 +398,8 @@ fun ProfileSection(
     username: String,
     userId: Long,
     avatar: String?,
+    email: String?,
+    about: String?,
     onEditProfile: () -> Unit
 ) {
     Surface(
@@ -248,47 +408,68 @@ fun ProfileSection(
             .clickable { onEditProfile() },
         color = Color.White
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Avatar
-            AsyncImage(
-                model = avatar ?: "https://worldmates.club/upload/photos/d-avatar.jpg",
-                contentDescription = "Profile Avatar",
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-
-            // User info
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = username,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                // Avatar
+                AsyncImage(
+                    model = avatar ?: "https://worldmates.club/upload/photos/d-avatar.jpg",
+                    contentDescription = "Profile Avatar",
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
-                Text(
-                    text = "ID: $userId",
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 4.dp)
+
+                // User info
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = username,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "ID: $userId",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    if (!email.isNullOrEmpty()) {
+                        Text(
+                            text = email,
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+
+                // Edit icon
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Редагувати",
+                    tint = Color(0xFF0084FF)
                 )
             }
 
-            // Edit icon
-            Icon(
-                Icons.Default.Edit,
-                contentDescription = "Редагувати",
-                tint = Color(0xFF0084FF)
-            )
+            // About section
+            if (!about.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = about,
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    lineHeight = 20.sp
+                )
+            }
         }
     }
 }
@@ -358,11 +539,13 @@ fun SettingsItem(
             }
 
             // Arrow
-            Icon(
-                Icons.Default.KeyboardArrowRight,
-                contentDescription = "Перейти",
-                tint = Color.Gray
-            )
+            if (textColor != Color.Red) {
+                Icon(
+                    Icons.Default.KeyboardArrowRight,
+                    contentDescription = "Перейти",
+                    tint = Color.Gray
+                )
+            }
         }
     }
 }

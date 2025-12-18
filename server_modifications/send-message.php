@@ -185,9 +185,15 @@ if (empty($error_code)) {
             }
 
 
+            error_log("send-message.php: Message saved with ID=$last_id");
+
             $send_message_data = Wo_SendMessageNotifier($last_id);
+            error_log("send-message.php: Notifier sent");
+
             if ($send_message_data == true) {
                 $message = Wo_MessageData($last_id);
+                error_log("send-message.php: Got message data");
+
                 foreach ($non_allowed as $key => $value) {
                    unset($message['messageUser'][$value]);
                 }
@@ -255,18 +261,27 @@ if (empty($error_code)) {
                 }
                 $message['message_hash_id'] = $_POST['message_hash_id'];
 
-                // HYBRID: Получаем GCM поля из БД (УЖЕ зашифровано!)
-                // НЕ шифруем повторно - просто возвращаем поля из БД
-                if ($use_gcm && !empty($last_id)) {
-                    // Получаем iv, tag, cipher_version из БД
-                    $message_with_gcm = $db->where('id', $last_id)->getOne(T_MESSAGES);
-                    if ($message_with_gcm) {
-                        $message['iv'] = $message_with_gcm['iv'];
-                        $message['tag'] = $message_with_gcm['tag'];
-                        $message['cipher_version'] = $message_with_gcm['cipher_version'];
-                        error_log("send-message.php: Returning GCM fields from DB - iv=" . ($message['iv'] ? 'SET' : 'NULL'));
+                // HYBRID: Добавляем GCM поля для WorldMates
+                if ($use_gcm) {
+                    try {
+                        // Пробуем получить поля из БД
+                        global $db;
+                        if (isset($db) && !empty($last_id)) {
+                            $gcm_row = $db->where('id', $last_id)->getOne(T_MESSAGES, 'iv, tag, cipher_version');
+                            if ($gcm_row) {
+                                if (!empty($gcm_row['iv'])) $message['iv'] = $gcm_row['iv'];
+                                if (!empty($gcm_row['tag'])) $message['tag'] = $gcm_row['tag'];
+                                if (isset($gcm_row['cipher_version'])) $message['cipher_version'] = $gcm_row['cipher_version'];
+                                error_log("send-message.php: Added GCM fields from DB");
+                            }
+                        }
+                    } catch (Exception $e) {
+                        error_log("send-message.php: GCM fields error - " . $e->getMessage());
+                        // Продолжаем без GCM полей
                     }
                 }
+
+                error_log("send-message.php: Before response build");
 
                 unset($message['or_text']);
                 if (!empty($message['reply'])) {

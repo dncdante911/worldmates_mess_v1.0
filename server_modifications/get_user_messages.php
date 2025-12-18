@@ -1,4 +1,12 @@
-<?php 
+<?php
+
+// Підключаємо модуль шифрування AES-256-GCM
+if (file_exists(__DIR__ . '/../crypto_helper.php')) {
+    require_once(__DIR__ . '/../crypto_helper.php');
+}
+
+// HYBRID: Определяем тип клиента
+$use_gcm = !empty($_POST['use_gcm']) && $_POST['use_gcm'] == 'true';
 
 if (!empty($_POST['recipient_id']) && is_numeric($_POST['recipient_id']) && $_POST['recipient_id'] > 0) {
 	$json_success_data   = array();
@@ -152,6 +160,41 @@ if (!empty($_POST['recipient_id']) && is_numeric($_POST['recipient_id']) && $_PO
                     $message['story']['time_text'] = Wo_Time_Elapsed_String($message['story']['posted']);
                     $message['story']['view_count'] = $db->where('story_id',$message['story']['id'])->where('user_id',$message['story']['user_id'],'!=')->getValue(T_STORY_SEEN,'COUNT(*)');
                 }
+
+                // HYBRID: Шифруем текст в ОТВЕТЕ
+                if (!empty($message['text'])) {
+                    if ($use_gcm && class_exists('CryptoHelper')) {
+                        // WorldMates: AES-256-GCM
+                        $encrypted = CryptoHelper::encryptGCM($message['text'], $message['time']);
+                        if ($encrypted !== false) {
+                            $message['text'] = $encrypted['text'];
+                            $message['iv'] = $encrypted['iv'];
+                            $message['tag'] = $encrypted['tag'];
+                            $message['cipher_version'] = $encrypted['cipher_version'];
+                        }
+                    } else {
+                        // Official WoWonder: AES-128-ECB
+                        $message['text'] = openssl_encrypt($message['text'], "AES-128-ECB", $message['time']);
+                        $message['cipher_version'] = 1;
+                    }
+                }
+
+                // Шифруем reply текст тоже
+                if (!empty($message['reply']) && !empty($message['reply']['text'])) {
+                    if ($use_gcm && class_exists('CryptoHelper')) {
+                        $encrypted = CryptoHelper::encryptGCM($message['reply']['text'], $message['reply']['time']);
+                        if ($encrypted !== false) {
+                            $message['reply']['text'] = $encrypted['text'];
+                            $message['reply']['iv'] = $encrypted['iv'];
+                            $message['reply']['tag'] = $encrypted['tag'];
+                            $message['reply']['cipher_version'] = $encrypted['cipher_version'];
+                        }
+                    } else {
+                        $message['reply']['text'] = openssl_encrypt($message['reply']['text'], "AES-128-ECB", $message['reply']['time']);
+                        $message['reply']['cipher_version'] = 1;
+                    }
+                }
+
                 array_push($json_success_data, $message);
             }
             $send_messages_to_phones = Wo_MessagesPushNotifier();

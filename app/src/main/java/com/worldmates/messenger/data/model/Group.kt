@@ -213,11 +213,16 @@ data class MessageListResponse(
 
 data class GroupListResponse(
     @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("groups") val groups: List<Group>?,
+    @SerializedName("groups") private val _groups: List<Group>? = null,
+    @SerializedName("data") private val _data: List<Group>? = null, // API get-my-groups возвращает 'data' вместо 'groups'
     @SerializedName("total_count") val totalCount: Int? = null,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
-)
+) {
+    // Универсальный геттер для получения групп (из groups или data)
+    val groups: List<Group>?
+        get() = _groups ?: _data
+}
 
 data class GroupDetailResponse(
     @SerializedName("api_status") val apiStatus: Int,

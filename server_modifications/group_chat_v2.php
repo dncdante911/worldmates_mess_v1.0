@@ -25,6 +25,9 @@
 // Підключаємо конфігурацію БД
 require_once('./config.php');
 
+// Підключаємо модуль шифрування AES-256-GCM
+require_once('../includes/crypto_helper.php');
+
 // Налаштування для розробки (вимкніть на продакшені!)
 error_reporting(E_ALL);
 ini_set('display_errors', 0); // Не показувати помилки в браузері
@@ -397,11 +400,31 @@ switch ($type) {
 
             // Створюємо повідомлення
             $time = time();
+
+            // Шифруємо текст з використанням AES-256-GCM
+            $encrypted_text = $text;
+            $iv = null;
+            $tag = null;
+            $cipher_version = 1; // За замовчуванням ECB для сумісності
+
+            if (!empty($text)) {
+                $encrypted_data = CryptoHelper::encryptGCM($text, $time);
+                if ($encrypted_data !== false) {
+                    $encrypted_text = $encrypted_data['text'];
+                    $iv = $encrypted_data['iv'];
+                    $tag = $encrypted_data['tag'];
+                    $cipher_version = $encrypted_data['cipher_version'];
+                    logMessage("Message encrypted with GCM, IV: " . substr($iv, 0, 10) . "...");
+                } else {
+                    logMessage("WARNING: GCM encryption failed, storing unencrypted");
+                }
+            }
+
             $stmt = $db->prepare("
-                INSERT INTO Wo_Messages (from_id, group_id, to_id, text, media, time, seen)
-                VALUES (?, ?, 0, ?, ?, ?, 0)
+                INSERT INTO Wo_Messages (from_id, group_id, to_id, text, media, time, seen, iv, tag, cipher_version)
+                VALUES (?, ?, 0, ?, ?, ?, 0, ?, ?, ?)
             ");
-            $stmt->execute([$current_user_id, $group_id, $text, $media, $time]);
+            $stmt->execute([$current_user_id, $group_id, $encrypted_text, $media, $time, $iv, $tag, $cipher_version]);
             $message_id = $db->lastInsertId();
 
             logMessage("Message sent: ID=$message_id");

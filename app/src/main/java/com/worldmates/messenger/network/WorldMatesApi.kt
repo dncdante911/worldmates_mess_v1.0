@@ -389,7 +389,8 @@ interface WorldMatesApi {
     @POST("?type=get-user-data")
     suspend fun getUserData(
         @Query("access_token") accessToken: String,
-        @Field("user_id") userId: Long? = null // Если null, вернет данные текущего пользователя
+        @Field("user_id") userId: Long? = null, // Если null, вернет данные текущего пользователя
+        @Field("fetch") fetch: String = "user_data" // Возможные значения: user_data, followers, following, liked_pages, joined_groups, family (через запятую)
     ): GetUserDataResponse
 
     @FormUrlEncoded
@@ -461,6 +462,8 @@ interface WorldMatesApi {
     @POST("?type=get-my-groups")
     suspend fun getMyGroups(
         @Query("access_token") accessToken: String,
+        @Field("type") type: String = "joined_groups", // Возможные значения: my_groups, joined_groups, category
+        @Field("user_id") userId: Long? = null, // Требуется для joined_groups
         @Field("limit") limit: Int = 50,
         @Field("offset") offset: Int = 0
     ): GroupListResponse

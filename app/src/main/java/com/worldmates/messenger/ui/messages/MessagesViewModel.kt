@@ -426,11 +426,30 @@ class MessagesViewModel(application: Application) :
             val encryptedText = messageJson.getString("text")
             val mediaUrl = messageJson.optString("media", null)
 
-            // Дешифруем текст
-            val decryptedText = DecryptionUtility.decryptMessageOrOriginal(encryptedText, timestamp)
+            // Поддержка AES-GCM (v2) - новые поля
+            val iv = messageJson.optString("iv", null)?.takeIf { it.isNotEmpty() }
+            val tag = messageJson.optString("tag", null)?.takeIf { it.isNotEmpty() }
+            val cipherVersion = if (messageJson.has("cipher_version")) {
+                messageJson.getInt("cipher_version")
+            } else null
 
-            // Дешифруем URL медиа
-            val decryptedMediaUrl = DecryptionUtility.decryptMediaUrl(mediaUrl, timestamp)
+            // Дешифруем текст с поддержкой GCM
+            val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+                text = encryptedText,
+                timestamp = timestamp,
+                iv = iv,
+                tag = tag,
+                cipherVersion = cipherVersion
+            )
+
+            // Дешифруем URL медиа с поддержкой GCM
+            val decryptedMediaUrl = DecryptionUtility.decryptMediaUrl(
+                mediaUrl = mediaUrl,
+                timestamp = timestamp,
+                iv = iv,
+                tag = tag,
+                cipherVersion = cipherVersion
+            )
 
             // Пытаемся извлечь URL медиа из текста, если mediaUrl пуст
             val finalMediaUrl = decryptedMediaUrl
@@ -447,6 +466,11 @@ class MessagesViewModel(application: Application) :
                 type = messageJson.optString("type", Constants.MESSAGE_TYPE_TEXT),
                 senderName = messageJson.optString("sender_name", null),
                 senderAvatar = messageJson.optString("sender_avatar", null),
+                // Поля для AES-GCM (v2)
+                iv = iv,
+                tag = tag,
+                cipherVersion = cipherVersion,
+                // Дешифрованные данные
                 decryptedText = decryptedText,
                 decryptedMediaUrl = finalMediaUrl
             )
@@ -525,18 +549,25 @@ class MessagesViewModel(application: Application) :
     /**
      * Полностью дешифрует сообщение: текст и URL медиа.
      * Также пытается извлечь URL медиа из текста сообщения.
+     * Поддерживает AES-GCM (v2) и обратную совместимость с AES-ECB (v1).
      */
     private fun decryptMessageFully(msg: Message): Message {
-        // Дешифруем текст
+        // Дешифруем текст с поддержкой GCM
         val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-            msg.encryptedText,
-            msg.timeStamp
+            text = msg.encryptedText,
+            timestamp = msg.timeStamp,
+            iv = msg.iv,
+            tag = msg.tag,
+            cipherVersion = msg.cipherVersion
         )
 
-        // Дешифруем URL медиа
+        // Дешифруем URL медиа с поддержкой GCM
         val decryptedMediaUrl = DecryptionUtility.decryptMediaUrl(
-            msg.mediaUrl,
-            msg.timeStamp
+            mediaUrl = msg.mediaUrl,
+            timestamp = msg.timeStamp,
+            iv = msg.iv,
+            tag = msg.tag,
+            cipherVersion = msg.cipherVersion
         )
 
         // Пытаемся извлечь URL медиа из текста, если mediaUrl пуст

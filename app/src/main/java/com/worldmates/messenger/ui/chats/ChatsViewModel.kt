@@ -84,13 +84,19 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                             Log.d("ChatsViewModel", "Chat: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
 
                             val lastMessage = chat.lastMessage?.let { msg ->
+                                // Дешифруємо з підтримкою AES-GCM (v2)
                                 val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                                    msg.encryptedText,
-                                    msg.timeStamp
+                                    text = msg.encryptedText,
+                                    timestamp = msg.timeStamp,
+                                    iv = msg.iv,
+                                    tag = msg.tag,
+                                    cipherVersion = msg.cipherVersion
                                 )
                                 Log.d("ChatsViewModel", "🔐 Дешифрування для ${chat.username}:")
                                 Log.d("ChatsViewModel", "   Зашифровано: ${msg.encryptedText}")
                                 Log.d("ChatsViewModel", "   Timestamp: ${msg.timeStamp}")
+                                Log.d("ChatsViewModel", "   Cipher version: ${msg.cipherVersion ?: "ECB (v1)"}")
+                                Log.d("ChatsViewModel", "   Has IV/TAG: ${msg.iv != null}/${msg.tag != null}")
                                 Log.d("ChatsViewModel", "   Дешифровано: $decryptedText")
 
                                 // Конвертуємо URL медіа в зрозумілі мітки

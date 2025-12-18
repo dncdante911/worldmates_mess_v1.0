@@ -378,9 +378,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     offset = 0
                 )
 
-                if (response.apiStatus == 200 && response.groups != null) {
-                    _myGroups.value = response.groups
-                    Log.d(TAG, "Loaded ${response.groups.size} groups")
+                // Используем локальную переменную для smart cast
+                val groupsList = response.groups
+                if (response.apiStatus == 200 && groupsList != null) {
+                    _myGroups.value = groupsList
+                    Log.d(TAG, "Loaded ${groupsList.size} groups")
                 } else {
                     _errorMessage.value = response.errorMessage ?: "Помилка завантаження груп"
                     Log.e(TAG, "Error loading groups: ${response.errorMessage}")

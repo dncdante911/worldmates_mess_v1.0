@@ -1,5 +1,72 @@
 # 🔐 PHP Encryption Replacement Guide
-## Замена openssl_encrypt() на CryptoHelper::encryptGCM()
+## Миграция на AES-256-GCM шифрование
+
+---
+
+## ⚠️ ВАЖНАЯ ИНФОРМАЦИЯ О ВАШЕЙ КОНФИГУРАЦИИ
+
+### Используемые файлы на сервере:
+
+✅ **group_chat_v2.php** - `/var/www/www-root/data/www/worldmates.club/api/v2/group_chat_v2.php`
+- Кастомный API v2 из `server_modifications/group_chat_v2.php`
+- **УЖЕ ОБНОВЛЁН** с поддержкой AES-256-GCM ✅
+
+📂 **Стандартные API файлы** - `/home/user/api-worldmates/`:
+- send-message.php
+- get_user_messages.php
+- get_chats.php
+- page_chat.php
+- group_chat.php (старая версия, НЕ используется)
+- get-site-settings.php
+- phone/get_users_list.php
+
+---
+
+## 🚀 БЫСТРЫЙ СТАРТ - Порядок действий
+
+### 1. Подготовка БД (КРИТИЧНО!)
+
+Сначала добавьте поля в таблицу `Wo_Messages`:
+
+```sql
+-- Подключитесь к вашей БД и выполните:
+ALTER TABLE Wo_Messages ADD COLUMN iv VARCHAR(255) NULL AFTER text;
+ALTER TABLE Wo_Messages ADD COLUMN tag VARCHAR(255) NULL AFTER iv;
+ALTER TABLE Wo_Messages ADD COLUMN cipher_version INT DEFAULT 1 AFTER tag;
+
+-- Проверка что поля добавлены:
+DESCRIBE Wo_Messages;
+```
+
+### 2. Копирование файлов на сервер
+
+```bash
+# Скопируйте crypto_helper.php в includes
+scp /home/user/api-worldmates/includes/crypto_helper.php \
+    user@worldmates.club:/var/www/www-root/data/www/worldmates.club/includes/
+
+# Скопируйте обновленный group_chat_v2.php
+scp /home/user/worldmates_mess_v1.0/server_modifications/group_chat_v2.php \
+    user@worldmates.club:/var/www/www-root/data/www/worldmates.club/api/v2/
+
+# Скопируйте тестовый скрипт
+scp /home/user/api-worldmates/test_gcm.php \
+    user@worldmates.club:/var/www/www-root/data/www/worldmates.club/
+```
+
+### 3. Проверка работы GCM
+
+```bash
+# На сервере запустите тест:
+cd /var/www/www-root/data/www/worldmates.club/
+php test_gcm.php
+```
+
+Должен вывести: `✅ Все тесты пройдены успешно!`
+
+### 4. Обновление остальных PHP файлов
+
+См. детальные инструкции ниже для каждого файла.
 
 ---
 
@@ -30,6 +97,57 @@ if ($encrypted !== false) {
     $message['cipher_version'] = $encrypted['cipher_version'];
 }
 ```
+
+---
+
+## 📁 Файл 0: group_chat_v2.php ✅ ГОТОВ
+
+### Локация на сервере: `/var/www/www-root/data/www/worldmates.club/api/v2/group_chat_v2.php`
+### Локация в репо: `server_modifications/group_chat_v2.php`
+
+### ✅ СТАТУС: УЖЕ ОБНОВЛЁН!
+
+Этот файл уже обновлен с поддержкой AES-256-GCM:
+- ✅ Добавлено подключение crypto_helper.php
+- ✅ Эндпоинт `send_message` шифрует текст перед сохранением в БД
+- ✅ Эндпоинт `get_messages` возвращает iv, tag, cipher_version
+- ✅ Добавлено логирование шифрования
+
+**Что было добавлено (строка 29):**
+```php
+// Підключаємо модуль шифрування AES-256-GCM
+require_once('../includes/crypto_helper.php');
+```
+
+**Что было добавлено (строка 404-428):**
+```php
+// Шифруємо текст з використанням AES-256-GCM
+$encrypted_text = $text;
+$iv = null;
+$tag = null;
+$cipher_version = 1;
+
+if (!empty($text)) {
+    $encrypted_data = CryptoHelper::encryptGCM($text, $time);
+    if ($encrypted_data !== false) {
+        $encrypted_text = $encrypted_data['text'];
+        $iv = $encrypted_data['iv'];
+        $tag = $encrypted_data['tag'];
+        $cipher_version = $encrypted_data['cipher_version'];
+        logMessage("Message encrypted with GCM, IV: " . substr($iv, 0, 10) . "...");
+    }
+}
+
+$stmt = $db->prepare("
+    INSERT INTO Wo_Messages (from_id, group_id, to_id, text, media, time, seen, iv, tag, cipher_version)
+    VALUES (?, ?, 0, ?, ?, ?, 0, ?, ?, ?)
+");
+$stmt->execute([$current_user_id, $group_id, $encrypted_text, $media, $time, $iv, $tag, $cipher_version]);
+```
+
+**Действия:**
+1. Скопируйте обновленный файл на сервер
+2. Убедитесь что путь к crypto_helper.php правильный (может потребоваться корректировка `../includes/crypto_helper.php`)
 
 ---
 
@@ -165,7 +283,7 @@ if (empty($message['stickers'])) {
 
 ## 📁 Файл 4: page_chat.php
 
-### Локация: `/home/user/api-worldmates/get_chats.php`
+### Локация: `/home/user/api-worldmates/page_chat.php`
 
 Этот файл имеет **2 места** с шифрованием.
 
@@ -218,61 +336,7 @@ $pages[] = $page;
 
 ---
 
-## 📁 Файл 5: group_chat.php
-
-### Локация: `/home/user/api-worldmates/group_chat.php`
-
-Этот файл имеет **2 места** с шифрованием.
-
-### Строка 761 - Сообщения группы - БЫЛО:
-
-```php
-foreach ($messages as $message) {
-    $message['text'] = openssl_encrypt($message['text'], "AES-128-ECB", $message['time']);
-    $message['org_text'] = $message['text'];
-```
-
-### Строка 761 - Сообщения группы - СТАЛО:
-
-```php
-foreach ($messages as $message) {
-    // Шифруем текст сообщения группы с использованием AES-256-GCM
-    $encrypted = CryptoHelper::encryptGCM($message['text'], $message['time']);
-    if ($encrypted !== false) {
-        $message['text'] = $encrypted['text'];
-        $message['iv'] = $encrypted['iv'];
-        $message['tag'] = $encrypted['tag'];
-        $message['cipher_version'] = $encrypted['cipher_version'];
-    }
-
-    $message['org_text'] = $message['text'];
-```
-
-### Строка 898 - Last message групп - БЫЛО:
-
-```php
-$groups[$key]['last_message']['text'] = openssl_encrypt($groups[$key]['last_message']['text'], "AES-128-ECB", $groups[$key]['last_message']['time']);
-```
-
-### Строка 898 - Last message групп - СТАЛО:
-
-```php
-// Шифруем последнее сообщение группы с использованием AES-256-GCM
-$encrypted = CryptoHelper::encryptGCM(
-    $groups[$key]['last_message']['text'],
-    $groups[$key]['last_message']['time']
-);
-if ($encrypted !== false) {
-    $groups[$key]['last_message']['text'] = $encrypted['text'];
-    $groups[$key]['last_message']['iv'] = $encrypted['iv'];
-    $groups[$key]['last_message']['tag'] = $encrypted['tag'];
-    $groups[$key]['last_message']['cipher_version'] = $encrypted['cipher_version'];
-}
-```
-
----
-
-## 📁 Файл 6: get-site-settings.php
+## 📁 Файл 5: get-site-settings.php
 
 ### Локация: `/home/user/api-worldmates/get-site-settings.php`
 
@@ -316,7 +380,7 @@ if ($encrypted !== false) {
 
 ---
 
-## 📁 Файл 7: phone/get_users_list.php
+## 📁 Файл 6: phone/get_users_list.php
 
 ### Локация: `/home/user/api-worldmates/phone/get_users_list.php`
 
@@ -349,76 +413,122 @@ if (!empty($json_data['last_message']['time'])) {
 
 ---
 
+## 🗄️ МИГРАЦИЯ БАЗЫ ДАННЫХ
+
+### Добавление полей для GCM
+
+```sql
+-- Подключитесь к MySQL:
+-- mysql -u your_user -p your_database
+
+-- Добавьте поля в таблицу Wo_Messages
+ALTER TABLE Wo_Messages ADD COLUMN iv VARCHAR(255) NULL AFTER text;
+ALTER TABLE Wo_Messages ADD COLUMN tag VARCHAR(255) NULL AFTER iv;
+ALTER TABLE Wo_Messages ADD COLUMN cipher_version INT DEFAULT 1 AFTER tag;
+
+-- Добавьте индекс для быстрого поиска по cipher_version
+ALTER TABLE Wo_Messages ADD INDEX idx_cipher_version (cipher_version);
+
+-- Проверка структуры таблицы
+DESCRIBE Wo_Messages;
+```
+
+### Проверка миграции БД
+
+```sql
+-- Должны увидеть новые поля:
+-- | iv              | varchar(255) | YES  |     | NULL    |       |
+-- | tag             | varchar(255) | YES  |     | NULL    |       |
+-- | cipher_version  | int(11)      | YES  |     | 1       |       |
+
+-- Проверка количества записей с разными версиями шифрования:
+SELECT
+    cipher_version,
+    COUNT(*) as count,
+    CASE
+        WHEN cipher_version = 1 THEN 'AES-128-ECB (старое)'
+        WHEN cipher_version = 2 THEN 'AES-256-GCM (новое)'
+        ELSE 'Неизвестно'
+    END as encryption_type
+FROM Wo_Messages
+GROUP BY cipher_version;
+```
+
+---
+
 ## 🔍 Как проверить что все работает
 
 ### 1. Проверка поддержки GCM на сервере:
 
-Создайте временный файл `test_gcm.php`:
-
-```php
-<?php
-require_once('includes/crypto_helper.php');
-
-if (CryptoHelper::isGCMSupported()) {
-    echo "✅ AES-GCM поддерживается!\n";
-
-    // Тест шифрования
-    $plaintext = "Hello World";
-    $timestamp = time();
-
-    $encrypted = CryptoHelper::encryptGCM($plaintext, $timestamp);
-    if ($encrypted !== false) {
-        echo "✅ Шифрование работает!\n";
-        echo "Text: " . $encrypted['text'] . "\n";
-        echo "IV: " . $encrypted['iv'] . "\n";
-        echo "Tag: " . $encrypted['tag'] . "\n";
-        echo "Version: " . $encrypted['cipher_version'] . "\n";
-
-        // Тест дешифрования
-        $decrypted = CryptoHelper::decryptGCM(
-            $encrypted['text'],
-            $encrypted['iv'],
-            $encrypted['tag'],
-            $timestamp
-        );
-
-        if ($decrypted === $plaintext) {
-            echo "✅ Дешифрование работает!\n";
-            echo "Decrypted: $decrypted\n";
-        } else {
-            echo "❌ Дешифрование НЕ работает!\n";
-        }
-    } else {
-        echo "❌ Шифрование НЕ работает!\n";
-    }
-} else {
-    echo "❌ AES-GCM НЕ поддерживается на этом сервере!\n";
-    echo "Доступные методы: " . implode(', ', openssl_get_cipher_methods()) . "\n";
-}
-?>
+```bash
+# На сервере запустите:
+cd /var/www/www-root/data/www/worldmates.club/
+php test_gcm.php
 ```
 
-Запустите: `php test_gcm.php`
+Должен вывести:
+```
+=== WorldMates AES-256-GCM Test ===
 
-### 2. Проверка логов:
+1. Проверка поддержки AES-GCM...
+   ✅ AES-GCM поддерживается!
 
-После внедрения проверьте логи PHP:
+2. Тест шифрования...
+   ✅ Шифрование успешно!
+
+...
+
+=== Результат ===
+✅ Все тесты пройдены успешно!
+```
+
+### 2. Проверка логов PHP:
 
 ```bash
-tail -f /var/log/php_errors.log
-```
+# Смотрите логи group_chat_v2:
+tail -f /var/www/www-root/data/www/worldmates.club/api/v2/logs/group_chat_v2.log
 
-Ищите сообщения:
-- `CryptoHelper: GCM encryption failed` - ошибка шифрования
-- `CryptoHelper: GCM decryption failed` - ошибка дешифрования
+# Должны увидеть:
+# [2025-12-18 11:34:23] Message encrypted with GCM, IV: MTIzNDU2Nz...
+```
 
 ### 3. Проверка в Android приложении:
 
-- Отправьте тестовое сообщение
-- Проверьте logcat на наличие:
-  - `🔐 Дешифрування для ...`
-  - `Cipher version: 2`
-  - `Has IV/TAG: true/true`
+1. Отправьте тестовое сообщение в группу
+2. Проверьте logcat:
+```bash
+adb logcat | grep -i "cipher"
+```
+
+Должны увидеть:
+```
+D/ChatsViewModel: Cipher version: 2
+D/ChatsViewModel: Has IV/TAG: true/true
+D/MessagesViewModel: 🔐 Дешифрування для повідомлення ID=12345
+```
+
+### 4. Проверка в БД:
+
+```sql
+-- Посмотрите последние 5 сообщений:
+SELECT
+    id,
+    from_id,
+    SUBSTRING(text, 1, 30) as text_preview,
+    SUBSTRING(iv, 1, 20) as iv_preview,
+    SUBSTRING(tag, 1, 20) as tag_preview,
+    cipher_version,
+    FROM_UNIXTIME(time) as sent_time
+FROM Wo_Messages
+WHERE group_id IS NOT NULL
+ORDER BY id DESC
+LIMIT 5;
+```
+
+Новые сообщения должны иметь:
+- `iv` - не NULL (например: MTIzNDU2Nzg5...)
+- `tag` - не NULL (например: YWJjZGVmZ2...)
+- `cipher_version` - 2
 
 ---
 
@@ -426,36 +536,38 @@ tail -f /var/log/php_errors.log
 
 ### 1. Обратная совместимость
 
-Старые сообщения (без iv/tag) будут автоматически дешифровываться через ECB режим на Android.
+✅ Старые сообщения (без iv/tag) будут автоматически дешифровываться через ECB на Android
+✅ PHP код также поддерживает оба формата через `CryptoHelper::decrypt()`
 
-### 2. Структура базы данных
+### 2. Порядок внедрения
 
-⚠️ **КРИТИЧНО:** Если вы храните зашифрованные сообщения в базе данных, убедитесь что в таблице есть поля:
-- `iv` VARCHAR(255)
-- `tag` VARCHAR(255)
-- `cipher_version` INT
+1. ✅ **Сначала БД** - добавить поля iv, tag, cipher_version
+2. ✅ **Затем сервер** - скопировать crypto_helper.php и обновленные файлы
+3. ✅ **Проверка** - запустить test_gcm.php
+4. ✅ **Android** - уже готов
+5. 📊 **Мониторинг** - следить за логами
 
-Если полей нет, добавьте их:
+### 3. Пути к crypto_helper.php
 
-```sql
-ALTER TABLE Wo_Messages ADD COLUMN iv VARCHAR(255) NULL;
-ALTER TABLE Wo_Messages ADD COLUMN tag VARCHAR(255) NULL;
-ALTER TABLE Wo_Messages ADD COLUMN cipher_version INT DEFAULT 1;
+В зависимости от локации API файла, путь может отличаться:
+
+```php
+// Для файлов в корне api:
+require_once('includes/crypto_helper.php');
+
+// Для файлов в api/v2/:
+require_once('../includes/crypto_helper.php');
+
+// Для файлов в api/phone/:
+require_once('../includes/crypto_helper.php');
 ```
-
-### 3. Порядок внедрения
-
-1. ✅ Сначала обновите Android приложение (уже сделано)
-2. ✅ Затем обновите PHP файлы на сервере
-3. ⏳ Выпустите обновление пользователям
-4. 📊 Мониторьте логи на предмет ошибок
 
 ### 4. Rollback план
 
-Если что-то пойдет не так, можно откатиться:
+Если что-то пойдет не так:
 
 ```php
-// Временно вернуться на ECB
+// Временно вернуться на ECB в конкретном файле:
 $message['text'] = openssl_encrypt($message['text'], "AES-128-ECB", $message['time']);
 ```
 
@@ -465,36 +577,104 @@ $message['text'] = openssl_encrypt($message['text'], "AES-128-ECB", $message['ti
 
 | Файл | Количество мест | Строки | Статус |
 |------|----------------|--------|--------|
+| **group_chat_v2.php** | 2 | 29, 404-428 | ✅ **ГОТОВ** |
 | send-message.php | 1 | 178 | ⏳ Ожидает |
 | get_user_messages.php | 2 | 46, 98 | ⏳ Ожидает |
 | get_chats.php | 3 | 84, 176, 262 | ⏳ Ожидает |
 | page_chat.php | 2 | 245, 407 | ⏳ Ожидает |
-| group_chat.php | 2 | 761, 898 | ⏳ Ожидает |
 | get-site-settings.php | 1 | 50 | ⏳ Ожидает |
 | phone/get_users_list.php | 1 | 162 | ⏳ Ожидает |
 
-**ВСЕГО:** 12 мест в 7 файлах
+**ВСЕГО:** 12 мест в 7 файлах (1 уже готов, 6 ожидают)
 
 ---
 
-## 🎯 Следующие шаги
+## 🎯 Чеклист для внедрения
 
-1. Сделайте бэкап всех файлов перед изменениями
-2. Проверьте что crypto_helper.php находится в `/includes/crypto_helper.php`
-3. Замените код во всех 7 файлах по примерам выше
-4. Запустите `test_gcm.php` для проверки
-5. Протестируйте отправку/получение сообщений
-6. Проверьте логи на ошибки
-7. Проверьте что Android приложение корректно дешифрует новые сообщения
+### Подготовка:
+- [ ] Сделать бэкап БД
+- [ ] Сделать бэкап всех PHP файлов
+- [ ] Проверить версию PHP на сервере (>= 7.1)
+
+### База данных:
+- [ ] Выполнить ALTER TABLE для добавления полей
+- [ ] Проверить что поля добавлены (DESCRIBE Wo_Messages)
+
+### Файлы на сервере:
+- [ ] Скопировать crypto_helper.php в /includes/
+- [ ] Скопировать обновленный group_chat_v2.php в /api/v2/
+- [ ] Скопировать test_gcm.php в корень
+- [ ] Запустить php test_gcm.php
+
+### Обновление API файлов:
+- [ ] send-message.php
+- [ ] get_user_messages.php
+- [ ] get_chats.php
+- [ ] page_chat.php
+- [ ] get-site-settings.php
+- [ ] phone/get_users_list.php
+
+### Тестирование:
+- [ ] Отправить тестовое сообщение через group_chat_v2
+- [ ] Проверить что сообщение зашифровано в БД
+- [ ] Проверить что Android корректно дешифрует
+- [ ] Проверить логи на ошибки
+- [ ] Отправить тестовое личное сообщение
+- [ ] Проверить список чатов
+
+### Мониторинг:
+- [ ] Следить за логами первые 24 часа
+- [ ] Проверить что нет ошибок дешифрования
+- [ ] Убедиться что все новые сообщения имеют cipher_version=2
 
 ---
 
-## 📞 Поддержка
+## 📞 Поддержка и траблшутинг
 
-Если возникли проблемы:
-- Проверьте версию PHP (должна быть >= 7.1)
-- Проверьте что OpenSSL расширение включено
-- Проверьте логи PHP на ошибки
-- Проверьте что поля iv/tag/cipher_version добавлены в БД (если храните там зашифрованные данные)
+### Проблема: "CryptoHelper class not found"
+**Решение:** Проверьте путь к crypto_helper.php:
+```bash
+ls -la /var/www/www-root/data/www/worldmates.club/includes/crypto_helper.php
+```
 
-**Статус миграции:** ✅ Android готов | ⏳ PHP ожидает внедрения
+### Проблема: "openssl_encrypt(): Unknown cipher algorithm"
+**Решение:** Проверьте версию PHP и OpenSSL:
+```bash
+php -v  # Должна быть >= 7.1
+php -r "print_r(openssl_get_cipher_methods());" | grep -i gcm
+```
+
+### Проблема: "Column 'iv' not found"
+**Решение:** Выполните ALTER TABLE (см. раздел "Миграция БД")
+
+### Проблема: Android не дешифрует сообщения
+**Решение:**
+1. Проверьте logcat на ошибки
+2. Убедитесь что iv, tag, cipher_version возвращаются в JSON
+3. Проверьте что timestamp совпадает
+
+---
+
+## 🔒 Улучшения безопасности
+
+**Было (AES-128-ECB):**
+- ❌ 128-битный ключ (слабый)
+- ❌ ECB режим (паттерны видны)
+- ❌ Нет проверки целостности
+- ❌ Нет защиты от подмены
+- ❌ Статический ключ на базе timestamp
+
+**Стало (AES-256-GCM):**
+- ✅ 256-битный ключ (в 2 раза сильнее)
+- ✅ GCM режим (AEAD - authenticated encryption)
+- ✅ Authentication tag (проверка целостности)
+- ✅ Уникальный IV для каждого сообщения (96 бит случайных данных)
+- ✅ Защита от подмены данных
+- ✅ Обратная совместимость с ECB
+- ✅ Автоопределение версии шифрования
+
+**Статус миграции:**
+- ✅ Android готов
+- ✅ group_chat_v2.php готов
+- ✅ crypto_helper.php готов
+- ⏳ Остальные 6 PHP файлов ожидают обновления

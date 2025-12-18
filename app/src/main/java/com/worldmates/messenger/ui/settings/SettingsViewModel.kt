@@ -64,48 +64,31 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * Загрузить полные данные пользователя из API
+     * ВРЕМЕННО ОТКЛЮЧЕНО: endpoint ?type=get-user-data может не существовать
+     * Используем данные из UserSession
      */
     fun fetchUserData() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
-
             try {
-                val accessToken = UserSession.accessToken
-                if (accessToken == null) {
-                    _errorMessage.value = "Токен доступу відсутній"
-                    _isLoading.value = false
-                    return@launch
-                }
+                // Создаем User объект из данных UserSession
+                // Полные данные пользователя обычно загружаются при авторизации
+                // и должны быть доступны через основной API WoWonder
 
-                val response = api.getUserData(
-                    accessToken = accessToken,
-                    userId = UserSession.userId
-                )
+                // Пока используем базовые данные из сессии
+                _username.value = UserSession.username ?: ""
+                _avatar.value = UserSession.avatar
+                _userId.value = UserSession.userId
 
-                if (response.apiStatus == 200 && response.userData != null) {
-                    _userData.value = response.userData
-
-                    // Обновить сессию
-                    UserSession.username = response.userData.username
-                    UserSession.avatar = response.userData.avatar
-
-                    Log.d(TAG, "User data loaded successfully")
-                } else {
-                    _errorMessage.value = response.errorMessage ?: "Помилка завантаження даних"
-                    Log.e(TAG, "Error loading user data: ${response.errorMessage}")
-                }
+                Log.d(TAG, "User data loaded from session")
             } catch (e: Exception) {
-                _errorMessage.value = "Помилка: ${e.message}"
-                Log.e(TAG, "Exception loading user data", e)
-            } finally {
-                _isLoading.value = false
+                Log.e(TAG, "Exception loading user data from session", e)
             }
         }
     }
 
     /**
      * Обновить профиль пользователя
+     * ВРЕМЕННО: API endpoint ?type=update-user-data должен быть создан на сервере
      */
     fun updateUserProfile(
         firstName: String? = null,
@@ -126,6 +109,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             _successMessage.value = null
 
             try {
+                // ВРЕМЕННО: показываем сообщение, что функция в разработке
+                // Для работы нужно создать соответствующий PHP скрипт на сервере
+                _errorMessage.value = "Функція оновлення профілю в розробці. Будь ласка, використовуйте веб-версію worldmates.club для редагування профілю."
+                Log.w(TAG, "Update profile API endpoint not implemented yet")
+
+                /*
+                // Раскомментировать когда будет создан PHP endpoint
                 val accessToken = UserSession.accessToken
                 if (accessToken == null) {
                     _errorMessage.value = "Токен доступу відсутній"
@@ -150,13 +140,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
                 if (response.apiStatus == 200) {
                     _successMessage.value = "Профіль успішно оновлено"
-                    // Перезагрузить данные пользователя
                     fetchUserData()
                     Log.d(TAG, "User profile updated successfully")
                 } else {
                     _errorMessage.value = response.errorMessage ?: "Помилка оновлення профілю"
                     Log.e(TAG, "Error updating profile: ${response.errorMessage}")
                 }
+                */
             } catch (e: Exception) {
                 _errorMessage.value = "Помилка: ${e.message}"
                 Log.e(TAG, "Exception updating profile", e)
@@ -168,6 +158,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * Обновить настройки конфиденциальности
+     * ВРЕМЕННО: API endpoint ?type=update-privacy-settings должен быть создан на сервере
      */
     fun updatePrivacySettings(
         followPrivacy: String? = null,
@@ -185,6 +176,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             _successMessage.value = null
 
             try {
+                _errorMessage.value = "Функція налаштування конфіденційності в розробці. Будь ласка, використовуйте веб-версію worldmates.club."
+                Log.w(TAG, "Update privacy settings API endpoint not implemented yet")
+
+                /*
                 val accessToken = UserSession.accessToken
                 if (accessToken == null) {
                     _errorMessage.value = "Токен доступу відсутній"
@@ -211,6 +206,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     _errorMessage.value = response.errorMessage ?: "Помилка оновлення налаштувань"
                     Log.e(TAG, "Error updating privacy: ${response.errorMessage}")
                 }
+                */
             } catch (e: Exception) {
                 _errorMessage.value = "Помилка: ${e.message}"
                 Log.e(TAG, "Exception updating privacy", e)
@@ -222,6 +218,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * Обновить настройки уведомлений
+     * ВРЕМЕННО: API endpoint ?type=update-notification-settings должен быть создан на сервере
      */
     fun updateNotificationSettings(
         emailNotification: Int? = null,
@@ -243,6 +240,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             _successMessage.value = null
 
             try {
+                _errorMessage.value = "Функція налаштування сповіщень в розробці. Будь ласка, використовуйте веб-версію worldmates.club."
+                Log.w(TAG, "Update notification settings API endpoint not implemented yet")
+
+                /*
                 val accessToken = UserSession.accessToken
                 if (accessToken == null) {
                     _errorMessage.value = "Токен доступу відсутній"
@@ -273,6 +274,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     _errorMessage.value = response.errorMessage ?: "Помилка оновлення налаштувань"
                     Log.e(TAG, "Error updating notifications: ${response.errorMessage}")
                 }
+                */
             } catch (e: Exception) {
                 _errorMessage.value = "Помилка: ${e.message}"
                 Log.e(TAG, "Exception updating notifications", e)
@@ -284,6 +286,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * Загрузить аватар пользователя
+     * ВРЕМЕННО: API endpoint ?type=update-profile-picture должен быть создан на сервере
      */
     fun uploadAvatar(uri: Uri) {
         viewModelScope.launch {
@@ -292,6 +295,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             _successMessage.value = null
 
             try {
+                _errorMessage.value = "Функція зміни аватара в розробці. Будь ласка, використовуйте веб-версію worldmates.club."
+                Log.w(TAG, "Upload avatar API endpoint not implemented yet")
+
+                /*
                 val accessToken = UserSession.accessToken
                 if (accessToken == null) {
                     _errorMessage.value = "Токен доступу відсутній"
@@ -338,6 +345,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     _errorMessage.value = response.errorMessage ?: "Помилка завантаження аватара"
                     Log.e(TAG, "Error uploading avatar: ${response.errorMessage}")
                 }
+                */
             } catch (e: Exception) {
                 _errorMessage.value = "Помилка: ${e.message}"
                 Log.e(TAG, "Exception uploading avatar", e)
@@ -349,6 +357,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * Загрузить группы пользователя
+     * Используем endpoint get_chats с фильтром data_type=groups
      */
     fun loadMyGroups() {
         viewModelScope.launch {
@@ -363,15 +372,23 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     return@launch
                 }
 
-                val response = api.getMyGroups(
+                // Используем существующий endpoint get_chats с фильтром для групп
+                val response = api.getChats(
                     accessToken = accessToken,
                     limit = 100,
+                    dataType = "groups", // Фильтр только для групп
+                    setOnline = 0,
                     offset = 0
                 )
 
-                if (response.apiStatus == 200 && response.groups != null) {
-                    _myGroups.value = response.groups
-                    Log.d(TAG, "Loaded ${response.groups.size} groups")
+                if (response.apiStatus == 200 && response.chats != null) {
+                    // Конвертируем Chat объекты в Group объекты
+                    val groups = response.chats
+                        .filter { it.isGroup || it.chatType == "group" }
+                        .map { it.toGroup() }
+
+                    _myGroups.value = groups
+                    Log.d(TAG, "Loaded ${groups.size} groups from chats")
                 } else {
                     _errorMessage.value = response.errorMessage ?: "Помилка завантаження груп"
                     Log.e(TAG, "Error loading groups: ${response.errorMessage}")

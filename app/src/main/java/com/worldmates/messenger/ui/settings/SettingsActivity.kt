@@ -45,8 +45,9 @@ class SettingsActivity : AppCompatActivity() {
             ViewModelProvider.AndroidViewModelFactory.getInstance(application)
         ).get(SettingsViewModel::class.java)
 
-        // Загрузить данные пользователя при открытии настроек
-        viewModel.fetchUserData()
+        // НЕ загружаем данные автоматически, так как endpoint может не существовать
+        // Данные будут загружены из UserSession
+        // viewModel.fetchUserData()
 
         setContent {
             var currentScreen by remember { mutableStateOf<SettingsScreen>(SettingsScreen.Main) }

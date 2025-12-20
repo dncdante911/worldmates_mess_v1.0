@@ -493,10 +493,10 @@ fun RegisterFormCard(
             // Register button
             val registerEnabled = if (selectedTab == 0) {
                 username.isNotEmpty() && email.isNotEmpty() &&
-                password.isNotEmpty() && password == confirmPassword && !isLoading
+                        password.isNotEmpty() && password == confirmPassword && !isLoading
             } else {
                 phoneNumber.isNotEmpty() && username.isNotEmpty() &&
-                password.isNotEmpty() && password == confirmPassword && !isLoading
+                        password.isNotEmpty() && password == confirmPassword && !isLoading
             }
 
             GradientButton(

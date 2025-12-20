@@ -3,11 +3,8 @@ package com.worldmates.messenger.ui.theme
 import android.app.Activity
 import android.os.Build
 import android.view.View
+import android.view.Window
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.key
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Дополнительные цвета и эффекты WorldMates
@@ -69,6 +71,15 @@ val LocalExtendedColors = staticCompositionLocalOf {
 }
 
 /**
+ * Состояние темы для отслеживания изменений
+ */
+object ThemeState {
+    var currentVariant: ThemeVariant by mutableStateOf(ThemeVariant.CLASSIC)
+    var isDarkTheme: Boolean by mutableStateOf(false)
+    var useDynamicColors: Boolean by mutableStateOf(false)
+}
+
+/**
  * Получить расширенные цвета для текущей темы
  */
 object WMColors {
@@ -78,7 +89,7 @@ object WMColors {
 }
 
 /**
- * Создать светлую цветовую схему для заданного варианта темы
+ * Создать светлую цветовую схему для заданного варианта темы (Material 3)
  */
 private fun createLightColorScheme(palette: ThemePalette): ColorScheme {
     return lightColorScheme(
@@ -112,7 +123,7 @@ private fun createLightColorScheme(palette: ThemePalette): ColorScheme {
 }
 
 /**
- * Создать темную цветовую схему для заданного варианта темы
+ * Создать темную цветовую схему для заданного варианта темы (Material 3)
  */
 private fun createDarkColorScheme(palette: ThemePalette): ColorScheme {
     return darkColorScheme(
@@ -164,18 +175,34 @@ private fun createExtendedColors(
         unreadBadge = UnreadBadge,
         typingIndicator = palette.primary,
         searchBarBackground = if (isDark) SearchBarBackgroundDark else SearchBarBackground,
-        backgroundGradient = palette.backgroundGradient  // Динамический градиентный фон
+        backgroundGradient = palette.backgroundGradient
     )
 }
 
 /**
- * Главная тема WorldMates Messenger с поддержкой множества вариантов
- *
- * @param darkTheme использовать темную тему (по умолчанию следует системной настройке)
- * @param themeVariant вариант темы (по умолчанию CLASSIC)
- * @param dynamicColor использовать динамические цвета Material You на Android 12+ (по умолчанию false)
- * @param animateColors анимировать смену цветов при переключении темы (по умолчанию true)
- * @param content контент приложения
+ * Настройка системных баров для Material 3
+ */
+@Composable
+private fun SetupSystemBars(
+    window: Window?,
+    colorScheme: ColorScheme,
+    isDarkTheme: Boolean
+) {
+    SideEffect {
+        window?.let {
+            it.statusBarColor = colorScheme.surface.toArgb()
+            it.navigationBarColor = colorScheme.surface.toArgb()
+
+            WindowCompat.getInsetsController(it, it.decorView).apply {
+                isAppearanceLightStatusBars = !isDarkTheme
+                isAppearanceLightNavigationBars = !isDarkTheme
+            }
+        }
+    }
+}
+
+/**
+ * Главная тема WorldMates Messenger с поддержкой Material 3
  */
 @Composable
 fun WorldMatesTheme(
@@ -186,11 +213,18 @@ fun WorldMatesTheme(
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
+    val window = (view.context as? Activity)?.window
 
-    // Определяем цветовую схему
+    // Обновляем состояние темы
+    ThemeState.currentVariant = themeVariant
+    ThemeState.isDarkTheme = darkTheme
+    ThemeState.useDynamicColors = dynamicColor
+
+    // Определяем цветовую схему Material 3
     val colorScheme = when {
-        // Material You (динамические цвета из обоев) - только для варианта MATERIAL_YOU и Android 12+
-        themeVariant == ThemeVariant.MATERIAL_YOU && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        // Material You (динамические цвета) - Android 12+
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) {
                 dynamicDarkColorScheme(context)
             } else {
@@ -210,8 +244,7 @@ fun WorldMatesTheme(
 
     // Создаем расширенные цвета
     val extendedColors = when {
-        themeVariant == ThemeVariant.MATERIAL_YOU && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            // Для Material You используем палитру из colorScheme + градиент из варианта
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val materialYouPalette = ThemeVariant.MATERIAL_YOU.getPalette()
             ExtendedColors(
                 messageBubbleOwn = colorScheme.primary,
@@ -225,7 +258,7 @@ fun WorldMatesTheme(
                 unreadBadge = UnreadBadge,
                 typingIndicator = colorScheme.primary,
                 searchBarBackground = if (darkTheme) SearchBarBackgroundDark else SearchBarBackground,
-                backgroundGradient = materialYouPalette.backgroundGradient  // Градиент для Material You
+                backgroundGradient = materialYouPalette.backgroundGradient
             )
         }
         else -> {
@@ -234,28 +267,11 @@ fun WorldMatesTheme(
         }
     }
 
-    // Обновляем цвета системных баров
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as? Activity)?.window ?: return@SideEffect
-            window.statusBarColor = colorScheme.primary.toArgb()
-            window.navigationBarColor = colorScheme.background.toArgb()
+    // Настройка системных баров
+    SetupSystemBars(window, colorScheme, darkTheme)
 
-            // Настраиваем цвет иконок статус-бара (темные/светлые)
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
-            }
-        }
-    }
-
-    // Применяем тему с плавной анимацией переходов
-    Crossfade(
-        targetState = Pair(themeVariant, darkTheme),
-        animationSpec = tween(durationMillis = if (animateColors) 400 else 0),
-        label = "Theme transition"
-    ) { (currentVariant, currentDarkTheme) ->
+    // Анимация перехода между темами
+    val animatedContent = @Composable {
         CompositionLocalProvider(
             LocalExtendedColors provides extendedColors
         ) {
@@ -267,4 +283,32 @@ fun WorldMatesTheme(
             )
         }
     }
+
+    if (animateColors) {
+        Crossfade(
+            targetState = Triple(themeVariant, darkTheme, colorScheme),
+            label = "ThemeTransition"
+        ) {
+            animatedContent()
+        }
+    } else {
+        animatedContent()
+    }
+}
+
+/**
+ * Упрощенная версия темы для быстрого использования
+ */
+@Composable
+fun SimpleWorldMatesTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    WorldMatesTheme(
+        darkTheme = darkTheme,
+        themeVariant = ThemeVariant.CLASSIC,
+        dynamicColor = false,
+        animateColors = false,
+        content = content
+    )
 }

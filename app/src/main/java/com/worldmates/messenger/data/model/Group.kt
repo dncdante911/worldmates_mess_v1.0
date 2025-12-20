@@ -96,7 +96,9 @@ data class Group(
     @SerializedName("updated_time") val updatedTime: Long? = null,
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
-    @SerializedName("settings") val settings: GroupSettings? = null
+    @SerializedName("settings") val settings: GroupSettings? = null,
+    val lastMessage: Message? = null,
+    val unreadCount: Int = 0
 )
 
 data class GroupMember(
@@ -312,6 +314,8 @@ fun Chat.toGroup(): Group {
         updatedTime = this.lastActivity,
         members = null,
         pinnedMessageId = this.pinnedMessageId,
-        settings = null
+        settings = null,
+        lastMessage = this.lastMessage,
+        unreadCount = this.unreadCount
     )
 }

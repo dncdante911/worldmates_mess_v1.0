@@ -6,6 +6,7 @@ import androidx.multidex.MultiDexApplication
 import com.google.firebase.FirebaseApp
 import timber.log.Timber
 
+
 /**
  * Главный Application класс WorldMates Messenger
  */
@@ -15,6 +16,7 @@ class WMApplication : MultiDexApplication() {
         private const val TAG = "WMApplication"
         lateinit var instance: WMApplication
             private set
+
     }
 
     override fun onCreate() {

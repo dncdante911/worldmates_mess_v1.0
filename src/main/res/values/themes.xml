@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Базовая тема для Material 3 -->
+    <style name="Theme.WorldMatesMessenger" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- Прозрачное окно для Compose -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+
+        <!-- Отключаем ActionBar -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+
+        <!-- Отключаем системные тени и анимации -->
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@null</item>
+
+        <!-- Настройки для темной темы -->
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+
+    <!-- Алиас для обратной совместимости -->
+    <style name="Theme.WorldMatesMessenger.NoActionBar" parent="Theme.WorldMatesMessenger">
+        <!-- Уже наследует все настройки -->
+    </style>
+
+    <!-- Fullscreen theme -->
+    <style name="Theme.WorldMatesMessenger.Fullscreen" parent="Theme.WorldMatesMessenger">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+    </style>
+
+    <!--
+        ДИАЛОГОВАЯ ТЕМА - используем простой стиль
+        Это критическое исправление!
+    -->
+    <style name="Theme.WorldMatesMessenger.Dialog" parent="android:Theme.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.5</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@style/DialogAnimation</item>
+    </style>
+
+    <!-- Анимация для диалогов -->
+    <style name="DialogAnimation" parent="@android:style/Animation">
+        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
+
+    <!--
+        Альтернативная тема для экранов без Compose
+        Если у вас есть старые Activity на XML
+    -->
+    <style name="Theme.WorldMatesMessenger.Legacy" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Минимальные настройки -->
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="colorPrimaryVariant">@color/primary_blue_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/secondary_cyan</item>
+        <item name="colorSecondaryVariant">@color/secondary_cyan_dark</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor">@color/primary_blue_dark</item>
+        <item name="android:windowBackground">@color/background_light</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+    </style>
+</resources>

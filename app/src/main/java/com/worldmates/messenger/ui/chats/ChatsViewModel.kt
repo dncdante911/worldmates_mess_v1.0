@@ -99,8 +99,19 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                                 Log.d("ChatsViewModel", "   Has IV/TAG: ${msg.iv != null}/${msg.tag != null}")
                                 Log.d("ChatsViewModel", "   Дешифровано: $decryptedText")
 
-                                // Конвертуємо URL медіа в зрозумілі мітки
-                                val displayText = convertMediaUrlToLabel(decryptedText)
+                                // ФІКС: Перевіряємо чи дешифровка успішна
+                                // Якщо повернувся Base64 текст (дешифровка не вдалась), показуємо fallback
+                                val isBase64Pattern = "^[A-Za-z0-9+/]+=*$".toRegex()
+                                val displayText = if (decryptedText.matches(isBase64Pattern) &&
+                                                      decryptedText == msg.encryptedText) {
+                                    // Дешифровка не вдалась - показуємо іконку замість зашифрованого тексту
+                                    Log.w("ChatsViewModel", "   ⚠️ Дешифровка не вдалась, показую fallback")
+                                    "📩 Нове повідомлення"
+                                } else {
+                                    // Дешифровка успішна - конвертуємо URL медіа в зрозумілі мітки
+                                    convertMediaUrlToLabel(decryptedText)
+                                }
+
                                 msg.copy(decryptedText = displayText)
                             }
                             chat.copy(lastMessage = lastMessage)

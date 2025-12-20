@@ -9,6 +9,11 @@ $messages = array();
 $groups = array();
 $pages = array();
 
+// Определяем тип клиента: WorldMates (GCM) или WoWonder (ECB)
+$use_gcm = (!empty($_POST['use_gcm']) && $_POST['use_gcm'] == 'true') ||
+           (!empty($_GET['use_gcm']) && $_GET['use_gcm'] == 'true');
+$is_worldmates = $use_gcm;
+
 $user_offset = (!empty($_POST['user_offset']) && is_numeric($_POST['user_offset']) && $_POST['user_offset'] > 0 ? Wo_Secure($_POST['user_offset']) : 0);
 $user_limit = (!empty($_POST['user_limit']) && is_numeric($_POST['user_limit']) && $_POST['user_limit'] > 0 && $_POST['user_limit'] <= 50 ? Wo_Secure($_POST['user_limit']) : 20);
 $user_type = (!empty($_POST['user_type']) && in_array($_POST['user_type'], array('online','offline')) ? Wo_Secure($_POST['user_type']) : '');
@@ -83,9 +88,20 @@ if (!empty($messages)) {
         }
 $message = $value['last_message'];
 
-// ФІКС: НЕ шифруємо повторно! Сообщение УЖЕ зашифровано в БД
-// Просто используем существующие iv/tag/cipher_version из БД
-// Шифрование происходит только при отправке сообщения (send-message.php)
+// ГІБРИДНА ЛОГІКА: Вибираємо правильну версію шифрування
+if ($is_worldmates) {
+    // WorldMates Messenger: Повертаємо GCM (text, iv, tag, cipher_version)
+    // Сообщение УЖЕ зашифровано в БД, просто используем как есть
+} else {
+    // WoWonder (браузер/оф.приложение): Повертаємо ECB (text_ecb)
+    if (!empty($message['text_ecb'])) {
+        $message['text'] = $message['text_ecb'];
+    }
+    // Видаляємо GCM поля для WoWonder клієнтів
+    unset($message['iv']);
+    unset($message['tag']);
+    unset($message['cipher_version']);
+}
 
 if (empty($message['stickers'])) {
             $message['stickers'] = '';
@@ -179,9 +195,20 @@ if (!empty($groups)) {
 
 $message = $value['last_message'];
 
-// ФІКС: НЕ шифруємо повторно! Сообщение УЖЕ зашифровано в БД
-// Просто используем существующие iv/tag/cipher_version из БД
-// Шифрование происходит только при отправке сообщения (send-message.php)
+// ГІБРИДНА ЛОГІКА: Вибираємо правильну версію шифрування
+if ($is_worldmates) {
+    // WorldMates Messenger: Повертаємо GCM (text, iv, tag, cipher_version)
+    // Сообщение УЖЕ зашифровано в БД, просто используем как есть
+} else {
+    // WoWonder (браузер/оф.приложение): Повертаємо ECB (text_ecb)
+    if (!empty($message['text_ecb'])) {
+        $message['text'] = $message['text_ecb'];
+    }
+    // Видаляємо GCM поля для WoWonder клієнтів
+    unset($message['iv']);
+    unset($message['tag']);
+    unset($message['cipher_version']);
+}
 
 if (empty($message['stickers'])) {
                 $message['stickers'] = '';

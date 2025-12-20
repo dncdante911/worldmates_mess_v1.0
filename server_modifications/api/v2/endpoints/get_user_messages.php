@@ -83,15 +83,30 @@ if (!empty($_POST['recipient_id']) && is_numeric($_POST['recipient_id']) && $_PO
                 $not_include_status = true;
             }
             $timezone = new DateTimeZone($user_login_data['timezone']);
+
+            // Определяем: это браузер или приложение
+            $is_browser = empty($_POST['app_version']) && empty($_GET['app_version']);
+
             foreach ($message_info as $message) {
                 // ГІБРИДНА ЛОГІКА: Вибираємо правильну версію шифрування
                 if ($is_worldmates) {
                     // WorldMates Messenger: Повертаємо GCM (text, iv, tag, cipher_version)
                     // Сообщения уже зашифрованы в БД, просто используем как есть
                 } else {
-                    // WoWonder (браузер/оф.приложение): Повертаємо ECB (text_ecb)
+                    // WoWonder (браузер/оф.приложение)
                     if (!empty($message['text_ecb'])) {
-                        $message['text'] = $message['text_ecb'];
+                        if ($is_browser) {
+                            // БРАУЗЕР: Дешифруємо ECB і повертаємо plain text
+                            $decrypted = CryptoHelper::decryptECB($message['text_ecb'], $message['time']);
+                            if ($decrypted !== false) {
+                                $message['text'] = $decrypted;
+                            } else {
+                                $message['text'] = $message['text_ecb'];
+                            }
+                        } else {
+                            // ПРИЛОЖЕНИЕ: Повертаємо зашифрований ECB
+                            $message['text'] = $message['text_ecb'];
+                        }
                     }
                     // Видаляємо GCM поля для WoWonder клієнтів
                     unset($message['iv']);
@@ -100,7 +115,16 @@ if (!empty($_POST['recipient_id']) && is_numeric($_POST['recipient_id']) && $_PO
 
                     // Обрабатываем reply тоже
                     if (!empty($message['reply']) && !empty($message['reply']['text_ecb'])) {
-                        $message['reply']['text'] = $message['reply']['text_ecb'];
+                        if ($is_browser) {
+                            $decrypted = CryptoHelper::decryptECB($message['reply']['text_ecb'], $message['reply']['time']);
+                            if ($decrypted !== false) {
+                                $message['reply']['text'] = $decrypted;
+                            } else {
+                                $message['reply']['text'] = $message['reply']['text_ecb'];
+                            }
+                        } else {
+                            $message['reply']['text'] = $message['reply']['text_ecb'];
+                        }
                         unset($message['reply']['iv']);
                         unset($message['reply']['tag']);
                         unset($message['reply']['cipher_version']);

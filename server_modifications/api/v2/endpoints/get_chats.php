@@ -93,9 +93,25 @@ if ($is_worldmates) {
     // WorldMates Messenger: Повертаємо GCM (text, iv, tag, cipher_version)
     // Сообщение УЖЕ зашифровано в БД, просто используем как есть
 } else {
-    // WoWonder (браузер/оф.приложение): Повертаємо ECB (text_ecb)
+    // WoWonder (браузер/оф.приложение): Потрібен ECB або plain text
     if (!empty($message['text_ecb'])) {
-        $message['text'] = $message['text_ecb'];
+        // Для браузера ДЕШИФРУЄМО на сервері, для приложения - оставляем зашифрованным
+        // Определяем: это браузер или приложение по наличию параметра app_version
+        $is_browser = empty($_POST['app_version']) && empty($_GET['app_version']);
+
+        if ($is_browser) {
+            // БРАУЗЕР: Дешифруємо ECB і повертаємо plain text
+            $decrypted = CryptoHelper::decryptECB($message['text_ecb'], $message['time']);
+            if ($decrypted !== false) {
+                $message['text'] = $decrypted;
+            } else {
+                // Если не удалось дешифровать, возвращаем как есть
+                $message['text'] = $message['text_ecb'];
+            }
+        } else {
+            // ПРИЛОЖЕНИЕ: Повертаємо зашифрований ECB
+            $message['text'] = $message['text_ecb'];
+        }
     }
     // Видаляємо GCM поля для WoWonder клієнтів
     unset($message['iv']);
@@ -200,9 +216,25 @@ if ($is_worldmates) {
     // WorldMates Messenger: Повертаємо GCM (text, iv, tag, cipher_version)
     // Сообщение УЖЕ зашифровано в БД, просто используем как есть
 } else {
-    // WoWonder (браузер/оф.приложение): Повертаємо ECB (text_ecb)
+    // WoWonder (браузер/оф.приложение): Потрібен ECB або plain text
     if (!empty($message['text_ecb'])) {
-        $message['text'] = $message['text_ecb'];
+        // Для браузера ДЕШИФРУЄМО на сервері, для приложения - оставляем зашифрованным
+        // Определяем: это браузер или приложение по наличию параметра app_version
+        $is_browser = empty($_POST['app_version']) && empty($_GET['app_version']);
+
+        if ($is_browser) {
+            // БРАУЗЕР: Дешифруємо ECB і повертаємо plain text
+            $decrypted = CryptoHelper::decryptECB($message['text_ecb'], $message['time']);
+            if ($decrypted !== false) {
+                $message['text'] = $decrypted;
+            } else {
+                // Если не удалось дешифровать, возвращаем как есть
+                $message['text'] = $message['text_ecb'];
+            }
+        } else {
+            // ПРИЛОЖЕНИЕ: Повертаємо зашифрований ECB
+            $message['text'] = $message['text_ecb'];
+        }
     }
     // Видаляємо GCM поля для WoWonder клієнтів
     unset($message['iv']);

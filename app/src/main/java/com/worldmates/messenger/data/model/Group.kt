@@ -92,10 +92,14 @@ data class Group(
     @SerializedName("is_admin") val isAdmin: Boolean = false,
     @SerializedName("is_moderator") val isModerator: Boolean = false,
     @SerializedName("is_member") val isMember: Boolean = true,
+    @SerializedName("is_owner") val isOwner: Boolean? = null, // Чи є користувач власником
     @SerializedName("created_time") val createdTime: Long,
     @SerializedName("updated_time") val updatedTime: Long? = null,
+    @SerializedName("last_activity") val lastActivity: Long? = null, // Остання активність в групі
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
+    @SerializedName("is_pinned") val isPinned: Boolean? = null, // Чи закріплена група користувачем
+    @SerializedName("unread_count") val unreadCount: Int? = null, // Кількість непрочитаних повідомлень
     @SerializedName("settings") val settings: GroupSettings? = null
 )
 

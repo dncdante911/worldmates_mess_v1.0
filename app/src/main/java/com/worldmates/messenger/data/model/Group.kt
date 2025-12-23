@@ -315,3 +315,36 @@ fun Chat.toGroup(): Group {
         settings = null
     )
 }
+
+/**
+ * Extension properties для Group
+ */
+val Group.isOwner: Boolean
+    get() {
+        return try {
+            adminId == com.worldmates.messenger.data.UserSession.userId
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+val Group.lastActivity: Long?
+    get() = updatedTime ?: createdTime
+
+/**
+ * Extension properties для GroupMember
+ */
+val GroupMember.isOwner: Boolean
+    get() = role == "owner" || role == "admin"
+
+val GroupMember.isAdmin: Boolean
+    get() = role == "admin"
+
+val GroupMember.isModerator: Boolean
+    get() = role == "moderator"
+
+val GroupMember.isOnline: Boolean
+    get() = false // TODO: Implement online status tracking
+
+val GroupMember.avatar: String
+    get() = avatarUrl

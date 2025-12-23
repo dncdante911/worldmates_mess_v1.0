@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,7 @@ class ThemeRepository(private val context: Context) {
         private val DARK_THEME_KEY = booleanPreferencesKey("dark_theme")
         private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
         private val SYSTEM_THEME_KEY = booleanPreferencesKey("system_theme")
+        private val BACKGROUND_IMAGE_URI_KEY = stringPreferencesKey("background_image_uri")
     }
 
     /**
@@ -74,6 +76,16 @@ class ThemeRepository(private val context: Context) {
         }
 
     /**
+     * Получить URI кастомного фонового изображения
+     */
+    val backgroundImageUri: Flow<String?> = context.themeDataStore.data
+        .map { preferences ->
+            val uri = preferences[BACKGROUND_IMAGE_URI_KEY]
+            Log.d(TAG, "Reading background image URI: $uri")
+            uri
+        }
+
+    /**
      * Сохранить вариант темы
      */
     suspend fun setThemeVariant(variant: ThemeVariant) {
@@ -110,6 +122,20 @@ class ThemeRepository(private val context: Context) {
         Log.d(TAG, "Saving system theme: $enabled")
         context.themeDataStore.edit { preferences ->
             preferences[SYSTEM_THEME_KEY] = enabled
+        }
+    }
+
+    /**
+     * Сохранить URI кастомного фонового изображения
+     */
+    suspend fun setBackgroundImageUri(uri: String?) {
+        Log.d(TAG, "Saving background image URI: $uri")
+        context.themeDataStore.edit { preferences ->
+            if (uri != null) {
+                preferences[BACKGROUND_IMAGE_URI_KEY] = uri
+            } else {
+                preferences.remove(BACKGROUND_IMAGE_URI_KEY)
+            }
         }
     }
 

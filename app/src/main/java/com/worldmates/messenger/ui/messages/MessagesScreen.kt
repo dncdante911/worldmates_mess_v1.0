@@ -338,24 +338,40 @@ fun MessageBubbleComposable(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp),  // Минимальный отступ
+            .padding(vertical = 2.dp),  // Небольшой отступ между сообщениями
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
     ) {
-        // Telegram-style пузырь - компактный и читабельный
-        Box(
+        // Современный Material 3 пузырь с тенью и скруглениями
+        Card(
             modifier = Modifier
-                .widthIn(max = 260.dp)  // Немного уже для удобства
-                .padding(horizontal = 3.dp)  // Минимальный отступ
-                .clip(if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble)
-                .background(
-                    color = bgColor,
-                    shape = if (isOwn) WMShapes.ownMessageBubble else WMShapes.otherMessageBubble
+                .widthIn(max = 280.dp)  // Оптимальная ширина для читабельности
+                .padding(horizontal = 8.dp),
+            shape = if (isOwn) {
+                RoundedCornerShape(
+                    topStart = 20.dp,
+                    topEnd = 20.dp,
+                    bottomStart = 20.dp,
+                    bottomEnd = 4.dp
                 )
+            } else {
+                RoundedCornerShape(
+                    topStart = 20.dp,
+                    topEnd = 20.dp,
+                    bottomStart = 4.dp,
+                    bottomEnd = 20.dp
+                )
+            },
+            colors = CardDefaults.cardColors(
+                containerColor = bgColor
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 2.dp
+            )
         ) {
             Column(
                 modifier = Modifier.padding(
-                    horizontal = 8.dp,  // Комфортный padding для текста
-                    vertical = 4.dp     // Компактно по вертикали
+                    horizontal = 12.dp,  // Увеличенный padding для лучшей читабельности
+                    vertical = 8.dp      // Более комфортный вертикальный отступ
                 )
             ) {
                 // Получаем URL медиа из разных источников
@@ -399,8 +415,9 @@ fun MessageBubbleComposable(
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
-                        fontSize = 15.sp,  // Комфортный размер для чтения
-                        lineHeight = 20.sp  // Межстрочный интервал для читабельности
+                        fontSize = 16.sp,  // Увеличенный размер для лучшей читабельности
+                        lineHeight = 22.sp,  // Улучшенный межстрочный интервал
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
 
@@ -490,12 +507,19 @@ fun MessageBubbleComposable(
                     }
                 }
 
-                Text(
-                    text = formatTime(message.timeStamp),
-                    color = textColor.copy(alpha = 0.7f),
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                // Время с более стильным форматированием
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = formatTime(message.timeStamp),
+                        color = textColor.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
         }
     }

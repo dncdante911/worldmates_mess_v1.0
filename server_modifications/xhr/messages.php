@@ -128,6 +128,8 @@ function convertMessagesForWorldMates(&$messages) {
                 error_log("convertMessagesForWorldMates error: " . $e->getMessage());
             }
         }
+    }
+}
 
 // === КОНЕЦ ФУНКЦИИ ===
 

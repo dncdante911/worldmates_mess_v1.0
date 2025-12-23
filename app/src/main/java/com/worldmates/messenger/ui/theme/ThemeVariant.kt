@@ -4,119 +4,86 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * Варианты тем WorldMates Messenger
+ * Варианты тем для WorldMates Messenger
  */
 enum class ThemeVariant(
     val displayName: String,
-    val description: String,
     val emoji: String,
-    val iconResId: Int? = null
+    val description: String
 ) {
     CLASSIC(
-        displayName = "Классическая",
-        description = "Официальная тема WorldMates",
-        emoji = "🎨",
-        iconResId = null
+        displayName = "Classic Blue",
+        emoji = "💙",
+        description = "Классическая синяя тема в стиле Messenger"
     ),
+
+    OCEAN(
+        displayName = "Deep Ocean",
+        emoji = "🌊",
+        description = "Глубокие океанские оттенки синего и бирюзового"
+    ),
+
+    SUNSET(
+        displayName = "Sunset Dreams",
+        emoji = "🌅",
+        description = "Теплые оранжево-розовые тона заката"
+    ),
+
+    FOREST(
+        displayName = "Forest Green",
+        emoji = "🌲",
+        description = "Природные зеленые и изумрудные оттенки"
+    ),
+
+    PURPLE(
+        displayName = "Purple Dream",
+        emoji = "💜",
+        description = "Элегантные фиолетовые и сиреневые тона"
+    ),
+
+    ROSE_GOLD(
+        displayName = "Rose Gold",
+        emoji = "🌹",
+        description = "Утонченное сочетание розового и золотого"
+    ),
+
+    MONOCHROME(
+        displayName = "Monochrome",
+        emoji = "⚫",
+        description = "Минималистичная черно-белая тема"
+    ),
+
+    NORD(
+        displayName = "Nord Frost",
+        emoji = "❄️",
+        description = "Холодные северные оттенки Nord палитры"
+    ),
+
+    DRACULA(
+        displayName = "Dracula Night",
+        emoji = "🦇",
+        description = "Темная тема с яркими акцентами"
+    ),
+
     MATERIAL_YOU(
         displayName = "Material You",
-        description = "Динамические цвета из обоев",
-        emoji = "🌈",
-        iconResId = null
-    ),
-    NIGHT_OCEAN(
-        displayName = "Ночной океан",
-        description = "Глубокие синие тона",
-        emoji = "🌊",
-        iconResId = null
-    ),
-    SUNSET_GLOW(
-        displayName = "Закатное сияние",
-        description = "Теплые оранжевые градиенты",
-        emoji = "🌅",
-        iconResId = null
-    ),
-    FOREST_DEEP(
-        displayName = "Глубокий лес",
-        description = "Натуральные зеленые оттенки",
-        emoji = "🌲",
-        iconResId = null
-    ),
-    NEON_DREAM(
-        displayName = "Неоновый сон",
-        description = "Яркие футуристичные цвета",
-        emoji = "💜",
-        iconResId = null
-    ),
-    MONOCHROME(
-        displayName = "Монохром",
-        description = "Черно-белая элегантность",
-        emoji = "⚫",
-        iconResId = null
-    ),
-    RETRO_80S(
-        displayName = "Ретро 80-е",
-        description = "Яркие ретро-цвета",
-        emoji = "📼",
-        iconResId = null
-    ),
-    DARK_MATTER(
-        displayName = "Темная материя",
-        description = "Глубокий космический черный",
-        emoji = "🌌",
-        iconResId = null
-    ),
-    AURORA(
-        displayName = "Северное сияние",
-        description = "Полярные градиенты",
-        emoji = "✨",
-        iconResId = null
+        emoji = "🎨",
+        description = "Динамические цвета из обоев (Android 12+)"
     );
 
-    /**
-     * Получить палитру для этого варианта темы
-     */
-    fun getPalette(): ThemePalette {
-        return when (this) {
-            CLASSIC -> ClassicPalette
-            MATERIAL_YOU -> MaterialYouPalette
-            NIGHT_OCEAN -> NightOceanPalette
-            SUNSET_GLOW -> SunsetGlowPalette
-            FOREST_DEEP -> ForestDeepPalette
-            NEON_DREAM -> NeonDreamPalette
-            MONOCHROME -> MonochromePalette
-            RETRO_80S -> Retro80sPalette
-            DARK_MATTER -> DarkMatterPalette
-            AURORA -> AuroraPalette
-        }
-    }
-
     companion object {
-        /**
-         * Получить список всех вариантов тем
-         */
-        fun getAllVariants(): List<ThemeVariant> {
-            return values().toList()
-        }
-
-        /**
-         * Получить вариант темы по имени
-         */
-        fun fromName(name: String): ThemeVariant {
-            return values().find { it.name == name } ?: CLASSIC
-        }
-
-        /**
-         * Получить вариант темы по порядковому номеру
-         */
         fun fromOrdinal(ordinal: Int): ThemeVariant {
             return values().getOrNull(ordinal) ?: CLASSIC
+        }
+
+        fun fromName(name: String): ThemeVariant {
+            return values().find { it.name == name } ?: CLASSIC
         }
     }
 }
 
 /**
- * Палитра цветов для варианта темы
+ * Палитра цветов для каждой темы с динамическими фонами
  */
 data class ThemePalette(
     val primary: Color,
@@ -125,170 +92,215 @@ data class ThemePalette(
     val secondary: Color,
     val secondaryDark: Color,
     val secondaryLight: Color,
-    val accent: Color,
     val messageBubbleOwn: Color,
     val messageBubbleOther: Color,
-    val backgroundGradient: Brush
+    val accent: Color,
+    val backgroundGradient: Brush  // Динамический градиентный фон для темы
 )
 
-// ==================== РЕАЛЬНЫЕ ПАЛИТРЫ ====================
+/**
+ * Получить палитру для конкретного варианта темы
+ */
+fun ThemeVariant.getPalette(): ThemePalette {
+    return when (this) {
+        ThemeVariant.CLASSIC -> ThemePalette(
+            primary = Color(0xFF0A84FF),
+            primaryDark = Color(0xFF0040DD),
+            primaryLight = Color(0xFF5AC8FA),
+            secondary = Color(0xFF00D4FF),
+            secondaryDark = Color(0xFF00A0C8),
+            secondaryLight = Color(0xFF64D2FF),
+            messageBubbleOwn = Color(0xFF0A84FF),
+            messageBubbleOther = Color(0xFFE9ECEF),
+            accent = Color(0xFF5AC8FA),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF0A1128),  // Глубокий темно-синий
+                    Color(0xFF001F54),  // Темно-синий
+                    Color(0xFF034078),  // Синий
+                    Color(0xFF1282A2)   // Яркий циан-синий
+                )
+            )
+        )
 
-// Классическая палитра
-val ClassicPalette = ThemePalette(
-    primary = Color(0xFF0A84FF),
-    primaryDark = Color(0xFF0040DD),
-    primaryLight = Color(0xFF5AC8FA),
-    secondary = Color(0xFF00D4FF),
-    secondaryDark = Color(0xFF00A0C8),
-    secondaryLight = Color(0xFF64D2FF),
-    accent = Color(0xFFFF6B9D),
-    messageBubbleOwn = Color(0xFF0A84FF),
-    messageBubbleOther = Color(0xFFF0F2F5),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF0A84FF), Color(0xFF00D4FF), Color(0xFF5AC8FA))
-    )
-)
+        ThemeVariant.OCEAN -> ThemePalette(
+            primary = Color(0xFF006BA6),
+            primaryDark = Color(0xFF004E7A),
+            primaryLight = Color(0xFF4D9FD1),
+            secondary = Color(0xFF00A1B8),
+            secondaryDark = Color(0xFF008394),
+            secondaryLight = Color(0xFF4DC4D4),
+            messageBubbleOwn = Color(0xFF006BA6),
+            messageBubbleOther = Color(0xFFE0F2F7),
+            accent = Color(0xFF00BCD4),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF000B18),  // Глубокий океан (почти черный)
+                    Color(0xFF003459),  // Темно-синий океан
+                    Color(0xFF005F8C),  // Средний океан
+                    Color(0xFF0088B8)   // Светлый океан
+                )
+            )
+        )
 
-// Material You палитра
-val MaterialYouPalette = ThemePalette(
-    primary = Color(0xFF6750A4),
-    primaryDark = Color(0xFF4F378B),
-    primaryLight = Color(0xFFEADDFF),
-    secondary = Color(0xFF625B71),
-    secondaryDark = Color(0xFF4A4458),
-    secondaryLight = Color(0xFFE8DEF8),
-    accent = Color(0xFF7D5260),
-    messageBubbleOwn = Color(0xFF6750A4),
-    messageBubbleOther = Color(0xFFE6E1E5),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF6750A4), Color(0xFFEADDFF), Color(0xFFE8DEF8))
-    )
-)
+        ThemeVariant.SUNSET -> ThemePalette(
+            primary = Color(0xFFFF6B35),
+            primaryDark = Color(0xFFD94E28),
+            primaryLight = Color(0xFFFF9671),
+            secondary = Color(0xFFFF8E53),
+            secondaryDark = Color(0xFFE67542),
+            secondaryLight = Color(0xFFFFC09F),
+            messageBubbleOwn = Color(0xFFFF6B35),
+            messageBubbleOther = Color(0xFFFFF0E6),
+            accent = Color(0xFFFFB347),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF1A0F2E),  // Ночное небо
+                    Color(0xFF2D1B4E),  // Сумерки
+                    Color(0xFFFF6B6B),  // Закатный красный
+                    Color(0xFFFFB347)   // Закатный оранжевый
+                )
+            )
+        )
 
-// Ночной океан
-val NightOceanPalette = ThemePalette(
-    primary = Color(0xFF0066CC),
-    primaryDark = Color(0xFF004C99),
-    primaryLight = Color(0xFF3399FF),
-    secondary = Color(0xFF00CCFF),
-    secondaryDark = Color(0xFF0099CC),
-    secondaryLight = Color(0xFF66E0FF),
-    accent = Color(0xFF00FFCC),
-    messageBubbleOwn = Color(0xFF0066CC),
-    messageBubbleOther = Color(0xFF1A1F2C),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF001122), Color(0xFF003366), Color(0xFF0066CC))
-    )
-)
+        ThemeVariant.FOREST -> ThemePalette(
+            primary = Color(0xFF2E7D32),
+            primaryDark = Color(0xFF1B5E20),
+            primaryLight = Color(0xFF66BB6A),
+            secondary = Color(0xFF00897B),
+            secondaryDark = Color(0xFF00695C),
+            secondaryLight = Color(0xFF4DB6AC),
+            messageBubbleOwn = Color(0xFF2E7D32),
+            messageBubbleOther = Color(0xFFE8F5E9),
+            accent = Color(0xFF4CAF50),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF0F1A0E),  // Темный лесной
+                    Color(0xFF1B3A1C),  // Глубокий зеленый
+                    Color(0xFF2E5D30),  // Средний лес
+                    Color(0xFF4A8048)   // Светлый лес
+                )
+            )
+        )
 
-// Закатное сияние
-val SunsetGlowPalette = ThemePalette(
-    primary = Color(0xFFFF6B35),
-    primaryDark = Color(0xFFCC552A),
-    primaryLight = Color(0xFFFFA07A),
-    secondary = Color(0xFFFFD166),
-    secondaryDark = Color(0xFFCCAA52),
-    secondaryLight = Color(0xFFFFE4A6),
-    accent = Color(0xFFEF476F),
-    messageBubbleOwn = Color(0xFFFF6B35),
-    messageBubbleOther = Color(0xFFFFF5E6),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFFFF6B35), Color(0xFFFFD166), Color(0xFFEF476F))
-    )
-)
+        ThemeVariant.PURPLE -> ThemePalette(
+            primary = Color(0xFF6A1B9A),
+            primaryDark = Color(0xFF4A148C),
+            primaryLight = Color(0xFF9C4DCC),
+            secondary = Color(0xFF8E24AA),
+            secondaryDark = Color(0xFF6A1B9A),
+            secondaryLight = Color(0xFFBA68C8),
+            messageBubbleOwn = Color(0xFF6A1B9A),
+            messageBubbleOther = Color(0xFFF3E5F5),
+            accent = Color(0xFF9C27B0),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF1A0B2E),  // Глубокий пурпурный
+                    Color(0xFF2D1B4E),  // Темный фиолетовый
+                    Color(0xFF4A2C6D),  // Средний пурпур
+                    Color(0xFF6A3D8C)   // Светлый фиолетовый
+                )
+            )
+        )
 
-// Глубокий лес
-val ForestDeepPalette = ThemePalette(
-    primary = Color(0xFF2E8B57),
-    primaryDark = Color(0xFF1E6B47),
-    primaryLight = Color(0xFF5CDB95),
-    secondary = Color(0xFF8FBC8F),
-    secondaryDark = Color(0xFF6F9E6F),
-    secondaryLight = Color(0xFFC1FFC1),
-    accent = Color(0xFFFFD700),
-    messageBubbleOwn = Color(0xFF2E8B57),
-    messageBubbleOther = Color(0xFFF0FFF0),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF1B4332), Color(0xFF2E8B57), Color(0xFF5CDB95))
-    )
-)
+        ThemeVariant.ROSE_GOLD -> ThemePalette(
+            primary = Color(0xFFE91E63),
+            primaryDark = Color(0xFFC2185B),
+            primaryLight = Color(0xFFF06292),
+            secondary = Color(0xFFFFB74D),
+            secondaryDark = Color(0xFFFF9800),
+            secondaryLight = Color(0xFFFFCC80),
+            messageBubbleOwn = Color(0xFFE91E63),
+            messageBubbleOther = Color(0xFFFCE4EC),
+            accent = Color(0xFFFF4081),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF2E1228),  // Темный розовый
+                    Color(0xFF4A1F3D),  // Глубокий розовый
+                    Color(0xFF6B2E52),  // Розовый
+                    Color(0xFF8D3F67)   // Светлый розовый с золотом
+                )
+            )
+        )
 
-// Неоновый сон
-val NeonDreamPalette = ThemePalette(
-    primary = Color(0xFF00FF88),
-    primaryDark = Color(0xFF00CC6C),
-    primaryLight = Color(0xFF66FFB3),
-    secondary = Color(0xFFBF00FF),
-    secondaryDark = Color(0xFF9900CC),
-    secondaryLight = Color(0xFFE066FF),
-    accent = Color(0xFFFF006E),
-    messageBubbleOwn = Color(0xFF00FF88),
-    messageBubbleOther = Color(0xFF1A1A1A),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF000000), Color(0xFF00FF88), Color(0xFFBF00FF))
-    )
-)
+        ThemeVariant.MONOCHROME -> ThemePalette(
+            primary = Color(0xFF212121),
+            primaryDark = Color(0xFF000000),
+            primaryLight = Color(0xFF484848),
+            secondary = Color(0xFF616161),
+            secondaryDark = Color(0xFF424242),
+            secondaryLight = Color(0xFF9E9E9E),
+            messageBubbleOwn = Color(0xFF212121),
+            messageBubbleOther = Color(0xFFF5F5F5),
+            accent = Color(0xFF000000),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF000000),  // Чистый черный
+                    Color(0xFF1A1A1A),  // Темно-серый
+                    Color(0xFF2D2D2D),  // Серый
+                    Color(0xFF404040)   // Светло-серый
+                )
+            )
+        )
 
-// Монохром
-val MonochromePalette = ThemePalette(
-    primary = Color(0xFF333333),
-    primaryDark = Color(0xFF000000),
-    primaryLight = Color(0xFF666666),
-    secondary = Color(0xFF999999),
-    secondaryDark = Color(0xFF666666),
-    secondaryLight = Color(0xFFCCCCCC),
-    accent = Color(0xFFFFFFFF),
-    messageBubbleOwn = Color(0xFF333333),
-    messageBubbleOther = Color(0xFFF5F5F5),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF000000), Color(0xFF333333), Color(0xFF666666))
-    )
-)
+        ThemeVariant.NORD -> ThemePalette(
+            primary = Color(0xFF5E81AC),
+            primaryDark = Color(0xFF4C566A),
+            primaryLight = Color(0xFF81A1C1),
+            secondary = Color(0xFF88C0D0),
+            secondaryDark = Color(0xFF8FBCBB),
+            secondaryLight = Color(0xFFD8DEE9),
+            messageBubbleOwn = Color(0xFF5E81AC),
+            messageBubbleOther = Color(0xFFECEFF4),
+            accent = Color(0xFF88C0D0),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF2E3440),  // Nord темный
+                    Color(0xFF3B4252),  // Nord средний
+                    Color(0xFF434C5E),  // Nord светлее
+                    Color(0xFF4C566A)   // Nord светлый
+                )
+            )
+        )
 
-// Ретро 80-е
-val Retro80sPalette = ThemePalette(
-    primary = Color(0xFFFF00FF),
-    primaryDark = Color(0xFFCC00CC),
-    primaryLight = Color(0xFFFF66FF),
-    secondary = Color(0xFF00FFFF),
-    secondaryDark = Color(0xFF00CCCC),
-    secondaryLight = Color(0xFF66FFFF),
-    accent = Color(0xFFFFFF00),
-    messageBubbleOwn = Color(0xFFFF00FF),
-    messageBubbleOther = Color(0xFF000000),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFFFF00FF), Color(0xFF00FFFF), Color(0xFFFFFF00))
-    )
-)
+        ThemeVariant.DRACULA -> ThemePalette(
+            primary = Color(0xFFBD93F9),
+            primaryDark = Color(0xFF9B6EE8),
+            primaryLight = Color(0xFFD4B5FF),
+            secondary = Color(0xFFFF79C6),
+            secondaryDark = Color(0xFFFF5AC8),
+            secondaryLight = Color(0xFFFFB3E5),
+            messageBubbleOwn = Color(0xFFBD93F9),
+            messageBubbleOther = Color(0xFF44475A),
+            accent = Color(0xFF50FA7B),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF1E1F29),  // Dracula темный
+                    Color(0xFF282A36),  // Dracula фон
+                    Color(0xFF373844),  // Dracula средний
+                    Color(0xFF44475A)   // Dracula светлый
+                )
+            )
+        )
 
-// Темная материя
-val DarkMatterPalette = ThemePalette(
-    primary = Color(0xFF121212),
-    primaryDark = Color(0xFF000000),
-    primaryLight = Color(0xFF333333),
-    secondary = Color(0xFFBB86FC),
-    secondaryDark = Color(0xFF3700B3),
-    secondaryLight = Color(0xFFE1BEE7),
-    accent = Color(0xFF03DAC6),
-    messageBubbleOwn = Color(0xFFBB86FC),
-    messageBubbleOther = Color(0xFF1E1E1E),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF000000), Color(0xFF121212), Color(0xFF1E1E1E))
-    )
-)
-
-// Северное сияние
-val AuroraPalette = ThemePalette(
-    primary = Color(0xFF00C9FF),
-    primaryDark = Color(0xFF009ECC),
-    primaryLight = Color(0xFF66E0FF),
-    secondary = Color(0xFF92FE9D),
-    secondaryDark = Color(0xFF74CB7D),
-    secondaryLight = Color(0xFFC8FFCD),
-    accent = Color(0xFFFF00FF),
-    messageBubbleOwn = Color(0xFF00C9FF),
-    messageBubbleOther = Color(0xFF0A0F1C),
-    backgroundGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF0A0F1C), Color(0xFF00C9FF), Color(0xFF92FE9D))
-    )
-)
+        ThemeVariant.MATERIAL_YOU -> ThemePalette(
+            primary = Color(0xFF6750A4),
+            primaryDark = Color(0xFF4F378B),
+            primaryLight = Color(0xFF9A82DB),
+            secondary = Color(0xFF625B71),
+            secondaryDark = Color(0xFF4A4458),
+            secondaryLight = Color(0xFF938F99),
+            messageBubbleOwn = Color(0xFF6750A4),
+            messageBubbleOther = Color(0xFFE8DEF8),
+            accent = Color(0xFF6750A4),
+            backgroundGradient = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF1C1B1F),  // M3 темный
+                    Color(0xFF2B2930),  // M3 средний
+                    Color(0xFF3A3740),  // M3 светлее
+                    Color(0xFF49454F)   // M3 светлый
+                )
+            )
+        )
+    }
+}

@@ -1,4 +1,3 @@
-
 package com.worldmates.messenger.network
 
 import android.util.Log
@@ -121,7 +120,7 @@ class NullOnEmptyConverterFactory : Converter.Factory() {
                 // Для XhrUploadResponse возвращаем объект с ошибкой
                 if (type == XhrUploadResponse::class.java) {
                     Log.e("NullOnEmptyConverter", "Помилка: сервер повернув пусту відповідь для завантаження файлу. " +
-                            "Файл може бути завантажено, але сервер не повернув інформацію про файл.")
+                        "Файл може бути завантажено, але сервер не повернув інформацію про файл.")
                     XhrUploadResponse(
                         status = 0,
                         imageUrl = null,

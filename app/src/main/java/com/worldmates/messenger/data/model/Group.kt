@@ -92,28 +92,18 @@ data class Group(
     @SerializedName("is_admin") val isAdmin: Boolean = false,
     @SerializedName("is_moderator") val isModerator: Boolean = false,
     @SerializedName("is_member") val isMember: Boolean = true,
-    @SerializedName("is_owner") val isOwner: Boolean? = null,
     @SerializedName("created_time") val createdTime: Long,
     @SerializedName("updated_time") val updatedTime: Long? = null,
-    @SerializedName("last_activity") val lastActivity: Long? = null,
-    @SerializedName("is_pinned") val isPinned: Boolean? = null,
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
-    @SerializedName("settings") val settings: GroupSettings? = null,
-    val lastMessage: Message? = null,
-    val unreadCount: Int = 0
+    @SerializedName("settings") val settings: GroupSettings? = null
 )
 
 data class GroupMember(
     @SerializedName("user_id") val userId: Long,
     @SerializedName("username") val username: String,
     @SerializedName("avatar") val avatarUrl: String,
-    val avatar: String = avatarUrl, // Alias для сумісності
-    @SerializedName("role") val role: String = "member", // "owner", "admin", "moderator", "member"
-    @SerializedName("is_owner") val isOwner: Boolean = false,
-    @SerializedName("is_admin") val isAdmin: Boolean = false,
-    @SerializedName("is_moderator") val isModerator: Boolean = false,
-    @SerializedName("is_online") val isOnline: Boolean = false,
+    @SerializedName("role") val role: String, // "admin", "moderator", "member"
     @SerializedName("joined_time") val joinedTime: Long,
     @SerializedName("is_muted") val isMuted: Boolean = false,
     @SerializedName("is_blocked") val isBlocked: Boolean = false,
@@ -121,9 +111,6 @@ data class GroupMember(
 )
 
 data class GroupSettings(
-    @SerializedName("notifications_enabled") val notificationsEnabled: Boolean = true,
-    @SerializedName("mute_notifications") val muteNotifications: Boolean = false,
-    @SerializedName("approve_new_members") val approveNewMembers: Boolean = false,
     @SerializedName("allow_members_invite") val allowMembersInvite: Boolean = true,
     @SerializedName("allow_members_pin") val allowMembersPin: Boolean = false,
     @SerializedName("allow_members_delete_messages") val allowMembersDeleteMessages: Boolean = false,
@@ -325,8 +312,6 @@ fun Chat.toGroup(): Group {
         updatedTime = this.lastActivity,
         members = null,
         pinnedMessageId = this.pinnedMessageId,
-        settings = null,
-        lastMessage = this.lastMessage,
-        unreadCount = this.unreadCount
+        settings = null
     )
 }

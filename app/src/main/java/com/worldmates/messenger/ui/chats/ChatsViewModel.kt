@@ -81,30 +81,30 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                         val decryptedChats = response.chats
                             .filter { !it.isGroup } // Виключаємо групи
                             .map { chat ->
-                                Log.d("ChatsViewModel", "Chat: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
+                            Log.d("ChatsViewModel", "Chat: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
 
-                                val lastMessage = chat.lastMessage?.let { msg ->
-                                    // Дешифруємо з підтримкою AES-GCM (v2)
-                                    val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                                        text = msg.encryptedText,
-                                        timestamp = msg.timeStamp,
-                                        iv = msg.iv,
-                                        tag = msg.tag,
-                                        cipherVersion = msg.cipherVersion
-                                    )
-                                    Log.d("ChatsViewModel", "🔐 Дешифрування для ${chat.username}:")
-                                    Log.d("ChatsViewModel", "   Зашифровано: ${msg.encryptedText}")
-                                    Log.d("ChatsViewModel", "   Timestamp: ${msg.timeStamp}")
-                                    Log.d("ChatsViewModel", "   Cipher version: ${msg.cipherVersion ?: "ECB (v1)"}")
-                                    Log.d("ChatsViewModel", "   Has IV/TAG: ${msg.iv != null}/${msg.tag != null}")
-                                    Log.d("ChatsViewModel", "   Дешифровано: $decryptedText")
+                            val lastMessage = chat.lastMessage?.let { msg ->
+                                // Дешифруємо з підтримкою AES-GCM (v2)
+                                val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
+                                    text = msg.encryptedText,
+                                    timestamp = msg.timeStamp,
+                                    iv = msg.iv,
+                                    tag = msg.tag,
+                                    cipherVersion = msg.cipherVersion
+                                )
+                                Log.d("ChatsViewModel", "🔐 Дешифрування для ${chat.username}:")
+                                Log.d("ChatsViewModel", "   Зашифровано: ${msg.encryptedText}")
+                                Log.d("ChatsViewModel", "   Timestamp: ${msg.timeStamp}")
+                                Log.d("ChatsViewModel", "   Cipher version: ${msg.cipherVersion ?: "ECB (v1)"}")
+                                Log.d("ChatsViewModel", "   Has IV/TAG: ${msg.iv != null}/${msg.tag != null}")
+                                Log.d("ChatsViewModel", "   Дешифровано: $decryptedText")
 
-                                    // Конвертуємо URL медіа в зрозумілі мітки
-                                    val displayText = convertMediaUrlToLabel(decryptedText)
-                                    msg.copy(decryptedText = displayText)
-                                }
-                                chat.copy(lastMessage = lastMessage)
+                                // Конвертуємо URL медіа в зрозумілі мітки
+                                val displayText = convertMediaUrlToLabel(decryptedText)
+                                msg.copy(decryptedText = displayText)
                             }
+                            chat.copy(lastMessage = lastMessage)
+                        }
 
                         _chatList.value = decryptedChats
                         _error.value = null
@@ -222,18 +222,18 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
         return when {
             lowerText.contains("/upload/photos/") ||
-                    lowerText.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp|bmp)$")) -> "📷 Зображення"
+            lowerText.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp|bmp)$")) -> "📷 Зображення"
 
             lowerText.contains("/upload/videos/") ||
-                    lowerText.matches(Regex(".*\\.(mp4|webm|mov|avi|mkv)$")) -> "🎬 Відео"
+            lowerText.matches(Regex(".*\\.(mp4|webm|mov|avi|mkv)$")) -> "🎬 Відео"
 
             lowerText.contains("/upload/sounds/") ||
-                    lowerText.matches(Regex(".*\\.(mp3|wav|ogg|m4a|aac)$")) -> "🎵 Аудіо"
+            lowerText.matches(Regex(".*\\.(mp3|wav|ogg|m4a|aac)$")) -> "🎵 Аудіо"
 
             lowerText.matches(Regex(".*\\.gif$")) -> "🎞️ GIF"
 
             lowerText.contains("/upload/files/") ||
-                    lowerText.matches(Regex(".*\\.(pdf|doc|docx|xls|xlsx|zip|rar)$")) -> "📎 Файл"
+            lowerText.matches(Regex(".*\\.(pdf|doc|docx|xls|xlsx|zip|rar)$")) -> "📎 Файл"
 
             else -> text
         }

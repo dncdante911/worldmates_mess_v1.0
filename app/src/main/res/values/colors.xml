@@ -1,169 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
-        ВАЖНО: Этот файл НЕ используется в Compose темах!
-        Colors.kt полностью заменяет этот файл для Compose.
-        Но оставляем для совместимости со старым кодом.
-    -->
-
-    <!-- Material Design 3 базовые цвета (для XML тем) -->
-    <color name="md3_primary">#FF0A84FF</color>
-    <color name="md3_onPrimary">#FFFFFFFF</color>
-    <color name="md3_primaryContainer">#FF5AC8FA</color>
-    <color name="md3_onPrimaryContainer">#FF000000</color>
-
-    <color name="md3_secondary">#FF00D4FF</color>
-    <color name="md3_onSecondary">#FFFFFFFF</color>
-    <color name="md3_secondaryContainer">#FF64D2FF</color>
-    <color name="md3_onSecondaryContainer">#FF000000</color>
-
-    <color name="md3_tertiary">#FFFF6B9D</color>
-    <color name="md3_onTertiary">#FFFFFFFF</color>
-
-    <color name="md3_background">#FFF8F9FA</color>
-    <color name="md3_onBackground">#FF1C1E21</color>
-
-    <color name="md3_surface">#FFFFFFFF</color>
-    <color name="md3_onSurface">#FF1C1E21</color>
-    <color name="md3_surfaceVariant">#FFFFFFFF</color>
-    <color name="md3_onSurfaceVariant">#FF65676B</color>
-
-    <color name="md3_error">#FFFF4444</color>
-    <color name="md3_onError">#FFFFFFFF</color>
-
-    <color name="md3_outline">#FFE4E6EB</color>
-
-    <!-- Старые цвета для обратной совместимости -->
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-
-    <!-- Greys -->
-    <color name="grey_50">#FFF2F2F2</color>
-    <color name="grey_100">#FFE6E6E6</color>
-    <color name="grey_200">#FFCCCCCC</color>
-    <color name="grey_300">#FFB3B3B3</color>
-    <color name="grey_400">#FF999999</color>
-    <color name="grey_500">#FF808080</color>
-    <color name="grey_600">#FF666666</color>
-    <color name="grey_700">#FF4D4D4D</color>
-    <color name="grey_800">#FF333333</color>
-    <color name="grey_900">#FF1A1A1A</color>
-
-    <!-- App Specific Colors -->
-    <color name="primary_blue">#FF0A84FF</color>
-    <color name="primary_blue_dark">#FF0040DD</color>
-    <color name="primary_blue_light">#FF5AC8FA</color>
-    <color name="secondary_cyan">#FF00D4FF</color>
-    <color name="secondary_cyan_dark">#FF00A0C8</color>
-    <color name="secondary_cyan_light">#FF64D2FF</color>
-
+    <!-- Primary Colors -->
+    <color name="primary">#0084FF</color>
+    <color name="primary_dark">#0066CC</color>
+    <color name="primary_light">#4DA6FF</color>
+    
+    <!-- Secondary Colors -->
+    <color name="secondary">#03DAC6</color>
+    <color name="secondary_dark">#018786</color>
+    
     <!-- Backgrounds -->
-    <color name="background_light">#FFF8F9FA</color>
-    <color name="background_dark">#FF0D1117</color>
-    <color name="surface_light">#FFFFFFFF</color>
-    <color name="surface_dark">#FF161B22</color>
-
+    <color name="background">#F5F5F5</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_dark">#F0F0F0</color>
+    
     <!-- Text Colors -->
-    <color name="text_primary">#FF1C1E21</color>
-    <color name="text_secondary">#FF65676B</color>
-    <color name="text_tertiary">#FF8A8D91</color>
-    <color name="text_primary_dark">#FFF0F2F5</color>
-    <color name="text_secondary_dark">#FFB0B3B8</color>
-    <color name="text_tertiary_dark">#FF8A8D91</color>
-
-    <!-- Status Colors -->
-    <color name="success_green">#FF00C851</color>
-    <color name="warning_yellow">#FFFFBB33</color>
-    <color name="error_red">#FFFF4444</color>
-    <color name="info_blue">#FF33B5E5</color>
-
-    <!-- Status Indicators -->
-    <color name="online_green">#FF00C851</color>
-    <color name="away_yellow">#FFFFBB33</color>
-    <color name="busy_red">#FFFF4444</color>
-    <color name="offline_gray">#FF8A8D91</color>
-
-    <!-- UI Elements -->
-    <color name="divider_light">#FFE4E6EB</color>
-    <color name="divider_dark">#FF2F3336</color>
-    <color name="unread_badge">#FFFF4444</color>
-    <color name="typing_indicator">#FF0A84FF</color>
-    <color name="search_bar_background">#FFF0F2F5</color>
-    <color name="search_bar_background_dark">#FF262C35</color>
-
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_tertiary">#BDBDBD</color>
+    <color name="text_inverse">#FFFFFF</color>
+    
     <!-- Message Bubbles -->
-    <color name="message_bubble_own">#FF0A84FF</color>
-    <color name="message_bubble_other">#FFF0F2F5</color>
-    <color name="message_bubble_own_dark">#FF0A84FF</color>
-    <color name="message_bubble_other_dark">#FF262C35</color>
-
-    <!-- Buttons -->
-    <color name="button_enabled">#FF0A84FF</color>
-    <color name="button_disabled">#FFE4E6EB</color>
-    <color name="button_enabled_dark">#FF5AC8FA</color>
-    <color name="button_disabled_dark">#FF3A3A3C</color>
-
-    <!-- Cards -->
-    <color name="card_background">#FFFFFFFF</color>
-    <color name="card_background_dark">#FF1C1E21</color>
-
-    <!-- Message Status -->
-    <color name="message_read">#FF00C851</color>
-    <color name="message_delivered">#FF8A8D91</color>
-    <color name="message_sent">#FFB0B3B8</color>
-
-    <!-- Gradients -->
-    <color name="gradient_start">#FF0A84FF</color>
-    <color name="gradient_middle">#FF00D4FF</color>
-    <color name="gradient_end">#FF5AC8FA</color>
-    <color name="accent_gradient_start">#FF667EEA</color>
-    <color name="accent_gradient_end">#FF64B5F6</color>
-
-    <!-- Group Avatar Colors -->
-    <color name="group_avatar_pink">#FFFF6B9D</color>
-    <color name="group_avatar_purple">#FFC446FF</color>
-    <color name="group_avatar_blue">#FF0084FF</color>
-    <color name="group_avatar_cyan">#FF00C0FF</color>
-    <color name="group_avatar_mint">#FF00E0A6</color>
-    <color name="group_avatar_green">#FF00C851</color>
-    <color name="group_avatar_yellow">#FFFFC107</color>
-    <color name="group_avatar_orange">#FFFF9500</color>
-    <color name="group_avatar_red">#FFFF6347</color>
-    <color name="group_avatar_scarlet">#FFFF1744</color>
-    <color name="group_avatar_violet">#FF9C27B0</color>
-    <color name="group_avatar_indigo">#FF3F51B5</color>
-    <color name="group_avatar_teal">#FF00BCD4</color>
-    <color name="group_avatar_lime">#FF4CAF50</color>
-    <color name="group_avatar_deep_orange">#FFFF5722</color>
-
-    <!-- Media Type Colors -->
-    <color name="media_image">#FF00C851</color>
-    <color name="media_video">#FF0A84FF</color>
-    <color name="media_audio">#FFFF9500</color>
-    <color name="media_file">#FF8E8E93</color>
-
-    <!-- Shimmer Effect -->
-    <color name="shimmer_light">#FFE4E6EB</color>
-    <color name="shimmer_medium">#FFF0F2F5</color>
-    <color name="shimmer_dark">#FFE4E6EB</color>
-
-    <!-- Neon Colors -->
-    <color name="neon_blue">#FF00D4FF</color>
-    <color name="neon_purple">#FFBF00FF</color>
-    <color name="neon_green">#FF00FF88</color>
-    <color name="neon_pink">#FFFF006E</color>
-
-    <!-- Overlays -->
-    <color name="overlay_dark">#CC000000</color>
-    <color name="overlay_light">#66000000</color>
-
-    <!-- Transparent colors (важно для Material 3 совместимости) -->
+    <color name="message_sent">#0084FF</color>
+    <color name="message_received">#E5E5EA</color>
+    <color name="message_text_sent">#FFFFFF</color>
+    <color name="message_text_received">#000000</color>
+    
+    <!-- Status -->
+    <color name="success">#4CAF50</color>
+    <color name="error">#F44336</color>
+    <color name="warning">#FF9800</color>
+    <color name="info">#2196F3</color>
+    
+    <!-- Borders -->
+    <color name="divider">#EEEEEE</color>
+    <color name="border">#CCCCCC</color>
+    
+    <!-- System -->
     <color name="transparent">#00000000</color>
-    <color name="semi_transparent_black">#80000000</color>
-    <color name="semi_transparent_white">#80FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
 </resources>

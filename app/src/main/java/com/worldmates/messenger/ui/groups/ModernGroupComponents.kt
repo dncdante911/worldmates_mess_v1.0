@@ -198,10 +198,10 @@ fun ModernGroupCard(
                     }
 
                     // Остання активність
-                    if (group.lastActivity != null) {
+                    group.lastActivity?.let { lastActivity ->
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = formatLastActivity(group.lastActivity),
+                            text = formatLastActivity(lastActivity),
                             fontSize = 12.sp,
                             color = Color.White.copy(alpha = 0.6f)
                         )

@@ -98,6 +98,22 @@ fun GroupDetailsScreen(
     var showLeaveConfirmation by remember { mutableStateOf(false) }
     var selectedMember by remember { mutableStateOf<GroupMember?>(null) }
     var showMemberOptionsMenu by remember { mutableStateOf(false) }
+    var showAvatarChangeDialog by remember { mutableStateOf(false) }
+
+    // Лаунчер для вибору зображення аватара
+    val avatarPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // TODO: Upload avatar to server and update group
+            // For now, just show a toast
+            android.widget.Toast.makeText(
+                context,
+                "Аватар вибрано: $uri. Функція завантаження буде додана.",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     // Load group members when screen opens
     LaunchedEffect(groupId) {
@@ -146,7 +162,7 @@ fun GroupDetailsScreen(
                     group = group,
                     onAvatarClick = {
                         if (group.isAdmin) {
-                            showEditDialog = true
+                            showAvatarChangeDialog = true
                         }
                     },
                     onEditClick = { showEditDialog = true }
@@ -322,6 +338,58 @@ fun GroupDetailsScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirmation = false }) {
+                        Text("Скасувати")
+                    }
+                }
+            )
+        }
+
+        // Діалог для зміни аватара
+        if (showAvatarChangeDialog) {
+            AlertDialog(
+                onDismissRequest = { showAvatarChangeDialog = false },
+                icon = {
+                    Icon(
+                        Icons.Default.Image,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                title = {
+                    Text(
+                        "Змінити аватар групи",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        "Оберіть нове зображення для аватара групи. Рекомендований розмір: 512x512 пікселів.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            avatarPickerLauncher.launch("image/*")
+                            showAvatarChangeDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Image,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Вибрати зображення", fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAvatarChangeDialog = false }) {
                         Text("Скасувати")
                     }
                 }

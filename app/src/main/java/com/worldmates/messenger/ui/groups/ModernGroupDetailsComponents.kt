@@ -26,6 +26,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.data.model.GroupMember
+import com.worldmates.messenger.data.model.isOwner
+import com.worldmates.messenger.data.model.isAdmin
+import com.worldmates.messenger.data.model.isModerator
+import com.worldmates.messenger.data.model.isOnline
+import com.worldmates.messenger.data.model.avatar
 
 /**
  * Великий header групи з аватаром та інформацією
@@ -358,7 +363,7 @@ fun GroupSettings(
                 icon = Icons.Default.Notifications,
                 title = "Сповіщення",
                 description = "Отримувати повідомлення з групи",
-                checked = group.settings?.notificationsEnabled ?: true,
+                checked = true, // TODO: Add notifications support
                 onCheckedChange = { onSettingChange("notifications", it) }
             )
 
@@ -366,7 +371,7 @@ fun GroupSettings(
                 icon = Icons.Default.VolumeOff,
                 title = "Без звуку",
                 description = "Вимкнути звук повідомлень",
-                checked = group.settings?.muteNotifications ?: false,
+                checked = false, // TODO: Add mute support
                 onCheckedChange = { onSettingChange("mute", it) }
             )
         }
@@ -388,7 +393,7 @@ fun GroupSettings(
                     icon = Icons.Default.CheckCircle,
                     title = "Підтвердження нових учасників",
                     description = "Адмін повинен схвалити запити",
-                    checked = group.settings?.approveNewMembers ?: false,
+                    checked = false, // TODO: Add member approval support
                     onCheckedChange = { onSettingChange("approve_members", it) }
                 )
             }

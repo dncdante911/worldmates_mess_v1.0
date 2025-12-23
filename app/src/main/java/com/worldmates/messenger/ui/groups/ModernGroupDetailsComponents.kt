@@ -174,14 +174,7 @@ fun GroupDetailsTabs(
     TabRow(
         selectedTabIndex = selectedTab.ordinal,
         containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = Color(0xFF667EEA),
-        indicator = { tabPositions ->
-            TabRowDefaults.Indicator(
-                Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
-                color = Color(0xFF667EEA),
-                height = 3.dp
-            )
-        }
+        contentColor = Color(0xFF667EEA)
     ) {
         GroupTab.values().forEach { tab ->
             Tab(
@@ -222,20 +215,20 @@ fun MembersList(
         contentPadding = PaddingValues(16.dp)
     ) {
         items(members) { member ->
-            MemberCard(
+            ModernMemberCard(
                 member = member,
                 isCurrentUser = member.userId == currentUserId,
-                onCclick = { onMemberClick(member) }
+                onClick = { onMemberClick(member) }
             )
         }
     }
 }
 
 /**
- * Картка учасника групи
+ * Картка учасника групи (для списку учасників)
  */
 @Composable
-fun MemberCard(
+fun ModernMemberCard(
     member: GroupMember,
     isCurrentUser: Boolean,
     onClick: () -> Unit

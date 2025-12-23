@@ -71,15 +71,6 @@ val LocalExtendedColors = staticCompositionLocalOf {
 }
 
 /**
- * Состояние темы для отслеживания изменений
- */
-object ThemeState {
-    var currentVariant: ThemeVariant by mutableStateOf(ThemeVariant.CLASSIC)
-    var isDarkTheme: Boolean by mutableStateOf(false)
-    var useDynamicColors: Boolean by mutableStateOf(false)
-}
-
-/**
  * Получить расширенные цвета для текущей темы
  */
 object WMColors {

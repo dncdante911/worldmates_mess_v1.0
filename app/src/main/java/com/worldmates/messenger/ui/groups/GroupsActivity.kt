@@ -99,13 +99,19 @@ class GroupsActivity : ComponentActivity() {
 @Composable
 fun GroupsScreen() {
     val viewModel: GroupsViewModel = viewModel()
-    val groupsState by viewModel.groupsState.collectAsState()
+    val groupsState by viewModel.groupList.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val availableUsers by viewModel.availableUsers.collectAsState()
+    val isCreatingGroup by viewModel.isCreatingGroup.collectAsState()
     val context = LocalContext.current
 
-    // Загрузка групп при первом запуске
-    LaunchedEffect(Unit) {
-        viewModel.loadGroups()
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    // Load available users when dialog should open
+    LaunchedEffect(showCreateDialog) {
+        if (showCreateDialog) {
+            viewModel.loadAvailableUsers()
+        }
     }
 
     Scaffold(
@@ -128,13 +134,7 @@ fun GroupsScreen() {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    // Открываем диалог создания группы
-                    CreateGroupDialog().show(
-                        (context as GroupsActivity).supportFragmentManager,
-                        "create_group"
-                    )
-                },
+                onClick = { showCreateDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Создать группу")
@@ -161,20 +161,40 @@ fun GroupsScreen() {
                 }
             } else if (groupsState.isEmpty()) {
                 // Экран пустого состояния
-                EmptyGroupsScreen()
+                EmptyGroupsScreen(
+                    onCreateGroupClick = { showCreateDialog = true }
+                )
             } else {
                 // Список групп
                 GroupsList(groups = groupsState)
             }
         }
     }
+
+    // Show Create Group Dialog
+    if (showCreateDialog) {
+        CreateGroupDialog(
+            onDismiss = { showCreateDialog = false },
+            availableUsers = availableUsers,
+            onCreateGroup = { name, description, memberIds, isPrivate ->
+                viewModel.createGroup(
+                    name = name,
+                    description = description,
+                    memberIds = memberIds,
+                    isPrivate = isPrivate,
+                    onSuccess = { showCreateDialog = false }
+                )
+            },
+            isLoading = isCreatingGroup
+        )
+    }
 }
 
 @Composable
 fun GroupsList(groups: List<Group>) {
     // Разделяем группы на закрепленные и обычные
-    val pinnedGroups = groups.filter { it.isPinned }
-    val regularGroups = groups.filter { !it.isPinned }
+    val pinnedGroups = groups.filter { it.isPinned == true }
+    val regularGroups = groups.filter { it.isPinned != true }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -345,7 +365,7 @@ fun GroupAvatar(group: Group) {
                     .padding(4.dp)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_lock),
+                    imageVector = Icons.Default.Lock,
                     contentDescription = "Приватная группа",
                     modifier = Modifier.size(12.dp),
                     tint = MaterialTheme.colorScheme.outline
@@ -459,23 +479,21 @@ fun GroupRightColumn(group: Group) {
         //     }
         // }
 
-        // Иконка уведомлений (заглушена/не заглушена)
-        Icon(
-            imageVector = if (group.isMuted) Icons.Default.NotificationsOff
-            else Icons.Default.Notifications,
-            contentDescription = if (group.isMuted) "Уведомления выключены"
-            else "Уведомления включены",
-            modifier = Modifier.size(18.dp),
-            tint = if (group.isMuted) MaterialTheme.colorScheme.outline
-            else MaterialTheme.colorScheme.primary
-        )
+        // Иконка уведомлений
+        // Note: В текущей модели Group нет поля isMuted, добавим позже
+        // Icon(
+        //     imageVector = Icons.Default.Notifications,
+        //     contentDescription = "Уведомления",
+        //     modifier = Modifier.size(18.dp),
+        //     tint = MaterialTheme.colorScheme.primary
+        // )
     }
 }
 
 @Composable
-fun EmptyGroupsScreen() {
-    val context = LocalContext.current
-
+fun EmptyGroupsScreen(
+    onCreateGroupClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -511,12 +529,7 @@ fun EmptyGroupsScreen() {
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = {
-                CreateGroupDialog().show(
-                    (context as GroupsActivity).supportFragmentManager,
-                    "create_group"
-                )
-            },
+            onClick = onCreateGroupClick,
             modifier = Modifier.fillMaxWidth(0.7f)
         ) {
             Icon(

@@ -207,11 +207,6 @@ fun WorldMatesTheme(
     val view = LocalView.current
     val window = (view.context as? Activity)?.window
 
-    // Обновляем состояние темы
-    ThemeState.currentVariant = themeVariant
-    ThemeState.isDarkTheme = darkTheme
-    ThemeState.useDynamicColors = dynamicColor
-
     // Определяем цветовую схему Material 3
     val colorScheme = when {
         // Material You (динамические цвета) - Android 12+

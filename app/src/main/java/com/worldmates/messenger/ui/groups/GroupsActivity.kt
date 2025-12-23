@@ -184,14 +184,16 @@ fun GroupsScreenWrapper(
                     Text(error!!, color = Color.Red, modifier = Modifier.padding(16.dp))
                 }
             } else if (groups.isEmpty()) {
-                EmptyGroupsState(onCreateClick = { showCreateDialog = true })
+                EmptyGroupsPlaceholder(onCreateClick = { showCreateDialog = true })
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(groups) { group ->
-                        GroupCard(
+                        ModernGroupCard(
                             group = group,
                             onClick = { onGroupClick(group) },
-                            onLongClick = { groupToEdit = group }
+                            onLongClick = { groupToEdit = group },
+                            isPinned = false, // TODO: Add pinned support
+                            unreadCount = 0  // TODO: Add unread count support
                         )
                     }
                 }
@@ -200,115 +202,4 @@ fun GroupsScreenWrapper(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun GroupCard(
-    group: Group,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit = {}
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .padding(12.dp)
-            .background(Color.White, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = group.avatarUrl,
-            contentDescription = group.name,
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 12.dp)
-        ) {
-            Text(
-                text = group.name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-
-            Row {
-                Text(
-                    "${group.membersCount} членів",
-                    fontSize = 13.sp,
-                    color = Color.Gray
-                )
-                if (group.isPrivate) {
-                    Text(
-                        " • Приватна",
-                        fontSize = 13.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
-        }
-
-        if (group.isAdmin) {
-            Surface(
-                shape = CircleShape,
-                color = Color(0xFF0084FF),
-                modifier = Modifier.size(24.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Text("👤", fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyGroupsState(onCreateClick: () -> Unit = {}) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("📭", fontSize = 48.sp, modifier = Modifier.padding(bottom = 16.dp))
-        Text("Немаєте груп", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-        Text("Створіть групу для спілкування!", fontSize = 14.sp, color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
-
-        // Велика кнопка створення групи
-        Button(
-            onClick = onCreateClick,
-            modifier = Modifier
-                .padding(top = 24.dp)
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF0084FF)
-            )
-        ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                "Створити групу",
-                fontSize = 16.sp,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
+// Старые компоненты удалены, используем ModernGroupCard и EmptyGroupsPlaceholder из ModernGroupComponents.kt

@@ -29,7 +29,8 @@ data class ThemeState(
     val variant: ThemeVariant = ThemeVariant.CLASSIC,
     val isDark: Boolean = false,
     val useDynamicColor: Boolean = false,
-    val useSystemTheme: Boolean = false  // Изменено с true на false
+    val useSystemTheme: Boolean = false,  // Изменено с true на false
+    val backgroundImageUri: String? = null  // URI кастомного фонового изображения
 )
 
 /**
@@ -44,14 +45,16 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
         repository.themeVariant,
         repository.darkTheme,
         repository.dynamicColor,
-        repository.systemTheme
-    ) { variant, dark, dynamic, system ->
-        Log.d(TAG, "ThemeState updated: variant=$variant, dark=$dark, dynamic=$dynamic, system=$system")
+        repository.systemTheme,
+        repository.backgroundImageUri
+    ) { variant, dark, dynamic, system, bgUri ->
+        Log.d(TAG, "ThemeState updated: variant=$variant, dark=$dark, dynamic=$dynamic, system=$system, bgUri=$bgUri")
         ThemeState(
             variant = variant,
             isDark = dark,
             useDynamicColor = dynamic,
-            useSystemTheme = system
+            useSystemTheme = system,
+            backgroundImageUri = bgUri
         )
     }.stateIn(
         scope = viewModelScope,
@@ -134,6 +137,16 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
     fun resetToDefaults() {
         viewModelScope.launch {
             repository.resetToDefaults()
+        }
+    }
+
+    /**
+     * Установить URI кастомного фонового изображения
+     */
+    fun setBackgroundImageUri(uri: String?) {
+        Log.d(TAG, "Setting background image URI: $uri")
+        viewModelScope.launch {
+            repository.setBackgroundImageUri(uri)
         }
     }
 

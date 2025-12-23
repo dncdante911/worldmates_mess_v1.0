@@ -142,13 +142,14 @@ fun GroupDetailsScreen(
         ) {
             // Header Section - Avatar, Name, Members Count
             item {
-                GroupHeaderSection(
+                GroupDetailsHeader(
                     group = group,
                     onAvatarClick = {
                         if (group.isAdmin) {
                             showEditDialog = true
                         }
-                    }
+                    },
+                    onEditClick = { showEditDialog = true }
                 )
             }
 
@@ -193,10 +194,10 @@ fun GroupDetailsScreen(
 
             // Members List
             items(members.sortedByDescending { it.role == "admin" }) { member ->
-                MemberCard(
+                ModernMemberCard(
                     member = member,
-                    isCurrentUserAdmin = group.isAdmin,
-                    onLongClick = {
+                    isCurrentUser = member.userId == UserSession.userId,
+                    onClick = {
                         if (group.isAdmin && member.userId != UserSession.userId) {
                             selectedMember = member
                             showMemberOptionsMenu = true

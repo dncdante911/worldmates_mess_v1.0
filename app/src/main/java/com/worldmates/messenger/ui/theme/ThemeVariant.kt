@@ -9,56 +9,67 @@ import androidx.compose.ui.graphics.Color
 enum class ThemeVariant(
     val displayName: String,
     val description: String,
+    val emoji: String,
     val iconResId: Int? = null
 ) {
     CLASSIC(
         displayName = "Классическая",
         description = "Официальная тема WorldMates",
+        emoji = "🎨",
         iconResId = null
     ),
     MATERIAL_YOU(
         displayName = "Material You",
         description = "Динамические цвета из обоев",
+        emoji = "🌈",
         iconResId = null
     ),
     NIGHT_OCEAN(
         displayName = "Ночной океан",
         description = "Глубокие синие тона",
+        emoji = "🌊",
         iconResId = null
     ),
     SUNSET_GLOW(
         displayName = "Закатное сияние",
         description = "Теплые оранжевые градиенты",
+        emoji = "🌅",
         iconResId = null
     ),
     FOREST_DEEP(
         displayName = "Глубокий лес",
         description = "Натуральные зеленые оттенки",
+        emoji = "🌲",
         iconResId = null
     ),
     NEON_DREAM(
         displayName = "Неоновый сон",
         description = "Яркие футуристичные цвета",
+        emoji = "💜",
         iconResId = null
     ),
     MONOCHROME(
         displayName = "Монохром",
         description = "Черно-белая элегантность",
+        emoji = "⚫",
         iconResId = null
     ),
     RETRO_80S(
         displayName = "Ретро 80-е",
         description = "Яркие ретро-цвета",
+        emoji = "📼",
         iconResId = null
     ),
     DARK_MATTER(
         displayName = "Темная материя",
         description = "Глубокий космический черный",
+        emoji = "🌌",
         iconResId = null
     ),
     AURORA(
         displayName = "Северное сияние",
         description = "Полярные градиенты",
+        emoji = "✨",
         iconResId = null
     );
 
@@ -93,6 +104,13 @@ enum class ThemeVariant(
          */
         fun fromName(name: String): ThemeVariant {
             return values().find { it.name == name } ?: CLASSIC
+        }
+
+        /**
+         * Получить вариант темы по порядковому номеру
+         */
+        fun fromOrdinal(ordinal: Int): ThemeVariant {
+            return values().getOrNull(ordinal) ?: CLASSIC
         }
     }
 }

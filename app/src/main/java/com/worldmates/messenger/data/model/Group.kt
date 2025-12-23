@@ -105,7 +105,12 @@ data class GroupMember(
     @SerializedName("user_id") val userId: Long,
     @SerializedName("username") val username: String,
     @SerializedName("avatar") val avatarUrl: String,
-    @SerializedName("role") val role: String, // "admin", "moderator", "member"
+    val avatar: String = avatarUrl, // Alias для сумісності
+    @SerializedName("role") val role: String = "member", // "owner", "admin", "moderator", "member"
+    @SerializedName("is_owner") val isOwner: Boolean = false,
+    @SerializedName("is_admin") val isAdmin: Boolean = false,
+    @SerializedName("is_moderator") val isModerator: Boolean = false,
+    @SerializedName("is_online") val isOnline: Boolean = false,
     @SerializedName("joined_time") val joinedTime: Long,
     @SerializedName("is_muted") val isMuted: Boolean = false,
     @SerializedName("is_blocked") val isBlocked: Boolean = false,
@@ -113,6 +118,9 @@ data class GroupMember(
 )
 
 data class GroupSettings(
+    @SerializedName("notifications_enabled") val notificationsEnabled: Boolean = true,
+    @SerializedName("mute_notifications") val muteNotifications: Boolean = false,
+    @SerializedName("approve_new_members") val approveNewMembers: Boolean = false,
     @SerializedName("allow_members_invite") val allowMembersInvite: Boolean = true,
     @SerializedName("allow_members_pin") val allowMembersPin: Boolean = false,
     @SerializedName("allow_members_delete_messages") val allowMembersDeleteMessages: Boolean = false,

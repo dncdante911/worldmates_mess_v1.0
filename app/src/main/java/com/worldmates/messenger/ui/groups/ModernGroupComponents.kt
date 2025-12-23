@@ -405,6 +405,8 @@ fun GroupFilterChip(
             selectedLabelColor = Color.White
         ),
         border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
             borderColor = if (selected) Color.Transparent else Color(0xFF667EEA).copy(alpha = 0.3f)
         )
     )

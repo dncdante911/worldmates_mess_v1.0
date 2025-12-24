@@ -39,7 +39,10 @@ import com.worldmates.messenger.ui.theme.MessageBubbleOther
 import com.worldmates.messenger.ui.theme.WMGradients
 import com.worldmates.messenger.ui.theme.AnimatedGradientBackground
 import com.worldmates.messenger.ui.theme.WMColors
+import com.worldmates.messenger.ui.theme.rememberThemeState
+import com.worldmates.messenger.ui.theme.PresetBackground
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
 import kotlinx.coroutines.launch
@@ -74,6 +77,7 @@ fun MessagesScreen(
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    val themeState = rememberThemeState()
 
     // Управление индикатором "печатает" с автоматическим сбросом через 2 секунды
     LaunchedEffect(messageText) {
@@ -143,13 +147,53 @@ fun MessagesScreen(
         }
     }
 
-    // Telegram-style - простой фон из темы
-    Column(
+    // Фон з підтримкою кастомних зображень та preset градієнтів
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .imePadding()  // Отступ от клавиатуры на уровне всего экрана
+            .imePadding()
     ) {
+        // Застосування фону в залежності від налаштувань
+        when {
+            // Кастомне зображення
+            themeState.backgroundImageUri != null -> {
+                AsyncImage(
+                    model = Uri.parse(themeState.backgroundImageUri),
+                    contentDescription = "Chat background",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = 0.3f  // Напівпрозорість для кращої читабельності
+                )
+            }
+            // Preset градієнт
+            themeState.presetBackgroundId != null -> {
+                val preset = PresetBackground.fromId(themeState.presetBackgroundId)
+                if (preset != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = preset.gradientColors.map { it.copy(alpha = 0.3f) }
+                                )
+                            )
+                    )
+                }
+            }
+            // Стандартний фон з теми
+            else -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                )
+            }
+        }
+
+        // Контент поверх фону
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
             // Header
             MessagesHeaderBar(
                 recipientName = recipientName,
@@ -279,7 +323,8 @@ fun MessagesScreen(
             onPickFile = { filePickerLauncher.launch("*/*") },
             showMediaOptions = showMediaOptions
         )
-    }  // Конец Column
+        }  // Кінець Column
+    }  // Кінець Box
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -27,6 +27,7 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
     private val _needsRelogin = MutableStateFlow(false)
     val needsRelogin: StateFlow<Boolean> = _needsRelogin
 
+    private val hiddenChatIds = mutableSetOf<Long>()
     private var socketManager: SocketManager? = null
     private var authErrorCount = 0 // Счетчик ошибок авторизации
 
@@ -79,7 +80,7 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                         // Дешифруємо останнє повідомлення у кожному чаті
                         // Фільтруємо тільки особисті чати (подвійний захист від груп)
                         val decryptedChats = response.chats
-                            .filter { !it.isGroup } // Виключаємо групи
+                            .filter { !it.isGroup && !hiddenChatIds.contains(it.userId) } // Виключаємо групи та приховані чати
                             .map { chat ->
                             Log.d("ChatsViewModel", "Chat: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
 
@@ -237,6 +238,28 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
             else -> text
         }
+    }
+
+    /**
+     * Приховує чат локально (не видаляє на сервері)
+     * @param userId ID користувача, чий чат треба приховати
+     */
+    fun hideChat(userId: Long) {
+        hiddenChatIds.add(userId)
+        // Оновлюємо список чатів, виключаючи прихований
+        _chatList.value = _chatList.value.filter { it.userId != userId }
+        Log.d("ChatsViewModel", "Чат з користувачем $userId приховано")
+    }
+
+    /**
+     * Показує раніше прихований чат
+     * @param userId ID користувача, чий чат треба показати
+     */
+    fun unhideChat(userId: Long) {
+        hiddenChatIds.remove(userId)
+        // Перезавантажуємо чати для відображення прихованого
+        fetchChats()
+        Log.d("ChatsViewModel", "Чат з користувачем $userId показано знову")
     }
 
     override fun onCleared() {

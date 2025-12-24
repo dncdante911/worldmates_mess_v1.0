@@ -544,6 +544,7 @@ data class XhrUploadResponse(
 data class MediaUploadResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("url") val url: String?,  // URL завантаженого файлу
+    @SerializedName("media_id") val mediaId: String?,  // ID медіа (опціонально)
     @SerializedName("message") val message: String?,
     @SerializedName("errors") val errors: ErrorDetails?
 ) {

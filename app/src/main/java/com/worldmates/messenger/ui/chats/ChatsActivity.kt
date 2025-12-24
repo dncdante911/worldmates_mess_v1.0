@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
@@ -28,6 +29,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -147,6 +149,37 @@ fun ChatsScreen(
     val groups by groupsViewModel.groupList.collectAsState()
     val isLoadingGroups by groupsViewModel.isLoading.collectAsState()
     val errorGroups by groupsViewModel.error.collectAsState()
+
+    // Стан для бічної панелі налаштувань
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.width(300.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.surface
+            ) {
+                // Контент бічної панелі налаштувань
+                SettingsDrawerContent(
+                    onNavigateToFullSettings = {
+                        scope.launch {
+                            drawerState.close()
+                        }
+                        onSettingsClick()
+                    },
+                    onClose = {
+                        scope.launch {
+                            drawerState.close()
+                        }
+                    }
+                )
+            }
+        },
+        gesturesEnabled = true
+    ) {
     val availableUsers by groupsViewModel.availableUsers.collectAsState()
     val isCreatingGroup by groupsViewModel.isCreatingGroup.collectAsState()
 
@@ -232,7 +265,11 @@ fun ChatsScreen(
                 ExpressiveIconButton(onClick = { showSearchDialog = true }) {
                     Icon(Icons.Default.Search, contentDescription = "Пошук користувачів")
                 }
-                ExpressiveIconButton(onClick = onSettingsClick) {
+                ExpressiveIconButton(onClick = {
+                    scope.launch {
+                        drawerState.open()
+                    }
+                }) {
                     Icon(Icons.Default.Settings, contentDescription = "Налаштування")
                 }
 
@@ -441,7 +478,155 @@ fun ChatsScreen(
         }
     }  // Конец lambda paddingValues для Scaffold
     }  // Конец Scaffold
+    }  // Конец ModalNavigationDrawer
 }  // Конец функции ChatsScreen
+
+/**
+ * Контент бічної панелі налаштувань
+ */
+@Composable
+fun SettingsDrawerContent(
+    onNavigateToFullSettings: () -> Unit,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF667eea),
+                        Color(0xFF764ba2)
+                    )
+                )
+            )
+            .padding(16.dp)
+    ) {
+        // Заголовок
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Швидкі налаштування",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            IconButton(onClick = onClose) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Закрити",
+                    tint = Color.White
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Інформація про користувача
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White.copy(alpha = 0.2f)
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = com.worldmates.messenger.data.UserSession.avatar,
+                    contentDescription = "Avatar",
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = com.worldmates.messenger.data.UserSession.username ?: "Користувач",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "ID: ${com.worldmates.messenger.data.UserSession.userId}",
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Швидкі налаштування
+        QuickSettingItem(
+            icon = Icons.Default.Settings,
+            title = "Всі налаштування",
+            onClick = onNavigateToFullSettings
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Кнопка закриття
+        Button(
+            onClick = onClose,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color(0xFF667eea)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Закрити", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+fun QuickSettingItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.15f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
 
 @Composable
 fun SearchBar(

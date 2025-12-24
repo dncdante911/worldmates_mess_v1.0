@@ -1,5 +1,8 @@
 package com.worldmates.messenger.ui.groups
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,6 +40,7 @@ fun CreateGroupDialog(
     var searchQuery by remember { mutableStateOf("") }
     var selectedUsers by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var currentStep by remember { mutableStateOf(CreateGroupStep.GROUP_INFO) }
+    var selectedAvatarUri by remember { mutableStateOf<Uri?>(null) }
 
     val filteredUsers = remember(availableUsers, searchQuery) {
         if (searchQuery.isBlank()) {
@@ -135,7 +139,9 @@ fun CreateGroupDialog(
                             groupDescription = groupDescription,
                             onGroupDescriptionChange = { groupDescription = it },
                             isPrivate = isPrivate,
-                            onPrivateChange = { isPrivate = it }
+                            onPrivateChange = { isPrivate = it },
+                            selectedAvatarUri = selectedAvatarUri,
+                            onAvatarSelected = { selectedAvatarUri = it }
                         )
                     }
                     CreateGroupStep.SELECT_MEMBERS -> {
@@ -166,8 +172,17 @@ private fun GroupInfoStep(
     groupDescription: String,
     onGroupDescriptionChange: (String) -> Unit,
     isPrivate: Boolean,
-    onPrivateChange: (Boolean) -> Unit
+    onPrivateChange: (Boolean) -> Unit,
+    selectedAvatarUri: Uri?,
+    onAvatarSelected: (Uri?) -> Unit
 ) {
+    // Launcher для вибору зображення
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        onAvatarSelected(uri)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -181,19 +196,30 @@ private fun GroupInfoStep(
                 .align(Alignment.CenterHorizontally)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer)
-                .clickable { /* TODO: Image picker */ },
+                .clickable {
+                    imagePickerLauncher.launch("image/*")
+                },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.CameraAlt,
-                contentDescription = "Додати фото",
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            if (selectedAvatarUri != null) {
+                AsyncImage(
+                    model = selectedAvatarUri,
+                    contentDescription = "Аватар групи",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Додати фото",
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
         }
 
         Text(
-            text = "Натисніть щоб додати фото групи",
+            text = if (selectedAvatarUri != null) "Натисніть щоб змінити фото" else "Натисніть щоб додати фото групи",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.align(Alignment.CenterHorizontally)

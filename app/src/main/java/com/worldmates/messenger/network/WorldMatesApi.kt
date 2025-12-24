@@ -538,6 +538,19 @@ data class XhrUploadResponse(
     @SerializedName("error") val error: String?
 )
 
+/**
+ * Response для завантаження медіа (аватарки, обкладинки тощо)
+ */
+data class MediaUploadResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("url") val url: String?,  // URL завантаженого файлу
+    @SerializedName("message") val message: String?,
+    @SerializedName("errors") val errors: ErrorDetails?
+) {
+    val errorMessage: String?
+        get() = errors?.errorText ?: message
+}
+
 // ==================== VERIFICATION RESPONSE MODELS ====================
 
 /**

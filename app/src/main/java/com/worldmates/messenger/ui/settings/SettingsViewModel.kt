@@ -318,14 +318,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 // Создать RequestBody из файла
                 val requestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
                 val filePart = MultipartBody.Part.createFormData(
-                    "avatar",
+                    "file",  // API upload_user_avatar очікує "file"
                     file.name,
                     requestFile
                 )
 
-                val response = api.updateProfilePicture(
+                val response = api.uploadUserAvatar(
                     accessToken = accessToken,
-                    avatar = filePart
+                    file = filePart
                 )
 
                 // Удалить временный файл

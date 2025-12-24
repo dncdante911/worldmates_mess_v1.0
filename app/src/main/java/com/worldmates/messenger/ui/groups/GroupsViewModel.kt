@@ -406,7 +406,7 @@ class GroupsViewModel : ViewModel() {
                     }
                 }
 
-                // Створюємо RequestBody для groupId
+                // Створюємо RequestBody для groupId (параметр називається "id", не "group_id")
                 val groupIdBody = okhttp3.RequestBody.create(
                     "text/plain".toMediaType(),
                     groupId.toString()
@@ -417,17 +417,18 @@ class GroupsViewModel : ViewModel() {
                     "image/*".toMediaType(),
                     file
                 )
-                val filePart = okhttp3.MultipartBody.Part.createFormData(
-                    "file",  // API очікує "file", а не "avatar"
+                val avatarPart = okhttp3.MultipartBody.Part.createFormData(
+                    "avatar",  // Правильний API /api/v2/group_chat_v2.php очікує "avatar"
                     file.name,
                     requestFile
                 )
 
-                // Відправляємо запит
+                // Відправляємо запит через /api/v2/group_chat_v2.php?type=upload_avatar
                 val response = RetrofitClient.apiService.uploadGroupAvatar(
                     accessToken = UserSession.accessToken!!,
-                    groupId = groupIdBody,
-                    file = filePart  // Змінено з avatar на file
+                    type = "upload_avatar",  // Явно вказуємо тип
+                    groupId = groupIdBody,  // Параметр "id"
+                    avatar = avatarPart  // Параметр "avatar"
                 )
 
                 if (response.apiStatus == 200) {

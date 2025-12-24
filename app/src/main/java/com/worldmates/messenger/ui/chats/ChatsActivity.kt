@@ -737,7 +737,6 @@ fun ChatItemRow(
             }
         }
     }
-}
 
 @Composable
 fun EmptyChatsState() {

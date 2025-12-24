@@ -347,12 +347,21 @@ fun ChatsScreen(
                     EmptyGroupsState(onCreateClick = { showCreateGroupDialog = true })
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         items(filteredGroups) { group ->
-                            GroupItemRow(
+                            ModernGroupCard(
                                 group = group,
-                                onClick = { onGroupClick(group) }
+                                onClick = { onGroupClick(group) },
+                                onLongPress = {
+                                    // Можна додати контекстне меню для груп у майбутньому
+                                    Toast.makeText(
+                                        context,
+                                        "Довге натискання на ${group.name}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             )
                         }
                     }

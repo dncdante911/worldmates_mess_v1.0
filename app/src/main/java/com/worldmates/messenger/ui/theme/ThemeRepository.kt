@@ -32,6 +32,7 @@ class ThemeRepository(private val context: Context) {
         private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
         private val SYSTEM_THEME_KEY = booleanPreferencesKey("system_theme")
         private val BACKGROUND_IMAGE_URI_KEY = stringPreferencesKey("background_image_uri")
+        private val PRESET_BACKGROUND_ID_KEY = stringPreferencesKey("preset_background_id")
     }
 
     /**
@@ -86,6 +87,16 @@ class ThemeRepository(private val context: Context) {
         }
 
     /**
+     * Получить ID готового фонового градієнта
+     */
+    val presetBackgroundId: Flow<String?> = context.themeDataStore.data
+        .map { preferences ->
+            val id = preferences[PRESET_BACKGROUND_ID_KEY]
+            Log.d(TAG, "Reading preset background ID: $id")
+            id
+        }
+
+    /**
      * Сохранить вариант темы
      */
     suspend fun setThemeVariant(variant: ThemeVariant) {
@@ -133,8 +144,26 @@ class ThemeRepository(private val context: Context) {
         context.themeDataStore.edit { preferences ->
             if (uri != null) {
                 preferences[BACKGROUND_IMAGE_URI_KEY] = uri
+                // При встановленні кастомного фону, видаляємо preset
+                preferences.remove(PRESET_BACKGROUND_ID_KEY)
             } else {
                 preferences.remove(BACKGROUND_IMAGE_URI_KEY)
+            }
+        }
+    }
+
+    /**
+     * Зберегти ID готового фонового градієнта
+     */
+    suspend fun setPresetBackgroundId(id: String?) {
+        Log.d(TAG, "Saving preset background ID: $id")
+        context.themeDataStore.edit { preferences ->
+            if (id != null) {
+                preferences[PRESET_BACKGROUND_ID_KEY] = id
+                // При встановленні preset, видаляємо кастомний фон
+                preferences.remove(BACKGROUND_IMAGE_URI_KEY)
+            } else {
+                preferences.remove(PRESET_BACKGROUND_ID_KEY)
             }
         }
     }

@@ -292,6 +292,179 @@ fun ModernSearchBar(
 }
 
 /**
+ * Сучасна карточка групи з градієнтами та анімаціями (аналогічно ModernChatCard)
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ModernGroupCard(
+    group: com.worldmates.messenger.data.model.Group,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {}
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .combinedClickable(
+                onClick = {
+                    isPressed = false
+                    onClick()
+                },
+                onLongClick = {
+                    isPressed = false
+                    onLongPress()
+                }
+            )
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        isPressed = event.changes.any { it.pressed }
+                    }
+                }
+            },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 6.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar групи з градієнтом
+            Box {
+                AsyncImage(
+                    model = group.avatarUrl,
+                    contentDescription = group.name,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .border(
+                            width = 2.dp,
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFFFF6B6B),  // Червоний для груп
+                                    Color(0xFFFF8E53)   // Оранжевий
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Індикатор приватної групи або адмін статусу
+                if (group.isPrivate || group.isAdmin) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .align(Alignment.BottomEnd)
+                            .clip(CircleShape)
+                            .background(
+                                if (group.isAdmin) Color(0xFFFFD700) // Золотий для адміна
+                                else Color(0xFF9C27B0) // Фіолетовий для приватної групи
+                            )
+                            .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (group.isAdmin) Icons.Default.Star else Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Інформація про групу
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = group.name,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Час останньої активності
+                    group.lastActivity?.let { lastActivity ->
+                        Text(
+                            text = formatGroupTime(lastActivity),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Кількість учасників
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.People,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${group.membersCount} учасників",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Опис групи (якщо є)
+                group.description?.let { desc ->
+                    if (desc.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = desc,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Сучасні вкладки (Tabs) з анімацією
  */
 @Composable
@@ -433,4 +606,17 @@ private fun isOnline(lastActivity: Long): Boolean {
     val now = System.currentTimeMillis() / 1000
     val diffInSeconds = now - lastActivity
     return diffInSeconds < 300 // Онлайн якщо активність була менше 5 хвилин тому
+}
+
+private fun formatGroupTime(timestamp: Long): String {
+    val groupTime = Date(timestamp)
+    val now = Date()
+    val diffInDays = ((now.time - groupTime.time) / (1000 * 60 * 60 * 24)).toInt()
+
+    return when {
+        diffInDays == 0 -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(groupTime)
+        diffInDays == 1 -> "Вчора"
+        diffInDays < 7 -> SimpleDateFormat("EEEE", Locale("uk")).format(groupTime)
+        else -> SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(groupTime)
+    }
 }

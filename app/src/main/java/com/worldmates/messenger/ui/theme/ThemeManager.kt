@@ -30,7 +30,8 @@ data class ThemeState(
     val isDark: Boolean = false,
     val useDynamicColor: Boolean = false,
     val useSystemTheme: Boolean = false,  // Изменено с true на false
-    val backgroundImageUri: String? = null  // URI кастомного фонового изображения
+    val backgroundImageUri: String? = null,  // URI кастомного фонового изображения
+    val presetBackgroundId: String? = null  // ID готового фонового градієнта
 )
 
 /**
@@ -46,15 +47,17 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
         repository.darkTheme,
         repository.dynamicColor,
         repository.systemTheme,
-        repository.backgroundImageUri
-    ) { variant, dark, dynamic, system, bgUri ->
-        Log.d(TAG, "ThemeState updated: variant=$variant, dark=$dark, dynamic=$dynamic, system=$system, bgUri=$bgUri")
+        repository.backgroundImageUri,
+        repository.presetBackgroundId
+    ) { variant, dark, dynamic, system, bgUri, presetBgId ->
+        Log.d(TAG, "ThemeState updated: variant=$variant, dark=$dark, dynamic=$dynamic, system=$system, bgUri=$bgUri, presetBgId=$presetBgId")
         ThemeState(
             variant = variant,
             isDark = dark,
             useDynamicColor = dynamic,
             useSystemTheme = system,
-            backgroundImageUri = bgUri
+            backgroundImageUri = bgUri,
+            presetBackgroundId = presetBgId
         )
     }.stateIn(
         scope = viewModelScope,
@@ -147,6 +150,16 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
         Log.d(TAG, "Setting background image URI: $uri")
         viewModelScope.launch {
             repository.setBackgroundImageUri(uri)
+        }
+    }
+
+    /**
+     * Встановити ID готового фонового градієнта
+     */
+    fun setPresetBackgroundId(id: String?) {
+        Log.d(TAG, "Setting preset background ID: $id")
+        viewModelScope.launch {
+            repository.setPresetBackgroundId(id)
         }
     }
 

@@ -79,7 +79,53 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
 /**
- * Экран настроек темы
+ * Готові фонові градієнти для чатів
+ */
+enum class PresetBackground(
+    val id: String,
+    val name: String,
+    val gradientColors: List<Color>
+) {
+    OCEAN(
+        id = "ocean",
+        name = "Океан",
+        gradientColors = listOf(Color(0xFF667eea), Color(0xFF764ba2))
+    ),
+    SUNSET(
+        id = "sunset",
+        name = "Захід сонця",
+        gradientColors = listOf(Color(0xFFf83600), Color(0xFFf9d423))
+    ),
+    FOREST(
+        id = "forest",
+        name = "Ліс",
+        gradientColors = listOf(Color(0xFF11998e), Color(0xFF38ef7d))
+    ),
+    LAVENDER(
+        id = "lavender",
+        name = "Лаванда",
+        gradientColors = listOf(Color(0xFFa8edea), Color(0xFFfed6e3))
+    ),
+    MIDNIGHT(
+        id = "midnight",
+        name = "Опівночі",
+        gradientColors = listOf(Color(0xFF2c3e50), Color(0xFF3498db))
+    ),
+    PEACH(
+        id = "peach",
+        name = "Персик",
+        gradientColors = listOf(Color(0xFFffecd2), Color(0xFFfcb69f))
+    );
+
+    companion object {
+        fun fromId(id: String?): PresetBackground? {
+            return values().find { it.id == id }
+        }
+    }
+}
+
+/**
+ * Екран настройки темы
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,8 +189,15 @@ fun ThemeSettingsScreen(
             item {
                 BackgroundImageSection(
                     currentBackgroundUri = themeState.backgroundImageUri,
+                    currentPresetId = themeState.presetBackgroundId,
                     onSelectImage = { imagePickerLauncher.launch("image/*") },
-                    onRemoveImage = { themeViewModel.setBackgroundImageUri(null) }
+                    onRemoveImage = {
+                        themeViewModel.setBackgroundImageUri(null)
+                        themeViewModel.setPresetBackgroundId(null)
+                    },
+                    onSelectPreset = { presetId ->
+                        themeViewModel.setPresetBackgroundId(presetId)
+                    }
                 )
             }
 
@@ -491,8 +544,10 @@ fun ColorCircle(color: Color) {
 @Composable
 fun BackgroundImageSection(
     currentBackgroundUri: String?,
+    currentPresetId: String?,
     onSelectImage: () -> Unit,
     onRemoveImage: () -> Unit,
+    onSelectPreset: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -593,7 +648,32 @@ fun BackgroundImageSection(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Готові фонові градієнти
+            Text(
+                text = "Готові фони",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.height(220.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(PresetBackground.values()) { preset ->
+                    PresetBackgroundCard(
+                        preset = preset,
+                        isSelected = preset.id == currentPresetId,
+                        onClick = { onSelectPreset(preset.id) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Кнопка выбора изображения
             Button(
@@ -615,5 +695,96 @@ fun BackgroundImageSection(
                 )
             }
         }
+    }
+}
+
+/**
+ * Карточка готового фонового градієнта
+ */
+@Composable
+fun PresetBackgroundCard(
+    preset: PresetBackground,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.05f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(300)
+    )
+
+    Box(
+        modifier = modifier
+            .scale(scale)
+            .clip(RoundedCornerShape(12.dp))
+            .border(
+                width = 3.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick)
+    ) {
+        // Градієнтний фон
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = preset.gradientColors
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .height(70.dp)
+        )
+
+        // Індикатор вибраного фону
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Вибрано",
+                tint = Color.White,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(32.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        shape = CircleShape
+                    )
+                    .padding(4.dp)
+            )
+        }
+
+        // Назва фону
+        Text(
+            text = preset.name,
+            color = Color.White,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.6f)
+                        )
+                    )
+                )
+                .padding(vertical = 4.dp)
+        )
     }
 }

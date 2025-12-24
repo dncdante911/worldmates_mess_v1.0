@@ -23,6 +23,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.ui.media.FullscreenImageViewer
@@ -65,7 +67,11 @@ fun MessagesScreen(
     var messageText by remember { mutableStateOf("") }
     var showMediaOptions by remember { mutableStateOf(false) }
     var isCurrentlyTyping by remember { mutableStateOf(false) }
+    var selectedMessage by remember { mutableStateOf<Message?>(null) }
+    var showContextMenu by remember { mutableStateOf(false) }
+    var replyToMessage by remember { mutableStateOf<Message?>(null) }
     val scope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
 
     // Управление индикатором "печатает" с автоматическим сбросом через 2 секунды
     LaunchedEffect(messageText) {
@@ -162,10 +168,58 @@ fun MessagesScreen(
                 items(messages.reversed()) { message ->
                     MessageBubbleComposable(
                         message = message,
-                        voicePlayer = voicePlayer
+                        voicePlayer = voicePlayer,
+                        replyToMessage = replyToMessage,
+                        onLongPress = {
+                            selectedMessage = message
+                            showContextMenu = true
+                        }
                     )
                 }
             }
+
+        // Message Context Menu Bottom Sheet
+        if (showContextMenu && selectedMessage != null) {
+            MessageContextMenu(
+                message = selectedMessage!!,
+                onDismiss = {
+                    showContextMenu = false
+                    selectedMessage = null
+                },
+                onReply = { message ->
+                    replyToMessage = message
+                    showContextMenu = false
+                    selectedMessage = null
+                },
+                onForward = { message ->
+                    // TODO: Implement forward to another chat
+                    android.widget.Toast.makeText(
+                        voicePlayer.context,
+                        "Переслання: ${message.decryptedText}",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    showContextMenu = false
+                    selectedMessage = null
+                },
+                onDelete = { message ->
+                    viewModel.deleteMessage(message.id)
+                    showContextMenu = false
+                    selectedMessage = null
+                },
+                onCopy = { message ->
+                    message.decryptedText?.let {
+                        clipboardManager.setText(AnnotatedString(it))
+                        android.widget.Toast.makeText(
+                            voicePlayer.context,
+                            "Текст скопійовано",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    showContextMenu = false
+                    selectedMessage = null
+                }
+            )
+        }
 
         // Upload Progress
         if (uploadProgress > 0 && uploadProgress < 100) {
@@ -176,6 +230,12 @@ fun MessagesScreen(
                     .height(4.dp)
             )
         }
+
+        // Reply Indicator
+        ReplyIndicator(
+            replyToMessage = replyToMessage,
+            onCancelReply = { replyToMessage = null }
+        )
 
         // Message Input
         MessageInputBar(
@@ -311,7 +371,9 @@ fun MessagesHeaderBar(
 @Composable
 fun MessageBubbleComposable(
     message: Message,
-    voicePlayer: VoicePlayer
+    voicePlayer: VoicePlayer,
+    replyToMessage: Message? = null,
+    onLongPress: () -> Unit = {}
 ) {
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
@@ -345,7 +407,11 @@ fun MessageBubbleComposable(
         Card(
             modifier = Modifier
                 .widthIn(max = 280.dp)  // Оптимальная ширина для читабельности
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 8.dp)
+                .combinedClickable(
+                    onClick = { },
+                    onLongClick = onLongPress
+                ),
             shape = if (isOwn) {
                 RoundedCornerShape(
                     topStart = 20.dp,
@@ -924,4 +990,175 @@ private fun isOnlyMediaUrl(text: String): Boolean {
 
     // Если это URL медиа и нет дополнительного текста после URL
     return isMediaUrl && !trimmed.contains(" ") && !trimmed.contains("\n")
+}
+
+/**
+ * Контекстне меню для повідомлень (Reply, Forward, Delete, Copy)
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MessageContextMenu(
+    message: Message,
+    onDismiss: () -> Unit,
+    onReply: (Message) -> Unit,
+    onForward: (Message) -> Unit,
+    onDelete: (Message) -> Unit,
+    onCopy: (Message) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val colorScheme = MaterialTheme.colorScheme
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            // Заголовок
+            Text(
+                text = "Дії з повідомленням",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                color = colorScheme.onSurface
+            )
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Reply
+            ContextMenuItem(
+                icon = Icons.Default.Reply,
+                text = "Відповісти",
+                onClick = { onReply(message) }
+            )
+
+            // Forward
+            ContextMenuItem(
+                icon = Icons.Default.Forward,
+                text = "Переслати",
+                onClick = { onForward(message) }
+            )
+
+            // Copy (якщо є текст)
+            if (!message.decryptedText.isNullOrEmpty()) {
+                ContextMenuItem(
+                    icon = Icons.Default.ContentCopy,
+                    text = "Копіювати текст",
+                    onClick = { onCopy(message) }
+                )
+            }
+
+            // Delete (тільки для своїх повідомлень)
+            if (message.fromId == UserSession.userId) {
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                ContextMenuItem(
+                    icon = Icons.Default.Delete,
+                    text = "Видалити",
+                    onClick = { onDelete(message) },
+                    isDestructive = true
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Елемент контекстного меню
+ */
+@Composable
+private fun ContextMenuItem(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    isDestructive: Boolean = false
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val contentColor = if (isDestructive) {
+        Color(0xFFD32F2F)  // Червоний для видалення
+    } else {
+        colorScheme.onSurface
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = text,
+            tint = contentColor,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = contentColor
+        )
+    }
+}
+
+/**
+ * Індикатор повідомлення, на яке відповідаємо
+ */
+@Composable
+fun ReplyIndicator(
+    replyToMessage: Message?,
+    onCancelReply: () -> Unit
+) {
+    if (replyToMessage != null) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(40.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primary,
+                            RoundedCornerShape(2.dp)
+                        )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (replyToMessage.fromId == UserSession.userId) "Ви" else "Користувач",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = replyToMessage.decryptedText ?: "[Медіа]",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+                IconButton(onClick = onCancelReply) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Скасувати відповідь",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
 }

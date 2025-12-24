@@ -32,6 +32,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Chat
+import com.worldmates.messenger.data.ContactNicknameRepository
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import com.worldmates.messenger.ui.messages.MessagesActivity
 import com.worldmates.messenger.ui.theme.AnimatedGradientBackground
 import com.worldmates.messenger.ui.theme.ChatGlassCard
@@ -145,9 +148,13 @@ fun ChatsScreen(
     var searchText by remember { mutableStateOf("") }
     var showGroups by remember { mutableStateOf(false) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
+    var chatToRename by remember { mutableStateOf<Chat?>(null) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val nicknameRepository = remember { ContactNicknameRepository(context) }
 
     // Load available users when switching to groups tab
     LaunchedEffect(showGroups) {
@@ -383,9 +390,15 @@ fun ChatsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(filteredChats) { chat ->
+                            val nickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
                             ChatItemRow(
                                 chat = chat,
-                                onClick = { onChatClick(chat) }
+                                nickname = nickname,
+                                onClick = { onChatClick(chat) },
+                                onLongPress = {
+                                    chatToRename = chat
+                                    showRenameDialog = true
+                                }
                             )
                         }
                     }
@@ -410,6 +423,26 @@ fun ChatsScreen(
                     )
                 },
                 isLoading = isCreatingGroup
+            )
+        }
+
+        // Rename Contact Dialog
+        if (showRenameDialog && chatToRename != null) {
+            RenameContactDialog(
+                chat = chatToRename!!,
+                currentNickname = null, // будемо отримувати з repository в діалозі
+                onDismiss = {
+                    showRenameDialog = false
+                    chatToRename = null
+                },
+                onSave = { nickname ->
+                    scope.launch {
+                        nicknameRepository.setNickname(chatToRename!!.userId, nickname)
+                        showRenameDialog = false
+                        chatToRename = null
+                    }
+                },
+                nicknameRepository = nicknameRepository
             )
         }
     }  // Конец lambda paddingValues для Scaffold
@@ -457,45 +490,58 @@ fun SearchBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatItemRow(
     chat: Chat,
-    onClick: () -> Unit
+    nickname: String? = null,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {}
 ) {
-    ChatGlassCard(
-        onClick = onClick,
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 3.dp)  // Компактнее
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),  // Меньше внутренний padding
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar
-            AsyncImage(
-                model = chat.avatarUrl,
-                contentDescription = chat.username,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongPress
             )
+            .padding(10.dp),  // Внутренний padding
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar
+        AsyncImage(
+            model = chat.avatarUrl,
+            contentDescription = chat.username,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
 
-            // Chat info
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp)
-            ) {
+        // Chat info
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp)
+        ) {
+            // Показуємо псевдонім якщо є, інакше оригінальне ім'я
+            Text(
+                text = nickname ?: chat.username ?: "Unknown",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            // Якщо є псевдонім, показуємо оригінальне ім'я нижче
+            if (nickname != null && chat.username != null) {
                 Text(
-                    text = chat.username ?: "Unknown",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "@${chat.username}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
+            }
 
                 Text(
                     text = chat.lastMessage?.decryptedText ?: "Немає повідомлень",
@@ -819,6 +865,90 @@ fun UserSearchDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Закрити")
+            }
+        }
+    )
+}
+
+/**
+ * Діалог для перейменування контакту (встановлення локального псевдоніма)
+ */
+@Composable
+fun RenameContactDialog(
+    chat: Chat,
+    currentNickname: String?,
+    onDismiss: () -> Unit,
+    onSave: (String?) -> Unit,
+    nicknameRepository: ContactNicknameRepository
+) {
+    val scope = rememberCoroutineScope()
+    val existingNickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
+    var nickname by remember { mutableStateOf(existingNickname ?: "") }
+
+    // Оновлюємо nickname, коли existingNickname змінюється
+    LaunchedEffect(existingNickname) {
+        if (existingNickname != null) {
+            nickname = existingNickname
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Перейменувати контакт")
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Встановіть зручне ім'я для контакту ${chat.username}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                OutlinedTextField(
+                    value = nickname,
+                    onValueChange = { nickname = it },
+                    label = { Text("Псевдонім") },
+                    placeholder = { Text(chat.username ?: "Введіть псевдонім") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+
+                if (existingNickname != null) {
+                    TextButton(
+                        onClick = {
+                            nickname = ""
+                            onSave(null)
+                        },
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text("Скинути до оригінального імені")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(if (nickname.isBlank()) null else nickname.trim())
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("Зберегти")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Скасувати")
             }
         }
     )

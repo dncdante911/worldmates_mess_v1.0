@@ -31,6 +31,7 @@ import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.ui.media.FullscreenImageViewer
 import com.worldmates.messenger.ui.media.ImageGalleryViewer
 import com.worldmates.messenger.ui.media.InlineVideoPlayer
+import com.worldmates.messenger.ui.media.MiniAudioPlayer
 import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
@@ -92,6 +93,12 @@ fun MessagesScreen(
             } else null
         }
     }
+
+    // 🎵 Мінімізований аудіо плеєр
+    val playbackState by voicePlayer.playbackState.collectAsState()
+    val currentPosition by voicePlayer.currentPosition.collectAsState()
+    val duration by voicePlayer.duration.collectAsState()
+    val showMiniPlayer = playbackState != com.worldmates.messenger.utils.VoicePlayer.PlaybackState.IDLE
 
     // Логування стану теми
     LaunchedEffect(themeState) {
@@ -326,6 +333,34 @@ fun MessagesScreen(
             replyToMessage = replyToMessage,
             onCancelReply = { replyToMessage = null }
         )
+
+        // 🎵 Мінімізований аудіо плеєр
+        AnimatedVisibility(
+            visible = showMiniPlayer,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+            MiniAudioPlayer(
+                audioUrl = voicePlayer.currentUrl.value ?: "",
+                audioTitle = "Аудіо повідомлення",
+                isPlaying = playbackState == com.worldmates.messenger.utils.VoicePlayer.PlaybackState.PLAYING,
+                currentPosition = currentPosition,
+                duration = duration,
+                onPlayPauseClick = {
+                    if (playbackState == com.worldmates.messenger.utils.VoicePlayer.PlaybackState.PLAYING) {
+                        voicePlayer.pause()
+                    } else {
+                        voicePlayer.resume()
+                    }
+                },
+                onSeek = { position ->
+                    voicePlayer.seek(position)
+                },
+                onClose = {
+                    voicePlayer.stop()
+                }
+            )
+        }
 
         // Message Input
         MessageInputBar(

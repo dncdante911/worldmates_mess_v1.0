@@ -296,6 +296,33 @@ interface WorldMatesApi {
         @Query("message_id") messageId: Long
     ): ReactionsListResponse
 
+    // ==================== CUSTOM EMOJIS ====================
+
+    @GET("?type=get_emoji_packs")
+    suspend fun getEmojiPacks(
+        @Query("access_token") accessToken: String
+    ): EmojiPacksResponse
+
+    @GET("?type=get_emoji_pack")
+    suspend fun getEmojiPack(
+        @Query("access_token") accessToken: String,
+        @Query("pack_id") packId: Long
+    ): EmojiPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=activate_emoji_pack")
+    suspend fun activateEmojiPack(
+        @Query("access_token") accessToken: String,
+        @Field("pack_id") packId: Long
+    ): EmojiPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=deactivate_emoji_pack")
+    suspend fun deactivateEmojiPack(
+        @Query("access_token") accessToken: String,
+        @Field("pack_id") packId: Long
+    ): EmojiPackDetailResponse
+
     // ==================== MEDIA UPLOAD ====================
 
     // XHR Upload endpoints (используются для загрузки файлов на сервер)

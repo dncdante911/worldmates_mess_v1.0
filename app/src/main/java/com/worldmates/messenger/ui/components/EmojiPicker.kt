@@ -14,10 +14,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.worldmates.messenger.data.model.CustomEmoji
+import com.worldmates.messenger.data.repository.EmojiRepository
+import kotlinx.coroutines.launch
 
 /**
  * 😊 Emoji Picker - Повноцінна клавіатура емоджі
@@ -44,6 +49,18 @@ fun EmojiPicker(
 ) {
     var selectedCategory by remember { mutableStateOf(EmojiCategory.SMILEYS) }
     val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val emojiRepository = remember { EmojiRepository.getInstance(context) }
+
+    // Завантажуємо кастомні емоджі з API
+    val customEmojis by emojiRepository.customEmojis.collectAsState()
+
+    LaunchedEffect(Unit) {
+        scope.launch {
+            emojiRepository.fetchEmojiPacks()
+        }
+    }
 
     Surface(
         modifier = modifier
@@ -81,11 +98,22 @@ fun EmojiPicker(
                     .padding(8.dp),
                 contentPadding = PaddingValues(4.dp)
             ) {
-                items(selectedCategory.emojis) { emoji ->
-                    EmojiItem(
-                        emoji = emoji,
-                        onClick = { onEmojiSelected(emoji) }
-                    )
+                if (selectedCategory == EmojiCategory.CUSTOM) {
+                    // Показуємо кастомні емоджі
+                    items(customEmojis) { customEmoji ->
+                        CustomEmojiItem(
+                            customEmoji = customEmoji,
+                            onClick = { onEmojiSelected(customEmoji.code) }
+                        )
+                    }
+                } else {
+                    // Показуємо стандартні емоджі
+                    items(selectedCategory.emojis) { emoji ->
+                        EmojiItem(
+                            emoji = emoji,
+                            onClick = { onEmojiSelected(emoji) }
+                        )
+                    }
                 }
             }
 
@@ -129,6 +157,28 @@ private fun EmojiItem(
             text = emoji,
             fontSize = 28.sp,
             textAlign = TextAlign.Center
+        )
+    }
+}
+
+/**
+ * Елемент кастомного емоджі в сітці (зображення)
+ */
+@Composable
+private fun CustomEmojiItem(
+    customEmoji: CustomEmoji,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        AsyncImage(
+            model = customEmoji.url,
+            contentDescription = customEmoji.name ?: customEmoji.code,
+            modifier = Modifier.size(32.dp)
         )
     }
 }
@@ -262,5 +312,10 @@ enum class EmojiCategory(
             "♉️", "♊️", "♋️", "♌️", "♍️", "♎️", "♏️", "♐️",
             "♑️", "♒️", "♓️", "🆔", "⚛️", "🉑", "☢️", "☣️"
         )
+    ),
+    CUSTOM(
+        title = "Кастомні",
+        icon = Icons.Default.AddCircle,
+        emojis = emptyList()  // Кастомні емоджі завантажуються з API
     )
 }

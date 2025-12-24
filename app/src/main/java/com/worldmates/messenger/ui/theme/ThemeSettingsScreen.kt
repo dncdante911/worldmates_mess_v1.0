@@ -141,7 +141,9 @@ fun ThemeSettingsScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
+            android.util.Log.d("ThemeSettings", "User selected background image: $it")
             themeViewModel.setBackgroundImageUri(it.toString())
+            android.util.Log.d("ThemeSettings", "setBackgroundImageUri called with: ${it.toString()}")
         }
     }
 
@@ -190,13 +192,19 @@ fun ThemeSettingsScreen(
                 BackgroundImageSection(
                     currentBackgroundUri = themeState.backgroundImageUri,
                     currentPresetId = themeState.presetBackgroundId,
-                    onSelectImage = { imagePickerLauncher.launch("image/*") },
+                    onSelectImage = {
+                        android.util.Log.d("ThemeSettings", "Opening image picker for background")
+                        imagePickerLauncher.launch("image/*")
+                    },
                     onRemoveImage = {
+                        android.util.Log.d("ThemeSettings", "Removing background")
                         themeViewModel.setBackgroundImageUri(null)
                         themeViewModel.setPresetBackgroundId(null)
                     },
                     onSelectPreset = { presetId ->
+                        android.util.Log.d("ThemeSettings", "User selected preset background: $presetId")
                         themeViewModel.setPresetBackgroundId(presetId)
+                        android.util.Log.d("ThemeSettings", "setPresetBackgroundId called with: $presetId")
                     }
                 )
             }

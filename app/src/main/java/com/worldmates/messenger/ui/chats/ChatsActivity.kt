@@ -13,6 +13,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -148,8 +152,8 @@ fun ChatsScreen(
     var searchText by remember { mutableStateOf("") }
     var showGroups by remember { mutableStateOf(false) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
-    var chatToRename by remember { mutableStateOf<Chat?>(null) }
-    var showRenameDialog by remember { mutableStateOf(false) }
+    var selectedChat by remember { mutableStateOf<Chat?>(null) }
+    var showContactMenu by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -190,16 +194,10 @@ fun ChatsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (showGroups) {
-                ExpressiveFAB(
+                ModernFAB(
                     onClick = { showCreateGroupDialog = true },
-                    containerColor = WMGradients.buttonGradient
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Створити групу",
-                        tint = Color.White
-                    )
-                }
+                    icon = Icons.Default.Add
+                )
             }
         }
     ) { paddingValues ->
@@ -249,39 +247,17 @@ fun ChatsScreen(
             }
         )
 
-        // Search
-        SearchBar(
+        // Modern Search Bar
+        ModernSearchBar(
             searchText = searchText,
             onSearchChange = { searchText = it }
         )
 
-        // Tabs: Chats / Groups
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { showGroups = false },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!showGroups) Color(0xFF0084FF) else Color.LightGray
-                )
-            ) {
-                Text("Чати", color = Color.White)
-            }
-            Button(
-                onClick = { showGroups = true },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (showGroups) Color(0xFF0084FF) else Color.LightGray
-                )
-            ) {
-                Text("Групи", color = Color.White)
-            }
-        }
+        // Modern Tabs
+        ModernTabsRow(
+            selectedTab = if (showGroups) 1 else 0,
+            onTabSelected = { tab -> showGroups = (tab == 1) }
+        )
 
         // Content
         Box(modifier = Modifier.weight(1f)) {
@@ -387,17 +363,18 @@ fun ChatsScreen(
                     EmptyChatsState()
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         items(filteredChats) { chat ->
                             val nickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
-                            ChatItemRow(
+                            ModernChatCard(
                                 chat = chat,
                                 nickname = nickname,
                                 onClick = { onChatClick(chat) },
                                 onLongPress = {
-                                    chatToRename = chat
-                                    showRenameDialog = true
+                                    selectedChat = chat
+                                    showContactMenu = true
                                 }
                             )
                         }
@@ -426,21 +403,28 @@ fun ChatsScreen(
             )
         }
 
-        // Rename Contact Dialog
-        if (showRenameDialog && chatToRename != null) {
-            RenameContactDialog(
-                chat = chatToRename!!,
-                currentNickname = null, // будемо отримувати з repository в діалозі
+        // Contact Context Menu
+        if (showContactMenu && selectedChat != null) {
+            ContactContextMenu(
+                chat = selectedChat!!,
                 onDismiss = {
-                    showRenameDialog = false
-                    chatToRename = null
+                    showContactMenu = false
+                    selectedChat = null
                 },
-                onSave = { nickname ->
+                onRename = { chat ->
+                    // Діалог відкривається всередині ContactContextMenu
+                },
+                onDelete = { chat ->
+                    showContactMenu = false
+                    // Видалити чат локально (приховати)
                     scope.launch {
-                        nicknameRepository.setNickname(chatToRename!!.userId, nickname)
-                        showRenameDialog = false
-                        chatToRename = null
+                        viewModel.hideChat(chat.userId)
+                        snackbarHostState.showSnackbar(
+                            message = "Чат приховано",
+                            duration = SnackbarDuration.Short
+                        )
                     }
+                    selectedChat = null
                 },
                 nicknameRepository = nicknameRepository
             )
@@ -868,6 +852,116 @@ fun UserSearchDialog(
             }
         }
     )
+}
+
+/**
+ * Контекстне меню для контактів (Перейменувати, Видалити)
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ContactContextMenu(
+    chat: Chat,
+    onDismiss: () -> Unit,
+    onRename: (Chat) -> Unit,
+    onDelete: (Chat) -> Unit,
+    nicknameRepository: ContactNicknameRepository
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val colorScheme = MaterialTheme.colorScheme
+    val existingNickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
+    var showRenameDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            // Заголовок
+            Text(
+                text = "Дії з контактом",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                color = colorScheme.onSurface
+            )
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Rename
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        showRenameDialog = true
+                    }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Перейменувати",
+                    tint = colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = if (existingNickname != null) "Змінити псевдонім" else "Додати псевдонім",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colorScheme.onSurface
+                )
+            }
+
+            // Delete
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDelete(chat) }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Видалити",
+                    tint = Color(0xFFD32F2F),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Приховати чат",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color(0xFFD32F2F)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+
+    // Inline Rename Dialog
+    if (showRenameDialog) {
+        RenameContactDialog(
+            chat = chat,
+            currentNickname = existingNickname,
+            onDismiss = {
+                showRenameDialog = false
+                onDismiss()
+            },
+            onSave = { nickname ->
+                scope.launch {
+                    nicknameRepository.setNickname(chat.userId, nickname)
+                    showRenameDialog = false
+                    onDismiss()
+                }
+            },
+            nicknameRepository = nicknameRepository
+        )
+    }
 }
 
 /**

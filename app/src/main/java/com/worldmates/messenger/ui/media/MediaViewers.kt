@@ -5,12 +5,15 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -262,6 +265,280 @@ fun FullscreenImageViewer(
                             text = "Двічі торкніться для збільшення",
                             color = Color.White,
                             fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 📸 ГАЛЕРЕЯ ФОТО ЗІ СВАЙПОМ
+ * Дозволяє гортати фото ліворуч/праворуч, зум, індикатори
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ImageGalleryViewer(
+    imageUrls: List<String>,
+    initialPage: Int = 0,
+    onDismiss: () -> Unit
+) {
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { imageUrls.size }
+    )
+    var showControls by remember { mutableStateOf(true) }
+
+    // Стани для кожної сторінки (zoom та offset)
+    val scaleStates = remember { mutableStateMapOf<Int, Float>() }
+    val offsetStates = remember { mutableStateMapOf<Int, Offset>() }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0A0A0A),
+                            Color(0xFF000000),
+                            Color(0xFF0A0A0A)
+                        )
+                    )
+                )
+        ) {
+            // Горизонтальний пейджер для свайпу між фото
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val currentScale = scaleStates[page] ?: 1f
+                val currentOffset = offsetStates[page] ?: Offset.Zero
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = imageUrls[page],
+                        contentDescription = "Image ${page + 1}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = currentScale,
+                                scaleY = currentScale,
+                                translationX = currentOffset.x,
+                                translationY = currentOffset.y
+                            )
+                            .pointerInput(page) {
+                                detectTransformGestures { _, pan, zoom, _ ->
+                                    val newScale = (currentScale * zoom).coerceIn(1f, 5f)
+                                    scaleStates[page] = newScale
+
+                                    showControls = true
+
+                                    if (newScale > 1f) {
+                                        val maxX = (size.width * (newScale - 1)) / 2
+                                        val maxY = (size.height * (newScale - 1)) / 2
+                                        offsetStates[page] = Offset(
+                                            x = (currentOffset.x + pan.x).coerceIn(-maxX, maxX),
+                                            y = (currentOffset.y + pan.y).coerceIn(-maxY, maxY)
+                                        )
+                                    } else {
+                                        offsetStates[page] = Offset.Zero
+                                    }
+                                }
+                            }
+                            .pointerInput(page) {
+                                detectTapGestures(
+                                    onDoubleTap = {
+                                        val newScale = if (currentScale > 1f) 1f else 2f
+                                        scaleStates[page] = newScale
+                                        if (newScale == 1f) {
+                                            offsetStates[page] = Offset.Zero
+                                        }
+                                    },
+                                    onTap = {
+                                        showControls = !showControls
+                                    }
+                                )
+                            },
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+
+            // ✨ ВЕРХНІЙ БАР З ІНДИКАТОРОМ СТОРІНКИ
+            AnimatedVisibility(
+                visible = showControls,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.7f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    // Індикатор сторінки (X з Y)
+                    Text(
+                        text = "${pagerState.currentPage + 1} з ${imageUrls.size}",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    )
+
+                    // Кнопка закриття
+                    Surface(
+                        onClick = onDismiss,
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .align(Alignment.CenterEnd)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 🎯 ІНДИКАТОР МАСШТАБУ
+            val currentPageScale = scaleStates[pagerState.currentPage] ?: 1f
+            AnimatedVisibility(
+                visible = currentPageScale > 1f && showControls,
+                enter = scaleIn() + fadeIn(),
+                exit = scaleOut() + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 100.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color(0xFF0084FF).copy(alpha = 0.9f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ZoomIn,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "${(currentPageScale * 100).roundToInt()}%",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // 📍 ІНДИКАТОРИ DOTS ЗНИЗУ
+            if (imageUrls.size > 1) {
+                AnimatedVisibility(
+                    visible = showControls,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .background(
+                                color = Color.Black.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        imageUrls.forEachIndexed { index, _ ->
+                            val isSelected = pagerState.currentPage == index
+                            Box(
+                                modifier = Modifier
+                                    .size(
+                                        width = if (isSelected) 24.dp else 8.dp,
+                                        height = 8.dp
+                                    )
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (isSelected) {
+                                            Color.White
+                                        } else {
+                                            Color.White.copy(alpha = 0.4f)
+                                        }
+                                    )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 💡 ПІДКАЗКА ПРИ ПЕРШОМУ ВІДКРИТТІ
+            var showHint by remember { mutableStateOf(imageUrls.size > 1) }
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(3000)
+                showHint = false
+            }
+
+            AnimatedVisibility(
+                visible = showHint,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.Center)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.Black.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SwipeLeft,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Свайпніть ліворуч/праворуч",
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "Двічі торкніться для збільшення",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 12.sp
                         )
                     }
                 }

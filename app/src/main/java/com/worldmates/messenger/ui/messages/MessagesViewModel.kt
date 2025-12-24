@@ -158,7 +158,7 @@ class MessagesViewModel(application: Application) :
     /**
      * Надсилает текстовое сообщение
      */
-    fun sendMessage(text: String) {
+    fun sendMessage(text: String, replyToId: Long? = null) {
         if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L) || text.isBlank()) {
             _error.value = "Не можна надіслати порожнє повідомлення"
             return
@@ -175,14 +175,16 @@ class MessagesViewModel(application: Application) :
                     RetrofitClient.apiService.sendGroupMessage(
                         accessToken = UserSession.accessToken!!,
                         groupId = groupId,
-                        text = text
+                        text = text,
+                        replyToId = replyToId
                     )
                 } else {
                     RetrofitClient.apiService.sendMessage(
                         accessToken = UserSession.accessToken!!,
                         recipientId = recipientId,
                         text = text,
-                        messageHashId = messageHashId
+                        messageHashId = messageHashId,
+                        replyToId = replyToId
                     )
                 }
 

@@ -74,6 +74,8 @@ data class Message(
     @SerializedName("iv") val iv: String? = null,                          // Base64 Initialization Vector (12 байт)
     @SerializedName("tag") val tag: String? = null,                        // Base64 Authentication Tag (16 байт)
     @SerializedName("cipher_version") val cipherVersion: Int? = null,      // Версия алгоритма (1=ECB, 2=GCM)
+    // Реакції емоджі
+    @SerializedName("reactions") val reactions: List<MessageReaction>? = null,
     // Локальные поля (не приходят с сервера)
     val decryptedText: String? = null,
     val decryptedMediaUrl: String? = null, // Розшифрований URL медіа (для веб-версії)

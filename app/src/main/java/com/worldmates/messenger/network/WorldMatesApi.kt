@@ -272,6 +272,30 @@ interface WorldMatesApi {
         @Field("text") newText: String
     ): MessageResponse
 
+    // ==================== REACTIONS ====================
+
+    @FormUrlEncoded
+    @POST("?type=add_message_reaction")
+    suspend fun addReaction(
+        @Query("access_token") accessToken: String,
+        @Field("message_id") messageId: Long,
+        @Field("reaction") reaction: String
+    ): ReactionResponse
+
+    @FormUrlEncoded
+    @POST("?type=remove_message_reaction")
+    suspend fun removeReaction(
+        @Query("access_token") accessToken: String,
+        @Field("message_id") messageId: Long,
+        @Field("reaction") reaction: String
+    ): ReactionResponse
+
+    @GET("?type=get_message_reactions")
+    suspend fun getReactions(
+        @Query("access_token") accessToken: String,
+        @Query("message_id") messageId: Long
+    ): ReactionsListResponse
+
     // ==================== MEDIA UPLOAD ====================
 
     // XHR Upload endpoints (используются для загрузки файлов на сервер)
@@ -502,6 +526,24 @@ data class CallResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("call_id") val callId: String?,
     @SerializedName("rtc_signal") val rtcSignal: String?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+// ==================== REACTION RESPONSES ====================
+
+data class ReactionResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_text") val apiText: String?,
+    @SerializedName("reaction") val reaction: MessageReaction?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class ReactionsListResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_text") val apiText: String?,
+    @SerializedName("reactions") val reactions: List<MessageReaction>?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 )

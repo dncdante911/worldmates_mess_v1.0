@@ -548,6 +548,213 @@ fun ImageGalleryViewer(
 }
 
 /**
+ * 🎬 ІНЛАЙН ВІДЕО ПЛЕЄР (для використання всередині чату)
+ * Компактний плеєр з можливістю розгортання на весь екран
+ */
+@Composable
+fun InlineVideoPlayer(
+    videoUrl: String,
+    modifier: Modifier = Modifier,
+    onFullscreenClick: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    var isPlaying by remember { mutableStateOf(false) }
+    var showControls by remember { mutableStateOf(true) }
+    var currentPosition by remember { mutableStateOf(0L) }
+    var duration by remember { mutableStateOf(0L) }
+
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
+            setMediaItem(mediaItem)
+            prepare()
+            playWhenReady = false // Не автостарт
+
+            addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(playing: Boolean) {
+                    isPlaying = playing
+                }
+            })
+        }
+    }
+
+    // Оновлення позиції
+    LaunchedEffect(exoPlayer) {
+        while (true) {
+            currentPosition = exoPlayer.currentPosition
+            duration = exoPlayer.duration.coerceAtLeast(0)
+            kotlinx.coroutines.delay(100)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 200.dp, max = 300.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
+    ) {
+        // ExoPlayer view
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    setOnClickListener {
+                        showControls = !showControls
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Градієнтний оверлей
+        AnimatedVisibility(
+            visible = showControls || !isPlaying,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.5f),
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f)
+                            )
+                        )
+                    )
+            )
+        }
+
+        // Центральна кнопка Play/Pause
+        AnimatedVisibility(
+            visible = showControls || !isPlaying,
+            enter = scaleIn() + fadeIn(),
+            exit = scaleOut() + fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Surface(
+                onClick = {
+                    if (exoPlayer.isPlaying) {
+                        exoPlayer.pause()
+                    } else {
+                        exoPlayer.play()
+                    }
+                    isPlaying = !isPlaying
+                },
+                shape = CircleShape,
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.size(64.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        tint = Color.Black,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        }
+
+        // Кнопка розгортання на весь екран (якщо передано callback)
+        if (onFullscreenClick != null) {
+            AnimatedVisibility(
+                visible = showControls,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+            ) {
+                Surface(
+                    onClick = {
+                        exoPlayer.pause()
+                        onFullscreenClick()
+                    },
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = 0.6f),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Fullscreen,
+                            contentDescription = "На весь екран",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Нижня панель з прогресбаром
+        AnimatedVisibility(
+            visible = showControls || !isPlaying,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f)
+                            )
+                        )
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                // Прогресбар
+                Slider(
+                    value = currentPosition.toFloat(),
+                    onValueChange = { newPosition ->
+                        exoPlayer.seekTo(newPosition.toLong())
+                    },
+                    valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.White,
+                        activeTrackColor = Color(0xFF0084FF),
+                        inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Час
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = formatVideoTime(currentPosition),
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = formatVideoTime(duration),
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
  * 🎬 УНИКАЛЬНЫЙ СТИЛЬНЫЙ ВИДЕОПЛЕЕР
  * С кастомным UI и анимациями
  */

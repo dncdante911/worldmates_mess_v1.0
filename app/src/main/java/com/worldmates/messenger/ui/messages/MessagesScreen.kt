@@ -30,6 +30,7 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.ui.media.FullscreenImageViewer
 import com.worldmates.messenger.ui.media.ImageGalleryViewer
+import com.worldmates.messenger.ui.media.InlineVideoPlayer
 import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
@@ -593,27 +594,20 @@ fun MessageBubbleComposable(
                     )
                 }
 
-                // Video (thumbnail)
+                // Video - інлайн плеєр
                 if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "video") {
-                    Box(
+                    InlineVideoPlayer(
+                        videoUrl = effectiveMediaUrl,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 200.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Gray.copy(alpha = 0.3f))
-                            .padding(top = if (shouldShowText) 8.dp else 0.dp)
-                            .clickable { showVideoPlayer = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
+                            .padding(top = if (shouldShowText) 8.dp else 0.dp),
+                        onFullscreenClick = {
+                            // Відкриваємо повноекранний плеєр
+                            showVideoPlayer = true
+                        }
+                    )
 
-                    // Полноэкранный видеоплеер
+                    // Повноекранний плеєр (опціонально)
                     if (showVideoPlayer) {
                         FullscreenVideoPlayer(
                             videoUrl = effectiveMediaUrl,

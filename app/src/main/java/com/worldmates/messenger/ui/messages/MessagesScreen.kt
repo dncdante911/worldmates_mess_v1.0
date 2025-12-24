@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.ui.media.FullscreenImageViewer
@@ -776,9 +777,10 @@ fun MessageBubbleComposable(
                     }
                 }
 
-                // Время с более стильным форматированием
+                // Время с более стильным форматированием + галочки прочитано
                 Row(
                     horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -788,6 +790,15 @@ fun MessageBubbleComposable(
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )
+
+                    // ✓✓ Галочки прочитано (тільки для власних повідомлень)
+                    if (isOwn) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        MessageStatusIcon(
+                            isRead = message.is_read ?: false,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -1364,6 +1375,35 @@ fun ReplyIndicator(
                 }
             }
         }
+    }
+}
+
+/**
+ * ✓✓ Індикатор статусу повідомлення (прочитано/доставлено)
+ */
+@Composable
+fun MessageStatusIcon(
+    isRead: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy((-6).dp)  // Накладання галочок
+    ) {
+        // Перша галочка
+        Icon(
+            imageVector = Icons.Default.Done,
+            contentDescription = if (isRead) "Прочитано" else "Відправлено",
+            tint = if (isRead) Color(0xFF0084FF) else Color.Gray.copy(alpha = 0.6f),
+            modifier = Modifier.size(14.dp)
+        )
+        // Друга галочка (тільки коли доставлено або прочитано)
+        Icon(
+            imageVector = Icons.Default.Done,
+            contentDescription = if (isRead) "Прочитано" else "Доставлено",
+            tint = if (isRead) Color(0xFF0084FF) else Color.Gray.copy(alpha = 0.6f),
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
 

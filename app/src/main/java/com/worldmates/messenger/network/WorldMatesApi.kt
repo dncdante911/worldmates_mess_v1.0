@@ -221,7 +221,8 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "send_message",
         @Field("id") groupId: Long,
-        @Field("text") text: String
+        @Field("text") text: String,
+        @Field("message_reply_id") replyToId: Long? = null
     ): MessageResponse
 
     @Multipart
@@ -241,7 +242,8 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("user_id") recipientId: Long,
         @Field("text") text: String,
-        @Field("message_hash_id") messageHashId: String
+        @Field("message_hash_id") messageHashId: String,
+        @Field("message_reply_id") replyToId: Long? = null
     ): MessageResponse
 
     // Отправка сообщения с медиа-файлом

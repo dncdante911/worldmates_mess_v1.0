@@ -416,13 +416,12 @@ fun ModernGroupCard(
                     )
 
                     // Час останньої активності
-                    group.lastActivity?.let { lastActivity ->
-                        Text(
-                            text = formatGroupTime(lastActivity),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
+                    val groupLastActivity = group.updatedTime ?: group.createdTime
+                    Text(
+                        text = formatGroupTime(groupLastActivity),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))

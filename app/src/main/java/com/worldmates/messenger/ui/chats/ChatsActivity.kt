@@ -13,8 +13,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -192,16 +194,10 @@ fun ChatsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (showGroups) {
-                ExpressiveFAB(
+                ModernFAB(
                     onClick = { showCreateGroupDialog = true },
-                    containerColor = WMGradients.buttonGradient
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Створити групу",
-                        tint = Color.White
-                    )
-                }
+                    icon = Icons.Default.Add
+                )
             }
         }
     ) { paddingValues ->
@@ -251,39 +247,17 @@ fun ChatsScreen(
             }
         )
 
-        // Search
-        SearchBar(
+        // Modern Search Bar
+        ModernSearchBar(
             searchText = searchText,
             onSearchChange = { searchText = it }
         )
 
-        // Tabs: Chats / Groups
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { showGroups = false },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!showGroups) Color(0xFF0084FF) else Color.LightGray
-                )
-            ) {
-                Text("Чати", color = Color.White)
-            }
-            Button(
-                onClick = { showGroups = true },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (showGroups) Color(0xFF0084FF) else Color.LightGray
-                )
-            ) {
-                Text("Групи", color = Color.White)
-            }
-        }
+        // Modern Tabs
+        ModernTabsRow(
+            selectedTab = if (showGroups) 1 else 0,
+            onTabSelected = { tab -> showGroups = (tab == 1) }
+        )
 
         // Content
         Box(modifier = Modifier.weight(1f)) {
@@ -389,11 +363,12 @@ fun ChatsScreen(
                     EmptyChatsState()
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         items(filteredChats) { chat ->
                             val nickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
-                            ChatItemRow(
+                            ModernChatCard(
                                 chat = chat,
                                 nickname = nickname,
                                 onClick = { onChatClick(chat) },

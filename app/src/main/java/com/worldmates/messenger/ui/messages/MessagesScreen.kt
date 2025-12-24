@@ -81,7 +81,12 @@ fun MessagesScreen(
 
     // Логування стану теми
     LaunchedEffect(themeState) {
-        Log.d("MessagesScreen", "ThemeState: bgUri=${themeState.backgroundImageUri}, presetId=${themeState.presetBackgroundId}")
+        Log.d("MessagesScreen", "=== THEME STATE ===")
+        Log.d("MessagesScreen", "Variant: ${themeState.variant}")
+        Log.d("MessagesScreen", "IsDark: ${themeState.isDark}")
+        Log.d("MessagesScreen", "BackgroundImageUri: ${themeState.backgroundImageUri}")
+        Log.d("MessagesScreen", "PresetBackgroundId: ${themeState.presetBackgroundId}")
+        Log.d("MessagesScreen", "==================")
     }
 
     // Управление индикатором "печатает" с автоматическим сбросом через 2 секунды
@@ -162,6 +167,7 @@ fun MessagesScreen(
         when {
             // Кастомне зображення
             themeState.backgroundImageUri != null -> {
+                Log.d("MessagesScreen", "Applying custom background image: ${themeState.backgroundImageUri}")
                 AsyncImage(
                     model = Uri.parse(themeState.backgroundImageUri),
                     contentDescription = "Chat background",
@@ -172,8 +178,10 @@ fun MessagesScreen(
             }
             // Preset градієнт
             themeState.presetBackgroundId != null -> {
+                Log.d("MessagesScreen", "Applying preset background: ${themeState.presetBackgroundId}")
                 val preset = PresetBackground.fromId(themeState.presetBackgroundId)
                 if (preset != null) {
+                    Log.d("MessagesScreen", "Preset found: ${preset.displayName}")
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -183,10 +191,13 @@ fun MessagesScreen(
                                 )
                             )
                     )
+                } else {
+                    Log.e("MessagesScreen", "Preset not found for ID: ${themeState.presetBackgroundId}")
                 }
             }
             // Стандартний фон з теми
             else -> {
+                Log.d("MessagesScreen", "Using default MaterialTheme background")
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

@@ -417,8 +417,8 @@ class GroupsViewModel : ViewModel() {
                     "image/*".toMediaType(),
                     file
                 )
-                val avatarPart = okhttp3.MultipartBody.Part.createFormData(
-                    "avatar",
+                val filePart = okhttp3.MultipartBody.Part.createFormData(
+                    "file",  // API очікує "file", а не "avatar"
                     file.name,
                     requestFile
                 )
@@ -427,7 +427,7 @@ class GroupsViewModel : ViewModel() {
                 val response = RetrofitClient.apiService.uploadGroupAvatar(
                     accessToken = UserSession.accessToken!!,
                     groupId = groupIdBody,
-                    avatar = avatarPart
+                    file = filePart  // Змінено з avatar на file
                 )
 
                 if (response.apiStatus == 200) {

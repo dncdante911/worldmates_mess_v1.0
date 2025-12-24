@@ -4,11 +4,14 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -16,8 +19,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -131,25 +138,79 @@ fun SettingsScreen(
         }
     }
 
-    Column(
+    // Анімація появи екрану
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-    ) {
-        // Header
-        TopAppBar(
-            title = { Text("Налаштування") },
-            navigationIcon = {
-                IconButton(onClick = onBackPressed) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF0084FF),
-                titleContentColor = Color.White,
-                navigationIconContentColor = Color.White
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF667eea),
+                        Color(0xFF764ba2),
+                        Color(0xFFF093FB)
+                    )
+                )
             )
-        )
+    ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            ) + fadeIn(animationSpec = tween(300))
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Красивий Header з градієнтом
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF667eea),
+                                    Color(0xFF764ba2)
+                                )
+                            )
+                        )
+                        .statusBarsPadding()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onBackPressed,
+                            modifier = Modifier
+                                .shadow(4.dp, CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                        ) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Назад",
+                                tint = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Налаштування",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize()
@@ -369,7 +430,9 @@ fun SettingsScreen(
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
-    }
+            }  // Кінець Column
+        }  // Кінець AnimatedVisibility
+    }  // Кінець Box
 
     // Logout confirmation dialog
     if (showLogoutDialog) {
@@ -501,24 +564,78 @@ fun SettingsItem(
     textColor: Color = Color.Black,
     onClick: () -> Unit
 ) {
-    Surface(
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        color = Color.White
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .shadow(4.dp, RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    isPressed = false
+                    onClick()
+                }
+            )
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        isPressed = event.changes.any { it.pressed }
+                    }
+                }
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.95f)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp
+        )
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp),
+                .fillMaxWidth()
+                .padding(16.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = if (textColor == Color.Red) Color.Red else Color(0xFF0084FF),
-                modifier = Modifier.size(24.dp)
-            )
+            // Icon з градієнтним фоном
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = if (textColor == Color.Red) {
+                                listOf(Color(0xFFFF6B6B), Color(0xFFFF8E53))
+                            } else {
+                                listOf(Color(0xFF667eea), Color(0xFF764ba2))
+                            }
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
 
             // Text
             Column(
@@ -529,14 +646,15 @@ fun SettingsItem(
                 Text(
                     text = title,
                     fontSize = 16.sp,
-                    color = textColor
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (textColor == Color.Red) Color.Red else Color(0xFF2C3E50)
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
                         fontSize = 13.sp,
                         color = Color.Gray,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
             }
@@ -546,7 +664,8 @@ fun SettingsItem(
                 Icon(
                     Icons.Default.KeyboardArrowRight,
                     contentDescription = "Перейти",
-                    tint = Color.Gray
+                    tint = Color(0xFF667eea),
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }

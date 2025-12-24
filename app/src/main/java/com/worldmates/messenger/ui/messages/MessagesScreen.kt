@@ -79,6 +79,11 @@ fun MessagesScreen(
     val context = LocalContext.current
     val themeState = rememberThemeState()
 
+    // Логування стану теми
+    LaunchedEffect(themeState) {
+        Log.d("MessagesScreen", "ThemeState: bgUri=${themeState.backgroundImageUri}, presetId=${themeState.presetBackgroundId}")
+    }
+
     // Управление индикатором "печатает" с автоматическим сбросом через 2 секунды
     LaunchedEffect(messageText) {
         if (messageText.isNotBlank() && !isCurrentlyTyping) {

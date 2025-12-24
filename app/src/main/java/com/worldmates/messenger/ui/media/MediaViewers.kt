@@ -1005,6 +1005,145 @@ private fun formatVideoTime(millis: Long): String {
 }
 
 /**
+ * 🎵 МІНІМІЗОВАНИЙ АУДІО ПЛЕЄР (внизу екрану)
+ * Залишається при переході між чатами, як в Spotify
+ */
+@Composable
+fun MiniAudioPlayer(
+    audioUrl: String,
+    audioTitle: String = "Аудіо",
+    isPlaying: Boolean,
+    currentPosition: Long,
+    duration: Long,
+    onPlayPauseClick: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(72.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp,
+        tonalElevation = 3.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF667eea).copy(alpha = 0.1f),
+                            Color(0xFF764ba2).copy(alpha = 0.1f)
+                        )
+                    )
+                )
+        ) {
+            // Прогресбар зверху
+            LinearProgressIndicator(
+                progress = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp),
+                color = Color(0xFF0084FF),
+                trackColor = Color.Gray.copy(alpha = 0.2f)
+            )
+
+            // Основний контент
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Ліва частина - іконка + інфо
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Іконка аудіо
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFF0084FF),
+                                        Color(0xFF00C6FF)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    // Назва та час
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = audioTitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${formatVideoTime(currentPosition)} / ${formatVideoTime(duration)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Права частина - кнопки
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Кнопка Play/Pause
+                    Surface(
+                        onClick = onPlayPauseClick,
+                        shape = CircleShape,
+                        color = Color(0xFF0084FF),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isPlaying) "Пауза" else "Грати",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    // Кнопка закриття
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Закрити",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * 🎵 УНИКАЛЬНЫЙ СТИЛЬНЫЙ АУДИО-ПЛЕЕР
  * С визуализатором и красивым дизайном
  */

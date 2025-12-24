@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -262,6 +266,10 @@ fun MessagesScreen(
                             // Знаходимо індекс вибраного фото в списку
                             selectedImageIndex = imageUrls.indexOf(imageUrl).coerceAtLeast(0)
                             showImageGallery = true
+                        },
+                        onReply = { msg ->
+                            // Встановлюємо повідомлення для відповіді
+                            replyToMessage = msg
                         }
                     )
                 }
@@ -367,8 +375,9 @@ fun MessagesScreen(
             onMessageChange = { messageText = it },
             onSendClick = {
                 if (messageText.isNotBlank()) {
-                    viewModel.sendMessage(messageText)
+                    viewModel.sendMessage(messageText, replyToMessage?.id)
                     messageText = ""
+                    replyToMessage = null  // Очищаємо reply після відправки
                 }
             },
             isLoading = isLoading,
@@ -500,10 +509,15 @@ fun MessageBubbleComposable(
     voicePlayer: VoicePlayer,
     replyToMessage: Message? = null,
     onLongPress: () -> Unit = {},
-    onImageClick: (String) -> Unit = {}
+    onImageClick: (String) -> Unit = {},
+    onReply: (Message) -> Unit = {}
 ) {
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
+
+    // 💬 Свайп для Reply
+    var offsetX by remember { mutableStateOf(0f) }
+    val maxSwipeDistance = 100f  // Максимальна відстань свайпу
 
     // Цвета из темы
     val bgColor = if (isOwn) {
@@ -523,14 +537,49 @@ fun MessageBubbleComposable(
 
     var showVideoPlayer by remember { mutableStateOf(false) }
 
-    Row(
+    // 💬 Обгортка з іконкою Reply для свайпу
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),  // Небольшой отступ между сообщениями
-        horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
+            .padding(vertical = 2.dp)
     ) {
-        // Современный Material 3 пузырь с тенью и скруглениями
-        Card(
+        // Іконка Reply (показується при свайпі)
+        if (offsetX > 20f) {
+            Icon(
+                imageVector = Icons.Default.Reply,
+                contentDescription = "Reply",
+                tint = colorScheme.primary.copy(alpha = (offsetX / maxSwipeDistance).coerceIn(0f, 1f)),
+                modifier = Modifier
+                    .align(if (isOwn) Alignment.CenterEnd else Alignment.CenterStart)
+                    .padding(horizontal = 16.dp)
+                    .size(24.dp)
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(offsetX.roundToInt(), 0) }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (offsetX > maxSwipeDistance / 2) {
+                                // Свайп достатньо далеко - викликаємо reply
+                                onReply(message)
+                            }
+                            // Повертаємо на місце
+                            offsetX = 0f
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            // Свайп тільки праворуч для reply
+                            offsetX = (offsetX + dragAmount).coerceIn(0f, maxSwipeDistance)
+                        }
+                    )
+                },
+            horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
+        ) {
+            // Современный Material 3 пузырь с тенью и скруглениями
+            Card(
             modifier = Modifier
                 .widthIn(max = 280.dp)  // Оптимальная ширина для читабельности
                 .padding(horizontal = 8.dp)
@@ -602,12 +651,55 @@ fun MessageBubbleComposable(
                     !isOnlyMediaUrl(message.decryptedText!!) &&
                     detectedMediaType == "text"  // Не показываем текст, если это URL медиа
 
+                // 💬 Цитата Reply (якщо є)
+                if (message.replyToId != null && message.replyToText != null) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = textColor.copy(alpha = 0.1f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Вертикальна лінія
+                            Box(
+                                modifier = Modifier
+                                    .width(3.dp)
+                                    .height(40.dp)
+                                    .background(
+                                        color = colorScheme.primary,
+                                        shape = RoundedCornerShape(2.dp)
+                                    )
+                            )
+                            // Текст цитати
+                            Column {
+                                Text(
+                                    text = "Відповідь",
+                                    color = colorScheme.primary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = message.replyToText!!,
+                                    color = textColor.copy(alpha = 0.7f),
+                                    fontSize = 14.sp,
+                                    maxLines = 2,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Text message
                 if (shouldShowText) {
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
-                        fontSize = 16.sp,  // Увеличенный размер для лучшей читабельности
+                        fontSize = 16.sp,  // Увеличенный размер для лучшей читабельності
                         lineHeight = 22.sp,  // Улучшенный межстрочный интервал
                         style = MaterialTheme.typography.bodyLarge
                     )
@@ -699,7 +791,8 @@ fun MessageBubbleComposable(
                 }
             }
         }
-    }
+        }  // Закриття Row
+    }  // Закриття Box зі свайпом
 }
 
 @Composable

@@ -14,14 +14,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
@@ -489,6 +494,8 @@ fun SettingsDrawerContent(
     onNavigateToFullSettings: () -> Unit,
     onClose: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -500,131 +507,182 @@ fun SettingsDrawerContent(
                     )
                 )
             )
-            .padding(16.dp)
     ) {
-        // Заголовок
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Швидкі налаштування",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            IconButton(onClick = onClose) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Закрити",
-                    tint = Color.White
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Інформація про користувача
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White.copy(alpha = 0.2f)
-            ),
-            shape = RoundedCornerShape(16.dp)
+        // Header з інфо користувача
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                AsyncImage(
-                    model = com.worldmates.messenger.data.UserSession.avatar,
-                    contentDescription = "Avatar",
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = com.worldmates.messenger.data.UserSession.username ?: "Користувач",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AsyncImage(
+                        model = com.worldmates.messenger.data.UserSession.avatar,
+                        contentDescription = "Avatar",
+                        modifier = Modifier
+                            .size(70.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
                     )
-                    Text(
-                        text = "ID: ${com.worldmates.messenger.data.UserSession.userId}",
-                        fontSize = 14.sp,
-                        color = Color.White.copy(alpha = 0.8f)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = com.worldmates.messenger.data.UserSession.username ?: "Користувач",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "+380 (93) 025 39 41",
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+
+                IconButton(onClick = onClose) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Закрити",
+                        tint = Color.White
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Швидкі налаштування
-        QuickSettingItem(
-            icon = Icons.Default.Settings,
-            title = "Всі налаштування",
-            onClick = onNavigateToFullSettings
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Кнопка закриття
-        Button(
-            onClick = onClose,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = Color(0xFF667eea)
-            ),
-            shape = RoundedCornerShape(12.dp)
+        // Меню items
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
         ) {
-            Text("Закрити", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Person,
+                    title = "Мій профіль",
+                    onClick = {
+                        onClose()
+                        Toast.makeText(context, "Мій профіль", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Group,
+                    title = "Нова група",
+                    onClick = {
+                        onClose()
+                        Toast.makeText(context, "Створити групу", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Chat,
+                    title = "Контакти",
+                    onClick = {
+                        onClose()
+                        Toast.makeText(context, "Контакти", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Call,
+                    title = "Дзвінки",
+                    onClick = {
+                        onClose()
+                        Toast.makeText(context, "Дзвінки", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Star,
+                    title = "Збережені повідомлення",
+                    onClick = {
+                        onClose()
+                        Toast.makeText(context, "Збережені", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            item {
+                Divider(
+                    color = Color.White.copy(alpha = 0.2f),
+                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 24.dp)
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Settings,
+                    title = "Налаштування",
+                    onClick = onNavigateToFullSettings
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Share,
+                    title = "Запросити друзів",
+                    onClick = {
+                        onClose()
+                        Toast.makeText(context, "Запросити друзів", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Info,
+                    title = "Про додаток",
+                    onClick = {
+                        onClose()
+                        Toast.makeText(context, "WorldMates Messenger v1.0", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
         }
     }
 }
 
 @Composable
-fun QuickSettingItem(
+fun DrawerMenuItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     onClick: () -> Unit
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.15f)
-        ),
-        shape = RoundedCornerShape(12.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = title,
-                fontSize = 16.sp,
-                color = Color.White,
-                fontWeight = FontWeight.Medium
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(20.dp))
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

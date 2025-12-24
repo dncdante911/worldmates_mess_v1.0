@@ -80,6 +80,7 @@ fun MessagesScreen(
 
     var messageText by remember { mutableStateOf("") }
     var showMediaOptions by remember { mutableStateOf(false) }
+    var showEmojiPicker by remember { mutableStateOf(false) }
     var isCurrentlyTyping by remember { mutableStateOf(false) }
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -414,7 +415,9 @@ fun MessagesScreen(
             onPickVideo = { videoPickerLauncher.launch("video/*") },
             onPickAudio = { audioPickerLauncher.launch("audio/*") },
             onPickFile = { filePickerLauncher.launch("*/*") },
-            showMediaOptions = showMediaOptions
+            showMediaOptions = showMediaOptions,
+            showEmojiPicker = showEmojiPicker,
+            onToggleEmojiPicker = { showEmojiPicker = !showEmojiPicker }
         )
         }  // Кінець Column
     }  // Кінець Box
@@ -929,7 +932,9 @@ fun MessageInputBar(
     onPickVideo: () -> Unit,
     onPickAudio: () -> Unit,
     onPickFile: () -> Unit,
-    showMediaOptions: Boolean
+    showMediaOptions: Boolean,
+    showEmojiPicker: Boolean,
+    onToggleEmojiPicker: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -1035,6 +1040,15 @@ fun MessageInputBar(
                     }
                 )
 
+                // 😊 Кнопка емоджі
+                IconButton(onClick = onToggleEmojiPicker) {
+                    Icon(
+                        imageVector = if (showEmojiPicker) Icons.Default.KeyboardArrowDown else Icons.Default.EmojiEmotions,
+                        contentDescription = "Emoji",
+                        tint = colorScheme.onSurfaceVariant
+                    )
+                }
+
                 if (messageText.isNotBlank()) {
                     IconButton(
                         onClick = onSendClick,
@@ -1059,6 +1073,16 @@ fun MessageInputBar(
                     }
                 }
             }
+        }
+
+        // 😊 Emoji Picker
+        if (showEmojiPicker) {
+            com.worldmates.messenger.ui.components.EmojiPicker(
+                onEmojiSelected = { emoji ->
+                    onMessageChange(messageText + emoji)
+                },
+                onDismiss = onToggleEmojiPicker
+            )
         }
     }
 }

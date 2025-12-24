@@ -981,8 +981,8 @@ fun RenameContactDialog(
 
     // Оновлюємо nickname, коли existingNickname змінюється
     LaunchedEffect(existingNickname) {
-        if (existingNickname != null) {
-            nickname = existingNickname
+        existingNickname?.let {
+            nickname = it
         }
     }
 

@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
@@ -72,6 +73,7 @@ fun MessagesScreen(
     var replyToMessage by remember { mutableStateOf<Message?>(null) }
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
 
     // Управление индикатором "печатает" с автоматическим сбросом через 2 секунды
     LaunchedEffect(messageText) {
@@ -194,7 +196,7 @@ fun MessagesScreen(
                 onForward = { message ->
                     // TODO: Implement forward to another chat
                     android.widget.Toast.makeText(
-                        voicePlayer.context,
+                        context,
                         "Переслання: ${message.decryptedText}",
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
@@ -210,7 +212,7 @@ fun MessagesScreen(
                     message.decryptedText?.let {
                         clipboardManager.setText(AnnotatedString(it))
                         android.widget.Toast.makeText(
-                            voicePlayer.context,
+                            context,
                             "Текст скопійовано",
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
@@ -368,6 +370,7 @@ fun MessagesHeaderBar(
     )  // Конец TopAppBar
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleComposable(
     message: Message,

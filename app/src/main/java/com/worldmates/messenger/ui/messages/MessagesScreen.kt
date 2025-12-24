@@ -29,6 +29,9 @@ import androidx.compose.ui.text.AnnotatedString
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.ui.media.FullscreenImageViewer
+import com.worldmates.messenger.ui.media.ImageGalleryViewer
+import com.worldmates.messenger.ui.media.InlineVideoPlayer
+import com.worldmates.messenger.ui.media.MiniAudioPlayer
 import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
@@ -78,6 +81,24 @@ fun MessagesScreen(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val themeState = rememberThemeState()
+
+    // 📸 Галерея фото - збір всіх фото з чату
+    var showImageGallery by remember { mutableStateOf(false) }
+    var selectedImageIndex by remember { mutableStateOf(0) }
+    val imageUrls = remember(messages) {
+        messages.mapNotNull { message ->
+            val mediaUrl = message.media ?: message.text
+            if (mediaUrl != null && isImageUrl(mediaUrl)) {
+                mediaUrl
+            } else null
+        }
+    }
+
+    // 🎵 Мінімізований аудіо плеєр
+    val playbackState by voicePlayer.playbackState.collectAsState()
+    val currentPosition by voicePlayer.currentPosition.collectAsState()
+    val duration by voicePlayer.duration.collectAsState()
+    val showMiniPlayer = playbackState != com.worldmates.messenger.utils.VoicePlayer.PlaybackState.IDLE
 
     // Логування стану теми
     LaunchedEffect(themeState) {
@@ -235,9 +256,23 @@ fun MessagesScreen(
                         onLongPress = {
                             selectedMessage = message
                             showContextMenu = true
+                        },
+                        onImageClick = { imageUrl ->
+                            // Знаходимо індекс вибраного фото в списку
+                            selectedImageIndex = imageUrls.indexOf(imageUrl).coerceAtLeast(0)
+                            showImageGallery = true
                         }
                     )
                 }
+            }
+
+            // 📸 ГАЛЕРЕЯ ФОТО
+            if (showImageGallery && imageUrls.isNotEmpty()) {
+                ImageGalleryViewer(
+                    imageUrls = imageUrls,
+                    initialPage = selectedImageIndex,
+                    onDismiss = { showImageGallery = false }
+                )
             }
 
         // Message Context Menu Bottom Sheet
@@ -298,6 +333,34 @@ fun MessagesScreen(
             replyToMessage = replyToMessage,
             onCancelReply = { replyToMessage = null }
         )
+
+        // 🎵 Мінімізований аудіо плеєр
+        AnimatedVisibility(
+            visible = showMiniPlayer,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+            MiniAudioPlayer(
+                audioUrl = voicePlayer.currentUrl.value ?: "",
+                audioTitle = "Аудіо повідомлення",
+                isPlaying = playbackState == com.worldmates.messenger.utils.VoicePlayer.PlaybackState.PLAYING,
+                currentPosition = currentPosition,
+                duration = duration,
+                onPlayPauseClick = {
+                    if (playbackState == com.worldmates.messenger.utils.VoicePlayer.PlaybackState.PLAYING) {
+                        voicePlayer.pause()
+                    } else {
+                        voicePlayer.resume()
+                    }
+                },
+                onSeek = { position ->
+                    voicePlayer.seek(position)
+                },
+                onClose = {
+                    voicePlayer.stop()
+                }
+            )
+        }
 
         // Message Input
         MessageInputBar(
@@ -437,7 +500,8 @@ fun MessageBubbleComposable(
     message: Message,
     voicePlayer: VoicePlayer,
     replyToMessage: Message? = null,
-    onLongPress: () -> Unit = {}
+    onLongPress: () -> Unit = {},
+    onImageClick: (String) -> Unit = {}
 ) {
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
@@ -458,7 +522,6 @@ fun MessageBubbleComposable(
     val currentPosition by voicePlayer.currentPosition.collectAsState()
     val duration by voicePlayer.duration.collectAsState()
 
-    var showFullscreenImage by remember { mutableStateOf(false) }
     var showVideoPlayer by remember { mutableStateOf(false) }
 
     Row(
@@ -561,40 +624,25 @@ fun MessageBubbleComposable(
                             .heightIn(max = 200.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .padding(top = if (shouldShowText) 8.dp else 0.dp)
-                            .clickable { showFullscreenImage = true },
+                            .clickable { onImageClick(effectiveMediaUrl) },
                         contentScale = ContentScale.Crop
                     )
-
-                    // Полноэкранный просмотр изображения
-                    if (showFullscreenImage) {
-                        FullscreenImageViewer(
-                            imageUrl = effectiveMediaUrl,
-                            onDismiss = { showFullscreenImage = false }
-                        )
-                    }
                 }
 
-                // Video (thumbnail)
+                // Video - інлайн плеєр
                 if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "video") {
-                    Box(
+                    InlineVideoPlayer(
+                        videoUrl = effectiveMediaUrl,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 200.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Gray.copy(alpha = 0.3f))
-                            .padding(top = if (shouldShowText) 8.dp else 0.dp)
-                            .clickable { showVideoPlayer = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
+                            .padding(top = if (shouldShowText) 8.dp else 0.dp),
+                        onFullscreenClick = {
+                            // Відкриваємо повноекранний плеєр
+                            showVideoPlayer = true
+                        }
+                    )
 
-                    // Полноэкранный видеоплеер
+                    // Повноекранний плеєр (опціонально)
                     if (showVideoPlayer) {
                         FullscreenVideoPlayer(
                             videoUrl = effectiveMediaUrl,
@@ -1225,4 +1273,17 @@ fun ReplyIndicator(
             }
         }
     }
+}
+
+/**
+ * Перевірка чи URL вказує на зображення
+ */
+private fun isImageUrl(url: String): Boolean {
+    val imageExtensions = listOf(".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")
+    val lowerUrl = url.lowercase()
+    return imageExtensions.any { lowerUrl.contains(it) } ||
+           lowerUrl.contains("image") ||
+           lowerUrl.contains("/img/") ||
+           lowerUrl.contains("/images/")
+}
 }

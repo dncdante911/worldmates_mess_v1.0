@@ -2,6 +2,7 @@ package com.worldmates.messenger.ui.chats
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
@@ -536,14 +537,14 @@ fun ChatItemRow(
                 )
             }
 
-                Text(
-                    text = chat.lastMessage?.decryptedText ?: "Немає повідомлень",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
+            Text(
+                text = chat.lastMessage?.decryptedText ?: "Немає повідомлень",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
 
             // Pulsing badge for unread messages
             if (chat.unreadCount > 0) {

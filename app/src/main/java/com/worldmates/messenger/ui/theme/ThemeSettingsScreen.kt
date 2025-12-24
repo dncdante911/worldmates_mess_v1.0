@@ -83,37 +83,37 @@ import coil.compose.AsyncImage
  */
 enum class PresetBackground(
     val id: String,
-    val name: String,
+    val displayName: String,
     val gradientColors: List<Color>
 ) {
     OCEAN(
         id = "ocean",
-        name = "Океан",
+        displayName = "Океан",
         gradientColors = listOf(Color(0xFF667eea), Color(0xFF764ba2))
     ),
     SUNSET(
         id = "sunset",
-        name = "Захід сонця",
+        displayName = "Захід сонця",
         gradientColors = listOf(Color(0xFFf83600), Color(0xFFf9d423))
     ),
     FOREST(
         id = "forest",
-        name = "Ліс",
+        displayName = "Ліс",
         gradientColors = listOf(Color(0xFF11998e), Color(0xFF38ef7d))
     ),
     LAVENDER(
         id = "lavender",
-        name = "Лаванда",
+        displayName = "Лаванда",
         gradientColors = listOf(Color(0xFFa8edea), Color(0xFFfed6e3))
     ),
     MIDNIGHT(
         id = "midnight",
-        name = "Опівночі",
+        displayName = "Опівночі",
         gradientColors = listOf(Color(0xFF2c3e50), Color(0xFF3498db))
     ),
     PEACH(
         id = "peach",
-        name = "Персик",
+        displayName = "Персик",
         gradientColors = listOf(Color(0xFFffecd2), Color(0xFFfcb69f))
     );
 
@@ -768,7 +768,7 @@ fun PresetBackgroundCard(
 
         // Назва фону
         Text(
-            text = preset.name,
+            text = preset.displayName,
             color = Color.White,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,

@@ -47,9 +47,11 @@ class ThemeViewModel(private val repository: ThemeRepository) : ViewModel() {
         repository.darkTheme,
         repository.dynamicColor,
         repository.systemTheme,
-        repository.backgroundImageUri,
-        repository.presetBackgroundId
-    ) { variant, dark, dynamic, system, bgUri, presetBgId ->
+        combine(repository.backgroundImageUri, repository.presetBackgroundId) { bgUri, presetBgId ->
+            Pair(bgUri, presetBgId)
+        }
+    ) { variant, dark, dynamic, system, backgrounds ->
+        val (bgUri, presetBgId) = backgrounds
         Log.d(TAG, "ThemeState updated: variant=$variant, dark=$dark, dynamic=$dynamic, system=$system, bgUri=$bgUri, presetBgId=$presetBgId")
         ThemeState(
             variant = variant,

@@ -87,7 +87,8 @@ fun MessagesScreen(
     var selectedImageIndex by remember { mutableStateOf(0) }
     val imageUrls = remember(messages) {
         messages.mapNotNull { message ->
-            val mediaUrl = message.media ?: message.text
+            // Шукаємо URL медіа в різних полях
+            val mediaUrl = message.mediaUrl ?: message.decryptedMediaUrl ?: message.decryptedText
             if (mediaUrl != null && isImageUrl(mediaUrl)) {
                 mediaUrl
             } else null
@@ -98,7 +99,7 @@ fun MessagesScreen(
     val playbackState by voicePlayer.playbackState.collectAsState()
     val currentPosition by voicePlayer.currentPosition.collectAsState()
     val duration by voicePlayer.duration.collectAsState()
-    val showMiniPlayer = playbackState != com.worldmates.messenger.utils.VoicePlayer.PlaybackState.IDLE
+    val showMiniPlayer = playbackState !is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Idle
 
     // Логування стану теми
     LaunchedEffect(themeState) {
@@ -335,22 +336,20 @@ fun MessagesScreen(
         )
 
         // 🎵 Мінімізований аудіо плеєр
-        AnimatedVisibility(
-            visible = showMiniPlayer,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-        ) {
+        if (showMiniPlayer) {
             MiniAudioPlayer(
-                audioUrl = voicePlayer.currentUrl.value ?: "",
+                audioUrl = "",
                 audioTitle = "Аудіо повідомлення",
-                isPlaying = playbackState == com.worldmates.messenger.utils.VoicePlayer.PlaybackState.PLAYING,
+                isPlaying = playbackState is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Playing,
                 currentPosition = currentPosition,
                 duration = duration,
                 onPlayPauseClick = {
-                    if (playbackState == com.worldmates.messenger.utils.VoicePlayer.PlaybackState.PLAYING) {
-                        voicePlayer.pause()
-                    } else {
-                        voicePlayer.resume()
+                    scope.launch {
+                        if (playbackState is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Playing) {
+                            voicePlayer.pause()
+                        } else {
+                            voicePlayer.resume()
+                        }
                     }
                 },
                 onSeek = { position ->

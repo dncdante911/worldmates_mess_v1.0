@@ -105,11 +105,11 @@ fun GroupDetailsScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // TODO: Upload avatar to server and update group
-            // For now, just show a toast
+            // Завантажуємо аватарку на сервер
+            viewModel.uploadGroupAvatar(groupId, it, context)
             android.widget.Toast.makeText(
                 context,
-                "Аватар вибрано: $uri. Функція завантаження буде додана.",
+                "Завантаження аватара...",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
@@ -119,6 +119,17 @@ fun GroupDetailsScreen(
     LaunchedEffect(groupId) {
         viewModel.selectGroup(group ?: return@LaunchedEffect)
         viewModel.loadAvailableUsers()
+    }
+
+    // Показуємо результат завантаження аватара
+    LaunchedEffect(error, isLoading) {
+        if (!isLoading && error != null && error!!.contains("завантажити аватарку")) {
+            android.widget.Toast.makeText(
+                context,
+                error,
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     Scaffold(

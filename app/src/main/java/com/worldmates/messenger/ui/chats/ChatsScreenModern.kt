@@ -312,10 +312,10 @@ fun ChatsScreenModern(
                 showContactMenu = false
                 selectedChat = null
             },
-            onRename = { chat ->
+            onRename = { chat: Chat ->
                 // Діалог відкривається всередині ContactContextMenu
             },
-            onDelete = { chat ->
+            onDelete = { chat: Chat ->
                 showContactMenu = false
                 scope.launch {
                     viewModel.hideChat(chat.userId)
@@ -335,3 +335,140 @@ fun ChatsScreenModern(
 /**
  * Вкладка зі списком чатів та pull-to-refresh
  */
+ */
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun ChatListTab(
+    chats: List<Chat>,
+    isLoading: Boolean,
+    uiStyle: UIStyle,
+    onRefresh: () -> Unit,
+    onChatClick: (Chat) -> Unit,
+    onChatLongPress: (Chat) -> Unit
+) {
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isLoading,
+        onRefresh = onRefresh
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        if (chats.isEmpty() && !isLoading) {
+            // Порожній стан
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Немає чатів",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(chats, key = { it.id }) { chat ->
+                    when (uiStyle) {
+                        UIStyle.TELEGRAM -> {
+                            TelegramChatItem(
+                                chat = chat,
+                                onClick = { onChatClick(chat) },
+                                onLongPress = { onChatLongPress(chat) }
+                            )
+                        }
+                        UIStyle.WORLDMATES -> {
+                            ModernChatCard(
+                                chat = chat,
+                                onClick = { onChatClick(chat) },
+                                onLongPress = { onChatLongPress(chat) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Pull-to-refresh індикатор
+        PullRefreshIndicator(
+            refreshing = isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
+}
+
+/**
+ * Вкладка зі списком груп та pull-to-refresh
+ */
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun GroupListTab(
+    groups: List<Group>,
+    isLoading: Boolean,
+    uiStyle: UIStyle,
+    onRefresh: () -> Unit,
+    onGroupClick: (Group) -> Unit,
+    onGroupLongPress: (Group) -> Unit
+) {
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isLoading,
+        onRefresh = onRefresh
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        if (groups.isEmpty() && !isLoading) {
+            // Порожній стан
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Немає груп",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(groups, key = { it.id }) { group ->
+                    when (uiStyle) {
+                        UIStyle.TELEGRAM -> {
+                            TelegramGroupItem(
+                                group = group,
+                                onClick = { onGroupClick(group) },
+                                onLongPress = { onGroupLongPress(group) }
+                            )
+                        }
+                        UIStyle.WORLDMATES -> {
+                            ModernGroupCard(
+                                group = group,
+                                onClick = { onGroupClick(group) },
+                                onLongPress = { onGroupLongPress(group) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Pull-to-refresh індикатор
+        PullRefreshIndicator(
+            refreshing = isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
+}

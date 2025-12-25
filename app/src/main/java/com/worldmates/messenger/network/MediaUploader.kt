@@ -245,24 +245,28 @@ class MediaUploader(private val context: Context) {
             Constants.MESSAGE_TYPE_IMAGE -> {
                 RetrofitClient.apiService.uploadImage(
                     accessToken = accessToken,
+                    serverKey = com.worldmates.messenger.data.Constants.SERVER_KEY,
                     image = filePart
                 )
             }
             Constants.MESSAGE_TYPE_VIDEO -> {
                 RetrofitClient.apiService.uploadVideo(
                     accessToken = accessToken,
+                    serverKey = com.worldmates.messenger.data.Constants.SERVER_KEY,
                     video = filePart
                 )
             }
             Constants.MESSAGE_TYPE_AUDIO, Constants.MESSAGE_TYPE_VOICE -> {
                 RetrofitClient.apiService.uploadAudio(
                     accessToken = accessToken,
+                    serverKey = com.worldmates.messenger.data.Constants.SERVER_KEY,
                     audio = filePart
                 )
             }
             else -> {
                 RetrofitClient.apiService.uploadFile(
                     accessToken = accessToken,
+                    serverKey = com.worldmates.messenger.data.Constants.SERVER_KEY,
                     file = filePart
                 )
             }

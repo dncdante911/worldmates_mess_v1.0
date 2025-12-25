@@ -369,6 +369,7 @@ interface WorldMatesApi {
     @POST("/xhr/upload_image.php")
     suspend fun uploadImage(
         @Query("access_token") accessToken: String,
+        @Query("server_key") serverKey: String,
         @Query("f") f: String = "upload_image",
         @Part image: MultipartBody.Part
     ): XhrUploadResponse
@@ -377,6 +378,7 @@ interface WorldMatesApi {
     @POST("/xhr/upload_video.php")
     suspend fun uploadVideo(
         @Query("access_token") accessToken: String,
+        @Query("server_key") serverKey: String,
         @Query("f") f: String = "upload_video",
         @Part video: MultipartBody.Part
     ): XhrUploadResponse
@@ -385,6 +387,7 @@ interface WorldMatesApi {
     @POST("/xhr/upload_audio.php")
     suspend fun uploadAudio(
         @Query("access_token") accessToken: String,
+        @Query("server_key") serverKey: String,
         @Query("f") f: String = "upload_audio",
         @Part audio: MultipartBody.Part
     ): XhrUploadResponse
@@ -393,6 +396,7 @@ interface WorldMatesApi {
     @POST("/xhr/upload_file.php")
     suspend fun uploadFile(
         @Query("access_token") accessToken: String,
+        @Query("server_key") serverKey: String,
         @Query("f") f: String = "upload_file",
         @Part file: MultipartBody.Part
     ): XhrUploadResponse

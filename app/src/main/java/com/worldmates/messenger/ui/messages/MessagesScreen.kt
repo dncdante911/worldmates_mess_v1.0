@@ -680,18 +680,22 @@ fun MessageBubbleComposable(
                 // 1. Сначала пытаемся использовать decryptedMediaUrl
                 if (!message.decryptedMediaUrl.isNullOrEmpty()) {
                     effectiveMediaUrl = message.decryptedMediaUrl
+                    android.util.Log.d("MessagesScreen", "📎 Media from decryptedMediaUrl: $effectiveMediaUrl")
                 }
                 // 2. Если пусто, проверяем mediaUrl
                 else if (!message.mediaUrl.isNullOrEmpty()) {
                     effectiveMediaUrl = message.mediaUrl
+                    android.util.Log.d("MessagesScreen", "📎 Media from mediaUrl: $effectiveMediaUrl")
                 }
                 // 3. Если все еще пусто, пытаемся извлечь URL из decryptedText
                 else if (!message.decryptedText.isNullOrEmpty()) {
                     effectiveMediaUrl = extractMediaUrlFromText(message.decryptedText!!)
+                    android.util.Log.d("MessagesScreen", "📎 Media extracted from text: $effectiveMediaUrl")
                 }
 
                 // Определяем тип медиа по URL
                 val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
+                android.util.Log.d("MessagesScreen", "🎭 Message ${message.id}: type=${message.type}, detectedType=$detectedMediaType, url=$effectiveMediaUrl")
 
                 // Показываем текст ТОЛЬКО если:
                 // 1. Текст есть И не пустой

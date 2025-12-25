@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.Constants
-import com.worldmates.messenger.data.session.UserSession
+import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.model.MessageReaction
 import com.worldmates.messenger.data.model.ReactionGroup

@@ -7,7 +7,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.worldmates.messenger.data.model.Sticker
 import com.worldmates.messenger.data.model.StickerPack
-import com.worldmates.messenger.data.session.UserSession
+import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

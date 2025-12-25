@@ -851,7 +851,7 @@ fun MessageBubbleComposable(
                     if (isOwn) {
                         Spacer(modifier = Modifier.width(4.dp))
                         MessageStatusIcon(
-                            isRead = message.is_read ?: false,
+                            isRead = message.isRead ?: false,
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
@@ -1660,5 +1660,4 @@ private fun isImageUrl(url: String): Boolean {
            lowerUrl.contains("image") ||
            lowerUrl.contains("/img/") ||
            lowerUrl.contains("/images/")
-}
 }

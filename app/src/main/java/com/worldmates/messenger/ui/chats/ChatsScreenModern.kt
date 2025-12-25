@@ -112,9 +112,10 @@ fun ChatsScreenModern(
             // FAB для створення групи (тільки на вкладці "Групи")
             if (pagerState.currentPage == 1) {
                 ExpressiveFAB(
-                    onClick = { showCreateGroupDialog = true },
-                    icon = Icons.Default.Add
-                )
+                    onClick = { showCreateGroupDialog = true }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Створити групу")
+                }
             }
         }
     ) { paddingValues ->

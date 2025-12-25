@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -206,7 +208,7 @@ fun TelegramGroupItem(
         // Індикатор типу групи
         if (group.isPrivate) {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.Lock,
+                imageVector = Icons.Filled.Lock,
                 contentDescription = "Приватна група",
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 modifier = Modifier.size(20.dp)

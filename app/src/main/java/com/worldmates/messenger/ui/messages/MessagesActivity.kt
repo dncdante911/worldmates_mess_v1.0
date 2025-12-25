@@ -80,30 +80,8 @@ class MessagesActivity : AppCompatActivity() {
 
     @Composable
     private fun MessagesScreenWrapper() {
-        // Launchers для вибору файлів
-        val imagePickerLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
-        ) { uri: Uri? ->
-            uri?.let {
-                val file = fileManager.copyUriToCache(it)
-                if (file != null) {
-                    viewModel.uploadAndSendMedia(file, "image")
-                }
-            }
-        }
-
-        val videoPickerLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
-        ) { uri: Uri? ->
-            uri?.let {
-                val file = fileManager.copyUriToCache(it)
-                if (file != null) {
-                    viewModel.uploadAndSendMedia(file, "video")
-                }
-            }
-        }
-
         // Використовуємо новий MessagesScreen з Phase 2 функціями
+        // Launchers тепер створюються всередині MessagesScreen
         MessagesScreen(
             viewModel = viewModel,
             fileManager = fileManager,
@@ -112,9 +90,7 @@ class MessagesActivity : AppCompatActivity() {
             recipientName = recipientName,
             recipientAvatar = recipientAvatar,
             isGroup = isGroup,
-            onBackPressed = { finish() },
-            onImageSelected = { imagePickerLauncher.launch("image/*") },
-            onVideoSelected = { videoPickerLauncher.launch("video/*") }
+            onBackPressed = { finish() }
         )
     }
 

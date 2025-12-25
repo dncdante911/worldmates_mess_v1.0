@@ -71,9 +71,7 @@ fun MessagesScreen(
     recipientName: String,
     recipientAvatar: String,
     isGroup: Boolean,
-    onBackPressed: () -> Unit,
-    onImageSelected: (Uri) -> Unit,
-    onVideoSelected: (Uri) -> Unit
+    onBackPressed: () -> Unit
 ) {
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -141,13 +139,29 @@ fun MessagesScreen(
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { onImageSelected(it) }
+        uri?.let {
+            Log.d("MessagesScreen", "Вибрано зображення: $it")
+            val file = fileManager.copyUriToCache(it)
+            if (file != null) {
+                viewModel.uploadAndSendMedia(file, "image")
+            } else {
+                Log.e("MessagesScreen", "Не вдалося скопіювати зображення")
+            }
+        }
     }
 
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { onVideoSelected(it) }
+        uri?.let {
+            Log.d("MessagesScreen", "Вибрано відео: $it")
+            val file = fileManager.copyUriToCache(it)
+            if (file != null) {
+                viewModel.uploadAndSendMedia(file, "video")
+            } else {
+                Log.e("MessagesScreen", "Не вдалося скопіювати відео")
+            }
+        }
     }
 
     val audioPickerLauncher = rememberLauncherForActivityResult(

@@ -89,6 +89,7 @@ fun MessagesScreen(
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
     var replyToMessage by remember { mutableStateOf<Message?>(null) }
+    var editingMessage by remember { mutableStateOf<Message?>(null) }
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
@@ -370,6 +371,12 @@ fun MessagesScreen(
                     showContextMenu = false
                     selectedMessage = null
                 },
+                onEdit = { message ->
+                    editingMessage = message
+                    messageText = message.decryptedText ?: ""
+                    showContextMenu = false
+                    selectedMessage = null
+                },
                 onForward = { message ->
                     // TODO: Implement forward to another chat
                     android.widget.Toast.makeText(
@@ -416,6 +423,15 @@ fun MessagesScreen(
             onCancelReply = { replyToMessage = null }
         )
 
+        // Edit Indicator
+        EditIndicator(
+            editingMessage = editingMessage,
+            onCancelEdit = {
+                editingMessage = null
+                messageText = ""
+            }
+        )
+
         // 🎵 Мінімізований аудіо плеєр
         if (showMiniPlayer) {
             MiniAudioPlayer(
@@ -448,9 +464,17 @@ fun MessagesScreen(
             onMessageChange = { messageText = it },
             onSendClick = {
                 if (messageText.isNotBlank()) {
-                    viewModel.sendMessage(messageText, replyToMessage?.id)
-                    messageText = ""
-                    replyToMessage = null  // Очищаємо reply після відправки
+                    if (editingMessage != null) {
+                        // Редагуємо повідомлення
+                        viewModel.editMessage(editingMessage!!.id, messageText)
+                        messageText = ""
+                        editingMessage = null
+                    } else {
+                        // Надсилаємо нове повідомлення
+                        viewModel.sendMessage(messageText, replyToMessage?.id)
+                        messageText = ""
+                        replyToMessage = null  // Очищаємо reply після відправки
+                    }
                 }
             },
             isLoading = isLoading,
@@ -908,18 +932,18 @@ fun MessageBubbleComposable(
                 if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "image") {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 150.dp, max = 250.dp)
+                            .wrapContentWidth()  // Адаптується під розмір зображення
+                            .widthIn(max = 250.dp)  // Максимальна ширина для зображень
+                            .heightIn(min = 120.dp, max = 300.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .padding(top = if (shouldShowText) 6.dp else 0.dp)
                             .background(Color.Black.copy(alpha = 0.1f))
+                            .clickable { onImageClick(effectiveMediaUrl) }
                     ) {
                         AsyncImage(
                             model = effectiveMediaUrl,
                             contentDescription = "Media",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { onImageClick(effectiveMediaUrl) },
+                            modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop,
                             onError = {
                                 Log.e("MessageBubble", "Помилка завантаження зображення: $effectiveMediaUrl, error: ${it.result.throwable}")
@@ -933,7 +957,8 @@ fun MessageBubbleComposable(
                     InlineVideoPlayer(
                         videoUrl = effectiveMediaUrl,
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .wrapContentWidth()
+                            .widthIn(max = 250.dp)
                             .padding(top = if (shouldShowText) 8.dp else 0.dp),
                         onFullscreenClick = {
                             // Відкриваємо повноекранний плеєр
@@ -1051,49 +1076,78 @@ fun VoiceMessagePlayer(
     val currentPosition by voicePlayer.currentPosition.collectAsState()
     val duration by voicePlayer.duration.collectAsState()
     val scope = rememberCoroutineScope()
+    val colorScheme = MaterialTheme.colorScheme
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    // Компактний аудіо плеєр в стилі Telegram
+    Surface(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
+            .wrapContentWidth()
+            .widthIn(min = 200.dp, max = 240.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = textColor.copy(alpha = 0.1f)
     ) {
-        IconButton(
-            onClick = {
-                scope.launch {
-                    if (playbackState == VoicePlayer.PlaybackState.Playing) {
-                        voicePlayer.pause()
-                    } else {
-                        voicePlayer.play(mediaUrl)
-                    }
-                }
-            },
-            modifier = Modifier.size(32.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
-            Icon(
-                imageVector = if (playbackState == VoicePlayer.PlaybackState.Playing)
-                    Icons.Default.Pause else Icons.Default.PlayArrow,
-                contentDescription = "Play",
-                tint = textColor,
-                modifier = Modifier.size(20.dp)
+            // Кнопка відтворення
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = colorScheme.primary
+            ) {
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            if (playbackState == VoicePlayer.PlaybackState.Playing) {
+                                voicePlayer.pause()
+                            } else {
+                                voicePlayer.play(mediaUrl)
+                            }
+                        }
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (playbackState == VoicePlayer.PlaybackState.Playing)
+                            Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Прогрес + час
+            Column(modifier = Modifier.weight(1f)) {
+                // Слайдер прогресу
+                Slider(
+                    value = if (duration > 0) currentPosition.toFloat() else 0f,
+                    onValueChange = { voicePlayer.seek(it.toLong()) },
+                    valueRange = 0f..(duration.toFloat().coerceAtLeast(1f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = colorScheme.primary,
+                        activeTrackColor = colorScheme.primary,
+                        inactiveTrackColor = textColor.copy(alpha = 0.2f)
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            // Час
+            Text(
+                text = voicePlayer.formatTime(if (currentPosition > 0) currentPosition else duration),
+                color = textColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
             )
         }
-
-        Slider(
-            value = currentPosition.toFloat(),
-            onValueChange = { voicePlayer.seek(it.toLong()) },
-            valueRange = 0f..duration.toFloat(),
-            modifier = Modifier
-                .weight(1f)
-                .height(4.dp)
-        )
-
-        Text(
-            text = voicePlayer.formatTime(duration),
-            color = textColor,
-            fontSize = 10.sp,
-            modifier = Modifier.padding(start = 4.dp)
-        )
     }
 }
 
@@ -1536,7 +1590,7 @@ private fun isOnlyMediaUrl(text: String): Boolean {
 }
 
 /**
- * Контекстне меню для повідомлень (Reply, Forward, Delete, Copy)
+ * Контекстне меню для повідомлень (Reply, Edit, Forward, Delete, Copy)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1544,6 +1598,7 @@ fun MessageContextMenu(
     message: Message,
     onDismiss: () -> Unit,
     onReply: (Message) -> Unit,
+    onEdit: (Message) -> Unit,
     onForward: (Message) -> Unit,
     onDelete: (Message) -> Unit,
     onCopy: (Message) -> Unit
@@ -1577,6 +1632,15 @@ fun MessageContextMenu(
                 text = "Відповісти",
                 onClick = { onReply(message) }
             )
+
+            // Edit (тільки для своїх текстових повідомлень)
+            if (message.fromId == UserSession.userId && !message.decryptedText.isNullOrEmpty()) {
+                ContextMenuItem(
+                    icon = Icons.Default.Edit,
+                    text = "Редагувати",
+                    onClick = { onEdit(message) }
+                )
+            }
 
             // Forward
             ContextMenuItem(
@@ -1698,6 +1762,72 @@ fun ReplyIndicator(
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Скасувати відповідь",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Індикатор повідомлення, яке редагується
+ */
+@Composable
+fun EditIndicator(
+    editingMessage: Message?,
+    onCancelEdit: () -> Unit
+) {
+    if (editingMessage != null) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            color = Color(0xFFFFF3E0), // Помаранчевий відтінок для редагування
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(40.dp)
+                        .background(
+                            Color(0xFFFF9800), // Помаранчевий
+                            RoundedCornerShape(2.dp)
+                        )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Редагування",
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Редагування повідомлення",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color(0xFFFF9800)
+                        )
+                    }
+                    Text(
+                        text = editingMessage.decryptedText ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+                IconButton(onClick = onCancelEdit) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Скасувати редагування",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

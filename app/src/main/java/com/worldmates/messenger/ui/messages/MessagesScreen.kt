@@ -675,33 +675,29 @@ fun MessageBubbleComposable(
                 )
             ) {
                 // Получаем URL медиа из разных источников
-                // 1. Сначала пытаемся использовать decryptedMediaUrl
-                var effectiveMediaUrl = message.decryptedMediaUrl
+                var effectiveMediaUrl: String? = null
 
+                // 1. Сначала пытаемся использовать decryptedMediaUrl
+                if (!message.decryptedMediaUrl.isNullOrEmpty()) {
+                    effectiveMediaUrl = message.decryptedMediaUrl
+                }
                 // 2. Если пусто, проверяем mediaUrl
-                if (effectiveMediaUrl.isNullOrEmpty()) {
+                else if (!message.mediaUrl.isNullOrEmpty()) {
                     effectiveMediaUrl = message.mediaUrl
                 }
-
                 // 3. Если все еще пусто, пытаемся извлечь URL из decryptedText
-                if (effectiveMediaUrl.isNullOrEmpty() && !message.decryptedText.isNullOrEmpty()) {
+                else if (!message.decryptedText.isNullOrEmpty()) {
                     effectiveMediaUrl = extractMediaUrlFromText(message.decryptedText!!)
                 }
 
-                // Определяем тип медиа по URL (для случаев, когда message.type == "text")
+                // Определяем тип медиа по URL
                 val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
 
-                // Визначаємо чи це медіа повідомлення
-                val isMediaMessage = !effectiveMediaUrl.isNullOrEmpty() &&
-                    detectedMediaType in listOf("image", "video", "audio", "voice", "file")
-
-                // Показываем текст ТІЛЬКИ якщо:
-                // - Є текст
-                // - Текст не пустий
-                // - Це НЕ медіа повідомлення (або текст не є чистим URL)
-                val shouldShowText = message.decryptedText != null &&
-                    message.decryptedText!!.isNotEmpty() &&
-                    (!isMediaMessage || !isOnlyMediaUrl(message.decryptedText!!))
+                // Показываем текст ТОЛЬКО если:
+                // 1. Текст есть И не пустой
+                // 2. И это НЕ чистый URL медиа (текст + медиа можно, чистый URL - нет)
+                val shouldShowText = !message.decryptedText.isNullOrEmpty() &&
+                    !isOnlyMediaUrl(message.decryptedText!!)
 
                 // 💬 Цитата Reply (якщо є)
                 if (message.replyToId != null && message.replyToText != null) {

@@ -37,12 +37,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_23  // JDK 23
-        targetCompatibility JavaVersion.VERSION_23  // JDK 23
+        sourceCompatibility JavaVersion.VERSION_17  // JDK 17 (стабільна версія)
+        targetCompatibility JavaVersion.VERSION_17  // JDK 17 (стабільна версія)
     }
 
     kotlinOptions {
-        jvmTarget = '23'  // JDK 23
+        jvmTarget = '17'  // JDK 17 (стабільна версія)
     }
 
     buildFeatures {

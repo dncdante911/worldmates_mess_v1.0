@@ -149,7 +149,7 @@ fun ChatsScreenModern(
                 actions = {
                     // Пошук користувачів/груп
                     ExpressiveIconButton(onClick = { showSearchDialog = true }) {
-                        Icon(Icons.Default.Search, contentDescription = "Пошук")
+                        Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "Пошук")
                     }
                     // Налаштування (залишаємо для швидкого доступу)
                     ExpressiveIconButton(onClick = onSettingsClick) {
@@ -311,21 +311,18 @@ fun ChatsScreenModern(
 
     // User Search Dialog
     if (showSearchDialog) {
-        com.worldmates.messenger.ui.search.UserSearchDialog(
+        UserSearchDialogForChats(
             onDismiss = { showSearchDialog = false },
             onUserClick = { user ->
                 showSearchDialog = false
                 onChatClick(
                     Chat(
+                        id = 0,
                         userId = user.userId,
                         username = user.username,
-                        name = user.name,
-                        avatar = user.avatar ?: "",
-                        lastMessage = "",
-                        lastMessageTime = 0L,
-                        unreadCount = 0,
-                        isOnline = user.isOnline,
-                        lastSeen = user.lastSeen
+                        avatarUrl = user.avatarUrl,
+                        lastMessage = null,
+                        unreadCount = 0
                     )
                 )
             }
@@ -499,4 +496,106 @@ fun GroupListTab(
             modifier = Modifier.align(Alignment.TopCenter)
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserSearchDialogForChats(
+    onDismiss: () -> Unit,
+    onUserClick: (com.worldmates.messenger.network.SearchUser) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<com.worldmates.messenger.network.SearchUser>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Пошук користувачів") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+            ) {
+                // Search field
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { 
+                        searchQuery = it
+                        if (it.length >= 2) {
+                            coroutineScope.launch {
+                                isSearching = true
+                                errorMessage = null
+                                try {
+                                    val response = com.worldmates.messenger.network.RetrofitClient.apiService.searchUsers(
+                                        accessToken = com.worldmates.messenger.data.UserSession.accessToken ?: "",
+                                        query = it,
+                                        limit = 20
+                                    )
+                                    searchResults = response.users ?: emptyList()
+                                } catch (e: Exception) {
+                                    errorMessage = "Помилка пошуку: ${e.message}"
+                                } finally {
+                                    isSearching = false
+                                }
+                            }
+                        } else {
+                            searchResults = emptyList()
+                        }
+                    },
+                    placeholder = { Text("Введіть ім'я або username") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Loading indicator
+                if (isSearching) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                // Error message
+                errorMessage?.let { error ->
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                // Search results
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(searchResults) { user ->
+                        ListItem(
+                            headlineContent = { Text(user.name ?: user.username) },
+                            supportingContent = { Text("@${user.username}") },
+                            leadingContent = {
+                                AsyncImage(
+                                    model = user.avatarUrl,
+                                    contentDescription = user.username,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            },
+                            modifier = Modifier.clickable { onUserClick(user) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрити")
+            }
+        }
+    )
 }

@@ -761,8 +761,9 @@ fun MessageBubbleComposable(
             Column {
             Card(
             modifier = Modifier
-                .widthIn(max = 260.dp)  // Компактна ширина в стилі Telegram
-                .padding(horizontal = 8.dp)
+                .wrapContentWidth()  // Адаптивна ширина під контент
+                .widthIn(min = 60.dp, max = 280.dp)  // Мін/макс ширина як в Telegram
+                .padding(horizontal = 16.dp)  // Більший відступ з боків
                 .combinedClickable(
                     onClick = { },
                     onLongClick = { showReactionPicker = true }
@@ -801,18 +802,22 @@ fun MessageBubbleComposable(
                 // 1. Сначала пытаемся использовать decryptedMediaUrl
                 if (!message.decryptedMediaUrl.isNullOrEmpty()) {
                     effectiveMediaUrl = message.decryptedMediaUrl
+                    Log.d("MessageBubble", "Використовую decryptedMediaUrl: $effectiveMediaUrl")
                 }
                 // 2. Если пусто, проверяем mediaUrl
                 else if (!message.mediaUrl.isNullOrEmpty()) {
                     effectiveMediaUrl = message.mediaUrl
+                    Log.d("MessageBubble", "Використовую mediaUrl: $effectiveMediaUrl")
                 }
                 // 3. Если все еще пусто, пытаемся извлечь URL из decryptedText
                 else if (!message.decryptedText.isNullOrEmpty()) {
                     effectiveMediaUrl = extractMediaUrlFromText(message.decryptedText!!)
+                    Log.d("MessageBubble", "Витягнуто з тексту: $effectiveMediaUrl")
                 }
 
                 // Определяем тип медиа по URL
                 val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
+                Log.d("MessageBubble", "ID повідомлення: ${message.id}, Тип: ${message.type}, Визначений тип: $detectedMediaType, URL: $effectiveMediaUrl")
 
                 // Показываем текст ТОЛЬКО если:
                 // 1. Текст есть И не пустой
@@ -876,17 +881,26 @@ fun MessageBubbleComposable(
 
                 // Image - показываем если тип "image" или если URL указывает на изображение
                 if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "image") {
-                    AsyncImage(
-                        model = effectiveMediaUrl,
-                        contentDescription = "Media",
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 180.dp)  // Компактніше
-                            .clip(RoundedCornerShape(8.dp))
-                            .padding(top = if (shouldShowText) 4.dp else 0.dp)  // Менший відступ
-                            .clickable { onImageClick(effectiveMediaUrl) },
-                        contentScale = ContentScale.Crop
-                    )
+                            .heightIn(min = 150.dp, max = 250.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .padding(top = if (shouldShowText) 6.dp else 0.dp)
+                            .background(Color.Black.copy(alpha = 0.1f))
+                    ) {
+                        AsyncImage(
+                            model = effectiveMediaUrl,
+                            contentDescription = "Media",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable { onImageClick(effectiveMediaUrl) },
+                            contentScale = ContentScale.Crop,
+                            onError = {
+                                Log.e("MessageBubble", "Помилка завантаження зображення: $effectiveMediaUrl, error: ${it.result.throwable}")
+                            }
+                        )
+                    }
                 }
 
                 // Video - інлайн плеєр
@@ -1361,44 +1375,68 @@ private fun formatTime(timestamp: Long): String {
  * Иначе определяем по расширению файла или пути в URL.
  */
 private fun detectMediaType(url: String?, messageType: String): String {
-    // Если тип явно указан и это не "text", используем его
-    if (messageType != "text" && messageType.isNotEmpty()) {
-        return messageType
-    }
-
-    // Если URL пустой, возвращаем "text"
+    // Если URL пустой, используем тип сообщения
     if (url.isNullOrEmpty()) {
-        return "text"
+        Log.d("detectMediaType", "URL пустий, тип повідомлення: $messageType")
+        return if (messageType.isNotEmpty() && messageType != "text") messageType else "text"
     }
 
     val lowerUrl = url.lowercase()
+    Log.d("detectMediaType", "Аналіз URL: $lowerUrl, тип повідомлення: $messageType")
 
-    // Определяем по расширению файла
-    return when {
+    // Спочатку перевіряємо за шляхом (найнадійніше)
+    val typeByPath = when {
+        lowerUrl.contains("/upload/photos/") || lowerUrl.contains("/upload/images/") -> "image"
+        lowerUrl.contains("/upload/videos/") -> "video"
+        lowerUrl.contains("/upload/sounds/") || lowerUrl.contains("/upload/audio/") -> "audio"
+        lowerUrl.contains("/upload/files/") -> "file"
+        else -> null
+    }
+
+    if (typeByPath != null) {
+        Log.d("detectMediaType", "Визначено за шляхом: $typeByPath")
+        return typeByPath
+    }
+
+    // Потім перевіряємо за розширенням
+    val typeByExtension = when {
         // Изображения
         lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
         lowerUrl.endsWith(".png") || lowerUrl.endsWith(".gif") ||
-        lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".bmp") ||
-        lowerUrl.contains("/upload/photos/") -> "image"
+        lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".bmp") -> "image"
 
         // Видео
         lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".webm") ||
         lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".avi") ||
-        lowerUrl.endsWith(".mkv") || lowerUrl.contains("/upload/videos/") -> "video"
+        lowerUrl.endsWith(".mkv") || lowerUrl.endsWith(".3gp") -> "video"
 
         // Аудио/Голос
         lowerUrl.endsWith(".mp3") || lowerUrl.endsWith(".wav") ||
         lowerUrl.endsWith(".ogg") || lowerUrl.endsWith(".m4a") ||
-        lowerUrl.endsWith(".aac") || lowerUrl.contains("/upload/sounds/") -> "audio"
+        lowerUrl.endsWith(".aac") || lowerUrl.endsWith(".opus") -> "audio"
 
         // Файлы
         lowerUrl.endsWith(".pdf") || lowerUrl.endsWith(".doc") ||
         lowerUrl.endsWith(".docx") || lowerUrl.endsWith(".xls") ||
         lowerUrl.endsWith(".xlsx") || lowerUrl.endsWith(".zip") ||
-        lowerUrl.endsWith(".rar") || lowerUrl.contains("/upload/files/") -> "file"
+        lowerUrl.endsWith(".rar") || lowerUrl.endsWith(".txt") -> "file"
 
-        else -> "text"
+        else -> null
     }
+
+    if (typeByExtension != null) {
+        Log.d("detectMediaType", "Визначено за розширенням: $typeByExtension")
+        return typeByExtension
+    }
+
+    // Якщо нічого не знайшли, використовуємо messageType
+    if (messageType.isNotEmpty() && messageType != "text") {
+        Log.d("detectMediaType", "Використовую тип повідомлення: $messageType")
+        return messageType
+    }
+
+    Log.d("detectMediaType", "Не вдалося визначити тип, повертаю 'text'")
+    return "text"
 }
 
 /**

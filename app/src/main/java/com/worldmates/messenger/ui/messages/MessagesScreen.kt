@@ -1171,11 +1171,6 @@ fun VoiceMessagePlayer(
 }
 
 @Composable
-/**
- * Telegram-style MessageInputBar
- * Одна кнопка для всіх опцій: медіа, емоджі, стікери
- */
-@Composable
 fun MessageInputBar(
     messageText: String,
     onMessageChange: (String) -> Unit,

@@ -79,6 +79,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.worldmates.messenger.ui.preferences.BubbleStyle
+import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
+import com.worldmates.messenger.ui.preferences.UIStylePreferences
 
 /**
  * Готові фонові градієнти для чатів
@@ -214,6 +217,11 @@ fun ThemeSettingsScreen(
             // Секция выбора стиля интерфейса (WorldMates/Telegram)
             item {
                 UIStyleSection()
+            }
+
+            // Секция выбора стиля бульбашок
+            item {
+                BubbleStyleSection()
             }
 
             // Сетка вариантов тем
@@ -928,6 +936,161 @@ fun UIStyleSection() {
                         text = "Мінімалістичний список у стилі Telegram",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 🎨 Секція для вибору стилю бульбашок повідомлень
+ */
+@Composable
+fun BubbleStyleSection() {
+    val context = LocalContext.current
+    val currentBubbleStyle = rememberBubbleStyle()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "🎨 Стиль бульбашок",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                text = "Оберіть дизайн бульбашок повідомлень",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Сітка з 6 стилями бульбашок
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.height(400.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(BubbleStyle.values()) { style ->
+                    BubbleStyleCard(
+                        bubbleStyle = style,
+                        isSelected = style == currentBubbleStyle,
+                        onClick = {
+                            UIStylePreferences.setBubbleStyle(context, style)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 💬 Карточка для вибору стилю бульбашки
+ */
+@Composable
+fun BubbleStyleCard(
+    bubbleStyle: BubbleStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.05f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        animationSpec = tween(300),
+        label = "borderColor"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .border(
+                width = if (isSelected) 3.dp else 0.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(
+                onClick = onClick,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 8.dp else 4.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Іконка стилю
+            Text(
+                text = bubbleStyle.icon,
+                fontSize = 32.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Назва стилю
+            Text(
+                text = bubbleStyle.displayName,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+
+            // Опис стилю
+            Text(
+                text = bubbleStyle.description,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Індикатор вибору
+            if (isSelected) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Вибрано",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Вибрано",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

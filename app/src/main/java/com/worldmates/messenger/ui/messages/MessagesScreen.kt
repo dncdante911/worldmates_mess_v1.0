@@ -834,7 +834,7 @@ fun MessageBubbleComposable(
                 .padding(horizontal = 16.dp)  // Більший відступ з боків
                 .combinedClickable(
                     onClick = { },
-                    onLongClick = { showReactionPicker = true }
+                    onLongClick = onLongPress  // ✅ ВИКЛИКАЄМО CALLBACK ДЛЯ КОНТЕКСТНОГО МЕНЮ!
                 ),
             shape = if (isOwn) {
                 RoundedCornerShape(

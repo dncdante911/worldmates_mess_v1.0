@@ -531,10 +531,10 @@ fun ChatsScreen(
                     showContactMenu = false
                     selectedChat = null
                 },
-                onRename = { chat ->
+                onRename = { chat: Chat ->
                     // Діалог відкривається всередині ContactContextMenu
                 },
-                onDelete = { chat ->
+                onDelete = { chat: Chat ->
                     showContactMenu = false
                     // Видалити чат локально (приховати)
                     scope.launch {
@@ -1272,7 +1272,7 @@ fun ContactContextMenu(
                 showRenameDialog = false
                 onDismiss()
             },
-            onSave = { nickname ->
+            onSave = { nickname: String? ->
                 scope.launch {
                     nicknameRepository.setNickname(chat.userId, nickname)
                     showRenameDialog = false

@@ -323,6 +323,43 @@ interface WorldMatesApi {
         @Field("pack_id") packId: Long
     ): EmojiPackDetailResponse
 
+    // ==================== STICKERS ====================
+
+    @GET("?type=get_sticker_packs")
+    suspend fun getStickerPacks(
+        @Query("access_token") accessToken: String
+    ): StickerPacksResponse
+
+    @GET("?type=get_sticker_pack")
+    suspend fun getStickerPack(
+        @Query("access_token") accessToken: String,
+        @Query("pack_id") packId: Long
+    ): StickerPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=activate_sticker_pack")
+    suspend fun activateStickerPack(
+        @Query("access_token") accessToken: String,
+        @Field("pack_id") packId: Long
+    ): StickerPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=deactivate_sticker_pack")
+    suspend fun deactivateStickerPack(
+        @Query("access_token") accessToken: String,
+        @Field("pack_id") packId: Long
+    ): StickerPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=send_sticker")
+    suspend fun sendSticker(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") recipientId: Long? = null,
+        @Field("group_id") groupId: Long? = null,
+        @Field("sticker_id") stickerId: Long,
+        @Field("message_hash_id") messageHashId: String
+    ): MessageResponse
+
     // ==================== MEDIA UPLOAD ====================
 
     // XHR Upload endpoints (используются для загрузки файлов на сервер)

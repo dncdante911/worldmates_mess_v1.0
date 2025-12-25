@@ -81,6 +81,7 @@ fun MessagesScreen(
     var messageText by remember { mutableStateOf("") }
     var showMediaOptions by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
+    var showStickerPicker by remember { mutableStateOf(false) }
     var isCurrentlyTyping by remember { mutableStateOf(false) }
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -417,8 +418,21 @@ fun MessagesScreen(
             onPickFile = { filePickerLauncher.launch("*/*") },
             showMediaOptions = showMediaOptions,
             showEmojiPicker = showEmojiPicker,
-            onToggleEmojiPicker = { showEmojiPicker = !showEmojiPicker }
+            onToggleEmojiPicker = { showEmojiPicker = !showEmojiPicker },
+            showStickerPicker = showStickerPicker,
+            onToggleStickerPicker = { showStickerPicker = !showStickerPicker }
         )
+
+        // 🎭 Sticker Picker
+        if (showStickerPicker) {
+            com.worldmates.messenger.ui.components.StickerPicker(
+                onStickerSelected = { sticker ->
+                    viewModel.sendSticker(sticker.id)
+                    showStickerPicker = false
+                },
+                onDismiss = { showStickerPicker = false }
+            )
+        }
         }  // Кінець Column
     }  // Кінець Box
 }
@@ -934,7 +948,9 @@ fun MessageInputBar(
     onPickFile: () -> Unit,
     showMediaOptions: Boolean,
     showEmojiPicker: Boolean,
-    onToggleEmojiPicker: () -> Unit
+    onToggleEmojiPicker: () -> Unit,
+    showStickerPicker: Boolean,
+    onToggleStickerPicker: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -1045,6 +1061,15 @@ fun MessageInputBar(
                     Icon(
                         imageVector = if (showEmojiPicker) Icons.Default.KeyboardArrowDown else Icons.Default.EmojiEmotions,
                         contentDescription = "Emoji",
+                        tint = colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // 🎭 Кнопка стікерів
+                IconButton(onClick = onToggleStickerPicker) {
+                    Icon(
+                        imageVector = if (showStickerPicker) Icons.Default.KeyboardArrowDown else Icons.Default.StickyNote2,
+                        contentDescription = "Stickers",
                         tint = colorScheme.onSurfaceVariant
                     )
                 }

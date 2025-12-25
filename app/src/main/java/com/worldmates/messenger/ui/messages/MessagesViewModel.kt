@@ -420,6 +420,55 @@ class MessagesViewModel(application: Application) :
             }
     }
 
+    // ==================== СТІКЕРИ ====================
+
+    /**
+     * Надсилає стікер
+     */
+    fun sendSticker(stickerId: Long) {
+        if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L)) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val messageHashId = java.util.UUID.randomUUID().toString()
+
+                val response = RetrofitClient.apiService.sendSticker(
+                    accessToken = UserSession.accessToken!!,
+                    recipientId = recipientId.takeIf { it != 0L },
+                    groupId = groupId.takeIf { it != 0L },
+                    stickerId = stickerId,
+                    messageHashId = messageHashId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Перезавантажуємо повідомлення
+                    if (groupId != 0L) {
+                        fetchGroupMessages()
+                    } else {
+                        fetchMessages()
+                    }
+
+                    _error.value = null
+                    Log.d("MessagesViewModel", "Стікер надіслано")
+                } else {
+                    _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати стікер"
+                    Log.e("MessagesViewModel", "Send Sticker Error: ${response.errors?.errorText ?: response.errorMessage}")
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e("MessagesViewModel", "Помилка надсилання стікера", e)
+            }
+        }
+    }
+
     /**
      * Загружает и отправляет медиа-файл
      */

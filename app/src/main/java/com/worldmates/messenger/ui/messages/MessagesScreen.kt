@@ -16,9 +16,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
@@ -258,7 +261,20 @@ fun MessagesScreen(
                     .padding(horizontal = 8.dp),
                 reverseLayout = true
             ) {
-                items(messages.reversed()) { message ->
+                items(
+                    items = messages.reversed(),
+                    key = { it.id }
+                ) { message ->
+                    // ✨ Анімація появи повідомлення
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = slideInVertically(
+                            initialOffsetY = { it / 4 }
+                        ) + fadeIn(
+                            initialAlpha = 0.3f
+                        ),
+                        modifier = Modifier.animateItemPlacement()
+                    ) {
                     MessageBubbleComposable(
                         message = message,
                         voicePlayer = voicePlayer,
@@ -280,6 +296,7 @@ fun MessagesScreen(
                             viewModel.toggleReaction(messageId, emoji)
                         }
                     )
+                    }  // Закриття AnimatedVisibility
                 }
             }
 
@@ -1544,6 +1561,20 @@ fun MessageReactions(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             reactions.forEach { reactionGroup ->
+                // ✨ Анімація scale для реакцій
+                var isVisible by remember { mutableStateOf(false) }
+                val scale by animateFloatAsState(
+                    targetValue = if (isVisible) 1f else 0.5f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+
+                LaunchedEffect(Unit) {
+                    isVisible = true
+                }
+
                 Surface(
                     onClick = { onReactionClick(reactionGroup.emoji) },
                     shape = RoundedCornerShape(12.dp),
@@ -1555,7 +1586,12 @@ fun MessageReactions(
                     border = if (reactionGroup.hasMyReaction) {
                         BorderStroke(1.dp, Color(0xFF0084FF))
                     } else null,
-                    modifier = Modifier.height(28.dp)
+                    modifier = Modifier
+                        .height(28.dp)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

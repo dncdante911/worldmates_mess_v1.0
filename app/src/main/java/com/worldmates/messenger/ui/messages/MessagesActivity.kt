@@ -87,7 +87,7 @@ class MessagesActivity : AppCompatActivity() {
             uri?.let {
                 val file = fileManager.copyUriToCache(it)
                 if (file != null) {
-                    viewModel.uploadMediaFile(file, "image")
+                    viewModel.uploadAndSendMedia(file, "image")
                 }
             }
         }
@@ -98,7 +98,7 @@ class MessagesActivity : AppCompatActivity() {
             uri?.let {
                 val file = fileManager.copyUriToCache(it)
                 if (file != null) {
-                    viewModel.uploadMediaFile(file, "video")
+                    viewModel.uploadAndSendMedia(file, "video")
                 }
             }
         }

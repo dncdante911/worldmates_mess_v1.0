@@ -208,11 +208,10 @@ fun MessagesScreen(
         }
     }
 
-    // 🚨🚨🚨 ТЕСТОВИЙ ФОНCHERVONYY! ЯКЩО НЕ БАЧИШ - APK СТАРИЙ! 🚨🚨🚨
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Red)  // 🚨 ЯСКРАВО ЧЕРВОНИЙ ФОН ДЛЯ ТЕСТУ! 🚨
+            .background(MaterialTheme.colorScheme.background)
             .imePadding()
     ) {
         // Застосування фону в залежності від налаштувань
@@ -467,6 +466,7 @@ fun MessagesScreen(
                 },
                 onClose = {
                     voicePlayer.stop()
+                    showMiniPlayer = false  // Закриваємо UI плеєра
                 }
             )
         }
@@ -830,8 +830,8 @@ fun MessageBubbleComposable(
             Card(
             modifier = Modifier
                 .wrapContentWidth()  // Адаптивна ширина під контент
-                .widthIn(min = 60.dp, max = 280.dp)  // Мін/макс ширина як в Telegram
-                .padding(horizontal = 16.dp)  // Більший відступ з боків
+                .widthIn(min = 60.dp, max = 260.dp)  // Компактніша ширина (зменшено з 280dp)
+                .padding(horizontal = 12.dp)  // Менший відступ для більшого простору
                 .combinedClickable(
                     onClick = { },
                     onLongClick = onLongPress  // ✅ ВИКЛИКАЄМО CALLBACK ДЛЯ КОНТЕКСТНОГО МЕНЮ!
@@ -954,10 +954,16 @@ fun MessageBubbleComposable(
                             .wrapContentWidth()  // Адаптується під розмір зображення
                             .widthIn(max = 250.dp)  // Максимальна ширина для зображень
                             .heightIn(min = 120.dp, max = 300.dp)
-                            .clip(RoundedCornerShape(12.dp))
                             .padding(top = if (shouldShowText) 6.dp else 0.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(Color.Black.copy(alpha = 0.1f))
-                            .clickable { onImageClick(effectiveMediaUrl) }
+                            .clickable(
+                                enabled = true,
+                                onClick = {
+                                    Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
+                                    onImageClick(effectiveMediaUrl)
+                                }
+                            )
                     ) {
                         AsyncImage(
                             model = effectiveMediaUrl,

@@ -404,15 +404,7 @@ fun ChatListTab(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(chats, key = { it.id }) { chat ->
-                    // ✨ ЗАВЖДИ використовуємо ModernChatCard з градієнтами та анімаціями
-                    ModernChatCard(
-                        chat = chat,
-                        onClick = { onChatClick(chat) },
-                        onLongPress = { onChatLongPress(chat) }
-                    )
-
-                    // 📝 Старий Telegram стиль (закоментовано, залишено як backup)
-                    /*
+                    // Користувач може вибрати стиль в налаштуваннях
                     when (uiStyle) {
                         UIStyle.TELEGRAM -> {
                             TelegramChatItem(
@@ -429,7 +421,6 @@ fun ChatListTab(
                             )
                         }
                     }
-                    */
                 }
             }
         }
@@ -484,15 +475,7 @@ fun GroupListTab(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(groups, key = { it.id }) { group ->
-                    // ✨ ЗАВЖДИ використовуємо ModernGroupCard з градієнтами та анімаціями
-                    ModernGroupCard(
-                        group = group,
-                        onClick = { onGroupClick(group) },
-                        onLongPress = { onGroupLongPress(group) }
-                    )
-
-                    // 📝 Старий Telegram стиль (закоментовано, залишено як backup)
-                    /*
+                    // Користувач може вибрати стиль в налаштуваннях
                     when (uiStyle) {
                         UIStyle.TELEGRAM -> {
                             TelegramGroupItem(
@@ -509,7 +492,6 @@ fun GroupListTab(
                             )
                         }
                     }
-                    */
                 }
             }
         }

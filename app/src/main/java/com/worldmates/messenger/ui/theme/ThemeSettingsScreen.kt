@@ -209,6 +209,11 @@ fun ThemeSettingsScreen(
                 )
             }
 
+            // Секция выбора стиля интерфейса (WorldMates/Telegram)
+            item {
+                UIStyleSection()
+            }
+
             // Сетка вариантов тем
             item {
                 Column {
@@ -794,5 +799,136 @@ fun PresetBackgroundCard(
                 )
                 .padding(vertical = 4.dp)
         )
+    }
+}
+
+/**
+ * Секція для вибору стилю інтерфейсу
+ */
+@Composable
+fun UIStyleSection() {
+    val context = LocalContext.current
+    val currentStyle = com.worldmates.messenger.ui.preferences.rememberUIStyle()
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Стиль інтерфейсу",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Text(
+                text = "Оберіть стиль відображення чатів та груп",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            // WorldMates стиль
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        com.worldmates.messenger.ui.preferences.UIStylePreferences.setStyle(
+                            context,
+                            com.worldmates.messenger.ui.preferences.UIStyle.WORLDMATES
+                        )
+                    }
+                    .background(
+                        if (currentStyle == com.worldmates.messenger.ui.preferences.UIStyle.WORLDMATES)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surface
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = currentStyle == com.worldmates.messenger.ui.preferences.UIStyle.WORLDMATES,
+                    onClick = {
+                        com.worldmates.messenger.ui.preferences.UIStylePreferences.setStyle(
+                            context,
+                            com.worldmates.messenger.ui.preferences.UIStyle.WORLDMATES
+                        )
+                    }
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "WorldMates",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Картки з градієнтами та анімаціями",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Telegram стиль
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        com.worldmates.messenger.ui.preferences.UIStylePreferences.setStyle(
+                            context,
+                            com.worldmates.messenger.ui.preferences.UIStyle.TELEGRAM
+                        )
+                    }
+                    .background(
+                        if (currentStyle == com.worldmates.messenger.ui.preferences.UIStyle.TELEGRAM)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surface
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = currentStyle == com.worldmates.messenger.ui.preferences.UIStyle.TELEGRAM,
+                    onClick = {
+                        com.worldmates.messenger.ui.preferences.UIStylePreferences.setStyle(
+                            context,
+                            com.worldmates.messenger.ui.preferences.UIStyle.TELEGRAM
+                        )
+                    }
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Telegram",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Мінімалістичний список у стилі Telegram",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }

@@ -331,6 +331,12 @@ fun MessagesScreen(
                         onLongPress = {
                             selectedMessage = message
                             showContextMenu = true
+                            // 🧪 ТЕСТОВЕ ПОВІДОМЛЕННЯ - переконайся що довгий тап працює!
+                            android.widget.Toast.makeText(
+                                context,
+                                "🎯 Довгий тап працює! Меню має відкритись!",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
                         },
                         onImageClick = { imageUrl ->
                             // Знаходимо індекс вибраного фото в списку
@@ -372,6 +378,12 @@ fun MessagesScreen(
                     selectedMessage = null
                 },
                 onEdit = { message ->
+                    // 🧪 ТЕСТОВЕ ПОВІДОМЛЕННЯ
+                    android.widget.Toast.makeText(
+                        context,
+                        "✏️ Редагування розпочато! Текст: ${message.decryptedText?.take(20)}...",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
                     editingMessage = message
                     messageText = message.decryptedText ?: ""
                     showContextMenu = false
@@ -465,6 +477,12 @@ fun MessagesScreen(
             onSendClick = {
                 if (messageText.isNotBlank()) {
                     if (editingMessage != null) {
+                        // 🧪 ТЕСТОВЕ ПОВІДОМЛЕННЯ
+                        android.widget.Toast.makeText(
+                            context,
+                            "💾 Зберігаю зміни для повідомлення ID: ${editingMessage!!.id}",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
                         // Редагуємо повідомлення
                         viewModel.editMessage(editingMessage!!.id, messageText)
                         messageText = ""

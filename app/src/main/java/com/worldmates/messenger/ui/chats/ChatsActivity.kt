@@ -403,8 +403,10 @@ fun ChatsScreen(
                                 onClick = { onGroupClick(group) },
                                 onLongPress = {
                                     // Відкриваємо діалог редагування групи
+                                    android.util.Log.d("ChatsActivity", "Long press on group: ${group.name}")
                                     selectedGroup = group
                                     showEditGroupDialog = true
+                                    android.util.Log.d("ChatsActivity", "showEditGroupDialog = $showEditGroupDialog, selectedGroup = ${selectedGroup?.name}")
                                 }
                             )
                         }
@@ -457,7 +459,9 @@ fun ChatsScreen(
         }
 
         // Edit Group Dialog
+        android.util.Log.d("ChatsActivity", "Checking EditGroupDialog: showEditGroupDialog=$showEditGroupDialog, selectedGroup=${selectedGroup?.name}")
         if (showEditGroupDialog && selectedGroup != null) {
+            android.util.Log.d("ChatsActivity", "Showing EditGroupDialog for group: ${selectedGroup?.name}")
             com.worldmates.messenger.ui.groups.EditGroupDialog(
                 group = selectedGroup!!,
                 onDismiss = {

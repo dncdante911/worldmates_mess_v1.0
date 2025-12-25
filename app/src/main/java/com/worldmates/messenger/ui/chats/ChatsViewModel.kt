@@ -60,11 +60,11 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
         viewModelScope.launch {
             try {
-                // Виклик API для отримання чатів (фільтруємо групи нижче)
+                // Виклик API для отримання ТІЛЬКИ особистих чатів (не груп!)
                 val response = RetrofitClient.apiService.getChats(
                     accessToken = UserSession.accessToken!!,
                     limit = 50,
-                    dataType = "all", // Отримуємо все, фільтруємо групи нижче
+                    dataType = "users", // ТІЛЬКИ особисті чати, без груп
                     setOnline = 1
                 )
 
@@ -75,17 +75,13 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
                 if (response.apiStatus == 200) {
                     if (response.chats != null && response.chats.isNotEmpty()) {
-                        Log.d("ChatsViewModel", "Отримано ${response.chats.size} чатів")
+                        Log.d("ChatsViewModel", "Отримано ${response.chats.size} особистих чатів")
 
                         // Дешифруємо останнє повідомлення у кожному чаті
-                        // Фільтруємо тільки особисті чати (подвійний захист від груп)
-                        Log.d("ChatsViewModel", "Всього чатів до фільтрації: ${response.chats.size}")
-                        response.chats.forEach {
-                            Log.d("ChatsViewModel", "Chat: ${it.username}, isGroup=${it.isGroup}, userId=${it.userId}")
-                        }
-
+                        // API вже повернуло тільки особисті чати (dataType="users")
+                        // Залишаємо подвійний захист: виключаємо групи та приховані чати
                         val decryptedChats = response.chats
-                            .filter { !it.isGroup && !hiddenChatIds.contains(it.userId) } // Виключаємо групи та приховані чати
+                            .filter { !it.isGroup && !hiddenChatIds.contains(it.userId) } // Подвійний захист
                             .map { chat ->
                             Log.d("ChatsViewModel", "✅ Особистий чат: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
 

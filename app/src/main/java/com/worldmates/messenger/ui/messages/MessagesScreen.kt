@@ -488,6 +488,17 @@ fun MessagesScreen(
             onToggleStickerPicker = { showStickerPicker = !showStickerPicker }
         )
 
+        // 😊 Emoji Picker
+        if (showEmojiPicker) {
+            com.worldmates.messenger.ui.components.EmojiPicker(
+                onEmojiSelected = { emoji ->
+                    messageText += emoji
+                    // Не закриваємо picker автоматично, щоб можна було вибрати кілька емоджі
+                },
+                onDismiss = { showEmojiPicker = false }
+            )
+        }
+
         // 🎭 Sticker Picker
         if (showStickerPicker) {
             com.worldmates.messenger.ui.components.StickerPicker(
@@ -1185,10 +1196,12 @@ fun MessageInputBar(
                         icon = Icons.Default.EmojiEmotions,
                         label = "Емоджі",
                         onClick = {
+                            onShowMediaOptions() // Закриваємо меню
                             scope.launch {
-                                onShowMediaOptions() // Закриваємо меню
-                                kotlinx.coroutines.delay(100) // Затримка 100мс
-                                onToggleEmojiPicker() // Відкриваємо emoji picker
+                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
+                                if (!showEmojiPicker) {
+                                    onToggleEmojiPicker() // Відкриваємо emoji picker
+                                }
                             }
                         }
                     )
@@ -1196,10 +1209,12 @@ fun MessageInputBar(
                         icon = Icons.Default.StickyNote2,
                         label = "Стікери",
                         onClick = {
+                            onShowMediaOptions() // Закриваємо меню
                             scope.launch {
-                                onShowMediaOptions() // Закриваємо меню
-                                kotlinx.coroutines.delay(100) // Затримка 100мс
-                                onToggleStickerPicker() // Відкриваємо sticker picker
+                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
+                                if (!showStickerPicker) {
+                                    onToggleStickerPicker() // Відкриваємо sticker picker
+                                }
                             }
                         }
                     )

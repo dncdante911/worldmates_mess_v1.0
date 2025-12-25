@@ -47,7 +47,17 @@ import com.worldmates.messenger.data.model.Chat
 import com.worldmates.messenger.data.ContactNicknameRepository
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import com.worldmates.messenger.ui.messages.MessagesActivity
+import com.worldmates.messenger.ui.preferences.UIStyle
+import com.worldmates.messenger.ui.preferences.rememberUIStyle
+import kotlinx.coroutines.delay
 import com.worldmates.messenger.ui.theme.AnimatedGradientBackground
 import com.worldmates.messenger.ui.theme.ChatGlassCard
 import com.worldmates.messenger.ui.theme.ExpressiveFAB
@@ -70,6 +80,9 @@ class ChatsActivity : AppCompatActivity() {
         // Инициализируем ThemeManager
         ThemeManager.initialize(this)
 
+        // Ініціалізуємо UI Style Preferences
+        com.worldmates.messenger.ui.preferences.UIStylePreferences.init(this)
+
         viewModel = ViewModelProvider(this).get(ChatsViewModel::class.java)
         groupsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.groups.GroupsViewModel::class.java)
 
@@ -86,7 +99,7 @@ class ChatsActivity : AppCompatActivity() {
                     }
                 }
 
-                ChatsScreen(
+                ChatsScreenModern(
                     viewModel = viewModel,
                     groupsViewModel = groupsViewModel,
                     onChatClick = { chat ->

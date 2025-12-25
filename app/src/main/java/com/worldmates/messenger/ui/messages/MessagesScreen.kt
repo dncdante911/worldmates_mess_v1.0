@@ -208,10 +208,11 @@ fun MessagesScreen(
         }
     }
 
-    // Фон з підтримкою кастомних зображень та preset градієнтів
+    // 🚨🚨🚨 ТЕСТОВИЙ ФОНCHERVONYY! ЯКЩО НЕ БАЧИШ - APK СТАРИЙ! 🚨🚨🚨
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.Red)  // 🚨 ЯСКРАВО ЧЕРВОНИЙ ФОН ДЛЯ ТЕСТУ! 🚨
             .imePadding()
     ) {
         // Застосування фону в залежності від налаштувань

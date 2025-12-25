@@ -252,7 +252,26 @@ fun MessagesScreen(
                 recipientAvatar = recipientAvatar,
                 isOnline = isOnline,
                 isTyping = isTyping,
-                onBackPressed = onBackPressed
+                onBackPressed = onBackPressed,
+                onUserProfileClick = {
+                    // TODO: Відкрити профіль користувача
+                    android.widget.Toast.makeText(context, "Профіль: $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onCallClick = {
+                    android.widget.Toast.makeText(context, "Дзвінок до $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onVideoCallClick = {
+                    android.widget.Toast.makeText(context, "Відеодзвінок до $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onSearchClick = {
+                    android.widget.Toast.makeText(context, "Пошук в чаті", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onMuteClick = {
+                    android.widget.Toast.makeText(context, "Сповіщення вимкнено", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onClearHistoryClick = {
+                    android.widget.Toast.makeText(context, "Очистити історію", android.widget.Toast.LENGTH_SHORT).show()
+                }
             )
 
             // Messages List
@@ -463,16 +482,25 @@ fun MessagesHeaderBar(
     recipientAvatar: String,
     isOnline: Boolean,
     isTyping: Boolean,
-    onBackPressed: () -> Unit
+    onBackPressed: () -> Unit,
+    onUserProfileClick: () -> Unit = {},
+    onCallClick: () -> Unit = {},
+    onVideoCallClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    onMuteClick: () -> Unit = {},
+    onClearHistoryClick: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    var showUserMenu by remember { mutableStateOf(false) }
 
     // Telegram-style AppBar - четкий и читаемый
     TopAppBar(
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxHeight()
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .clickable { onUserProfileClick() }
             ) {
                 // Аватар с индикатором онлайн-статуса
                 if (recipientAvatar.isNotEmpty()) {
@@ -502,7 +530,13 @@ fun MessagesHeaderBar(
                     Text(recipientName, color = colorScheme.onPrimary)
                     if (isTyping) {
                         Text(
-                            text = "печатает...",
+                            text = "печатає...",
+                            fontSize = 12.sp,
+                            color = colorScheme.onPrimary.copy(alpha = 0.8f)
+                        )
+                    } else if (isOnline) {
+                        Text(
+                            text = "онлайн",
                             fontSize = 12.sp,
                             color = colorScheme.onPrimary.copy(alpha = 0.8f)
                         )
@@ -514,25 +548,98 @@ fun MessagesHeaderBar(
             IconButton(onClick = onBackPressed) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = "Назад",
                     tint = colorScheme.onPrimary
                 )
             }
         },
         actions = {
-            IconButton(onClick = { }) {
+            // Кнопка пошуку
+            IconButton(onClick = onSearchClick) {
                 Icon(
-                    Icons.Default.Call,
-                    contentDescription = "Call",
+                    Icons.Default.Search,
+                    contentDescription = "Пошук",
                     tint = colorScheme.onPrimary
                 )
             }
-            IconButton(onClick = { }) {
+
+            // Кнопка дзвінка
+            IconButton(onClick = onCallClick) {
                 Icon(
-                    Icons.Default.MoreVert,
-                    contentDescription = "More",
+                    Icons.Default.Call,
+                    contentDescription = "Дзвінок",
                     tint = colorScheme.onPrimary
                 )
+            }
+
+            // Кнопка меню (3 крапки)
+            Box {
+                IconButton(onClick = { showUserMenu = !showUserMenu }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "Більше",
+                        tint = colorScheme.onPrimary
+                    )
+                }
+
+                // Випадаюче меню
+                DropdownMenu(
+                    expanded = showUserMenu,
+                    onDismissRequest = { showUserMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Переглянути профіль") },
+                        onClick = {
+                            showUserMenu = false
+                            onUserProfileClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Відеодзвінок") },
+                        onClick = {
+                            showUserMenu = false
+                            onVideoCallClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.VideoCall, contentDescription = null)
+                        }
+                    )
+                    Divider()
+                    DropdownMenuItem(
+                        text = { Text("Вимкнути сповіщення") },
+                        onClick = {
+                            showUserMenu = false
+                            onMuteClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Notifications, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Змінити обої") },
+                        onClick = {
+                            showUserMenu = false
+                            // TODO: Відкрити налаштування фону
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Image, contentDescription = null)
+                        }
+                    )
+                    Divider()
+                    DropdownMenuItem(
+                        text = { Text("Очистити історію") },
+                        onClick = {
+                            showUserMenu = false
+                            onClearHistoryClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                        }
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -1614,6 +1721,7 @@ fun MessageReactions(
 
 /**
  * ✓✓ Індикатор статусу повідомлення (прочитано/доставлено)
+ * Покращена видимість: більший розмір, яскравіші кольори, тінь
  */
 @Composable
 fun MessageStatusIcon(
@@ -1621,22 +1729,31 @@ fun MessageStatusIcon(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .shadow(
+                elevation = 1.dp,
+                shape = CircleShape
+            )
+            .background(
+                color = Color.White.copy(alpha = 0.3f),
+                shape = CircleShape
+            )
+            .padding(horizontal = 3.dp, vertical = 1.dp),
         horizontalArrangement = Arrangement.spacedBy((-6).dp)  // Накладання галочок
     ) {
-        // Перша галочка
+        // Перша галочка - більший розмір і краща видимість
         Icon(
             imageVector = Icons.Default.Done,
             contentDescription = if (isRead) "Прочитано" else "Відправлено",
-            tint = if (isRead) Color(0xFF0084FF) else Color.Gray.copy(alpha = 0.6f),
-            modifier = Modifier.size(14.dp)
+            tint = if (isRead) Color(0xFF0084FF) else Color(0xFF8E8E93),  // Світліший сірий
+            modifier = Modifier.size(16.dp)  // Збільшено з 14dp до 16dp
         )
         // Друга галочка (тільки коли доставлено або прочитано)
         Icon(
             imageVector = Icons.Default.Done,
             contentDescription = if (isRead) "Прочитано" else "Доставлено",
-            tint = if (isRead) Color(0xFF0084FF) else Color.Gray.copy(alpha = 0.6f),
-            modifier = Modifier.size(14.dp)
+            tint = if (isRead) Color(0xFF0084FF) else Color(0xFF8E8E93),  // Світліший сірий
+            modifier = Modifier.size(16.dp)  // Збільшено з 14dp до 16dp
         )
     }
 }

@@ -99,7 +99,7 @@ class ChatsActivity : AppCompatActivity() {
                     }
                 }
 
-                ChatsScreenModern(
+                ChatsScreen(
                     viewModel = viewModel,
                     groupsViewModel = groupsViewModel,
                     onChatClick = { chat ->

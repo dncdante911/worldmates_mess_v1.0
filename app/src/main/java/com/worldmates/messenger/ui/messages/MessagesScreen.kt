@@ -845,24 +845,30 @@ fun MessageBubbleComposable(
                 },
             horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
         ) {
-            // Современный Material 3 пузырь с тенью и скруглениями
-            Column {
             // Перевіряємо чи це emoji-only повідомлення
             val isEmojiMessage = message.decryptedText?.let { isEmojiOnly(it) } ?: false
 
+            if (isEmojiMessage) {
+                // 😊 ЕМОДЗІ БЕЗ БУЛЬБАШКИ - просто на прозорому фоні
+                Column {
+                    // Text message - буде рендеритися далі в коді
+                    if (!message.decryptedText.isNullOrEmpty()) {
+                        Text(
+                            text = message.decryptedText!!,
+                            fontSize = getEmojiSize(message.decryptedText!!),
+                            lineHeight = (getEmojiSize(message.decryptedText!!).value + 4).sp,
+                            modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)
+                        )
+                    }
+                }
+            } else {
+                // 💬 ТЕКСТ В БУЛЬБАШЦІ
+                Column {
             Card(
             modifier = Modifier
                 .wrapContentWidth()  // Адаптивна ширина під контент
-                .then(
-                    if (isEmojiMessage) {
-                        // Для емодзі - компактна ширина (без min, щоб підлаштовувалась)
-                        Modifier.widthIn(max = 120.dp)
-                    } else {
-                        // Для тексту - адаптивна ширина як в Telegram
-                        Modifier.widthIn(min = 60.dp, max = 260.dp)
-                    }
-                )
-                .padding(horizontal = if (isEmojiMessage) 8.dp else 12.dp)  // Менший відступ для емодзі
+                .widthIn(min = 60.dp, max = 260.dp)  // Для тексту - адаптивна ширина
+                .padding(horizontal = 12.dp)
                 .combinedClickable(
                     onClick = { },
                     onLongClick = onLongPress  // ✅ ВИКЛИКАЄМО CALLBACK ДЛЯ КОНТЕКСТНОГО МЕНЮ!
@@ -969,33 +975,27 @@ fun MessageBubbleComposable(
 
                 // Text message
                 if (shouldShowText) {
-                    Text(
-                        text = message.decryptedText!!,
-                        color = textColor,
-                        fontSize = if (isEmojiMessage) {
-                            // Для емодзі - великий розмір залежно від кількості
-                            getEmojiSize(message.decryptedText!!)
-                        } else {
-                            // Для звичайного тексту - компактний розмір
-                            15.sp
-                        },
-                        lineHeight = if (isEmojiMessage) {
-                            // Для емодзі - збільшений інтервал
-                            (getEmojiSize(message.decryptedText!!).value + 4).sp
-                        } else {
-                            // Для тексту - компактний інтервал
-                            20.sp
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.then(
-                            if (isEmojiMessage) {
-                                // Для емодзі - центруємо
-                                Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
-                            } else {
-                                Modifier
-                            }
+                    if (isEmojiMessage) {
+                        // 😊 ЕМОДЗІ БЕЗ БУЛЬБАШКИ - просто великі емодзі на прозорому фоні
+                        Text(
+                            text = message.decryptedText!!,
+                            fontSize = getEmojiSize(message.decryptedText!!),
+                            lineHeight = (getEmojiSize(message.decryptedText!!).value + 4).sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                                .padding(vertical = 4.dp)
                         )
-                    )
+                    } else {
+                        // 💬 ТЕКСТ В БУЛЬБАШЦІ
+                        Text(
+                            text = message.decryptedText!!,
+                            color = textColor,
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
 
                 // Image - показываем если тип "image" или если URL указывает на изображение

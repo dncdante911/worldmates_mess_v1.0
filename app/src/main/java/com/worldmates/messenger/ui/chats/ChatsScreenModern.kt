@@ -91,6 +91,7 @@ fun ChatsScreenModern(
     var showEditGroupDialog by remember { mutableStateOf(false) }
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
     var showContactMenu by remember { mutableStateOf(false) }
+    var showSearchDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val nicknameRepository = remember { ContactNicknameRepository(context) }
@@ -146,6 +147,10 @@ fun ChatsScreenModern(
                     }
                 },
                 actions = {
+                    // Пошук користувачів/груп
+                    ExpressiveIconButton(onClick = { showSearchDialog = true }) {
+                        Icon(Icons.Default.Search, contentDescription = "Пошук")
+                    }
                     // Налаштування (залишаємо для швидкого доступу)
                     ExpressiveIconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Налаштування")
@@ -301,6 +306,29 @@ fun ChatsScreenModern(
                 }
             },
             isLoading = groupsViewModel.isLoading.collectAsState().value
+        )
+    }
+
+    // User Search Dialog
+    if (showSearchDialog) {
+        com.worldmates.messenger.ui.search.UserSearchDialog(
+            onDismiss = { showSearchDialog = false },
+            onUserClick = { user ->
+                showSearchDialog = false
+                onChatClick(
+                    Chat(
+                        userId = user.userId,
+                        username = user.username,
+                        name = user.name,
+                        avatar = user.avatar ?: "",
+                        lastMessage = "",
+                        lastMessageTime = 0L,
+                        unreadCount = 0,
+                        isOnline = user.isOnline,
+                        lastSeen = user.lastSeen
+                    )
+                )
+            }
         )
     }
 

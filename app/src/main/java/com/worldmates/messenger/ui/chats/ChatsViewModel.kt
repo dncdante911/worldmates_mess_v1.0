@@ -79,10 +79,15 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
                         // Дешифруємо останнє повідомлення у кожному чаті
                         // Фільтруємо тільки особисті чати (подвійний захист від груп)
+                        Log.d("ChatsViewModel", "Всього чатів до фільтрації: ${response.chats.size}")
+                        response.chats.forEach {
+                            Log.d("ChatsViewModel", "Chat: ${it.username}, isGroup=${it.isGroup}, userId=${it.userId}")
+                        }
+
                         val decryptedChats = response.chats
                             .filter { !it.isGroup && !hiddenChatIds.contains(it.userId) } // Виключаємо групи та приховані чати
                             .map { chat ->
-                            Log.d("ChatsViewModel", "Chat: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
+                            Log.d("ChatsViewModel", "✅ Особистий чат: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
 
                             val lastMessage = chat.lastMessage?.let { msg ->
                                 // Дешифруємо з підтримкою AES-GCM (v2)

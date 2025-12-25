@@ -691,23 +691,17 @@ fun MessageBubbleComposable(
                 // Определяем тип медиа по URL (для случаев, когда message.type == "text")
                 val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
 
-                // 🔍 ДЕТАЛЬНЕ ЛОГУВАННЯ ДЛЯ ВІДЛАДКИ
-                Log.d("MessageBubble", """
-                    ========== ПОВІДОМЛЕННЯ ==========
-                    ID: ${message.id}
-                    Type: ${message.type}
-                    DecryptedText: ${message.decryptedText}
-                    MediaUrl: ${message.mediaUrl}
-                    DecryptedMediaUrl: ${message.decryptedMediaUrl}
-                    EffectiveMediaUrl: $effectiveMediaUrl
-                    DetectedMediaType: $detectedMediaType
-                    ==================================
-                """.trimIndent())
+                // Визначаємо чи це медіа повідомлення
+                val isMediaMessage = !effectiveMediaUrl.isNullOrEmpty() &&
+                    detectedMediaType in listOf("image", "video", "audio", "voice", "file")
 
-                // Показываем текст если он есть і не є чистим URL медіа
+                // Показываем текст ТІЛЬКИ якщо:
+                // - Є текст
+                // - Текст не пустий
+                // - Це НЕ медіа повідомлення (або текст не є чистим URL)
                 val shouldShowText = message.decryptedText != null &&
                     message.decryptedText!!.isNotEmpty() &&
-                    !isOnlyMediaUrl(message.decryptedText!!)
+                    (!isMediaMessage || !isOnlyMediaUrl(message.decryptedText!!))
 
                 // 💬 Цитата Reply (якщо є)
                 if (message.replyToId != null && message.replyToText != null) {
@@ -757,9 +751,9 @@ fun MessageBubbleComposable(
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
-                        fontSize = 16.sp,  // Увеличенный размер для лучшей читабельності
-                        lineHeight = 22.sp,  // Улучшенный межстрочный интервал
-                        style = MaterialTheme.typography.bodyLarge
+                        fontSize = 15.sp,  // Компактний розмір тексту
+                        lineHeight = 20.sp,  // Компактний міжрядковий інтервал
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
 
@@ -770,9 +764,9 @@ fun MessageBubbleComposable(
                         contentDescription = "Media",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 200.dp)
+                            .heightIn(max = 180.dp)  // Компактніше
                             .clip(RoundedCornerShape(8.dp))
-                            .padding(top = if (shouldShowText) 8.dp else 0.dp)
+                            .padding(top = if (shouldShowText) 4.dp else 0.dp)  // Менший відступ
                             .clickable { onImageClick(effectiveMediaUrl) },
                         contentScale = ContentScale.Crop
                     )

@@ -784,16 +784,18 @@ fun MessageBubbleComposable(
         } ?: emptyList()
     }
 
-    // Цвета из темы
+    // Більш нейтральні та м'які кольори бульбашок
     val bgColor = if (isOwn) {
-        colorScheme.primary
+        // Власні повідомлення - м'який зелено-синій (як в Telegram/WhatsApp)
+        Color(0xFFDCF8C6)  // Світло-зелений
     } else {
-        colorScheme.surfaceVariant
+        // Вхідні повідомлення - світло-сірий
+        Color(0xFFF0F0F0)  // Світло-сірий
     }
     val textColor = if (isOwn) {
-        colorScheme.onPrimary
+        Color(0xFF1F1F1F)  // Темно-сірий для власних
     } else {
-        colorScheme.onSurfaceVariant
+        Color(0xFF1F1F1F)  // Темно-сірий для вхідних
     }
 
     val playbackState by voicePlayer.playbackState.collectAsState()
@@ -853,14 +855,14 @@ fun MessageBubbleComposable(
                 .wrapContentWidth()  // Адаптивна ширина під контент
                 .then(
                     if (isEmojiMessage) {
-                        // Для емодзі - мінімальна ширина
-                        Modifier.widthIn(min = 70.dp, max = 100.dp)
+                        // Для емодзі - компактна ширина (без min, щоб підлаштовувалась)
+                        Modifier.widthIn(max = 120.dp)
                     } else {
                         // Для тексту - адаптивна ширина як в Telegram
                         Modifier.widthIn(min = 60.dp, max = 260.dp)
                     }
                 )
-                .padding(horizontal = 12.dp)  // Менший відступ для більшого простору
+                .padding(horizontal = if (isEmojiMessage) 8.dp else 12.dp)  // Менший відступ для емодзі
                 .combinedClickable(
                     onClick = { },
                     onLongClick = onLongPress  // ✅ ВИКЛИКАЄМО CALLBACK ДЛЯ КОНТЕКСТНОГО МЕНЮ!
@@ -889,8 +891,8 @@ fun MessageBubbleComposable(
         ) {
             Column(
                 modifier = Modifier.padding(
-                    horizontal = 10.dp,  // Компактний padding в стилі Telegram
-                    vertical = 6.dp      // Менший вертикальний відступ
+                    horizontal = if (isEmojiMessage) 6.dp else 10.dp,  // Менший padding для емодзі
+                    vertical = if (isEmojiMessage) 4.dp else 6.dp       // Менший вертикальний для емодзі
                 )
             ) {
                 // Получаем URL медиа из разных источников
@@ -2090,26 +2092,41 @@ private fun isImageUrl(url: String): Boolean {
 private fun isEmojiOnly(text: String): Boolean {
     if (text.isBlank()) return false
 
-    // Видаляємо всі емодзі та перевіряємо чи залишився текст
-    val textWithoutEmoji = text.replace(Regex("[\\p{So}\\p{Sk}\\u200D\\uFE0F]"), "").trim()
+    // Видаляємо всі пробіли
+    val trimmed = text.trim()
+
+    // Видаляємо всі емодзі, Unicode символи та спецсимволи
+    val textWithoutEmoji = trimmed
+        .replace(Regex("[\uD83C-\uDBFF\uDC00-\uDFFF]+"), "")  // Emoji
+        .replace(Regex("[\\p{So}\\p{Sk}\\p{Cn}]"), "")        // Symbols
+        .replace(Regex("[\u200D\uFE0F\u200C]"), "")           // Zero-width chars
+        .trim()
 
     // Якщо після видалення емодзі залишився текст - це не emoji-only
-    if (textWithoutEmoji.isNotEmpty()) return false
+    if (textWithoutEmoji.isNotEmpty()) {
+        Log.d("EmojiDetect", "Не emoji-only: '$text' -> залишок: '$textWithoutEmoji'")
+        return false
+    }
 
     // Підраховуємо кількість емодзі (максимум 3 для великого відображення)
-    val emojiCount = text.codePointCount(0, text.length)
-    return emojiCount in 1..3
+    val emojiCount = trimmed.codePointCount(0, trimmed.length)
+    val isEmojiOnly = emojiCount in 1..5  // Дозволяємо до 5 емодзі
+
+    Log.d("EmojiDetect", "Текст: '$text', кількість: $emojiCount, emoji-only: $isEmojiOnly")
+    return isEmojiOnly
 }
 
 /**
  * Отримати розмір шрифту для емодзі залежно від кількості
  */
 private fun getEmojiSize(text: String): androidx.compose.ui.unit.TextUnit {
-    val emojiCount = text.codePointCount(0, text.length)
-    return when {
-        emojiCount == 1 -> 64.sp  // Один емодзі - дуже великий
-        emojiCount == 2 -> 52.sp  // Два емодзі - великий
-        emojiCount == 3 -> 44.sp  // Три емодзі - середній
-        else -> 16.sp             // Більше 3 - звичайний розмір
+    val emojiCount = text.trim().codePointCount(0, text.trim().length)
+    return when (emojiCount) {
+        1 -> 72.sp      // 1 емодзі - найбільший
+        2 -> 60.sp      // 2 емодзі - великий
+        3 -> 48.sp      // 3 емодзі - середній
+        4 -> 40.sp      // 4 емодзі - менший
+        5 -> 36.sp      // 5 емодзі - ще менший
+        else -> 16.sp   // Більше - звичайний
     }
 }

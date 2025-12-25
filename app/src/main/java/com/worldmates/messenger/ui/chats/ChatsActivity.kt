@@ -194,6 +194,10 @@ fun ChatsScreen(
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
     var showContactMenu by remember { mutableStateOf(false) }
 
+    // Для редагування груп
+    var selectedGroup by remember { mutableStateOf<com.worldmates.messenger.data.model.Group?>(null) }
+    var showEditGroupDialog by remember { mutableStateOf(false) }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -398,12 +402,9 @@ fun ChatsScreen(
                                 group = group,
                                 onClick = { onGroupClick(group) },
                                 onLongPress = {
-                                    // Можна додати контекстне меню для груп у майбутньому
-                                    Toast.makeText(
-                                        context,
-                                        "Довге натискання на ${group.name}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    // Відкриваємо діалог редагування групи
+                                    selectedGroup = group
+                                    showEditGroupDialog = true
                                 }
                             )
                         }
@@ -452,6 +453,56 @@ fun ChatsScreen(
                     )
                 },
                 isLoading = isCreatingGroup
+            )
+        }
+
+        // Edit Group Dialog
+        if (showEditGroupDialog && selectedGroup != null) {
+            com.worldmates.messenger.ui.groups.EditGroupDialog(
+                group = selectedGroup!!,
+                onDismiss = {
+                    showEditGroupDialog = false
+                    selectedGroup = null
+                },
+                onUpdate = { newName ->
+                    // Оновлення назви групи
+                    groupsViewModel.updateGroup(
+                        groupId = selectedGroup!!.id,
+                        name = newName,
+                        onSuccess = {
+                            showEditGroupDialog = false
+                            selectedGroup = null
+                            groupsViewModel.fetchGroups() // Оновлюємо список
+                        }
+                    )
+                },
+                onDelete = {
+                    // Видалення групи
+                    groupsViewModel.deleteGroup(
+                        groupId = selectedGroup!!.id,
+                        onSuccess = {
+                            showEditGroupDialog = false
+                            selectedGroup = null
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Групу видалено",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    )
+                },
+                onUploadAvatar = { uri ->
+                    // Завантаження нової аватарки
+                    // TODO: Реалізувати завантаження аватарки групи
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Завантаження аватарок буде реалізовано пізніше",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                },
+                isLoading = groupsViewModel.isLoading.collectAsState().value
             )
         }
 

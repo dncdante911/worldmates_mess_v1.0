@@ -200,7 +200,8 @@ class GroupsViewModel : ViewModel() {
 
     fun updateGroup(
         groupId: Long,
-        name: String
+        name: String,
+        onSuccess: () -> Unit = {}
     ) {
         if (UserSession.accessToken == null) {
             _error.value = "Користувач не авторизований"
@@ -222,6 +223,7 @@ class GroupsViewModel : ViewModel() {
                     _error.value = null
                     fetchGroups()
                     Log.d("GroupsViewModel", "Група оновлена успішно")
+                    onSuccess()
                 } else {
                     _error.value = response.errorMessage ?: "Не вдалося оновити групу"
                 }
@@ -235,7 +237,10 @@ class GroupsViewModel : ViewModel() {
         }
     }
 
-    fun deleteGroup(groupId: Long) {
+    fun deleteGroup(
+        groupId: Long,
+        onSuccess: () -> Unit = {}
+    ) {
         if (UserSession.accessToken == null) {
             _error.value = "Користувач не авторизований"
             return
@@ -255,6 +260,7 @@ class GroupsViewModel : ViewModel() {
                     _selectedGroup.value = null
                     fetchGroups()
                     Log.d("GroupsViewModel", "Група видалена успішно")
+                    onSuccess()
                 } else {
                     _error.value = response.errorMessage ?: "Не вдалося видалити групу"
                 }

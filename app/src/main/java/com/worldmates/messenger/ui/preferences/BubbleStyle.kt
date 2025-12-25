@@ -1,0 +1,47 @@
+package com.worldmates.messenger.ui.preferences
+
+/**
+ * 🎨 Стилі бульбашок повідомлень
+ */
+enum class BubbleStyle(
+    val displayName: String,
+    val description: String,
+    val icon: String
+) {
+    STANDARD(
+        displayName = "Стандарт",
+        description = "Заокруглені бульбашки з м'якими тінями",
+        icon = "💬"
+    ),
+    COMIC(
+        displayName = "Комікс",
+        description = "Бульбашки з хвостиком як в коміксах",
+        icon = "💭"
+    ),
+    TELEGRAM(
+        displayName = "Telegram",
+        description = "Мінімалістичні кутасті бульбашки",
+        icon = "📱"
+    ),
+    MINIMAL(
+        displayName = "Мінімал",
+        description = "Прості бульбашки без тіней",
+        icon = "⚪"
+    ),
+    MODERN(
+        displayName = "Модерн",
+        description = "Градієнти та glass morphism ефекти",
+        icon = "✨"
+    ),
+    RETRO(
+        displayName = "Ретро",
+        description = "Яскраві кольори з товстими рамками",
+        icon = "🔴"
+    );
+
+    companion object {
+        fun fromOrdinal(ordinal: Int): BubbleStyle {
+            return values().getOrElse(ordinal) { STANDARD }
+        }
+    }
+}

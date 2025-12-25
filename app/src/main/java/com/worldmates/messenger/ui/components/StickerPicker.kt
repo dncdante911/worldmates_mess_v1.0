@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Sticker
 import com.worldmates.messenger.data.model.StickerPack
+import com.worldmates.messenger.data.repository.StickerRepository
+import kotlinx.coroutines.launch
 
 /**
  * 🎭 Sticker Picker - Панель вибору стікерів
@@ -47,6 +49,9 @@ fun StickerPicker(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val stickerRepository = remember { StickerRepository.getInstance(context) }
 
     // Стандартний пак стікерів (приклад)
     val standardPack = remember {
@@ -59,8 +64,22 @@ fun StickerPicker(
         )
     }
 
+    // Завантажуємо кастомні паки з API
+    val customPacks by stickerRepository.stickerPacks.collectAsState()
+    val activePacks = remember(customPacks) {
+        val packs = mutableListOf(standardPack)
+        packs.addAll(customPacks.filter { it.isActive && it.stickers?.isNotEmpty() == true })
+        packs
+    }
+
     var selectedPack by remember { mutableStateOf(standardPack) }
-    val availablePacks = remember { listOf(standardPack) }
+
+    // Завантажуємо паки при відкритті
+    LaunchedEffect(Unit) {
+        scope.launch {
+            stickerRepository.fetchStickerPacks()
+        }
+    }
 
     Surface(
         modifier = modifier
@@ -114,7 +133,7 @@ fun StickerPicker(
             Divider()
 
             // Паки стікерів (якщо більше одного)
-            if (availablePacks.size > 1) {
+            if (activePacks.size > 1) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -122,7 +141,7 @@ fun StickerPicker(
                         .padding(vertical = 8.dp, horizontal = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    availablePacks.forEach { pack ->
+                    activePacks.forEach { pack ->
                         StickerPackTab(
                             pack = pack,
                             isSelected = selectedPack.id == pack.id,

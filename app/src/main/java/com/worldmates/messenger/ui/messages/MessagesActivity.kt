@@ -84,10 +84,15 @@ class MessagesActivity : AppCompatActivity() {
         val imagePickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
+            android.util.Log.d("MessagesActivity", "📸 Image picker result: $uri")
             uri?.let {
                 val file = fileManager.copyUriToCache(it)
-                if (file != null) {
+                android.util.Log.d("MessagesActivity", "📁 Copied file: ${file?.absolutePath}, exists: ${file?.exists()}, size: ${file?.length()}")
+                if (file != null && file.exists()) {
+                    android.util.Log.d("MessagesActivity", "⬆️ Calling uploadAndSendMedia for image")
                     viewModel.uploadAndSendMedia(file, "image")
+                } else {
+                    android.util.Log.e("MessagesActivity", "❌ Failed to copy image file")
                 }
             }
         }
@@ -95,10 +100,15 @@ class MessagesActivity : AppCompatActivity() {
         val videoPickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
+            android.util.Log.d("MessagesActivity", "🎥 Video picker result: $uri")
             uri?.let {
                 val file = fileManager.copyUriToCache(it)
-                if (file != null) {
+                android.util.Log.d("MessagesActivity", "📁 Copied file: ${file?.absolutePath}, exists: ${file?.exists()}, size: ${file?.length()}")
+                if (file != null && file.exists()) {
+                    android.util.Log.d("MessagesActivity", "⬆️ Calling uploadAndSendMedia for video")
                     viewModel.uploadAndSendMedia(file, "video")
+                } else {
+                    android.util.Log.e("MessagesActivity", "❌ Failed to copy video file")
                 }
             }
         }

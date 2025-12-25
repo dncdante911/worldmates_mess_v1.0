@@ -761,7 +761,7 @@ fun MessageBubbleComposable(
             Column {
             Card(
             modifier = Modifier
-                .widthIn(max = 280.dp)  // Оптимальная ширина для читабельности
+                .widthIn(max = 260.dp)  // Компактна ширина в стилі Telegram
                 .padding(horizontal = 8.dp)
                 .combinedClickable(
                     onClick = { },
@@ -791,8 +791,8 @@ fun MessageBubbleComposable(
         ) {
             Column(
                 modifier = Modifier.padding(
-                    horizontal = 12.dp,  // Увеличенный padding для лучшей читабельности
-                    vertical = 8.dp      // Более комфортный вертикальный отступ
+                    horizontal = 10.dp,  // Компактний padding в стилі Telegram
+                    vertical = 6.dp      // Менший вертикальний відступ
                 )
             ) {
                 // Получаем URL медиа из разных источников
@@ -1087,6 +1087,7 @@ fun MessageInputBar(
     onToggleStickerPicker: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -1156,16 +1157,22 @@ fun MessageInputBar(
                         icon = Icons.Default.EmojiEmotions,
                         label = "Емоджі",
                         onClick = {
-                            onShowMediaOptions() // Закриваємо меню
-                            onToggleEmojiPicker() // Відкриваємо emoji picker
+                            scope.launch {
+                                onShowMediaOptions() // Закриваємо меню
+                                kotlinx.coroutines.delay(100) // Затримка 100мс
+                                onToggleEmojiPicker() // Відкриваємо emoji picker
+                            }
                         }
                     )
                     MediaOptionButton(
                         icon = Icons.Default.StickyNote2,
                         label = "Стікери",
                         onClick = {
-                            onShowMediaOptions() // Закриваємо меню
-                            onToggleStickerPicker() // Відкриваємо sticker picker
+                            scope.launch {
+                                onShowMediaOptions() // Закриваємо меню
+                                kotlinx.coroutines.delay(100) // Затримка 100мс
+                                onToggleStickerPicker() // Відкриваємо sticker picker
+                            }
                         }
                     )
                 }

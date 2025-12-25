@@ -1059,6 +1059,11 @@ fun VoiceMessagePlayer(
 }
 
 @Composable
+/**
+ * Telegram-style MessageInputBar
+ * Одна кнопка для всіх опцій: медіа, емоджі, стікери
+ */
+@Composable
 fun MessageInputBar(
     messageText: String,
     onMessageChange: (String) -> Unit,
@@ -1086,48 +1091,84 @@ fun MessageInputBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colorScheme.surface)  // Цвет из темы
-            .navigationBarsPadding()  // Отступ от кнопок навигации
+            .background(colorScheme.surface)
+            .navigationBarsPadding()
     ) {
-        // Media Options
+        // Єдине спливаюче меню для всіх опцій (як в Telegram)
         if (showMediaOptions) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .background(colorScheme.surfaceVariant)
+                    .padding(8.dp)
             ) {
-                MediaOptionButton(
-                    icon = Icons.Default.Image,
-                    label = "Фото",
-                    onClick = { onPickImage() }
+                // Медіа опції
+                Text(
+                    text = "Вкласти",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
                 )
-                MediaOptionButton(
-                    icon = Icons.Default.VideoLibrary,
-                    label = "Відео",
-                    onClick = { onPickVideo() }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MediaOptionButton(
+                        icon = Icons.Default.Image,
+                        label = "Фото",
+                        onClick = { onPickImage() }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.VideoLibrary,
+                        label = "Відео",
+                        onClick = { onPickVideo() }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.AudioFile,
+                        label = "Аудіо",
+                        onClick = { onPickAudio() }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.InsertDriveFile,
+                        label = "Файл",
+                        onClick = { onPickFile() }
+                    )
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // Емоджі та Стікери
+                Text(
+                    text = "Додати",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
                 )
-                MediaOptionButton(
-                    icon = Icons.Default.AudioFile,
-                    label = "Аудіо",
-                    onClick = { onPickAudio() }
-                )
-                MediaOptionButton(
-                    icon = Icons.Default.InsertDriveFile,
-                    label = "Файл",
-                    onClick = { onPickFile() }
-                )
-                MediaOptionButton(
-                    icon = Icons.Default.LocationOn,
-                    label = "Локація",
-                    onClick = { }
-                )
-                MediaOptionButton(
-                    icon = Icons.Default.AttachMoney,
-                    label = "Оплата",
-                    onClick = { }
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MediaOptionButton(
+                        icon = Icons.Default.EmojiEmotions,
+                        label = "Емоджі",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            onToggleEmojiPicker() // Відкриваємо emoji picker
+                        }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.StickyNote2,
+                        label = "Стікери",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            onToggleStickerPicker() // Відкриваємо sticker picker
+                        }
+                    )
+                }
             }
         }
 
@@ -1143,29 +1184,43 @@ fun MessageInputBar(
             )
         }
 
-        // Message Input
+        // Message Input - Telegram Style (компактний та повний)
         if (recordingState !is VoiceRecorder.RecordingState.Recording &&
             recordingState !is VoiceRecorder.RecordingState.Paused) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.Bottom
             ) {
+                // Кнопка "+"  - показує всі опції
+                IconButton(
+                    onClick = onShowMediaOptions,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = if (showMediaOptions) Icons.Default.Close else Icons.Default.Add,
+                        contentDescription = "Опції",
+                        tint = if (showMediaOptions) colorScheme.primary else colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Поле введення - компактне та повне
                 TextField(
                     value = messageText,
                     onValueChange = onMessageChange,
                     modifier = Modifier
                         .weight(1f)
-                        .background(colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
-                        .padding(horizontal = 4.dp),
+                        .heightIn(min = 40.dp, max = 120.dp)
+                        .background(colorScheme.surfaceVariant, RoundedCornerShape(20.dp)),
                     placeholder = {
                         Text(
-                            "Введіть повідомлення...",
-                            color = colorScheme.onSurfaceVariant
+                            "Повідомлення",
+                            color = colorScheme.onSurfaceVariant,
+                            fontSize = 16.sp
                         )
                     },
-                    singleLine = true,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -1174,73 +1229,45 @@ fun MessageInputBar(
                         focusedTextColor = colorScheme.onSurface,
                         unfocusedTextColor = colorScheme.onSurface
                     ),
-                    leadingIcon = {
-                        IconButton(onClick = onShowMediaOptions) {
-                            Icon(
-                                Icons.Default.AttachFile,
-                                contentDescription = "Attach",
-                                tint = colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    maxLines = 4
                 )
 
-                // 😊 Кнопка емоджі
-                IconButton(onClick = onToggleEmojiPicker) {
-                    Icon(
-                        imageVector = if (showEmojiPicker) Icons.Default.KeyboardArrowDown else Icons.Default.EmojiEmotions,
-                        contentDescription = "Emoji",
-                        tint = colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.width(4.dp))
 
-                // 🎭 Кнопка стікерів
-                IconButton(onClick = onToggleStickerPicker) {
-                    Icon(
-                        imageVector = if (showStickerPicker) Icons.Default.KeyboardArrowDown else Icons.Default.StickyNote2,
-                        contentDescription = "Stickers",
-                        tint = colorScheme.onSurfaceVariant
-                    )
-                }
-
+                // Кнопка відправки або голосового запису
                 if (messageText.isNotBlank()) {
+                    // Кнопка відправки
                     IconButton(
                         onClick = onSendClick,
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Send,
-                            contentDescription = "Send",
-                            tint = if (isLoading) colorScheme.onSurfaceVariant else colorScheme.primary
+                            contentDescription = "Відправити",
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 } else {
+                    // Кнопка голосового запису
                     IconButton(
                         onClick = onStartVoiceRecord,
-                        enabled = !isLoading
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Mic,
-                            contentDescription = "Voice",
-                            tint = colorScheme.primary
+                            contentDescription = "Голосове повідомлення",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
         }
-
-        // 😊 Emoji Picker
-        if (showEmojiPicker) {
-            com.worldmates.messenger.ui.components.EmojiPicker(
-                onEmojiSelected = { emoji ->
-                    onMessageChange(messageText + emoji)
-                },
-                onDismiss = onToggleEmojiPicker
-            )
-        }
     }
 }
-
 @Composable
 fun VoiceRecordingBar(
     duration: Long,

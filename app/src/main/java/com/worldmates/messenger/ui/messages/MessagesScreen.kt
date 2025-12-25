@@ -864,44 +864,20 @@ fun MessageBubbleComposable(
                     }
                 }
             } else {
-                // 💬 ТЕКСТ В БУЛЬБАШЦІ
+                // 💬 ТЕКСТ В БУЛЬБАШЦІ - використовуємо вибраний стиль
                 Column {
-            Card(
-            modifier = Modifier
-                .wrapContentWidth()  // Адаптивна ширина під контент
-                .widthIn(min = 60.dp, max = 260.dp)  // Для тексту - адаптивна ширина
-                .padding(horizontal = 12.dp)
-                .combinedClickable(
-                    onClick = { },
-                    onLongClick = onLongPress  // ✅ ВИКЛИКАЄМО CALLBACK ДЛЯ КОНТЕКСТНОГО МЕНЮ!
-                ),
-            shape = if (isOwn) {
-                RoundedCornerShape(
-                    topStart = 20.dp,
-                    topEnd = 20.dp,
-                    bottomStart = 20.dp,
-                    bottomEnd = 4.dp
-                )
-            } else {
-                RoundedCornerShape(
-                    topStart = 20.dp,
-                    topEnd = 20.dp,
-                    bottomStart = 4.dp,
-                    bottomEnd = 20.dp
-                )
-            },
-            colors = CardDefaults.cardColors(
-                containerColor = bgColor
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 2.dp
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(
-                    horizontal = if (isEmojiMessage) 6.dp else 10.dp,  // Менший padding для емодзі
-                    vertical = if (isEmojiMessage) 4.dp else 6.dp       // Менший вертикальний для емодзі
-                )
+            StyledBubble(
+                bubbleStyle = bubbleStyle,
+                isOwn = isOwn,
+                bgColor = bgColor,
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .widthIn(min = 60.dp, max = 260.dp)
+                    .padding(horizontal = 12.dp)
+                    .combinedClickable(
+                        onClick = { },
+                        onLongClick = onLongPress
+                    )
             ) {
                 // Получаем URL медиа из разных источников
                 var effectiveMediaUrl: String? = null

@@ -96,8 +96,31 @@ class MessagesActivity : AppCompatActivity() {
 
         setContent {
             WorldMatesThemedApp {
-                MessagesScreenContent(
-                    activity = this,
+                // Launchers для вибору файлів
+                val imagePickerLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent()
+                ) { uri ->
+                    uri?.let {
+                        val file = fileManager.copyUriToCache(it)
+                        if (file != null) {
+                            viewModel.uploadMediaFile(file, "image")
+                        }
+                    }
+                }
+
+                val videoPickerLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent()
+                ) { uri ->
+                    uri?.let {
+                        val file = fileManager.copyUriToCache(it)
+                        if (file != null) {
+                            viewModel.uploadMediaFile(file, "video")
+                        }
+                    }
+                }
+
+                // Використовуємо оновлений MessagesScreen з Phase 2 функціями
+                MessagesScreen(
                     viewModel = viewModel,
                     fileManager = fileManager,
                     voiceRecorder = voiceRecorder,
@@ -105,8 +128,9 @@ class MessagesActivity : AppCompatActivity() {
                     recipientName = recipientName,
                     recipientAvatar = recipientAvatar,
                     isGroup = isGroup,
-                    groupId = groupId,
-                    onBackPressed = { finish() }
+                    onBackPressed = { finish() },
+                    onImageSelected = { imagePickerLauncher.launch("image/*") },
+                    onVideoSelected = { videoPickerLauncher.launch("video/*") }
                 )
             }
         }

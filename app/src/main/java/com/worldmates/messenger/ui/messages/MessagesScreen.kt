@@ -112,7 +112,13 @@ fun MessagesScreen(
     val playbackState by voicePlayer.playbackState.collectAsState()
     val currentPosition by voicePlayer.currentPosition.collectAsState()
     val duration by voicePlayer.duration.collectAsState()
-    val showMiniPlayer = playbackState !is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Idle
+    // Керуємо відображенням плеєра вручну, а не через playbackState
+    var showMiniPlayer by remember { mutableStateOf(false) }
+
+    // Оновлюємо showMiniPlayer при зміні playbackState
+    LaunchedEffect(playbackState) {
+        showMiniPlayer = playbackState !is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Idle
+    }
 
     // Логування стану теми
     LaunchedEffect(themeState) {
@@ -339,9 +345,13 @@ fun MessagesScreen(
                             ).show()
                         },
                         onImageClick = { imageUrl ->
+                            Log.d("MessagesScreen", "🖼️ onImageClick викликано! URL: $imageUrl")
+                            Log.d("MessagesScreen", "📋 Всього imageUrls: ${imageUrls.size}, список: $imageUrls")
                             // Знаходимо індекс вибраного фото в списку
                             selectedImageIndex = imageUrls.indexOf(imageUrl).coerceAtLeast(0)
+                            Log.d("MessagesScreen", "📍 selectedImageIndex: $selectedImageIndex")
                             showImageGallery = true
+                            Log.d("MessagesScreen", "🎬 showImageGallery = true (встановлено)")
                         },
                         onReply = { msg ->
                             // Встановлюємо повідомлення для відповіді
@@ -357,11 +367,19 @@ fun MessagesScreen(
 
             // 📸 ГАЛЕРЕЯ ФОТО
             if (showImageGallery && imageUrls.isNotEmpty()) {
+                Log.d("MessagesScreen", "✅ Показуємо ImageGalleryViewer! URLs: ${imageUrls.size}, page: $selectedImageIndex")
                 ImageGalleryViewer(
                     imageUrls = imageUrls,
                     initialPage = selectedImageIndex,
-                    onDismiss = { showImageGallery = false }
+                    onDismiss = {
+                        Log.d("MessagesScreen", "❌ Закриваємо галерею")
+                        showImageGallery = false
+                    }
                 )
+            } else {
+                if (showImageGallery) {
+                    Log.e("MessagesScreen", "⚠️ showImageGallery=true але imageUrls порожній!")
+                }
             }
 
         // Message Context Menu Bottom Sheet
@@ -827,10 +845,21 @@ fun MessageBubbleComposable(
         ) {
             // Современный Material 3 пузырь с тенью и скруглениями
             Column {
+            // Перевіряємо чи це emoji-only повідомлення
+            val isEmojiMessage = message.decryptedText?.let { isEmojiOnly(it) } ?: false
+
             Card(
             modifier = Modifier
                 .wrapContentWidth()  // Адаптивна ширина під контент
-                .widthIn(min = 60.dp, max = 260.dp)  // Компактніша ширина (зменшено з 280dp)
+                .then(
+                    if (isEmojiMessage) {
+                        // Для емодзі - мінімальна ширина
+                        Modifier.widthIn(min = 70.dp, max = 100.dp)
+                    } else {
+                        // Для тексту - адаптивна ширина як в Telegram
+                        Modifier.widthIn(min = 60.dp, max = 260.dp)
+                    }
+                )
                 .padding(horizontal = 12.dp)  // Менший відступ для більшого простору
                 .combinedClickable(
                     onClick = { },
@@ -941,9 +970,29 @@ fun MessageBubbleComposable(
                     Text(
                         text = message.decryptedText!!,
                         color = textColor,
-                        fontSize = 15.sp,  // Компактний розмір тексту
-                        lineHeight = 20.sp,  // Компактний міжрядковий інтервал
-                        style = MaterialTheme.typography.bodyMedium
+                        fontSize = if (isEmojiMessage) {
+                            // Для емодзі - великий розмір залежно від кількості
+                            getEmojiSize(message.decryptedText!!)
+                        } else {
+                            // Для звичайного тексту - компактний розмір
+                            15.sp
+                        },
+                        lineHeight = if (isEmojiMessage) {
+                            // Для емодзі - збільшений інтервал
+                            (getEmojiSize(message.decryptedText!!).value + 4).sp
+                        } else {
+                            // Для тексту - компактний інтервал
+                            20.sp
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.then(
+                            if (isEmojiMessage) {
+                                // Для емодзі - центруємо
+                                Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
+                            } else {
+                                Modifier
+                            }
+                        )
                     )
                 }
 
@@ -2033,4 +2082,34 @@ private fun isImageUrl(url: String): Boolean {
            lowerUrl.contains("image") ||
            lowerUrl.contains("/img/") ||
            lowerUrl.contains("/images/")
+}
+
+/**
+ * Перевірка чи текст містить ТІЛЬКИ емодзі (1-3 емодзі без іншого тексту)
+ */
+private fun isEmojiOnly(text: String): Boolean {
+    if (text.isBlank()) return false
+
+    // Видаляємо всі емодзі та перевіряємо чи залишився текст
+    val textWithoutEmoji = text.replace(Regex("[\\p{So}\\p{Sk}\\u200D\\uFE0F]"), "").trim()
+
+    // Якщо після видалення емодзі залишився текст - це не emoji-only
+    if (textWithoutEmoji.isNotEmpty()) return false
+
+    // Підраховуємо кількість емодзі (максимум 3 для великого відображення)
+    val emojiCount = text.codePointCount(0, text.length)
+    return emojiCount in 1..3
+}
+
+/**
+ * Отримати розмір шрифту для емодзі залежно від кількості
+ */
+private fun getEmojiSize(text: String): androidx.compose.ui.unit.TextUnit {
+    val emojiCount = text.codePointCount(0, text.length)
+    return when {
+        emojiCount == 1 -> 64.sp  // Один емодзі - дуже великий
+        emojiCount == 2 -> 52.sp  // Два емодзі - великий
+        emojiCount == 3 -> 44.sp  // Три емодзі - середній
+        else -> 16.sp             // Більше 3 - звичайний розмір
+    }
 }

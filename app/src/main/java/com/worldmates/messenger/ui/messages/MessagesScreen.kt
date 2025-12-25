@@ -704,11 +704,10 @@ fun MessageBubbleComposable(
                     ==================================
                 """.trimIndent())
 
-                // Показываем текст только если это не чистый URL медиа
+                // Показываем текст если он есть і не є чистим URL медіа
                 val shouldShowText = message.decryptedText != null &&
                     message.decryptedText!!.isNotEmpty() &&
-                    !isOnlyMediaUrl(message.decryptedText!!) &&
-                    detectedMediaType == "text"  // Не показываем текст, если это URL медиа
+                    !isOnlyMediaUrl(message.decryptedText!!)
 
                 // 💬 Цитата Reply (якщо є)
                 if (message.replyToId != null && message.replyToText != null) {

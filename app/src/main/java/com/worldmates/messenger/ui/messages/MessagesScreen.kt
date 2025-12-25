@@ -268,23 +268,36 @@ fun MessagesScreen(
                 isTyping = isTyping,
                 onBackPressed = onBackPressed,
                 onUserProfileClick = {
-                    // TODO: Відкрити профіль користувача
+                    Log.d("MessagesScreen", "Відкриваю профіль користувача: $recipientName")
+                    // TODO: Відкрити повний профіль користувача
                     android.widget.Toast.makeText(context, "Профіль: $recipientName", android.widget.Toast.LENGTH_SHORT).show()
                 },
                 onCallClick = {
+                    Log.d("MessagesScreen", "Аудіо дзвінок до: $recipientName")
                     android.widget.Toast.makeText(context, "Дзвінок до $recipientName", android.widget.Toast.LENGTH_SHORT).show()
                 },
                 onVideoCallClick = {
+                    Log.d("MessagesScreen", "Відеодзвінок до: $recipientName")
                     android.widget.Toast.makeText(context, "Відеодзвінок до $recipientName", android.widget.Toast.LENGTH_SHORT).show()
                 },
                 onSearchClick = {
+                    Log.d("MessagesScreen", "Пошук в чаті")
                     android.widget.Toast.makeText(context, "Пошук в чаті", android.widget.Toast.LENGTH_SHORT).show()
                 },
                 onMuteClick = {
-                    android.widget.Toast.makeText(context, "Сповіщення вимкнено", android.widget.Toast.LENGTH_SHORT).show()
+                    Log.d("MessagesScreen", "Вимкнення сповіщень для: $recipientName")
+                    // TODO: Реалізувати збереження налаштувань сповіщень
+                    android.widget.Toast.makeText(context, "Сповіщення вимкнено для $recipientName", android.widget.Toast.LENGTH_SHORT).show()
                 },
                 onClearHistoryClick = {
-                    android.widget.Toast.makeText(context, "Очистити історію", android.widget.Toast.LENGTH_SHORT).show()
+                    Log.d("MessagesScreen", "Очищення історії чату")
+                    // TODO: Реалізувати viewModel.clearChatHistory() в MessagesViewModel
+                    android.widget.Toast.makeText(context, "Очищення історії поки недоступне", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onChangeWallpaperClick = {
+                    Log.d("MessagesScreen", "Зміна фону чату")
+                    // TODO: Відкрити вибір фону
+                    android.widget.Toast.makeText(context, "Вибір фону поки недоступний", android.widget.Toast.LENGTH_SHORT).show()
                 }
             )
 
@@ -502,7 +515,8 @@ fun MessagesHeaderBar(
     onVideoCallClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onMuteClick: () -> Unit = {},
-    onClearHistoryClick: () -> Unit = {}
+    onClearHistoryClick: () -> Unit = {},
+    onChangeWallpaperClick: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var showUserMenu by remember { mutableStateOf(false) }
@@ -636,7 +650,7 @@ fun MessagesHeaderBar(
                         text = { Text("Змінити обої") },
                         onClick = {
                             showUserMenu = false
-                            // TODO: Відкрити налаштування фону
+                            onChangeWallpaperClick()
                         },
                         leadingIcon = {
                             Icon(Icons.Default.Image, contentDescription = null)

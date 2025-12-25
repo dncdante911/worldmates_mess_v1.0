@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -39,6 +40,7 @@ import com.worldmates.messenger.ui.media.InlineVideoPlayer
 import com.worldmates.messenger.ui.media.MiniAudioPlayer
 import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
 import com.worldmates.messenger.data.model.Message
+import com.worldmates.messenger.data.model.ReactionGroup
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.ui.theme.WMShapes
@@ -78,6 +80,8 @@ fun MessagesScreen(
 
     var messageText by remember { mutableStateOf("") }
     var showMediaOptions by remember { mutableStateOf(false) }
+    var showEmojiPicker by remember { mutableStateOf(false) }
+    var showStickerPicker by remember { mutableStateOf(false) }
     var isCurrentlyTyping by remember { mutableStateOf(false) }
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -271,6 +275,9 @@ fun MessagesScreen(
                         onReply = { msg ->
                             // Встановлюємо повідомлення для відповіді
                             replyToMessage = msg
+                        },
+                        onToggleReaction = { messageId, emoji ->
+                            viewModel.toggleReaction(messageId, emoji)
                         }
                     )
                 }
@@ -409,8 +416,23 @@ fun MessagesScreen(
             onPickVideo = { videoPickerLauncher.launch("video/*") },
             onPickAudio = { audioPickerLauncher.launch("audio/*") },
             onPickFile = { filePickerLauncher.launch("*/*") },
-            showMediaOptions = showMediaOptions
+            showMediaOptions = showMediaOptions,
+            showEmojiPicker = showEmojiPicker,
+            onToggleEmojiPicker = { showEmojiPicker = !showEmojiPicker },
+            showStickerPicker = showStickerPicker,
+            onToggleStickerPicker = { showStickerPicker = !showStickerPicker }
         )
+
+        // 🎭 Sticker Picker
+        if (showStickerPicker) {
+            com.worldmates.messenger.ui.components.StickerPicker(
+                onStickerSelected = { sticker ->
+                    viewModel.sendSticker(sticker.id)
+                    showStickerPicker = false
+                },
+                onDismiss = { showStickerPicker = false }
+            )
+        }
         }  // Кінець Column
     }  // Кінець Box
 }
@@ -511,7 +533,8 @@ fun MessageBubbleComposable(
     replyToMessage: Message? = null,
     onLongPress: () -> Unit = {},
     onImageClick: (String) -> Unit = {},
-    onReply: (Message) -> Unit = {}
+    onReply: (Message) -> Unit = {},
+    onToggleReaction: (Long, String) -> Unit = { _, _ -> }
 ) {
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
@@ -519,6 +542,21 @@ fun MessageBubbleComposable(
     // 💬 Свайп для Reply
     var offsetX by remember { mutableStateOf(0f) }
     val maxSwipeDistance = 100f  // Максимальна відстань свайпу
+
+    // ❤️ Реакції
+    var showReactionPicker by remember { mutableStateOf(false) }
+
+    // Групуємо реакції по емоджі для відображення
+    val reactionGroups = remember(message.reactions) {
+        message.reactions?.groupBy { it.reaction }?.map { (emoji, reactionList) ->
+            ReactionGroup(
+                emoji = emoji,
+                count = reactionList.size,
+                userIds = reactionList.map { it.userId },
+                hasMyReaction = reactionList.any { it.userId == UserSession.userId }
+            )
+        } ?: emptyList()
+    }
 
     // Цвета из темы
     val bgColor = if (isOwn) {
@@ -580,13 +618,14 @@ fun MessageBubbleComposable(
             horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
         ) {
             // Современный Material 3 пузырь с тенью и скруглениями
+            Column {
             Card(
             modifier = Modifier
                 .widthIn(max = 280.dp)  // Оптимальная ширина для читабельности
                 .padding(horizontal = 8.dp)
                 .combinedClickable(
                     onClick = { },
-                    onLongClick = onLongPress
+                    onLongClick = { showReactionPicker = true }
                 ),
             shape = if (isOwn) {
                 RoundedCornerShape(
@@ -802,7 +841,34 @@ fun MessageBubbleComposable(
                 }
             }
         }
+
+            // ❤️ Реакції під повідомленням
+            MessageReactions(
+                reactions = reactionGroups,
+                onReactionClick = { emoji ->
+                    onToggleReaction(message.id, emoji)
+                },
+                modifier = Modifier.align(if (isOwn) Alignment.End else Alignment.Start)
+            )
+        }  // Закриття Column
         }  // Закриття Row
+
+        // 🎯 ReactionPicker overlay (показується при довгому натисканні)
+        if (showReactionPicker) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = (-40).dp)  // Зміщення вгору над повідомленням
+            ) {
+                ReactionPicker(
+                    onReactionSelected = { emoji ->
+                        onToggleReaction(message.id, emoji)
+                        showReactionPicker = false
+                    },
+                    onDismiss = { showReactionPicker = false }
+                )
+            }
+        }
     }  // Закриття Box зі свайпом
 }
 
@@ -880,7 +946,11 @@ fun MessageInputBar(
     onPickVideo: () -> Unit,
     onPickAudio: () -> Unit,
     onPickFile: () -> Unit,
-    showMediaOptions: Boolean
+    showMediaOptions: Boolean,
+    showEmojiPicker: Boolean,
+    onToggleEmojiPicker: () -> Unit,
+    showStickerPicker: Boolean,
+    onToggleStickerPicker: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -986,6 +1056,24 @@ fun MessageInputBar(
                     }
                 )
 
+                // 😊 Кнопка емоджі
+                IconButton(onClick = onToggleEmojiPicker) {
+                    Icon(
+                        imageVector = if (showEmojiPicker) Icons.Default.KeyboardArrowDown else Icons.Default.EmojiEmotions,
+                        contentDescription = "Emoji",
+                        tint = colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // 🎭 Кнопка стікерів
+                IconButton(onClick = onToggleStickerPicker) {
+                    Icon(
+                        imageVector = if (showStickerPicker) Icons.Default.KeyboardArrowDown else Icons.Default.StickyNote2,
+                        contentDescription = "Stickers",
+                        tint = colorScheme.onSurfaceVariant
+                    )
+                }
+
                 if (messageText.isNotBlank()) {
                     IconButton(
                         onClick = onSendClick,
@@ -1010,6 +1098,16 @@ fun MessageInputBar(
                     }
                 }
             }
+        }
+
+        // 😊 Emoji Picker
+        if (showEmojiPicker) {
+            com.worldmates.messenger.ui.components.EmojiPicker(
+                onEmojiSelected = { emoji ->
+                    onMessageChange(messageText + emoji)
+                },
+                onDismiss = onToggleEmojiPicker
+            )
         }
     }
 }
@@ -1372,6 +1470,115 @@ fun ReplyIndicator(
                         contentDescription = "Скасувати відповідь",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ❤️ Панель вибору реакцій емоджі (з'являється при довгому тапі)
+ */
+@Composable
+fun ReactionPicker(
+    onReactionSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val reactions = listOf("❤️", "👍", "😂", "😮", "😢", "🙏", "🔥", "👏")
+
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp,
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            reactions.forEach { emoji ->
+                Surface(
+                    onClick = {
+                        onReactionSelected(emoji)
+                        onDismiss()
+                    },
+                    shape = CircleShape,
+                    modifier = Modifier.size(44.dp),
+                    color = Color.Transparent
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = emoji,
+                            fontSize = 28.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 👍 Показ реакцій під повідомленням
+ */
+@Composable
+fun MessageReactions(
+    reactions: List<ReactionGroup>,
+    onReactionClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (reactions.isNotEmpty()) {
+        Row(
+            modifier = modifier
+                .padding(top = 4.dp, start = 8.dp)
+                .wrapContentWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            reactions.forEach { reactionGroup ->
+                Surface(
+                    onClick = { onReactionClick(reactionGroup.emoji) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (reactionGroup.hasMyReaction) {
+                        Color(0xFF0084FF).copy(alpha = 0.2f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+                    border = if (reactionGroup.hasMyReaction) {
+                        BorderStroke(1.dp, Color(0xFF0084FF))
+                    } else null,
+                    modifier = Modifier.height(28.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = reactionGroup.emoji,
+                            fontSize = 14.sp
+                        )
+                        if (reactionGroup.count > 1) {
+                            Text(
+                                text = reactionGroup.count.toString(),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (reactionGroup.hasMyReaction) {
+                                    Color(0xFF0084FF)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }

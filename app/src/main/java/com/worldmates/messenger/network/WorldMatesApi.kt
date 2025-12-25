@@ -272,6 +272,94 @@ interface WorldMatesApi {
         @Field("text") newText: String
     ): MessageResponse
 
+    // ==================== REACTIONS ====================
+
+    @FormUrlEncoded
+    @POST("?type=add_message_reaction")
+    suspend fun addReaction(
+        @Query("access_token") accessToken: String,
+        @Field("message_id") messageId: Long,
+        @Field("reaction") reaction: String
+    ): ReactionResponse
+
+    @FormUrlEncoded
+    @POST("?type=remove_message_reaction")
+    suspend fun removeReaction(
+        @Query("access_token") accessToken: String,
+        @Field("message_id") messageId: Long,
+        @Field("reaction") reaction: String
+    ): ReactionResponse
+
+    @GET("?type=get_message_reactions")
+    suspend fun getReactions(
+        @Query("access_token") accessToken: String,
+        @Query("message_id") messageId: Long
+    ): ReactionsListResponse
+
+    // ==================== CUSTOM EMOJIS ====================
+
+    @GET("?type=get_emoji_packs")
+    suspend fun getEmojiPacks(
+        @Query("access_token") accessToken: String
+    ): EmojiPacksResponse
+
+    @GET("?type=get_emoji_pack")
+    suspend fun getEmojiPack(
+        @Query("access_token") accessToken: String,
+        @Query("pack_id") packId: Long
+    ): EmojiPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=activate_emoji_pack")
+    suspend fun activateEmojiPack(
+        @Query("access_token") accessToken: String,
+        @Field("pack_id") packId: Long
+    ): EmojiPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=deactivate_emoji_pack")
+    suspend fun deactivateEmojiPack(
+        @Query("access_token") accessToken: String,
+        @Field("pack_id") packId: Long
+    ): EmojiPackDetailResponse
+
+    // ==================== STICKERS ====================
+
+    @GET("?type=get_sticker_packs")
+    suspend fun getStickerPacks(
+        @Query("access_token") accessToken: String
+    ): StickerPacksResponse
+
+    @GET("?type=get_sticker_pack")
+    suspend fun getStickerPack(
+        @Query("access_token") accessToken: String,
+        @Query("pack_id") packId: Long
+    ): StickerPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=activate_sticker_pack")
+    suspend fun activateStickerPack(
+        @Query("access_token") accessToken: String,
+        @Field("pack_id") packId: Long
+    ): StickerPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=deactivate_sticker_pack")
+    suspend fun deactivateStickerPack(
+        @Query("access_token") accessToken: String,
+        @Field("pack_id") packId: Long
+    ): StickerPackDetailResponse
+
+    @FormUrlEncoded
+    @POST("?type=send_sticker")
+    suspend fun sendSticker(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") recipientId: Long? = null,
+        @Field("group_id") groupId: Long? = null,
+        @Field("sticker_id") stickerId: Long,
+        @Field("message_hash_id") messageHashId: String
+    ): MessageResponse
+
     // ==================== MEDIA UPLOAD ====================
 
     // XHR Upload endpoints (используются для загрузки файлов на сервер)
@@ -502,6 +590,24 @@ data class CallResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("call_id") val callId: String?,
     @SerializedName("rtc_signal") val rtcSignal: String?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+// ==================== REACTION RESPONSES ====================
+
+data class ReactionResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_text") val apiText: String?,
+    @SerializedName("reaction") val reaction: MessageReaction?,
+    @SerializedName("error_code") val errorCode: Int?,
+    @SerializedName("error_message") val errorMessage: String?
+)
+
+data class ReactionsListResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_text") val apiText: String?,
+    @SerializedName("reactions") val reactions: List<MessageReaction>?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 )

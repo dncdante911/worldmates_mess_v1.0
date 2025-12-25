@@ -326,6 +326,149 @@ class MessagesViewModel(application: Application) :
         }
     }
 
+    // ==================== РЕАКЦІЇ ====================
+
+    /**
+     * Додає або видаляє реакцію на повідомлення (toggle)
+     */
+    fun toggleReaction(messageId: Long, emoji: String) {
+        if (UserSession.accessToken == null) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                // Перевіряємо, чи вже є реакція від поточного користувача
+                val message = _messages.value.find { it.id == messageId }
+                val existingReactions = message?.reactions ?: emptyList()
+                val hasMyReaction = existingReactions.any {
+                    it.userId == UserSession.userId && it.reaction == emoji
+                }
+
+                val response = if (hasMyReaction) {
+                    // Видаляємо реакцію
+                    RetrofitClient.apiService.removeReaction(
+                        accessToken = UserSession.accessToken!!,
+                        messageId = messageId,
+                        reaction = emoji
+                    )
+                } else {
+                    // Додаємо реакцію
+                    RetrofitClient.apiService.addReaction(
+                        accessToken = UserSession.accessToken!!,
+                        messageId = messageId,
+                        reaction = emoji
+                    )
+                }
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо реакції для повідомлення
+                    fetchReactionsForMessage(messageId)
+                    Log.d("MessagesViewModel", "Реакцію ${if (hasMyReaction) "видалено" else "додано"}")
+                } else {
+                    _error.value = response.errorMessage ?: "Не вдалося оновити реакцію"
+                    Log.e("MessagesViewModel", "Reaction Error: ${response.errorMessage}")
+                }
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                Log.e("MessagesViewModel", "Помилка оновлення реакції", e)
+            }
+        }
+    }
+
+    /**
+     * Завантажує реакції для конкретного повідомлення
+     */
+    private suspend fun fetchReactionsForMessage(messageId: Long) {
+        try {
+            val response = RetrofitClient.apiService.getReactions(
+                accessToken = UserSession.accessToken!!,
+                messageId = messageId
+            )
+
+            if (response.apiStatus == 200 && response.reactions != null) {
+                // Оновлюємо список повідомлень з новими реакціями
+                val currentMessages = _messages.value.toMutableList()
+                val messageIndex = currentMessages.indexOfFirst { it.id == messageId }
+
+                if (messageIndex != -1) {
+                    val updatedMessage = currentMessages[messageIndex].copy(
+                        reactions = response.reactions
+                    )
+                    currentMessages[messageIndex] = updatedMessage
+                    _messages.value = currentMessages
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MessagesViewModel", "Помилка завантаження реакцій", e)
+        }
+    }
+
+    /**
+     * Групує реакції по емоджі для відображення під повідомленням
+     */
+    fun getReactionGroups(reactions: List<MessageReaction>): List<ReactionGroup> {
+        return reactions.groupBy { it.reaction }
+            .map { (emoji, reactionList) ->
+                ReactionGroup(
+                    emoji = emoji,
+                    count = reactionList.size,
+                    userIds = reactionList.map { it.userId },
+                    hasMyReaction = reactionList.any { it.userId == UserSession.userId }
+                )
+            }
+    }
+
+    // ==================== СТІКЕРИ ====================
+
+    /**
+     * Надсилає стікер
+     */
+    fun sendSticker(stickerId: Long) {
+        if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L)) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val messageHashId = java.util.UUID.randomUUID().toString()
+
+                val response = RetrofitClient.apiService.sendSticker(
+                    accessToken = UserSession.accessToken!!,
+                    recipientId = recipientId.takeIf { it != 0L },
+                    groupId = groupId.takeIf { it != 0L },
+                    stickerId = stickerId,
+                    messageHashId = messageHashId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Перезавантажуємо повідомлення
+                    if (groupId != 0L) {
+                        fetchGroupMessages()
+                    } else {
+                        fetchMessages()
+                    }
+
+                    _error.value = null
+                    Log.d("MessagesViewModel", "Стікер надіслано")
+                } else {
+                    _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати стікер"
+                    Log.e("MessagesViewModel", "Send Sticker Error: ${response.errors?.errorText ?: response.errorMessage}")
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e("MessagesViewModel", "Помилка надсилання стікера", e)
+            }
+        }
+    }
+
     /**
      * Загружает и отправляет медиа-файл
      */

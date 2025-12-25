@@ -55,6 +55,7 @@ import com.worldmates.messenger.ui.theme.AnimatedGradientBackground
 import com.worldmates.messenger.ui.theme.WMColors
 import com.worldmates.messenger.ui.theme.rememberThemeState
 import com.worldmates.messenger.ui.theme.PresetBackground
+import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import com.worldmates.messenger.utils.VoiceRecorder
@@ -764,6 +765,7 @@ fun MessageBubbleComposable(
 ) {
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
+    val bubbleStyle = rememberBubbleStyle()  // 🎨 Отримуємо вибраний стиль бульбашок
 
     // 💬 Свайп для Reply
     var offsetX by remember { mutableStateOf(0f) }

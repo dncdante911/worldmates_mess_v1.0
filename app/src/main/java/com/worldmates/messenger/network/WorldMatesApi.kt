@@ -327,12 +327,14 @@ interface WorldMatesApi {
 
     @GET("?type=get_sticker_packs")
     suspend fun getStickerPacks(
-        @Query("access_token") accessToken: String
+        @Query("access_token") accessToken: String,
+        @Query("server_key") serverKey: String
     ): StickerPacksResponse
 
     @GET("?type=get_sticker_pack")
     suspend fun getStickerPack(
         @Query("access_token") accessToken: String,
+        @Query("server_key") serverKey: String,
         @Query("pack_id") packId: Long
     ): StickerPackDetailResponse
 

@@ -41,7 +41,8 @@ class StickerRepository(context: Context) {
             }
 
             val response = RetrofitClient.apiService.getStickerPacks(
-                accessToken = UserSession.accessToken!!
+                accessToken = UserSession.accessToken!!,
+                serverKey = com.worldmates.messenger.data.Constants.SERVER_KEY
             )
 
             if (response.apiStatus == 200 && response.packs != null) {
@@ -70,6 +71,7 @@ class StickerRepository(context: Context) {
 
             val response = RetrofitClient.apiService.getStickerPack(
                 accessToken = UserSession.accessToken!!,
+                serverKey = com.worldmates.messenger.data.Constants.SERVER_KEY,
                 packId = packId
             )
 

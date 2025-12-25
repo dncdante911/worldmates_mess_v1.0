@@ -16,8 +16,8 @@ android {
         applicationId "com.worldmates.messenger"
         minSdk 30  // Android 11.0 и выше
         targetSdk 35  // Обновлено
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "2.0-EDIT-FIX"
 
         // Multi-dex support для больших приложений
         multiDexEnabled true

@@ -922,6 +922,7 @@ fun MessageBubbleComposable(
     onToggleSelection: (Long) -> Unit = {},
     onDoubleTap: (Long) -> Unit = {}
 ) {
+    val context = LocalContext.current
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
     val bubbleStyle = rememberBubbleStyle()  // 🎨 Отримуємо вибраний стиль бульбашок
@@ -964,6 +965,9 @@ fun MessageBubbleComposable(
     val duration by voicePlayer.duration.collectAsState()
 
     var showVideoPlayer by remember { mutableStateOf(false) }
+
+    // 📱 Меню для медіа файлів
+    var showMediaMenu by remember { mutableStateOf(false) }
 
     // 💬 Обгортка з іконкою Reply для свайпу
     Box(
@@ -1191,18 +1195,25 @@ fun MessageBubbleComposable(
                             .padding(top = if (shouldShowText) 6.dp else 0.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color.Black.copy(alpha = 0.1f))
-                            .clickable(
-                                enabled = true,
-                                onClick = {
-                                    Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
-                                    onImageClick(effectiveMediaUrl)
-                                }
-                            )
                     ) {
                         AsyncImage(
                             model = effectiveMediaUrl,
                             contentDescription = "Media",
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(message.id) {
+                                    detectTapGestures(
+                                        onLongPress = {
+                                            // Показуємо меню для медіа
+                                            showMediaMenu = true
+                                        },
+                                        onTap = {
+                                            // Звичайний клік - відкриваємо галерею
+                                            Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
+                                            onImageClick(effectiveMediaUrl)
+                                        }
+                                    )
+                                },
                             contentScale = ContentScale.Crop,
                             onError = {
                                 Log.e("MessageBubble", "Помилка завантаження зображення: $effectiveMediaUrl, error: ${it.result.throwable}")
@@ -1322,6 +1333,30 @@ fun MessageBubbleComposable(
             }
         }
     }  // Закриття Box зі свайпом
+
+    // 📱 Меню для медіа файлів (показується при довгому натисканні на медіа)
+    MediaActionMenu(
+        visible = showMediaMenu,
+        isOwnMessage = isOwn,
+        onShare = {
+            // TODO: Реалізувати поділитися медіа
+            android.widget.Toast.makeText(
+                context,
+                "Поділитися медіа",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        },
+        onDelete = {
+            // Видаляємо повідомлення з медіа
+            // TODO: Додати підтвердження видалення
+            android.widget.Toast.makeText(
+                context,
+                "Медіа буде видалено",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        },
+        onDismiss = { showMediaMenu = false }
+    )
 }
 
 @Composable

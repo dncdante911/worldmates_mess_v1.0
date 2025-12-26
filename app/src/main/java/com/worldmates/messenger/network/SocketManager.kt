@@ -172,6 +172,32 @@ class SocketManager(private val listener: SocketListener) {
                 }
             }
 
+            // 14. КРИТИЧНО: Обработка события "user_status_change" от WoWonder сервера
+            // Это событие фактически используется сервером вместо on_user_loggedin/on_user_loggedoff
+            socket?.on("user_status_change") { args ->
+                Log.d("SocketManager", "Received user_status_change event with ${args.size} args")
+                if (args.isNotEmpty()) {
+                    Log.d("SocketManager", "Event data: ${args[0]}")
+                    if (args[0] is JSONObject) {
+                        val data = args[0] as JSONObject
+                        val userId = data.optLong("user_id", 0)
+                        // Проверяем статус: 0 = offline, 1 = online
+                        val status = data.optString("status", "0")
+                        val isOnline = status == "1" || status.equals("online", ignoreCase = true)
+
+                        Log.d("SocketManager", "User $userId status changed: ${if (isOnline) "ONLINE ✅" else "OFFLINE ❌"}")
+
+                        if (listener is ExtendedSocketListener) {
+                            if (isOnline) {
+                                listener.onUserOnline(userId)
+                            } else {
+                                listener.onUserOffline(userId)
+                            }
+                        }
+                    }
+                }
+            }
+
             socket?.connect()
 
         } catch (e: Exception) {

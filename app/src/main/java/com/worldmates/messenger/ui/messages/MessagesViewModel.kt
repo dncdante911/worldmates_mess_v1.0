@@ -26,10 +26,14 @@ class MessagesViewModel(application: Application) :
 
     private val context = application
 
+    companion object {
+        private const val TAG = "MessagesViewModel"
+    }
+
     init {
-        Log.d("MessagesViewModel", "🚀 MessagesViewModel створено!")
-        Log.d("MessagesViewModel", "Access Token: ${UserSession.accessToken?.take(10)}...")
-        Log.d("MessagesViewModel", "User ID: ${UserSession.userId}")
+        Log.d(TAG, "🚀 MessagesViewModel створено!")
+        Log.d(TAG, "Access Token: ${UserSession.accessToken?.take(10)}...")
+        Log.d(TAG, "User ID: ${UserSession.userId}")
     }
 
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
@@ -505,15 +509,13 @@ class MessagesViewModel(application: Application) :
             try {
                 val messageHashId = java.util.UUID.randomUUID().toString()
 
-                // Відправляємо GIF як медіа-повідомлення
+                // Відправляємо GIF як медіа-повідомлення (текст = GIF URL)
                 val response = RetrofitClient.apiService.sendMessage(
                     accessToken = UserSession.accessToken!!,
-                    toId = recipientId.takeIf { it != 0L },
-                    groupId = groupId.takeIf { it != 0L },
-                    message = "",  // Пусте текстове повідомлення
-                    media = gifUrl,  // GIF URL як медіа
+                    recipientId = recipientId,
+                    text = gifUrl,  // GIF URL як текст (сервер розпізнає це як GIF)
                     messageHashId = messageHashId,
-                    replyId = null
+                    replyToId = null
                 )
 
                 if (response.apiStatus == 200) {

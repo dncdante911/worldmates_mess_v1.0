@@ -708,7 +708,9 @@ fun MessagesScreen(
             showEmojiPicker = showEmojiPicker,
             onToggleEmojiPicker = { showEmojiPicker = !showEmojiPicker },
             showStickerPicker = showStickerPicker,
-            onToggleStickerPicker = { showStickerPicker = !showStickerPicker }
+            onToggleStickerPicker = { showStickerPicker = !showStickerPicker },
+            showGifPicker = showGifPicker,
+            onToggleGifPicker = { showGifPicker = !showGifPicker }
         )
         }  // Закриття if (!isSelectionMode)
 
@@ -1541,7 +1543,9 @@ fun MessageInputBar(
     showEmojiPicker: Boolean,
     onToggleEmojiPicker: () -> Unit,
     showStickerPicker: Boolean,
-    onToggleStickerPicker: () -> Unit
+    onToggleStickerPicker: () -> Unit,
+    showGifPicker: Boolean,
+    onToggleGifPicker: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -1643,7 +1647,9 @@ fun MessageInputBar(
                             onShowMediaOptions() // Закриваємо меню
                             scope.launch {
                                 kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
-                                showGifPicker = !showGifPicker  // Відкриваємо GIF picker
+                                if (!showGifPicker) {
+                                    onToggleGifPicker() // Відкриваємо GIF picker
+                                }
                             }
                         }
                     )

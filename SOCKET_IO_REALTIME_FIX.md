@@ -182,8 +182,70 @@ adb logcat | grep -E "SocketManager|MessagesViewModel"
 - Слухачі подій: `listeners.js`
 - Конфігурація: `config.json`
 
+## 🔧 Додаткові виправлення (v2)
+
+### Проблеми після першого виправлення:
+
+1. **XHR polling помилки** - Socket.IO використовував XHR замість WebSocket
+2. **HTML замість JSON** - сервер відправляв HTML розмітку в події `user_status_change`
+3. **Втрата статусу онлайн** - статус скидався при друкуванні
+
+### Виправлення v2:
+
+#### 1. Форсування WebSocket транспорту
+```kotlin
+opts.transports = arrayOf("websocket", "polling")
+```
+
+#### 2. Парсинг HTML від WoWonder
+```kotlin
+private fun parseOnlineUsers(html: String, isOnline: Boolean) {
+    val pattern = """id="online_(\d+)"""".toRegex()
+    val matches = pattern.findAll(html)
+    matches.forEach { match ->
+        val userId = match.groupValues[1].toLongOrNull()
+        // обробка userId
+    }
+}
+```
+
+#### 3. Запобігання втраті статусу
+```kotlin
+override fun onTypingStatus(userId: Long, isTyping: Boolean) {
+    if (isTyping) {
+        _recipientOnlineStatus.value = true  // Друкує = онлайн!
+    }
+}
+
+override fun onUserOffline(userId: Long) {
+    if (!_isTyping.value) {  // Не скидаємо якщо друкує
+        _recipientOnlineStatus.value = false
+    }
+}
+```
+
+#### 4. Додаткові події повідомлень
+```kotlin
+socket?.on("private_message_page") { ... }
+socket?.on("page_message") { ... }
+```
+
+### Логи для відладки v2:
+
+```bash
+# WebSocket з'єднання
+adb logcat | grep "websocket"
+
+# Парсинг онлайн користувачів
+adb logcat | grep "Parsed user"
+
+# Отримання повідомлень
+adb logcat | grep "📨"
+```
+
 ---
 
 **Дата створення:** 2025-12-26
+**Останнє оновлення:** 2025-12-26 (v2)
 **Автор:** Claude Code Agent
-**Статус:** ✅ Виправлено
+**Статус:** ✅ Виправлено (v2 - WebSocket + HTML парсинг)

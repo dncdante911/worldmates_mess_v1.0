@@ -50,7 +50,7 @@ fun StandardBubble(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             content = content
         )
     }
@@ -109,7 +109,7 @@ fun ComicBubble(
             .shadow(3.dp, bubbleShape)
             .clip(bubbleShape)
             .background(bgColor)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Column(content = content)
     }
@@ -136,7 +136,7 @@ fun TelegramBubble(
                 )
             )
             .background(bgColor)
-            .padding(horizontal = 12.dp, vertical = 7.dp)
+            .padding(horizontal = 12.dp, vertical = 5.dp)
     ) {
         Column(content = content)
     }
@@ -156,7 +156,7 @@ fun MinimalBubble(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(bgColor)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
     ) {
         Column(content = content)
     }
@@ -198,7 +198,7 @@ fun ModernBubble(
                 color = Color.White.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(18.dp)
             )
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
     ) {
         Column(content = content)
     }
@@ -235,7 +235,7 @@ fun RetroBubble(
                 color = borderColor,
                 shape = RoundedCornerShape(8.dp)
             )
-            .padding(horizontal = 12.dp, vertical = 7.dp)
+            .padding(horizontal = 12.dp, vertical = 5.dp)
     ) {
         Column(content = content)
     }

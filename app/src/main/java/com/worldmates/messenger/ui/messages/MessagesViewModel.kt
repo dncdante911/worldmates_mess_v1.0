@@ -765,7 +765,7 @@ class MessagesViewModel(application: Application) :
                     _forwardContacts.value = contacts
                     Log.d("MessagesViewModel", "Завантажено ${contacts.size} контактів для пересилання")
                 } else {
-                    Log.e("MessagesViewModel", "Помилка завантаження контактів: ${response.errors}")
+                    Log.e("MessagesViewModel", "Помилка завантаження контактів: ${response.errorMessage}")
                 }
             } catch (e: Exception) {
                 Log.e("MessagesViewModel", "Помилка завантаження контактів", e)
@@ -804,7 +804,7 @@ class MessagesViewModel(application: Application) :
                     _forwardGroups.value = groups
                     Log.d("MessagesViewModel", "Завантажено ${groups.size} груп для пересилання")
                 } else {
-                    Log.e("MessagesViewModel", "Помилка завантаження груп: ${response.errors}")
+                    Log.e("MessagesViewModel", "Помилка завантаження груп: ${response.errorMessage}")
                 }
             } catch (e: Exception) {
                 Log.e("MessagesViewModel", "Помилка завантаження груп", e)

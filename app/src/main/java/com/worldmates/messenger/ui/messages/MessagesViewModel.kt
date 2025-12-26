@@ -621,6 +621,87 @@ class MessagesViewModel(application: Application) :
         }
     }
 
+    /**
+     * Отправка контакта (vCard)
+     */
+    fun sendContact(contact: com.worldmates.messenger.data.model.Contact) {
+        if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L)) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val messageHashId = java.util.UUID.randomUUID().toString()
+
+                // Генерируем vCard
+                val vCardString = contact.toVCard()
+
+                // Формируем текст сообщения с префиксом для идентификации контакта
+                val contactText = "📇 VCARD\n$vCardString"
+
+                val response = if (groupId != 0L) {
+                    RetrofitClient.apiService.sendGroupMessage(
+                        accessToken = UserSession.accessToken!!,
+                        groupId = groupId,
+                        text = contactText,
+                        replyToId = null
+                    )
+                } else {
+                    RetrofitClient.apiService.sendMessage(
+                        accessToken = UserSession.accessToken!!,
+                        recipientId = recipientId,
+                        text = contactText,
+                        messageHashId = messageHashId,
+                        replyToId = null
+                    )
+                }
+
+                if (response.apiStatus == 200) {
+                    Log.d(TAG, "✅ Contact sent successfully: ${contact.name}")
+
+                    // Если API вернул сообщения, добавляем их
+                    if (response.messages != null && response.messages.isNotEmpty()) {
+                        val decryptedMessages = response.messages.map { msg ->
+                            decryptMessageFully(msg)
+                        }
+                        val currentMessages = _messages.value.toMutableList()
+                        currentMessages.addAll(decryptedMessages)
+                        _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+                    } else {
+                        // Перезагружаем сообщения
+                        if (groupId != 0L) {
+                            fetchGroupMessages()
+                        } else {
+                            fetchMessages()
+                        }
+                    }
+
+                    // Отправляем через Socket.IO
+                    if (groupId != 0L) {
+                        socketManager?.sendGroupMessage(groupId, contactText)
+                    } else {
+                        socketManager?.sendMessage(recipientId, contactText)
+                    }
+
+                    _error.value = null
+                    Log.d(TAG, "Контакт надіслано")
+                } else {
+                    _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати контакт"
+                    Log.e(TAG, "Send Contact Error: ${response.errors?.errorText ?: response.errorMessage}")
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e(TAG, "Помилка надсилання контакту", e)
+            }
+        }
+    }
+
     // ==================== DRAFT METHODS ====================
 
     /**

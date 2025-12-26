@@ -579,24 +579,28 @@ fun MessagesScreen(
         }
 
         // 🔥 Нижня панель дій (режим вибору)
-        if (isSelectionMode) {
-            SelectionBottomBar(
-                selectedCount = selectedMessages.size,
-                onForward = {
-                    // Відкриваємо діалог вибору отримувачів
-                    showForwardDialog = true
-                },
-                onReply = {
-                    // Відповідаємо на вибране повідомлення
-                    if (selectedMessages.size == 1) {
-                        val messageId = selectedMessages.first()
-                        replyToMessage = messages.find { it.id == messageId }
-                        isSelectionMode = false
-                        selectedMessages = emptySet()
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            if (isSelectionMode) {
+                SelectionBottomBar(
+                    selectedCount = selectedMessages.size,
+                    onForward = {
+                        // Відкриваємо діалог вибору отримувачів
+                        showForwardDialog = true
+                    },
+                    onReply = {
+                        // Відповідаємо на вибране повідомлення
+                        if (selectedMessages.size == 1) {
+                            val messageId = selectedMessages.first()
+                            replyToMessage = messages.find { it.id == messageId }
+                            isSelectionMode = false
+                            selectedMessages = emptySet()
+                        }
                     }
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
+                )
+            }
         }
 
         // ❤️ Анімація швидкої реакції

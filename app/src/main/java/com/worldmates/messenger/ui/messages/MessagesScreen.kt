@@ -1,6 +1,11 @@
 package com.worldmates.messenger.ui.messages
 
+import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -57,6 +62,7 @@ import com.worldmates.messenger.ui.theme.WMColors
 import com.worldmates.messenger.ui.theme.rememberThemeState
 import com.worldmates.messenger.ui.theme.PresetBackground
 import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
+import com.worldmates.messenger.ui.preferences.rememberQuickReaction
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import com.worldmates.messenger.utils.VoiceRecorder
@@ -68,6 +74,8 @@ import com.worldmates.messenger.ui.messages.selection.SelectionBottomBar
 import com.worldmates.messenger.ui.messages.selection.SelectionTopBarActions
 import com.worldmates.messenger.ui.messages.selection.MediaActionMenu
 import com.worldmates.messenger.ui.messages.selection.QuickReactionAnimation
+import com.worldmates.messenger.ui.messages.selection.ForwardMessageDialog
+import com.worldmates.messenger.ui.messages.selection.ForwardRecipient
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -103,10 +111,13 @@ fun MessagesScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedMessages by remember { mutableStateOf(setOf<Long>()) }
 
+    // 📤 Пересилання повідомлень
+    var showForwardDialog by remember { mutableStateOf(false) }
+
     // ❤️ Быстрая реакция при двойном тапе
     var showQuickReaction by remember { mutableStateOf(false) }
     var quickReactionMessageId by remember { mutableStateOf<Long?>(null) }
-    var defaultQuickReaction by remember { mutableStateOf("❤️") }  // Можно настроить
+    val defaultQuickReaction = rememberQuickReaction()  // Налаштовується в темах
 
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
@@ -327,7 +338,12 @@ fun MessagesScreen(
                 // 🔥 Параметри режиму вибору
                 isSelectionMode = isSelectionMode,
                 selectedCount = selectedMessages.size,
+                totalCount = messages.size,
                 canEdit = selectedMessages.size == 1 && messages.find { it.id == selectedMessages.first() }?.fromId == UserSession.userId,
+                onSelectAll = {
+                    // Вибираємо всі повідомлення
+                    selectedMessages = messages.map { it.id }.toSet()
+                },
                 onEditSelected = {
                     // Редагуємо вибране повідомлення
                     if (selectedMessages.size == 1) {
@@ -387,6 +403,8 @@ fun MessagesScreen(
                             // 🔥 Активуємо режим вибору при довгому натисканні
                             if (!isSelectionMode) {
                                 isSelectionMode = true
+                                // 📳 Вібрація при активації
+                                performSelectionVibration(context)
                             }
                         },
                         onImageClick = { imageUrl ->
@@ -565,12 +583,8 @@ fun MessagesScreen(
             SelectionBottomBar(
                 selectedCount = selectedMessages.size,
                 onForward = {
-                    // TODO: Реалізувати пересилання
-                    android.widget.Toast.makeText(
-                        context,
-                        "📤 Пересилання ${selectedMessages.size} повідомлень",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+                    // Відкриваємо діалог вибору отримувачів
+                    showForwardDialog = true
                 },
                 onReply = {
                     // Відповідаємо на вибране повідомлення
@@ -680,6 +694,42 @@ fun MessagesScreen(
                 onDismiss = { showStickerPicker = false }
             )
         }
+
+        // 📤 Діалог пересилання повідомлень
+        ForwardMessageDialog(
+            visible = showForwardDialog,
+            // TODO: Отримати реальний список контактів з ViewModel
+            contacts = listOf(
+                ForwardRecipient(1, "Іван Петренко", "", false),
+                ForwardRecipient(2, "Марія Коваленко", "", false),
+                ForwardRecipient(3, "Олексій Сидоренко", "", false)
+            ),
+            groups = listOf(
+                ForwardRecipient(101, "Робоча група", "", true),
+                ForwardRecipient(102, "Сім'я", "", true),
+                ForwardRecipient(103, "Друзі", "", true)
+            ),
+            selectedCount = selectedMessages.size,
+            onForward = { recipientIds ->
+                // Пересилаємо повідомлення обраним отримувачам
+                Log.d("MessagesScreen", "Пересилання ${selectedMessages.size} повідомлень до ${recipientIds.size} отримувачів")
+                recipientIds.forEach { recipientId ->
+                    selectedMessages.forEach { messageId ->
+                        // TODO: Викликати viewModel.forwardMessage(messageId, recipientId)
+                        Log.d("MessagesScreen", "Forward message $messageId to recipient $recipientId")
+                    }
+                }
+                android.widget.Toast.makeText(
+                    context,
+                    "✅ Переслано ${selectedMessages.size} повідомлень до ${recipientIds.size} отримувачів",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                // Виходимо з режиму вибору
+                isSelectionMode = false
+                selectedMessages = emptySet()
+            },
+            onDismiss = { showForwardDialog = false }
+        )
         }  // Кінець Column
     }  // Кінець Box
 }
@@ -702,9 +752,11 @@ fun MessagesHeaderBar(
     // 🔥 Параметри для режиму вибору
     isSelectionMode: Boolean = false,
     selectedCount: Int = 0,
+    totalCount: Int = 0,
     canEdit: Boolean = false,
     onEditSelected: () -> Unit = {},
     onDeleteSelected: () -> Unit = {},
+    onSelectAll: () -> Unit = {},
     onCloseSelectionMode: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -785,9 +837,11 @@ fun MessagesHeaderBar(
             if (isSelectionMode) {
                 SelectionTopBarActions(
                     selectedCount = selectedCount,
+                    totalCount = totalCount,
                     canEdit = canEdit,
                     onEdit = onEditSelected,
                     onDelete = onDeleteSelected,
+                    onSelectAll = onSelectAll,
                     onClose = onCloseSelectionMode
                 )
             } else {
@@ -906,6 +960,7 @@ fun MessageBubbleComposable(
     onToggleSelection: (Long) -> Unit = {},
     onDoubleTap: (Long) -> Unit = {}
 ) {
+    val context = LocalContext.current
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
     val bubbleStyle = rememberBubbleStyle()  // 🎨 Отримуємо вибраний стиль бульбашок
@@ -948,6 +1003,9 @@ fun MessageBubbleComposable(
     val duration by voicePlayer.duration.collectAsState()
 
     var showVideoPlayer by remember { mutableStateOf(false) }
+
+    // 📱 Меню для медіа файлів
+    var showMediaMenu by remember { mutableStateOf(false) }
 
     // 💬 Обгортка з іконкою Reply для свайпу
     Box(
@@ -1175,18 +1233,25 @@ fun MessageBubbleComposable(
                             .padding(top = if (shouldShowText) 6.dp else 0.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color.Black.copy(alpha = 0.1f))
-                            .clickable(
-                                enabled = true,
-                                onClick = {
-                                    Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
-                                    onImageClick(effectiveMediaUrl)
-                                }
-                            )
                     ) {
                         AsyncImage(
                             model = effectiveMediaUrl,
                             contentDescription = "Media",
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(message.id) {
+                                    detectTapGestures(
+                                        onLongPress = {
+                                            // Показуємо меню для медіа
+                                            showMediaMenu = true
+                                        },
+                                        onTap = {
+                                            // Звичайний клік - відкриваємо галерею
+                                            Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
+                                            onImageClick(effectiveMediaUrl)
+                                        }
+                                    )
+                                },
                             contentScale = ContentScale.Crop,
                             onError = {
                                 Log.e("MessageBubble", "Помилка завантаження зображення: $effectiveMediaUrl, error: ${it.result.throwable}")
@@ -1306,6 +1371,30 @@ fun MessageBubbleComposable(
             }
         }
     }  // Закриття Box зі свайпом
+
+    // 📱 Меню для медіа файлів (показується при довгому натисканні на медіа)
+    MediaActionMenu(
+        visible = showMediaMenu,
+        isOwnMessage = isOwn,
+        onShare = {
+            // TODO: Реалізувати поділитися медіа
+            android.widget.Toast.makeText(
+                context,
+                "Поділитися медіа",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        },
+        onDelete = {
+            // Видаляємо повідомлення з медіа
+            // TODO: Додати підтвердження видалення
+            android.widget.Toast.makeText(
+                context,
+                "Медіа буде видалено",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        },
+        onDismiss = { showMediaMenu = false }
+    )
 }
 
 @Composable
@@ -2295,6 +2384,35 @@ private fun getEmojiSize(text: String): androidx.compose.ui.unit.TextUnit {
         4 -> 40.sp      // 4 емодзі - менший
         5 -> 36.sp      // 5 емодзі - ще менший
         else -> 16.sp   // Більше - звичайний
+    }
+}
+
+/**
+ * 📳 Вібрація при активації режиму вибору
+ */
+fun performSelectionVibration(context: Context) {
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+            vibratorManager?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+
+        vibrator?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Короткий подвійний імпульс: 50ms → пауза 30ms → 50ms
+                val timings = longArrayOf(0, 50, 30, 50)
+                val amplitudes = intArrayOf(0, 150, 0, 200)
+                it.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+            } else {
+                @Suppress("DEPRECATION")
+                it.vibrate(100) // Проста вібрація 100ms для старих версій
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("MessagesScreen", "Помилка вібрації: ${e.message}")
     }
 }
 

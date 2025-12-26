@@ -22,12 +22,16 @@ object UIStylePreferences {
     private const val PREFS_NAME = "ui_style_preferences"
     private const val KEY_UI_STYLE = "ui_style"
     private const val KEY_BUBBLE_STYLE = "bubble_style"
+    private const val KEY_QUICK_REACTION = "quick_reaction"
 
     private var _currentStyle = MutableStateFlow(UIStyle.WORLDMATES)
     val currentStyle: StateFlow<UIStyle> = _currentStyle
 
     private var _currentBubbleStyle = MutableStateFlow(BubbleStyle.STANDARD)
     val currentBubbleStyle: StateFlow<BubbleStyle> = _currentBubbleStyle
+
+    private var _quickReaction = MutableStateFlow("❤️")
+    val quickReaction: StateFlow<String> = _quickReaction
 
     /**
      * Ініціалізація з SharedPreferences
@@ -50,6 +54,10 @@ object UIStylePreferences {
         } catch (e: IllegalArgumentException) {
             BubbleStyle.STANDARD
         }
+
+        // Quick Reaction
+        val quickReaction = prefs.getString(KEY_QUICK_REACTION, "❤️")
+        _quickReaction.value = quickReaction ?: "❤️"
     }
 
     /**
@@ -83,6 +91,22 @@ object UIStylePreferences {
     fun getBubbleStyle(): BubbleStyle {
         return _currentBubbleStyle.value
     }
+
+    /**
+     * Встановити емодзі для швидкої реакції
+     */
+    fun setQuickReaction(context: Context, emoji: String) {
+        _quickReaction.value = emoji
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_QUICK_REACTION, emoji).apply()
+    }
+
+    /**
+     * Отримати емодзі для швидкої реакції
+     */
+    fun getQuickReaction(): String {
+        return _quickReaction.value
+    }
 }
 
 /**
@@ -101,4 +125,13 @@ fun rememberUIStyle(): UIStyle {
 fun rememberBubbleStyle(): BubbleStyle {
     val style by UIStylePreferences.currentBubbleStyle.collectAsState()
     return style
+}
+
+/**
+ * Composable для отримання емодзі швидкої реакції
+ */
+@Composable
+fun rememberQuickReaction(): String {
+    val emoji by UIStylePreferences.quickReaction.collectAsState()
+    return emoji
 }

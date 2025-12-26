@@ -26,6 +26,12 @@ class MessagesViewModel(application: Application) :
 
     private val context = application
 
+    init {
+        Log.d("MessagesViewModel", "🚀 MessagesViewModel створено!")
+        Log.d("MessagesViewModel", "Access Token: ${UserSession.accessToken?.take(10)}...")
+        Log.d("MessagesViewModel", "User ID: ${UserSession.userId}")
+    }
+
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages
 
@@ -57,11 +63,12 @@ class MessagesViewModel(application: Application) :
     private var fileManager: FileManager? = null
 
     fun initialize(recipientId: Long) {
+        Log.d("MessagesViewModel", "🔧 initialize() викликано для користувача $recipientId")
         this.recipientId = recipientId
         this.groupId = 0
         fetchMessages()
         setupSocket()
-        Log.d("MessagesViewModel", "Ініціалізація для користувача $recipientId")
+        Log.d("MessagesViewModel", "✅ Ініціалізація завершена для користувача $recipientId")
     }
 
     fun initializeGroup(groupId: Long) {
@@ -565,12 +572,15 @@ class MessagesViewModel(application: Application) :
      * Налаштовує Socket.IO для получения сообщений в реальном времени
      */
     private fun setupSocket() {
+        Log.d("MessagesViewModel", "🔌 setupSocket() викликано")
         try {
             socketManager = SocketManager(this)
+            Log.d("MessagesViewModel", "✅ SocketManager створено")
             socketManager?.connect()
-            Log.d("MessagesViewModel", "Socket.IO налаштований")
+            Log.d("MessagesViewModel", "✅ Socket.IO connect() викликано")
         } catch (e: Exception) {
-            Log.e("MessagesViewModel", "Помилка Socket.IO", e)
+            Log.e("MessagesViewModel", "❌ Помилка Socket.IO", e)
+            e.printStackTrace()
         }
     }
 

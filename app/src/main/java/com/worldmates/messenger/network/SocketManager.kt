@@ -22,7 +22,22 @@ class SocketManager(private val listener: SocketListener) {
     }
 
     fun connect() {
-        if (UserSession.accessToken == null || socket?.connected() == true) return
+        Log.d("SocketManager", "🔌 connect() викликано")
+
+        if (UserSession.accessToken == null) {
+            Log.e("SocketManager", "❌ Access token is NULL! Cannot connect to Socket.IO")
+            listener.onSocketError("No access token")
+            return
+        }
+
+        if (socket?.connected() == true) {
+            Log.d("SocketManager", "⚠️ Socket вже підключений, пропускаємо")
+            return
+        }
+
+        Log.d("SocketManager", "✅ Access token: ${UserSession.accessToken?.take(10)}...")
+        Log.d("SocketManager", "✅ User ID: ${UserSession.userId}")
+        Log.d("SocketManager", "✅ Socket URL: ${Constants.SOCKET_URL}")
 
         try {
             // Опции для Socket.IO с улучшенными настройками переподключения

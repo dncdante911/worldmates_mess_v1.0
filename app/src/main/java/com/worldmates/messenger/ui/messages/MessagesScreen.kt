@@ -91,6 +91,16 @@ fun MessagesScreen(
     var showContextMenu by remember { mutableStateOf(false) }
     var replyToMessage by remember { mutableStateOf<Message?>(null) }
     var editingMessage by remember { mutableStateOf<Message?>(null) }
+
+    // ✅ Режим множественного выбора
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedMessages by remember { mutableStateOf(setOf<Long>()) }
+
+    // ❤️ Быстрая реакция при двойном тапе
+    var showQuickReaction by remember { mutableStateOf(false) }
+    var quickReactionMessageId by remember { mutableStateOf<Long?>(null) }
+    var defaultQuickReaction by remember { mutableStateOf("❤️") }  // Можно настроить
+
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
@@ -2106,5 +2116,242 @@ private fun getEmojiSize(text: String): androidx.compose.ui.unit.TextUnit {
         4 -> 40.sp      // 4 емодзі - менший
         5 -> 36.sp      // 5 емодзі - ще менший
         else -> 16.sp   // Більше - звичайний
+    }
+}
+
+/**
+ * 🔥 Нижня панель дій для вибраних повідомлень
+ * Відображається знизу екрану з напівпрозорими кнопками
+ */
+@Composable
+fun SelectionBottomBar(
+    selectedCount: Int,
+    onForward: () -> Unit,
+    onReply: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = selectedCount > 0,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+    ) {
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            shadowElevation = 8.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Кнопка "Ответить"
+                OutlinedButton(
+                    onClick = onReply,
+                    enabled = selectedCount == 1,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Reply,
+                        contentDescription = "Ответить",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Ответить", fontWeight = FontWeight.SemiBold)
+                }
+
+                // Кнопка "Переслать"
+                Button(
+                    onClick = onForward,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Forward,
+                        contentDescription = "Переслать",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Переслать", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ⚡ Кнопки действий в TopBar (режим выбора)
+ * Показывает иконки "Редактировать" и "Удалить" справа в шапке
+ */
+@Composable
+fun SelectionTopBarActions(
+    selectedCount: Int,
+    canEdit: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onClose: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Кнопка "Редактировать" (только для 1 своего сообщения)
+        if (canEdit && selectedCount == 1) {
+            IconButton(onClick = onEdit) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Редактировать",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+
+        // Кнопка "Удалить"
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = "Удалить",
+                tint = MaterialTheme.colorScheme.error
+            )
+        }
+
+        // Кнопка "Закрыть режим выбора"
+        IconButton(onClick = onClose) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Закрыть",
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+    }
+}
+
+/**
+ * 📱 Меню для медиа файлов (фото/видео/аудио)
+ * Показывает "Поделиться" и "Удалить"
+ */
+@Composable
+fun MediaActionMenu(
+    visible: Boolean,
+    isOwnMessage: Boolean,
+    onShare: () -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (visible) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(onClick = onDismiss)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(32.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 12.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Кнопка "Поделиться"
+                    Button(
+                        onClick = {
+                            onShare()
+                            onDismiss()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Поделиться", fontWeight = FontWeight.SemiBold)
+                    }
+
+                    // Кнопка "Удалить" (только для своих)
+                    if (isOwnMessage) {
+                        OutlinedButton(
+                            onClick = {
+                                onDelete()
+                                onDismiss()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Удалить", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ⚡ Быстрая реакция при двойном тапе
+ * Показывает анимированное сердечко или другой эмодзи
+ */
+@Composable
+fun QuickReactionAnimation(
+    visible: Boolean,
+    emoji: String = "❤️",
+    onAnimationEnd: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1.5f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        finishedListener = { if (!visible) onAnimationEnd() }
+    )
+
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 300)
+    )
+
+    if (visible || scale > 0f) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    this.alpha = alpha
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = emoji,
+                fontSize = 80.sp,
+                modifier = Modifier.shadow(8.dp)
+            )
+        }
     }
 }

@@ -687,7 +687,7 @@ fun SettingsDrawerContent(
 
             item {
                 DrawerMenuItem(
-                    icon = Icons.Default.ContactPage,
+                    icon = Icons.Default.Contacts,
                     title = "Контакти",
                     onClick = {
                         onClose()
@@ -698,7 +698,7 @@ fun SettingsDrawerContent(
 
             item {
                 DrawerMenuItem(
-                    icon = Icons.Default.Draft,
+                    icon = Icons.Default.Edit,
                     title = "Черновики",
                     onClick = {
                         onClose()

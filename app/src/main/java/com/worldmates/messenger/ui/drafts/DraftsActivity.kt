@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.worldmates.messenger.ui.theme.WorldMatesMessengerTheme
+import com.worldmates.messenger.ui.theme.WorldMatesTheme
 
 /**
  * Activity для экрана черновиков
@@ -17,7 +17,7 @@ class DraftsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            WorldMatesMessengerTheme {
+            WorldMatesTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

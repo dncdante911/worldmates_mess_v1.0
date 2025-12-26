@@ -117,6 +117,7 @@ fun MessagesScreen(
     var showStickerPicker by remember { mutableStateOf(false) }
     var showGifPicker by remember { mutableStateOf(false) }  // 🎬 GIF Picker
     var showLocationPicker by remember { mutableStateOf(false) }  // 📍 Location Picker
+    var showContactPicker by remember { mutableStateOf(false) }  // 📇 Contact Picker
     var isCurrentlyTyping by remember { mutableStateOf(false) }
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -727,7 +728,9 @@ fun MessagesScreen(
             showGifPicker = showGifPicker,
             onToggleGifPicker = { showGifPicker = !showGifPicker },
             showLocationPicker = showLocationPicker,
-            onToggleLocationPicker = { showLocationPicker = !showLocationPicker }
+            onToggleLocationPicker = { showLocationPicker = !showLocationPicker },
+            showContactPicker = showContactPicker,
+            onToggleContactPicker = { showContactPicker = !showContactPicker }
         )
 
         // 💾 Draft saving indicator
@@ -788,6 +791,17 @@ fun MessagesScreen(
                     showLocationPicker = false
                 },
                 onDismiss = { showLocationPicker = false }
+            )
+        }
+
+        // 📇 Contact Picker
+        if (showContactPicker) {
+            com.worldmates.messenger.ui.components.ContactPicker(
+                onContactSelected = { contact ->
+                    viewModel.sendContact(contact)
+                    showContactPicker = false
+                },
+                onDismiss = { showContactPicker = false }
             )
         }
 
@@ -1283,7 +1297,27 @@ fun MessageBubbleComposable(
 
                 // Text message
                 if (shouldShowText) {
-                    if (isEmojiMessage) {
+                    // 📇 Проверяем, является ли сообщение vCard контактом
+                    val isContactMessage = com.worldmates.messenger.ui.components.isVCardMessage(message.decryptedText!!)
+
+                    if (isContactMessage) {
+                        // Рендерим контакт
+                        val contact = com.worldmates.messenger.ui.components.parseContactFromMessage(message.decryptedText!!)
+                        if (contact != null) {
+                            com.worldmates.messenger.ui.components.ContactMessageBubble(
+                                contact = contact
+                            )
+                        } else {
+                            // Если не удалось распарсить, показываем как обычный текст
+                            Text(
+                                text = message.decryptedText!!,
+                                color = textColor,
+                                fontSize = 15.sp,
+                                lineHeight = 20.sp,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    } else if (isEmojiMessage) {
                         // 😊 ЕМОДЗІ БЕЗ БУЛЬБАШКИ - просто великі емодзі на прозорому фоні
                         Text(
                             text = message.decryptedText!!,
@@ -1591,7 +1625,9 @@ fun MessageInputBar(
     showGifPicker: Boolean,
     onToggleGifPicker: () -> Unit,
     showLocationPicker: Boolean,
-    onToggleLocationPicker: () -> Unit
+    onToggleLocationPicker: () -> Unit,
+    showContactPicker: Boolean,
+    onToggleContactPicker: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -1708,6 +1744,19 @@ fun MessageInputBar(
                                 kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
                                 if (!showLocationPicker) {
                                     onToggleLocationPicker() // Відкриваємо Location picker
+                                }
+                            }
+                        }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.ContactPage,
+                        label = "Контакт",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            scope.launch {
+                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
+                                if (!showContactPicker) {
+                                    onToggleContactPicker() // Відкриваємо Contact picker
                                 }
                             }
                         }

@@ -545,6 +545,63 @@ class MessagesViewModel(application: Application) :
     }
 
     /**
+     * 📍 Надсилає геолокацію
+     */
+    fun sendLocation(locationData: com.worldmates.messenger.data.repository.LocationData) {
+        if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L)) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val messageHashId = java.util.UUID.randomUUID().toString()
+
+                // Формуємо текст з координатами та адресою
+                val locationText = """
+                    📍 ${locationData.address}
+                    ${locationData.latLng.latitude},${locationData.latLng.longitude}
+                """.trimIndent()
+
+                // Відправляємо геолокацію як текстове повідомлення
+                // В майбутньому можна додати спеціальний тип повідомлення для геолокації
+                val response = RetrofitClient.apiService.sendMessage(
+                    accessToken = UserSession.accessToken!!,
+                    recipientId = recipientId,
+                    text = locationText,
+                    messageHashId = messageHashId,
+                    replyToId = null
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d(TAG, "✅ Location sent successfully: ${locationData.latLng}")
+
+                    // Перезавантажуємо повідомлення
+                    if (groupId != 0L) {
+                        fetchGroupMessages()
+                    } else {
+                        fetchMessages()
+                    }
+
+                    _error.value = null
+                    Log.d(TAG, "Геолокацію надіслано")
+                } else {
+                    _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати геолокацію"
+                    Log.e(TAG, "Send Location Error: ${response.errors?.errorText ?: response.errorMessage}")
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e(TAG, "Помилка надсилання геолокації", e)
+            }
+        }
+    }
+
+    /**
      * Загружает и отправляет медиа-файл
      */
     fun uploadAndSendMedia(file: File, mediaType: String) {

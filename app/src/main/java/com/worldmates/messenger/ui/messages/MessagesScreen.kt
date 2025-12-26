@@ -105,6 +105,7 @@ fun MessagesScreen(
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showStickerPicker by remember { mutableStateOf(false) }
     var showGifPicker by remember { mutableStateOf(false) }  // 🎬 GIF Picker
+    var showLocationPicker by remember { mutableStateOf(false) }  // 📍 Location Picker
     var isCurrentlyTyping by remember { mutableStateOf(false) }
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -710,7 +711,9 @@ fun MessagesScreen(
             showStickerPicker = showStickerPicker,
             onToggleStickerPicker = { showStickerPicker = !showStickerPicker },
             showGifPicker = showGifPicker,
-            onToggleGifPicker = { showGifPicker = !showGifPicker }
+            onToggleGifPicker = { showGifPicker = !showGifPicker },
+            showLocationPicker = showLocationPicker,
+            onToggleLocationPicker = { showLocationPicker = !showLocationPicker }
         )
         }  // Закриття if (!isSelectionMode)
 
@@ -744,6 +747,17 @@ fun MessagesScreen(
                     showGifPicker = false
                 },
                 onDismiss = { showGifPicker = false }
+            )
+        }
+
+        // 📍 Location Picker
+        if (showLocationPicker) {
+            com.worldmates.messenger.ui.components.LocationPicker(
+                onLocationSelected = { locationData ->
+                    viewModel.sendLocation(locationData)
+                    showLocationPicker = false
+                },
+                onDismiss = { showLocationPicker = false }
             )
         }
 
@@ -1545,7 +1559,9 @@ fun MessageInputBar(
     showStickerPicker: Boolean,
     onToggleStickerPicker: () -> Unit,
     showGifPicker: Boolean,
-    onToggleGifPicker: () -> Unit
+    onToggleGifPicker: () -> Unit,
+    showLocationPicker: Boolean,
+    onToggleLocationPicker: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -1649,6 +1665,19 @@ fun MessageInputBar(
                                 kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
                                 if (!showGifPicker) {
                                     onToggleGifPicker() // Відкриваємо GIF picker
+                                }
+                            }
+                        }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.LocationOn,
+                        label = "Локація",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            scope.launch {
+                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
+                                if (!showLocationPicker) {
+                                    onToggleLocationPicker() // Відкриваємо Location picker
                                 }
                             }
                         }

@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.giphy.sdk.core.models.Media
 import com.worldmates.messenger.data.repository.GiphyRepository
+import com.worldmates.messenger.data.repository.GifItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -63,7 +63,7 @@ fun GifPicker(
 
     // State
     var searchQuery by remember { mutableStateOf("") }
-    var gifs by remember { mutableStateOf<List<Media>>(emptyList()) }
+    var gifs by remember { mutableStateOf<List<GifItem>>(emptyList()) }
     val isLoading by giphyRepo.isLoading.collectAsState()
     var searchJob: Job? = remember { null }
     var currentMode by remember { mutableStateOf(GifPickerMode.TRENDING) }
@@ -236,11 +236,11 @@ fun GifPicker(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(gifs) { media ->
+                            items(gifs) { gifItem ->
                                 GifGridItem(
-                                    media = media,
+                                    gifItem = gifItem,
                                     onClick = {
-                                        val gifUrls = giphyRepo.getGifUrls(media)
+                                        val gifUrls = giphyRepo.getGifUrls(gifItem)
                                         val gifUrl = gifUrls.getBestForChat()
                                         if (gifUrl.isNotEmpty()) {
                                             onGifSelected(gifUrl)
@@ -290,18 +290,20 @@ fun GifPicker(
  */
 @Composable
 private fun GifGridItem(
-    media: Media,
+    gifItem: GifItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
-    // Получаем URL превью
-    val previewUrl = media.images?.downsizedMedium?.gifUrl
-        ?: media.images?.fixedWidth?.gifUrl
-        ?: media.images?.downsized?.gifUrl
-        ?: media.images?.original?.gifUrl
-        ?: ""
+    // Получаем URL превью (используем downsizedMediumUrl для баланса качества/размера)
+    val previewUrl = gifItem.downsizedMediumUrl.ifEmpty {
+        gifItem.fixedWidthUrl.ifEmpty {
+            gifItem.downsizedUrl.ifEmpty {
+                gifItem.previewUrl
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -316,7 +318,7 @@ private fun GifGridItem(
                     .data(previewUrl)
                     .crossfade(true)
                     .build(),
-                contentDescription = media.title ?: "GIF",
+                contentDescription = gifItem.title.ifEmpty { "GIF" },
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )

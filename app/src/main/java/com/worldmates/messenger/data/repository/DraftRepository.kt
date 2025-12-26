@@ -23,7 +23,7 @@ class DraftRepository private constructor(
 ) {
     companion object {
         private const val TAG = "DraftRepository"
-        private const val DRAFT_EXPIRY_DAYS = 30L
+        private const val DRAFT_EXPIRY_DAYS = 365L  // 1 год
 
         @Volatile
         private var instance: DraftRepository? = null
@@ -129,7 +129,7 @@ class DraftRepository private constructor(
     }
 
     /**
-     * Очистить старые черновики (> 30 дней)
+     * Очистить старые черновики (> 1 года)
      */
     suspend fun cleanupOldDrafts(): Result<Unit> = withContext(Dispatchers.IO) {
         try {

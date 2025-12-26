@@ -62,6 +62,7 @@ import com.worldmates.messenger.ui.theme.WMColors
 import com.worldmates.messenger.ui.theme.rememberThemeState
 import com.worldmates.messenger.ui.theme.PresetBackground
 import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
+import com.worldmates.messenger.ui.preferences.rememberQuickReaction
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import com.worldmates.messenger.utils.VoiceRecorder
@@ -116,7 +117,7 @@ fun MessagesScreen(
     // ❤️ Быстрая реакция при двойном тапе
     var showQuickReaction by remember { mutableStateOf(false) }
     var quickReactionMessageId by remember { mutableStateOf<Long?>(null) }
-    var defaultQuickReaction by remember { mutableStateOf("❤️") }  // Можно настроить
+    val defaultQuickReaction = rememberQuickReaction()  // Налаштовується в темах
 
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current

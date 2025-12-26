@@ -64,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -222,6 +223,11 @@ fun ThemeSettingsScreen(
             // Секция выбора стиля бульбашок
             item {
                 BubbleStyleSection()
+            }
+
+            // Секція вибору швидкої реакції
+            item {
+                QuickReactionSection()
             }
 
             // Сетка вариантов тем
@@ -1094,6 +1100,125 @@ fun BubbleStyleCard(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * ❤️ Секція для вибору емодзі швидкої реакції
+ */
+@Composable
+fun QuickReactionSection() {
+    val context = LocalContext.current
+    val currentQuickReaction by UIStylePreferences.quickReaction.collectAsState()
+
+    // Список популярних емодзі для швидкої реакції
+    val popularEmojis = listOf(
+        "❤️", "👍", "👎", "😂", "😮", "😢",
+        "🔥", "✨", "🎉", "💯", "👏", "🙏"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "❤️ Швидка реакція",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                text = "Оберіть емодзі для подвійного тапу на повідомленні",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Сітка з емодзі
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(6),
+                modifier = Modifier.height(160.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(popularEmojis) { emoji ->
+                    EmojiReactionCard(
+                        emoji = emoji,
+                        isSelected = emoji == currentQuickReaction,
+                        onClick = {
+                            UIStylePreferences.setQuickReaction(context, emoji)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ❤️ Карточка емодзі для швидкої реакції
+ */
+@Composable
+fun EmojiReactionCard(
+    emoji: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.2f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        animationSpec = tween(300),
+        label = "borderColor"
+    )
+
+    Card(
+        modifier = Modifier
+            .size(48.dp)
+            .scale(scale)
+            .border(
+                width = if (isSelected) 2.dp else 0.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 2.dp
+        )
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = emoji,
+                fontSize = 24.sp
+            )
         }
     }
 }

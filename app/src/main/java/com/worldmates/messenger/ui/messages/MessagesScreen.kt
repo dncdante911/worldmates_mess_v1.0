@@ -100,7 +100,18 @@ fun MessagesScreen(
     val isTyping by viewModel.isTyping.collectAsState()
     val isOnline by viewModel.recipientOnlineStatus.collectAsState()
 
+    // 📝 Draft state
+    val currentDraft by viewModel.currentDraft.collectAsState()
+    val isDraftSaving by viewModel.isDraftSaving.collectAsState()
+
     var messageText by remember { mutableStateOf("") }
+
+    // Загружаем черновик в messageText при изменении
+    LaunchedEffect(currentDraft) {
+        if (currentDraft.isNotEmpty() && messageText.isEmpty()) {
+            messageText = currentDraft
+        }
+    }
     var showMediaOptions by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showStickerPicker by remember { mutableStateOf(false) }
@@ -655,7 +666,10 @@ fun MessagesScreen(
         if (!isSelectionMode) {
         MessageInputBar(
             messageText = messageText,
-            onMessageChange = { messageText = it },
+            onMessageChange = {
+                messageText = it
+                viewModel.updateDraftText(it) // Автосохранение черновика
+            },
             onSendClick = {
                 if (messageText.isNotBlank()) {
                     if (editingMessage != null) {
@@ -715,6 +729,22 @@ fun MessagesScreen(
             showLocationPicker = showLocationPicker,
             onToggleLocationPicker = { showLocationPicker = !showLocationPicker }
         )
+
+        // 💾 Draft saving indicator
+        if (isDraftSaving && messageText.isNotEmpty()) {
+            androidx.compose.foundation.layout.Box(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                contentAlignment = androidx.compose.ui.Alignment.CenterEnd
+            ) {
+                androidx.compose.material3.Text(
+                    text = "💾 Сохраняется...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
         }  // Закриття if (!isSelectionMode)
 
         // 😊 Emoji Picker

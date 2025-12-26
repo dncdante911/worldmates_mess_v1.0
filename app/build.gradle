@@ -138,6 +138,10 @@ dependencies {
     // implementation files('libs/libwebrtc.aar')
     // Скачать: https://github.com/shiguredo/sora-android-sdk/releases
 
+    // ==================== GIPHY SDK (для GIF) ====================
+    implementation 'com.giphy.sdk:ui:2.3.15'  // GIPHY UI SDK
+    implementation 'com.github.bumptech.glide:glide:4.16.0'  // Для загрузки GIF (зависимость GIPHY)
+
     // ==================== TESTING ====================
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

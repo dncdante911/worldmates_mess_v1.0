@@ -99,6 +99,9 @@ fun ChatsScreenModern(
     var showContactMenu by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
 
+    // 📇 Стан для ContactPicker
+    var showContactPicker by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val nicknameRepository = remember { ContactNicknameRepository(context) }
 
@@ -122,6 +125,9 @@ fun ChatsScreenModern(
                         scope.launch {
                             drawerState.close()
                         }
+                    },
+                    onShowContactPicker = {
+                        showContactPicker = true
                     }
                 )
             }
@@ -358,6 +364,24 @@ fun ChatsScreenModern(
                 selectedChat = null
             },
             nicknameRepository = nicknameRepository
+        )
+    }
+
+    // 📇 ContactPicker для выбора контакта из телефонной книги
+    if (showContactPicker) {
+        com.worldmates.messenger.ui.components.ContactPicker(
+            onContactSelected = { contact ->
+                // Здесь можно добавить логику - например, открыть чат с контактом
+                android.widget.Toast.makeText(
+                    context,
+                    "Выбран контакт: ${contact.name}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                showContactPicker = false
+            },
+            onDismiss = {
+                showContactPicker = false
+            }
         )
     }
     }  // Закриваємо ModalNavigationDrawer

@@ -142,6 +142,12 @@ dependencies {
     implementation 'com.giphy.sdk:ui:2.3.15'  // GIPHY UI SDK
     implementation 'com.github.bumptech.glide:glide:4.16.0'  // Для загрузки GIF (зависимость GIPHY)
 
+    // ==================== GOOGLE MAPS (для геолокации) ====================
+    implementation 'com.google.android.gms:play-services-maps:18.2.0'  // Google Maps SDK
+    implementation 'com.google.android.gms:play-services-location:21.1.0'  // Location Services
+    implementation 'com.google.maps.android:maps-compose:4.3.3'  // Maps Compose для Jetpack Compose
+    implementation 'com.google.accompanist:accompanist-permissions:0.34.0'  // Runtime permissions
+
     // ==================== TESTING ====================
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

@@ -2,11 +2,12 @@ package com.worldmates.messenger.data.repository
 
 import android.content.Context
 import android.util.Log
-import com.giphy.sdk.core.GPHCore
 import com.giphy.sdk.core.models.Media
-import com.giphy.sdk.core.network.api.CompletionHandler
+import com.giphy.sdk.core.models.enums.MediaType
+import com.giphy.sdk.core.network.api.GPHApi
 import com.giphy.sdk.core.network.api.GPHApiClient
 import com.giphy.sdk.core.network.response.ListMediaResponse
+import com.giphy.sdk.core.network.response.MediaResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,13 +50,11 @@ class GiphyRepository private constructor(
         // GIPHY API Key
         // TODO: Заменить на реальный ключ от https://developers.giphy.com/
         // ВАЖНО: В продакшене хранить в BuildConfig или secure storage!
-        private const val GIPHY_API_KEY = "YOUR_GIPHY_API_KEY_HERE"
+        const val GIPHY_API_KEY = "YOUR_GIPHY_API_KEY_HERE"
     }
 
     // GIPHY API Client
-    private val apiClient: GPHApiClient by lazy {
-        // Инициализируем GIPHY SDK
-        GPHCore.configure(context, GIPHY_API_KEY)
+    private val apiClient: GPHApi by lazy {
         GPHApiClient(GIPHY_API_KEY)
     }
 
@@ -81,28 +80,22 @@ class GiphyRepository private constructor(
 
             val result = suspendCoroutine<Result<List<Media>>> { continuation ->
                 apiClient.trending(
-                    com.giphy.sdk.core.models.enums.MediaType.gif,
+                    MediaType.gif,
                     limit,
                     offset,
                     null,
-                    null,
-                    object : CompletionHandler<ListMediaResponse> {
-                        override fun onComplete(
-                            result: ListMediaResponse?,
-                            e: Throwable?
-                        ) {
-                            if (e != null) {
-                                Log.e(TAG, "Trending GIFs error", e)
-                                continuation.resume(Result.failure(e))
-                            } else if (result?.data != null) {
-                                _trendingGifs.value = result.data ?: emptyList()
-                                continuation.resume(Result.success(result.data ?: emptyList()))
-                            } else {
-                                continuation.resume(Result.success(emptyList()))
-                            }
-                        }
+                    null
+                ) { result, error ->
+                    if (error != null) {
+                        Log.e(TAG, "Trending GIFs error", error)
+                        continuation.resume(Result.failure(error))
+                    } else if (result?.data != null) {
+                        _trendingGifs.value = result.data ?: emptyList()
+                        continuation.resume(Result.success(result.data ?: emptyList()))
+                    } else {
+                        continuation.resume(Result.success(emptyList()))
                     }
-                )
+                }
             }
 
             _isLoading.value = false
@@ -132,29 +125,23 @@ class GiphyRepository private constructor(
             val result = suspendCoroutine<Result<List<Media>>> { continuation ->
                 apiClient.search(
                     query,
-                    com.giphy.sdk.core.models.enums.MediaType.gif,
+                    MediaType.gif,
                     limit,
                     offset,
                     null,
                     null,
-                    null,
-                    object : CompletionHandler<ListMediaResponse> {
-                        override fun onComplete(
-                            result: ListMediaResponse?,
-                            e: Throwable?
-                        ) {
-                            if (e != null) {
-                                Log.e(TAG, "Search GIFs error: $query", e)
-                                continuation.resume(Result.failure(e))
-                            } else if (result?.data != null) {
-                                _searchResults.value = result.data ?: emptyList()
-                                continuation.resume(Result.success(result.data ?: emptyList()))
-                            } else {
-                                continuation.resume(Result.success(emptyList()))
-                            }
-                        }
+                    null
+                ) { result, error ->
+                    if (error != null) {
+                        Log.e(TAG, "Search GIFs error: $query", error)
+                        continuation.resume(Result.failure(error))
+                    } else if (result?.data != null) {
+                        _searchResults.value = result.data ?: emptyList()
+                        continuation.resume(Result.success(result.data ?: emptyList()))
+                    } else {
+                        continuation.resume(Result.success(emptyList()))
                     }
-                )
+                }
             }
 
             _isLoading.value = false
@@ -178,22 +165,16 @@ class GiphyRepository private constructor(
             val result = suspendCoroutine<Result<Media?>> { continuation ->
                 apiClient.random(
                     tag,
-                    com.giphy.sdk.core.models.enums.MediaType.gif,
-                    null,
-                    object : CompletionHandler<com.giphy.sdk.core.network.response.MediaResponse> {
-                        override fun onComplete(
-                            result: com.giphy.sdk.core.network.response.MediaResponse?,
-                            e: Throwable?
-                        ) {
-                            if (e != null) {
-                                Log.e(TAG, "Random GIF error", e)
-                                continuation.resume(Result.failure(e))
-                            } else {
-                                continuation.resume(Result.success(result?.data))
-                            }
-                        }
+                    MediaType.gif,
+                    null
+                ) { result, error ->
+                    if (error != null) {
+                        Log.e(TAG, "Random GIF error", error)
+                        continuation.resume(Result.failure(error))
+                    } else {
+                        continuation.resume(Result.success(result?.data))
                     }
-                )
+                }
             }
 
             _isLoading.value = false
@@ -214,7 +195,7 @@ class GiphyRepository private constructor(
             downsized = media.images?.downsized?.gifUrl ?: "",
             downsizedMedium = media.images?.downsizedMedium?.gifUrl ?: "",
             downsizedLarge = media.images?.downsizedLarge?.gifUrl ?: "",
-            preview = media.images?.previewGif?.gifUrl ?: "",
+            preview = media.images?.preview?.gifUrl ?: "",
             fixedWidth = media.images?.fixedWidth?.gifUrl ?: "",
             fixedHeight = media.images?.fixedHeight?.gifUrl ?: ""
         )

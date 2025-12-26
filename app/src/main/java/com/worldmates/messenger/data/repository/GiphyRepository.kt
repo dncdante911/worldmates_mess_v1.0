@@ -339,9 +339,9 @@ data class GifUrls(
     }
 
     /**
-     * Получить URL для превью
+     * Получить URL для превью с фоллбэками
      */
-    fun getPreview(): String {
+    fun getPreviewUrl(): String {
         return preview.ifEmpty {
             downsized.ifEmpty {
                 fixedWidth

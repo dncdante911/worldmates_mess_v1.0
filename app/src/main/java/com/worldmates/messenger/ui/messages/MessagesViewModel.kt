@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import com.worldmates.messenger.ui.messages.selection.ForwardRecipient
+import org.json.JSONObject
 import java.io.File
 
 class MessagesViewModel(application: Application) :
@@ -744,19 +745,19 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.worldMatesApi.getChats(
+                val response = RetrofitClient.apiService.getChats(
                     accessToken = UserSession.accessToken!!,
                     dataType = "users", // Тільки користувачі
                     limit = 100
                 )
 
-                if (response.api_status == 200) {
+                if (response.apiStatus == 200) {
                     // Конвертуємо чати в ForwardRecipient
-                    val contacts = response.conversations?.map { chat ->
+                    val contacts = response.chats?.map { chat ->
                         ForwardRecipient(
-                            id = chat.user.user_id,
-                            name = chat.user.name ?: "Користувач",
-                            avatarUrl = chat.user.avatar ?: "",
+                            id = chat.userId,
+                            name = chat.username ?: "Користувач",
+                            avatarUrl = chat.avatarUrl ?: "",
                             isGroup = false
                         )
                     } ?: emptyList()
@@ -783,19 +784,19 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.worldMatesApi.getGroups(
+                val response = RetrofitClient.apiService.getGroups(
                     accessToken = UserSession.accessToken!!,
                     type = "get_list",
                     limit = 100
                 )
 
-                if (response.api_status == 200) {
+                if (response.apiStatus == 200) {
                     // Конвертуємо групи в ForwardRecipient
                     val groups = response.groups?.map { group ->
                         ForwardRecipient(
                             id = group.id,
                             name = group.name,
-                            avatarUrl = group.avatar ?: "",
+                            avatarUrl = group.avatarUrl,
                             isGroup = true
                         )
                     } ?: emptyList()
@@ -832,21 +833,21 @@ class MessagesViewModel(application: Application) :
 
                             if (isGroup) {
                                 // Пересилаємо в групу
-                                RetrofitClient.worldMatesApi.sendGroupMessage(
+                                RetrofitClient.apiService.sendGroupMessage(
                                     accessToken = UserSession.accessToken!!,
                                     type = "send_message",
                                     groupId = recipientId,
-                                    message = message.decryptedText ?: "",
-                                    mediaUrl = message.decryptedMediaUrl
+                                    text = message.decryptedText ?: ""
                                 )
                                 Log.d("MessagesViewModel", "Переслано повідомлення $messageId в групу $recipientId")
                             } else {
                                 // Пересилаємо користувачу
-                                RetrofitClient.worldMatesApi.sendMessage(
+                                val messageHashId = "${System.currentTimeMillis()}_${(0..999999).random()}"
+                                RetrofitClient.apiService.sendMessage(
                                     accessToken = UserSession.accessToken!!,
                                     recipientId = recipientId,
                                     text = message.decryptedText ?: "",
-                                    type = message.type
+                                    messageHashId = messageHashId
                                 )
                                 Log.d("MessagesViewModel", "Переслано повідомлення $messageId користувачу $recipientId")
                             }

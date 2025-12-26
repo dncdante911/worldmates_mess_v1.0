@@ -1097,6 +1097,7 @@ fun MessageBubbleComposable(
                 modifier = Modifier.align(if (isOwn) Alignment.End else Alignment.Start)
             )
         }  // Закриття Column
+        }  // Закриття else block
         }  // Закриття Row
 
         // 🎯 ReactionPicker overlay (показується при довгому натисканні)

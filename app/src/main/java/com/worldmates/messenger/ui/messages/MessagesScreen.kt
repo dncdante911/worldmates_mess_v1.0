@@ -1749,7 +1749,7 @@ fun MessageInputBar(
                         }
                     )
                     MediaOptionButton(
-                        icon = Icons.Default.Contacts,
+                        icon = Icons.Default.People,
                         label = "Контакт",
                         onClick = {
                             onShowMediaOptions() // Закриваємо меню

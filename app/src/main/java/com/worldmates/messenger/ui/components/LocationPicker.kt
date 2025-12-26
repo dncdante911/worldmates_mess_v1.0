@@ -31,6 +31,14 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.launch
 
 /**
+ * Режимы LocationPicker
+ */
+private enum class LocationPickerMode {
+    PICK,   // Выбор места на карте
+    LIVE    // Live Location (текущее местоположение)
+}
+
+/**
  * 📍 LocationPicker - выбор геолокации на карте
  *
  * Режимы:
@@ -67,7 +75,7 @@ fun LocationPicker(
     // State
     var selectedLocation by remember { mutableStateOf(initialLocation) }
     var address by remember { mutableStateOf("") }
-    var isLoadingAddress by remember { mutableStateOf(false)
+    var isLoadingAddress by remember { mutableStateOf(false) }
     var isLoadingLocation by remember { mutableStateOf(false) }
     var pickerMode by remember { mutableStateOf(LocationPickerMode.PICK) }
 
@@ -341,12 +349,4 @@ fun LocationPicker(
             }
         }
     }
-}
-
-/**
- * Режимы LocationPicker
- */
-private enum class LocationPickerMode {
-    PICK,   // Выбор места на карте
-    LIVE    // Live Location (текущее местоположение)
 }

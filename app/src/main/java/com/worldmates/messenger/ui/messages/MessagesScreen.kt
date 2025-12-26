@@ -14,6 +14,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -304,7 +306,10 @@ fun MessagesScreen(
 
         // Контент поверх фону
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding() // Автоматичний padding для клавіатури
+                .navigationBarsPadding() // Padding для системних кнопок навігації
         ) {
             // Header
             MessagesHeaderBar(
@@ -2258,20 +2263,20 @@ fun MessageReactions(
                         BorderStroke(1.dp, Color(0xFF0084FF))
                     } else null,
                     modifier = Modifier
-                        .height(28.dp)
+                        .height(24.dp)
                         .graphicsLayer {
                             scaleX = scale
                             scaleY = scale
                         }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = reactionGroup.emoji,
-                            fontSize = 14.sp
+                            fontSize = 12.sp
                         )
                         if (reactionGroup.count > 1) {
                             Text(

@@ -486,6 +486,63 @@ class MessagesViewModel(application: Application) :
     }
 
     /**
+     * 🎬 Надсилає GIF
+     */
+    fun sendGif(gifUrl: String) {
+        if (UserSession.accessToken == null || (recipientId == 0L && groupId == 0L)) {
+            _error.value = "Помилка: не авторизовано"
+            return
+        }
+
+        if (gifUrl.isBlank()) {
+            _error.value = "GIF URL не може бути порожнім"
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val messageHashId = java.util.UUID.randomUUID().toString()
+
+                // Відправляємо GIF як медіа-повідомлення
+                val response = RetrofitClient.apiService.sendMessage(
+                    accessToken = UserSession.accessToken!!,
+                    toId = recipientId.takeIf { it != 0L },
+                    groupId = groupId.takeIf { it != 0L },
+                    message = "",  // Пусте текстове повідомлення
+                    media = gifUrl,  // GIF URL як медіа
+                    messageHashId = messageHashId,
+                    replyId = null
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d(TAG, "✅ GIF sent successfully: $gifUrl")
+
+                    // Перезавантажуємо повідомлення
+                    if (groupId != 0L) {
+                        fetchGroupMessages()
+                    } else {
+                        fetchMessages()
+                    }
+
+                    _error.value = null
+                    Log.d(TAG, "GIF надіслано")
+                } else {
+                    _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати GIF"
+                    Log.e(TAG, "Send GIF Error: ${response.errors?.errorText ?: response.errorMessage}")
+                }
+
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Помилка: ${e.localizedMessage}"
+                _isLoading.value = false
+                Log.e(TAG, "Помилка надсилання GIF", e)
+            }
+        }
+    }
+
+    /**
      * Загружает и отправляет медиа-файл
      */
     fun uploadAndSendMedia(file: File, mediaType: String) {

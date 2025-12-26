@@ -104,6 +104,7 @@ fun MessagesScreen(
     var showMediaOptions by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showStickerPicker by remember { mutableStateOf(false) }
+    var showGifPicker by remember { mutableStateOf(false) }  // 🎬 GIF Picker
     var isCurrentlyTyping by remember { mutableStateOf(false) }
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -730,6 +731,17 @@ fun MessagesScreen(
                     showStickerPicker = false
                 },
                 onDismiss = { showStickerPicker = false }
+            )
+        }
+
+        // 🎬 GIF Picker
+        if (showGifPicker) {
+            com.worldmates.messenger.ui.components.GifPicker(
+                onGifSelected = { gifUrl ->
+                    viewModel.sendGif(gifUrl)
+                    showGifPicker = false
+                },
+                onDismiss = { showGifPicker = false }
             )
         }
 
@@ -1621,6 +1633,17 @@ fun MessageInputBar(
                                 if (!showStickerPicker) {
                                     onToggleStickerPicker() // Відкриваємо sticker picker
                                 }
+                            }
+                        }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.Gif,
+                        label = "GIF",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            scope.launch {
+                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
+                                showGifPicker = !showGifPicker  // Відкриваємо GIF picker
                             }
                         }
                     )

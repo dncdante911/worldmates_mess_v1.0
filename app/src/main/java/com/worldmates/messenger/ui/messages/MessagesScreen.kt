@@ -1,6 +1,11 @@
 package com.worldmates.messenger.ui.messages
 
+import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -327,7 +332,12 @@ fun MessagesScreen(
                 // 🔥 Параметри режиму вибору
                 isSelectionMode = isSelectionMode,
                 selectedCount = selectedMessages.size,
+                totalCount = messages.size,
                 canEdit = selectedMessages.size == 1 && messages.find { it.id == selectedMessages.first() }?.fromId == UserSession.userId,
+                onSelectAll = {
+                    // Вибираємо всі повідомлення
+                    selectedMessages = messages.map { it.id }.toSet()
+                },
                 onEditSelected = {
                     // Редагуємо вибране повідомлення
                     if (selectedMessages.size == 1) {
@@ -387,6 +397,8 @@ fun MessagesScreen(
                             // 🔥 Активуємо режим вибору при довгому натисканні
                             if (!isSelectionMode) {
                                 isSelectionMode = true
+                                // 📳 Вібрація при активації
+                                performSelectionVibration(context)
                             }
                         },
                         onImageClick = { imageUrl ->
@@ -702,9 +714,11 @@ fun MessagesHeaderBar(
     // 🔥 Параметри для режиму вибору
     isSelectionMode: Boolean = false,
     selectedCount: Int = 0,
+    totalCount: Int = 0,
     canEdit: Boolean = false,
     onEditSelected: () -> Unit = {},
     onDeleteSelected: () -> Unit = {},
+    onSelectAll: () -> Unit = {},
     onCloseSelectionMode: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -785,9 +799,11 @@ fun MessagesHeaderBar(
             if (isSelectionMode) {
                 SelectionTopBarActions(
                     selectedCount = selectedCount,
+                    totalCount = totalCount,
                     canEdit = canEdit,
                     onEdit = onEditSelected,
                     onDelete = onDeleteSelected,
+                    onSelectAll = onSelectAll,
                     onClose = onCloseSelectionMode
                 )
             } else {
@@ -2295,6 +2311,35 @@ private fun getEmojiSize(text: String): androidx.compose.ui.unit.TextUnit {
         4 -> 40.sp      // 4 емодзі - менший
         5 -> 36.sp      // 5 емодзі - ще менший
         else -> 16.sp   // Більше - звичайний
+    }
+}
+
+/**
+ * 📳 Вібрація при активації режиму вибору
+ */
+fun performSelectionVibration(context: Context) {
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+            vibratorManager?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+
+        vibrator?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Короткий подвійний імпульс: 50ms → пауза 30ms → 50ms
+                val timings = longArrayOf(0, 50, 30, 50)
+                val amplitudes = intArrayOf(0, 150, 0, 200)
+                it.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+            } else {
+                @Suppress("DEPRECATION")
+                it.vibrate(100) // Проста вібрація 100ms для старих версій
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("MessagesScreen", "Помилка вібрації: ${e.message}")
     }
 }
 

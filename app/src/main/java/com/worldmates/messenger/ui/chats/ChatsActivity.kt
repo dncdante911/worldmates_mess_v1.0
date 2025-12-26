@@ -173,6 +173,9 @@ fun ChatsScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // 📇 Стан для ContactPicker
+    var showContactPicker by remember { mutableStateOf(false) }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -192,6 +195,9 @@ fun ChatsScreen(
                         scope.launch {
                             drawerState.close()
                         }
+                    },
+                    onShowContactPicker = {
+                        showContactPicker = true
                     }
                 )
             }
@@ -549,6 +555,25 @@ fun ChatsScreen(
                 nicknameRepository = nicknameRepository
             )
         }
+
+        // 📇 ContactPicker для выбора контакта из телефонной книги
+        if (showContactPicker) {
+            com.worldmates.messenger.ui.components.ContactPicker(
+                onContactSelected = { contact ->
+                    // Здесь можно добавить логику - например, открыть чат с контактом
+                    // или показать детали контакта
+                    Toast.makeText(
+                        context,
+                        "Выбран контакт: ${contact.name}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    showContactPicker = false
+                },
+                onDismiss = {
+                    showContactPicker = false
+                }
+            )
+        }
     }  // Конец lambda paddingValues для Scaffold
     }  // Конец Scaffold
     }  // Конец ModalNavigationDrawer
@@ -560,7 +585,8 @@ fun ChatsScreen(
 @Composable
 fun SettingsDrawerContent(
     onNavigateToFullSettings: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onShowContactPicker: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -654,11 +680,11 @@ fun SettingsDrawerContent(
 
             item {
                 DrawerMenuItem(
-                    icon = Icons.Default.Chat,
+                    icon = Icons.Default.ContactPage,
                     title = "Контакти",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Контакти", Toast.LENGTH_SHORT).show()
+                        onShowContactPicker()
                     }
                 )
             }

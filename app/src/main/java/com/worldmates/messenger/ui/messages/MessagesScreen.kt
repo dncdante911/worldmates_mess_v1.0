@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyColumn
@@ -777,7 +778,12 @@ fun MessageBubbleComposable(
     onLongPress: () -> Unit = {},
     onImageClick: (String) -> Unit = {},
     onReply: (Message) -> Unit = {},
-    onToggleReaction: (Long, String) -> Unit = { _, _ -> }
+    onToggleReaction: (Long, String) -> Unit = { _, _ -> },
+    // 🔥 Параметри для режиму вибору
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelection: (Long) -> Unit = {},
+    onDoubleTap: (Long) -> Unit = {}
 ) {
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
@@ -845,7 +851,7 @@ fun MessageBubbleComposable(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
-                .pointerInput(Unit) {
+                .pointerInput(message.id) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
                             if (offsetX > maxSwipeDistance / 2) {
@@ -860,9 +866,55 @@ fun MessageBubbleComposable(
                             offsetX = (offsetX + dragAmount).coerceIn(0f, maxSwipeDistance)
                         }
                     )
+                }
+                .pointerInput(message.id) {
+                    detectTapGestures(
+                        onLongPress = {
+                            if (!isSelectionMode) {
+                                onLongPress()  // Активуємо режим вибору
+                                onToggleSelection(message.id)  // Вибираємо це повідомлення
+                            }
+                        },
+                        onDoubleTap = {
+                            if (!isSelectionMode) {
+                                onDoubleTap(message.id)  // Швидка реакція ❤️
+                            }
+                        },
+                        onTap = {
+                            if (isSelectionMode) {
+                                onToggleSelection(message.id)  // Перемикаємо вибір
+                            }
+                        }
+                    )
                 },
             horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
         ) {
+            // ✅ Індикатор вибору (галочка) - показується в режимі вибору
+            if (isSelectionMode) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .padding(4.dp)
+                        .align(Alignment.CenterVertically)
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Вибрано",
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Circle,
+                            contentDescription = "Не вибрано",
+                            tint = colorScheme.onSurface.copy(alpha = 0.3f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+
             // Перевіряємо чи це emoji-only повідомлення
             val isEmojiMessage = message.decryptedText?.let { isEmojiOnly(it) } ?: false
 

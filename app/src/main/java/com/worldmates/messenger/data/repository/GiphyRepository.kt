@@ -2,26 +2,23 @@ package com.worldmates.messenger.data.repository
 
 import android.content.Context
 import android.util.Log
-import com.giphy.sdk.core.models.Media
-import com.giphy.sdk.core.models.enums.MediaType
-import com.giphy.sdk.core.network.api.GPHApi
-import com.giphy.sdk.core.network.api.GPHApiClient
-import com.giphy.sdk.core.network.response.ListMediaResponse
-import com.giphy.sdk.core.network.response.MediaResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+import retrofit2.http.Query
 
 /**
  * 🎬 GIPHY Repository - работа с GIPHY API
  *
- * Функции:
- * - Поиск GIF по запросу
- * - Trending GIF (популярные)
- * - Получение случайного GIF
+ * Использует прямые HTTP запросы к GIPHY REST API
+ * (без SDK, чтобы избежать проблем с internal классами)
  *
  * Использование:
  * ```
@@ -46,6 +43,7 @@ class GiphyRepository private constructor(
         }
 
         private const val TAG = "GiphyRepository"
+        private const val BASE_URL = "https://api.giphy.com/v1/"
 
         // GIPHY API Key
         // TODO: Заменить на реальный ключ от https://developers.giphy.com/
@@ -53,17 +51,30 @@ class GiphyRepository private constructor(
         const val GIPHY_API_KEY = "YOUR_GIPHY_API_KEY_HERE"
     }
 
-    // GIPHY API Client
-    private val apiClient: GPHApi by lazy {
-        GPHApiClient(GIPHY_API_KEY)
+    // Retrofit API для GIPHY
+    private val giphyApi: GiphyApi by lazy {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        }
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .build()
+
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GiphyApi::class.java)
     }
 
     // State flows для кэширования
-    private val _trendingGifs = MutableStateFlow<List<Media>>(emptyList())
-    val trendingGifs: StateFlow<List<Media>> = _trendingGifs
+    private val _trendingGifs = MutableStateFlow<List<GifItem>>(emptyList())
+    val trendingGifs: StateFlow<List<GifItem>> = _trendingGifs
 
-    private val _searchResults = MutableStateFlow<List<Media>>(emptyList())
-    val searchResults: StateFlow<List<Media>> = _searchResults
+    private val _searchResults = MutableStateFlow<List<GifItem>>(emptyList())
+    val searchResults: StateFlow<List<GifItem>> = _searchResults
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -74,36 +85,32 @@ class GiphyRepository private constructor(
     suspend fun fetchTrendingGifs(
         limit: Int = 50,
         offset: Int = 0
-    ): Result<List<Media>> = withContext(Dispatchers.IO) {
+    ): Result<List<GifItem>> = withContext(Dispatchers.IO) {
         try {
             _isLoading.value = true
+            Log.d(TAG, "Fetching trending GIFs...")
 
-            val result = suspendCoroutine<Result<List<Media>>> { continuation ->
-                apiClient.trending(
-                    MediaType.gif,
-                    limit,
-                    offset,
-                    null,
-                    null
-                ) { result, error ->
-                    if (error != null) {
-                        Log.e(TAG, "Trending GIFs error", error)
-                        continuation.resume(Result.failure(error))
-                    } else if (result?.data != null) {
-                        _trendingGifs.value = result.data ?: emptyList()
-                        continuation.resume(Result.success(result.data ?: emptyList()))
-                    } else {
-                        continuation.resume(Result.success(emptyList()))
-                    }
-                }
+            val response = giphyApi.getTrending(
+                apiKey = GIPHY_API_KEY,
+                limit = limit,
+                offset = offset,
+                rating = "g"
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                val gifs = response.body()!!.data.map { it.toGifItem() }
+                _trendingGifs.value = gifs
+                Log.d(TAG, "✅ Loaded ${gifs.size} trending GIFs")
+                Result.success(gifs)
+            } else {
+                Log.e(TAG, "❌ Trending GIFs error: ${response.code()}")
+                Result.failure(Exception("HTTP ${response.code()}"))
             }
-
-            _isLoading.value = false
-            result
         } catch (e: Exception) {
-            _isLoading.value = false
-            Log.e(TAG, "fetchTrendingGifs error", e)
+            Log.e(TAG, "❌ fetchTrendingGifs error", e)
             Result.failure(e)
+        } finally {
+            _isLoading.value = false
         }
     }
 
@@ -114,42 +121,37 @@ class GiphyRepository private constructor(
         query: String,
         limit: Int = 50,
         offset: Int = 0
-    ): Result<List<Media>> = withContext(Dispatchers.IO) {
+    ): Result<List<GifItem>> = withContext(Dispatchers.IO) {
         try {
             if (query.isBlank()) {
                 return@withContext Result.success(emptyList())
             }
 
             _isLoading.value = true
+            Log.d(TAG, "Searching GIFs: $query")
 
-            val result = suspendCoroutine<Result<List<Media>>> { continuation ->
-                apiClient.search(
-                    query,
-                    MediaType.gif,
-                    limit,
-                    offset,
-                    null,
-                    null,
-                    null
-                ) { result, error ->
-                    if (error != null) {
-                        Log.e(TAG, "Search GIFs error: $query", error)
-                        continuation.resume(Result.failure(error))
-                    } else if (result?.data != null) {
-                        _searchResults.value = result.data ?: emptyList()
-                        continuation.resume(Result.success(result.data ?: emptyList()))
-                    } else {
-                        continuation.resume(Result.success(emptyList()))
-                    }
-                }
+            val response = giphyApi.searchGifs(
+                apiKey = GIPHY_API_KEY,
+                query = query,
+                limit = limit,
+                offset = offset,
+                rating = "g"
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                val gifs = response.body()!!.data.map { it.toGifItem() }
+                _searchResults.value = gifs
+                Log.d(TAG, "✅ Found ${gifs.size} GIFs for: $query")
+                Result.success(gifs)
+            } else {
+                Log.e(TAG, "❌ Search GIFs error: ${response.code()}")
+                Result.failure(Exception("HTTP ${response.code()}"))
             }
-
-            _isLoading.value = false
-            result
         } catch (e: Exception) {
-            _isLoading.value = false
-            Log.e(TAG, "searchGifs error: $query", e)
+            Log.e(TAG, "❌ searchGifs error: $query", e)
             Result.failure(e)
+        } finally {
+            _isLoading.value = false
         }
     }
 
@@ -158,46 +160,44 @@ class GiphyRepository private constructor(
      */
     suspend fun fetchRandomGif(
         tag: String? = null
-    ): Result<Media?> = withContext(Dispatchers.IO) {
+    ): Result<GifItem?> = withContext(Dispatchers.IO) {
         try {
             _isLoading.value = true
 
-            val result = suspendCoroutine<Result<Media?>> { continuation ->
-                apiClient.random(
-                    tag,
-                    MediaType.gif,
-                    null
-                ) { result, error ->
-                    if (error != null) {
-                        Log.e(TAG, "Random GIF error", error)
-                        continuation.resume(Result.failure(error))
-                    } else {
-                        continuation.resume(Result.success(result?.data))
-                    }
-                }
-            }
+            val response = giphyApi.getRandomGif(
+                apiKey = GIPHY_API_KEY,
+                tag = tag,
+                rating = "g"
+            )
 
-            _isLoading.value = false
-            result
+            if (response.isSuccessful && response.body() != null) {
+                val gif = response.body()!!.data.toGifItem()
+                Log.d(TAG, "✅ Random GIF loaded")
+                Result.success(gif)
+            } else {
+                Log.e(TAG, "❌ Random GIF error: ${response.code()}")
+                Result.failure(Exception("HTTP ${response.code()}"))
+            }
         } catch (e: Exception) {
-            _isLoading.value = false
-            Log.e(TAG, "fetchRandomGif error", e)
+            Log.e(TAG, "❌ fetchRandomGif error", e)
             Result.failure(e)
+        } finally {
+            _isLoading.value = false
         }
     }
 
     /**
      * 📊 Получить URL GIF в разных качествах
      */
-    fun getGifUrls(media: Media): GifUrls {
+    fun getGifUrls(gif: GifItem): GifUrls {
         return GifUrls(
-            original = media.images?.original?.gifUrl ?: "",
-            downsized = media.images?.downsized?.gifUrl ?: "",
-            downsizedMedium = media.images?.downsizedMedium?.gifUrl ?: "",
-            downsizedLarge = media.images?.downsizedLarge?.gifUrl ?: "",
-            preview = media.images?.preview?.gifUrl ?: "",
-            fixedWidth = media.images?.fixedWidth?.gifUrl ?: "",
-            fixedHeight = media.images?.fixedHeight?.gifUrl ?: ""
+            original = gif.url,
+            downsized = gif.downsizedUrl,
+            downsizedMedium = gif.downsizedMediumUrl,
+            downsizedLarge = gif.downsizedLargeUrl,
+            preview = gif.previewUrl,
+            fixedWidth = gif.fixedWidthUrl,
+            fixedHeight = gif.fixedHeightUrl
         )
     }
 
@@ -209,6 +209,108 @@ class GiphyRepository private constructor(
         _searchResults.value = emptyList()
     }
 }
+
+/**
+ * GIPHY REST API interface
+ */
+interface GiphyApi {
+    @GET("gifs/trending")
+    suspend fun getTrending(
+        @Query("api_key") apiKey: String,
+        @Query("limit") limit: Int = 25,
+        @Query("offset") offset: Int = 0,
+        @Query("rating") rating: String = "g"
+    ): Response<GiphyResponse>
+
+    @GET("gifs/search")
+    suspend fun searchGifs(
+        @Query("api_key") apiKey: String,
+        @Query("q") query: String,
+        @Query("limit") limit: Int = 25,
+        @Query("offset") offset: Int = 0,
+        @Query("rating") rating: String = "g"
+    ): Response<GiphyResponse>
+
+    @GET("gifs/random")
+    suspend fun getRandomGif(
+        @Query("api_key") apiKey: String,
+        @Query("tag") tag: String? = null,
+        @Query("rating") rating: String = "g"
+    ): Response<GiphyRandomResponse>
+}
+
+/**
+ * GIPHY API Response models
+ */
+data class GiphyResponse(
+    val data: List<GiphyGif>,
+    val pagination: Pagination? = null
+)
+
+data class GiphyRandomResponse(
+    val data: GiphyGif
+)
+
+data class Pagination(
+    val total_count: Int,
+    val count: Int,
+    val offset: Int
+)
+
+data class GiphyGif(
+    val id: String,
+    val title: String?,
+    val images: GiphyImages
+) {
+    fun toGifItem(): GifItem {
+        return GifItem(
+            id = id,
+            title = title ?: "",
+            url = images.original.url,
+            previewUrl = images.preview_gif?.url ?: images.downsized.url,
+            downsizedUrl = images.downsized.url,
+            downsizedMediumUrl = images.downsized_medium?.url ?: images.downsized.url,
+            downsizedLargeUrl = images.downsized_large?.url ?: images.original.url,
+            fixedWidthUrl = images.fixed_width.url,
+            fixedHeightUrl = images.fixed_height.url,
+            width = images.original.width.toIntOrNull() ?: 480,
+            height = images.original.height.toIntOrNull() ?: 270
+        )
+    }
+}
+
+data class GiphyImages(
+    val original: GiphyImageVariant,
+    val downsized: GiphyImageVariant,
+    val downsized_medium: GiphyImageVariant? = null,
+    val downsized_large: GiphyImageVariant? = null,
+    val preview_gif: GiphyImageVariant? = null,
+    val fixed_width: GiphyImageVariant,
+    val fixed_height: GiphyImageVariant
+)
+
+data class GiphyImageVariant(
+    val url: String,
+    val width: String,
+    val height: String
+)
+
+/**
+ * Упрощенная модель GIF для использования в приложении
+ */
+data class GifItem(
+    val id: String,
+    val title: String,
+    val url: String,
+    val previewUrl: String,
+    val downsizedUrl: String,
+    val downsizedMediumUrl: String,
+    val downsizedLargeUrl: String,
+    val fixedWidthUrl: String,
+    val fixedHeightUrl: String,
+    val width: Int,
+    val height: Int
+)
 
 /**
  * GIF URLs в разных качествах

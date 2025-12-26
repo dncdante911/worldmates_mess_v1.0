@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -135,6 +136,23 @@ fun MessagesScreen(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val themeState = rememberThemeState()
+
+    // 📜 Auto-scroll для автоматичної прокрутки до нових повідомлень
+    val listState = rememberLazyListState()
+
+    // 🔥 КРИТИЧНО: Auto-scroll при додаванні нового повідомлення
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            // Прокрутити до останнього повідомлення (reversed, тому index 0)
+            // Використовуємо animateScrollToItem для плавної анімації
+            try {
+                listState.animateScrollToItem(index = 0)
+                Log.d("MessagesScreen", "✅ Auto-scrolled to latest message (index 0)")
+            } catch (e: Exception) {
+                Log.e("MessagesScreen", "❌ Auto-scroll error: ${e.message}")
+            }
+        }
+    }
 
     // 📸 Галерея фото - збір всіх фото з чату
     var showImageGallery by remember { mutableStateOf(false) }
@@ -390,6 +408,7 @@ fun MessagesScreen(
 
             // Messages List
             LazyColumn(
+                state = listState,  // 🔥 Додано для auto-scroll
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()

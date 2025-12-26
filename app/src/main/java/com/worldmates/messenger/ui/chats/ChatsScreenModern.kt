@@ -128,6 +128,12 @@ fun ChatsScreenModern(
                     },
                     onShowContactPicker = {
                         showContactPicker = true
+                    },
+                    onShowDrafts = {
+                        // Открываем экран черновиков
+                        context.startActivity(
+                            android.content.Intent(context, com.worldmates.messenger.ui.drafts.DraftsActivity::class.java)
+                        )
                     }
                 )
             }

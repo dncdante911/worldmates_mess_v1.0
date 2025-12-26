@@ -198,6 +198,12 @@ fun ChatsScreen(
                     },
                     onShowContactPicker = {
                         showContactPicker = true
+                    },
+                    onShowDrafts = {
+                        // Открываем экран черновиков
+                        context.startActivity(
+                            Intent(context, com.worldmates.messenger.ui.drafts.DraftsActivity::class.java)
+                        )
                     }
                 )
             }
@@ -586,7 +592,8 @@ fun ChatsScreen(
 fun SettingsDrawerContent(
     onNavigateToFullSettings: () -> Unit,
     onClose: () -> Unit,
-    onShowContactPicker: () -> Unit = {}
+    onShowContactPicker: () -> Unit = {},
+    onShowDrafts: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -685,6 +692,17 @@ fun SettingsDrawerContent(
                     onClick = {
                         onClose()
                         onShowContactPicker()
+                    }
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.Draft,
+                    title = "Черновики",
+                    onClick = {
+                        onClose()
+                        onShowDrafts()
                     }
                 )
             }

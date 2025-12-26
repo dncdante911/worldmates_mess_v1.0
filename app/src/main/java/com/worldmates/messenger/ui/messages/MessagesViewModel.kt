@@ -690,10 +690,15 @@ class MessagesViewModel(application: Application) :
      * Отправляет событие "набирает текст" через Socket.IO
      */
     fun sendTypingStatus(isTyping: Boolean) {
+        if (recipientId == 0L) return
+
         socketManager?.emit(Constants.SOCKET_EVENT_TYPING, JSONObject().apply {
             put("user_id", UserSession.userId)  // Кто печатает
             put("recipient_id", recipientId)  // Кому отправляем
+            // Формат WoWonder: is_typing = 200 (печатает) или 300 (закончил)
+            put("is_typing", if (isTyping) 200 else 300)
         })
+        Log.d("MessagesViewModel", "Відправлено статус 'печатає': $isTyping для користувача $recipientId")
     }
 
     fun clearError() {

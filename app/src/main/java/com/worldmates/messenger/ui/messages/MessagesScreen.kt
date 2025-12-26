@@ -323,6 +323,37 @@ fun MessagesScreen(
                     Log.d("MessagesScreen", "Зміна фону чату")
                     // TODO: Відкрити вибір фону
                     android.widget.Toast.makeText(context, "Вибір фону поки недоступний", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                // 🔥 Параметри режиму вибору
+                isSelectionMode = isSelectionMode,
+                selectedCount = selectedMessages.size,
+                canEdit = selectedMessages.size == 1 && messages.find { it.id == selectedMessages.first() }?.fromId == UserSession.userId,
+                onEditSelected = {
+                    // Редагуємо вибране повідомлення
+                    if (selectedMessages.size == 1) {
+                        val messageToEdit = messages.find { it.id == selectedMessages.first() }
+                        if (messageToEdit != null && messageToEdit.fromId == UserSession.userId) {
+                            editingMessage = messageToEdit
+                            messageText = messageToEdit.decryptedText ?: ""
+                            isSelectionMode = false
+                            selectedMessages = emptySet()
+                            android.widget.Toast.makeText(context, "Редагування повідомлення", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                onDeleteSelected = {
+                    // Видаляємо вибрані повідомлення
+                    selectedMessages.forEach { messageId ->
+                        viewModel.deleteMessage(messageId)
+                    }
+                    android.widget.Toast.makeText(context, "Видалено ${selectedMessages.size} повідомлень", android.widget.Toast.LENGTH_SHORT).show()
+                    isSelectionMode = false
+                    selectedMessages = emptySet()
+                },
+                onCloseSelectionMode = {
+                    // Закриваємо режим вибору
+                    isSelectionMode = false
+                    selectedMessages = emptySet()
                 }
             )
 
@@ -353,14 +384,10 @@ fun MessagesScreen(
                         voicePlayer = voicePlayer,
                         replyToMessage = replyToMessage,
                         onLongPress = {
-                            selectedMessage = message
-                            showContextMenu = true
-                            // 🧪 ТЕСТОВЕ ПОВІДОМЛЕННЯ - переконайся що довгий тап працює!
-                            android.widget.Toast.makeText(
-                                context,
-                                "🎯 Довгий тап працює! Меню має відкритись!",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
+                            // 🔥 Активуємо режим вибору при довгому натисканні
+                            if (!isSelectionMode) {
+                                isSelectionMode = true
+                            }
                         },
                         onImageClick = { imageUrl ->
                             Log.d("MessagesScreen", "🖼️ onImageClick викликано! URL: $imageUrl")
@@ -377,6 +404,32 @@ fun MessagesScreen(
                         },
                         onToggleReaction = { messageId, emoji ->
                             viewModel.toggleReaction(messageId, emoji)
+                        },
+                        // 🔥 Нові параметри для режиму вибору
+                        isSelectionMode = isSelectionMode,
+                        isSelected = selectedMessages.contains(message.id),
+                        onToggleSelection = { messageId ->
+                            selectedMessages = if (selectedMessages.contains(messageId)) {
+                                selectedMessages - messageId
+                            } else {
+                                selectedMessages + messageId
+                            }
+                            // Якщо нічого не вибрано - виходимо з режиму
+                            if (selectedMessages.isEmpty()) {
+                                isSelectionMode = false
+                            }
+                        },
+                        onDoubleTap = { messageId ->
+                            // ❤️ Швидка реакція при подвійному тапі
+                            quickReactionMessageId = messageId
+                            showQuickReaction = true
+                            // Додаємо реакцію
+                            viewModel.toggleReaction(messageId, defaultQuickReaction)
+                            // Ховаємо анімацію через 1 секунду
+                            scope.launch {
+                                kotlinx.coroutines.delay(1000)
+                                showQuickReaction = false
+                            }
                         }
                     )
                     }  // Закриття AnimatedVisibility
@@ -507,7 +560,45 @@ fun MessagesScreen(
             )
         }
 
-        // Message Input
+        // 🔥 Нижня панель дій (режим вибору)
+        if (isSelectionMode) {
+            SelectionBottomBar(
+                selectedCount = selectedMessages.size,
+                onForward = {
+                    // TODO: Реалізувати пересилання
+                    android.widget.Toast.makeText(
+                        context,
+                        "📤 Пересилання ${selectedMessages.size} повідомлень",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onReply = {
+                    // Відповідаємо на вибране повідомлення
+                    if (selectedMessages.size == 1) {
+                        val messageId = selectedMessages.first()
+                        replyToMessage = messages.find { it.id == messageId }
+                        isSelectionMode = false
+                        selectedMessages = emptySet()
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+
+        // ❤️ Анімація швидкої реакції
+        if (showQuickReaction) {
+            QuickReactionAnimation(
+                visible = showQuickReaction,
+                emoji = defaultQuickReaction,
+                onAnimationEnd = {
+                    showQuickReaction = false
+                    quickReactionMessageId = null
+                }
+            )
+        }
+
+        // Message Input (ховається в режимі вибору)
+        if (!isSelectionMode) {
         MessageInputBar(
             messageText = messageText,
             onMessageChange = { messageText = it },
@@ -566,6 +657,7 @@ fun MessagesScreen(
             showStickerPicker = showStickerPicker,
             onToggleStickerPicker = { showStickerPicker = !showStickerPicker }
         )
+        }  // Закриття if (!isSelectionMode)
 
         // 😊 Emoji Picker
         if (showEmojiPicker) {
@@ -606,7 +698,14 @@ fun MessagesHeaderBar(
     onSearchClick: () -> Unit = {},
     onMuteClick: () -> Unit = {},
     onClearHistoryClick: () -> Unit = {},
-    onChangeWallpaperClick: () -> Unit = {}
+    onChangeWallpaperClick: () -> Unit = {},
+    // 🔥 Параметри для режиму вибору
+    isSelectionMode: Boolean = false,
+    selectedCount: Int = 0,
+    canEdit: Boolean = false,
+    onEditSelected: () -> Unit = {},
+    onDeleteSelected: () -> Unit = {},
+    onCloseSelectionMode: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var showUserMenu by remember { mutableStateOf(false) }
@@ -614,50 +713,60 @@ fun MessagesHeaderBar(
     // Telegram-style AppBar - четкий и читаемый
     TopAppBar(
         title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .clickable { onUserProfileClick() }
-            ) {
-                // Аватар с индикатором онлайн-статуса
-                if (recipientAvatar.isNotEmpty()) {
-                    Box {
-                        AsyncImage(
-                            model = recipientAvatar,
-                            contentDescription = recipientName,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                        // Зелёная/серая точка онлайн-статуса
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .align(Alignment.BottomEnd)
-                                .clip(CircleShape)
-                                .background(if (isOnline) Color(0xFF4CAF50) else Color.Gray)
-                                .border(2.dp, Color.White, CircleShape)
-                        )
+            // 🔥 В режимі вибору показуємо кількість вибраних
+            if (isSelectionMode) {
+                Text(
+                    text = "$selectedCount вибрано",
+                    color = colorScheme.onPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clickable { onUserProfileClick() }
+                ) {
+                    // Аватар с индикатором онлайн-статуса
+                    if (recipientAvatar.isNotEmpty()) {
+                        Box {
+                            AsyncImage(
+                                model = recipientAvatar,
+                                contentDescription = recipientName,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                            // Зелёная/серая точка онлайн-статуса
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .clip(CircleShape)
+                                    .background(if (isOnline) Color(0xFF4CAF50) else Color.Gray)
+                                    .border(2.dp, Color.White, CircleShape)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                // Имя и статус "печатает"
-                Column {
-                    Text(recipientName, color = colorScheme.onPrimary)
-                    if (isTyping) {
-                        Text(
-                            text = "печатає...",
-                            fontSize = 12.sp,
-                            color = colorScheme.onPrimary.copy(alpha = 0.8f)
-                        )
-                    } else if (isOnline) {
-                        Text(
-                            text = "онлайн",
-                            fontSize = 12.sp,
-                            color = colorScheme.onPrimary.copy(alpha = 0.8f)
-                        )
+                    // Имя и статус "печатает"
+                    Column {
+                        Text(recipientName, color = colorScheme.onPrimary)
+                        if (isTyping) {
+                            Text(
+                                text = "печатає...",
+                                fontSize = 12.sp,
+                                color = colorScheme.onPrimary.copy(alpha = 0.8f)
+                            )
+                        } else if (isOnline) {
+                            Text(
+                                text = "онлайн",
+                                fontSize = 12.sp,
+                                color = colorScheme.onPrimary.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                 }
             }
@@ -672,91 +781,103 @@ fun MessagesHeaderBar(
             }
         },
         actions = {
-            // Кнопка пошуку
-            IconButton(onClick = onSearchClick) {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Пошук",
-                    tint = colorScheme.onPrimary
+            // 🔥 Режим вибору - показуємо кнопки дій
+            if (isSelectionMode) {
+                SelectionTopBarActions(
+                    selectedCount = selectedCount,
+                    canEdit = canEdit,
+                    onEdit = onEditSelected,
+                    onDelete = onDeleteSelected,
+                    onClose = onCloseSelectionMode
                 )
-            }
-
-            // Кнопка дзвінка
-            IconButton(onClick = onCallClick) {
-                Icon(
-                    Icons.Default.Call,
-                    contentDescription = "Дзвінок",
-                    tint = colorScheme.onPrimary
-                )
-            }
-
-            // Кнопка меню (3 крапки)
-            Box {
-                IconButton(onClick = { showUserMenu = !showUserMenu }) {
+            } else {
+                // Звичайні кнопки
+                // Кнопка пошуку
+                IconButton(onClick = onSearchClick) {
                     Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "Більше",
+                        Icons.Default.Search,
+                        contentDescription = "Пошук",
                         tint = colorScheme.onPrimary
                     )
                 }
 
-                // Випадаюче меню
-                DropdownMenu(
-                    expanded = showUserMenu,
-                    onDismissRequest = { showUserMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Переглянути профіль") },
-                        onClick = {
-                            showUserMenu = false
-                            onUserProfileClick()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Person, contentDescription = null)
-                        }
+                // Кнопка дзвінка
+                IconButton(onClick = onCallClick) {
+                    Icon(
+                        Icons.Default.Call,
+                        contentDescription = "Дзвінок",
+                        tint = colorScheme.onPrimary
                     )
-                    DropdownMenuItem(
-                        text = { Text("Відеодзвінок") },
-                        onClick = {
-                            showUserMenu = false
-                            onVideoCallClick()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.VideoCall, contentDescription = null)
-                        }
-                    )
-                    Divider()
-                    DropdownMenuItem(
-                        text = { Text("Вимкнути сповіщення") },
-                        onClick = {
-                            showUserMenu = false
-                            onMuteClick()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Notifications, contentDescription = null)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Змінити обої") },
-                        onClick = {
-                            showUserMenu = false
-                            onChangeWallpaperClick()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Image, contentDescription = null)
-                        }
-                    )
-                    Divider()
-                    DropdownMenuItem(
-                        text = { Text("Очистити історію") },
-                        onClick = {
-                            showUserMenu = false
-                            onClearHistoryClick()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Delete, contentDescription = null)
-                        }
-                    )
+                }
+
+                // Кнопка меню (3 крапки)
+                Box {
+                    IconButton(onClick = { showUserMenu = !showUserMenu }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Більше",
+                            tint = colorScheme.onPrimary
+                        )
+                    }
+
+                    // Випадаюче меню
+                    DropdownMenu(
+                        expanded = showUserMenu,
+                        onDismissRequest = { showUserMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Переглянути профіль") },
+                            onClick = {
+                                showUserMenu = false
+                                onUserProfileClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Person, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Відеодзвінок") },
+                            onClick = {
+                                showUserMenu = false
+                                onVideoCallClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.VideoCall, contentDescription = null)
+                            }
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            text = { Text("Вимкнути сповіщення") },
+                            onClick = {
+                                showUserMenu = false
+                                onMuteClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Notifications, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Змінити обої") },
+                            onClick = {
+                                showUserMenu = false
+                                onChangeWallpaperClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Image, contentDescription = null)
+                            }
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            text = { Text("Очистити історію") },
+                            onClick = {
+                                showUserMenu = false
+                                onClearHistoryClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null)
+                            }
+                        )
+                    }
                 }
             }
         },

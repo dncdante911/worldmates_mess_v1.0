@@ -687,7 +687,7 @@ fun SettingsDrawerContent(
 
             item {
                 DrawerMenuItem(
-                    icon = Icons.Default.Contacts,
+                    icon = Icons.Default.People,
                     title = "Контакти",
                     onClick = {
                         onClose()

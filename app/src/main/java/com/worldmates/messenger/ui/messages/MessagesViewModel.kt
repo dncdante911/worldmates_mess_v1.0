@@ -18,6 +18,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import com.worldmates.messenger.ui.messages.selection.ForwardRecipient
+import com.worldmates.messenger.data.repository.DraftRepository
+import com.worldmates.messenger.data.local.entity.Draft
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import org.json.JSONObject
 import java.io.File
 
@@ -28,6 +32,7 @@ class MessagesViewModel(application: Application) :
 
     companion object {
         private const val TAG = "MessagesViewModel"
+        private const val DRAFT_AUTO_SAVE_DELAY = 5000L // 5 секунд
     }
 
     init {
@@ -60,6 +65,18 @@ class MessagesViewModel(application: Application) :
     private val _forwardGroups = MutableStateFlow<List<ForwardRecipient>>(emptyList())
     val forwardGroups: StateFlow<List<ForwardRecipient>> = _forwardGroups
 
+    // ==================== DRAFTS ====================
+    private val draftRepository = DraftRepository.getInstance(context)
+
+    private val _currentDraft = MutableStateFlow<String>("")
+    val currentDraft: StateFlow<String> = _currentDraft
+
+    private val _isDraftSaving = MutableStateFlow(false)
+    val isDraftSaving: StateFlow<Boolean> = _isDraftSaving
+
+    private var draftAutoSaveJob: Job? = null
+    // ==================== END DRAFTS ====================
+
     private var recipientId: Long = 0
     private var groupId: Long = 0
     private var socketManager: SocketManager? = null
@@ -72,6 +89,7 @@ class MessagesViewModel(application: Application) :
         this.groupId = 0
         fetchMessages()
         setupSocket()
+        loadDraft() // Загружаем черновик
         Log.d("MessagesViewModel", "✅ Ініціалізація завершена для користувача $recipientId")
     }
 
@@ -80,6 +98,7 @@ class MessagesViewModel(application: Application) :
         this.recipientId = 0
         fetchGroupMessages()
         setupSocket()
+        loadDraft() // Загружаем черновик
         Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
     }
 
@@ -242,6 +261,7 @@ class MessagesViewModel(application: Application) :
                     }
 
                     _error.value = null
+                    deleteDraft() // Удаляем черновик после успешной отправки
                     Log.d("MessagesViewModel", "Повідомлення надіслано")
                 } else {
                     _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати повідомлення"
@@ -600,6 +620,99 @@ class MessagesViewModel(application: Application) :
             }
         }
     }
+
+    // ==================== DRAFT METHODS ====================
+
+    /**
+     * 📝 Загрузить черновик при открытии чата
+     */
+    fun loadDraft() {
+        val chatId = if (groupId != 0L) groupId else recipientId
+        if (chatId == 0L) return
+
+        viewModelScope.launch {
+            try {
+                val draft = draftRepository.getDraft(chatId)
+                if (draft != null) {
+                    _currentDraft.value = draft.text
+                    Log.d(TAG, "✅ Draft loaded: ${draft.text.take(50)}...")
+                } else {
+                    _currentDraft.value = ""
+                    Log.d(TAG, "📭 No draft found for chat $chatId")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error loading draft", e)
+            }
+        }
+    }
+
+    /**
+     * 📝 Обновить текст черновика и запустить автосохранение
+     */
+    fun updateDraftText(text: String) {
+        _currentDraft.value = text
+
+        // Отменяем предыдущую задачу автосохранения
+        draftAutoSaveJob?.cancel()
+
+        // Запускаем новую задачу с задержкой 5 секунд
+        draftAutoSaveJob = viewModelScope.launch {
+            delay(DRAFT_AUTO_SAVE_DELAY)
+            saveDraft(text)
+        }
+    }
+
+    /**
+     * 📝 Сохранить черновик в БД
+     */
+    private suspend fun saveDraft(text: String) {
+        val chatId = if (groupId != 0L) groupId else recipientId
+        if (chatId == 0L) return
+
+        _isDraftSaving.value = true
+
+        try {
+            val chatType = if (groupId != 0L)
+                Draft.CHAT_TYPE_GROUP
+            else
+                Draft.CHAT_TYPE_USER
+
+            draftRepository.saveDraft(
+                chatId = chatId,
+                text = text,
+                chatType = chatType
+            )
+
+            Log.d(TAG, "💾 Draft auto-saved for chat $chatId")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error saving draft", e)
+        } finally {
+            _isDraftSaving.value = false
+        }
+    }
+
+    /**
+     * 📝 Удалить черновик (при отправке сообщения)
+     */
+    fun deleteDraft() {
+        val chatId = if (groupId != 0L) groupId else recipientId
+        if (chatId == 0L) return
+
+        // Отменяем автосохранение
+        draftAutoSaveJob?.cancel()
+
+        viewModelScope.launch {
+            try {
+                draftRepository.deleteDraft(chatId)
+                _currentDraft.value = ""
+                Log.d(TAG, "🗑️ Draft deleted for chat $chatId")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error deleting draft", e)
+            }
+        }
+    }
+
+    // ==================== END DRAFT METHODS ====================
 
     /**
      * Загружает и отправляет медиа-файл

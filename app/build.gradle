@@ -4,6 +4,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'org.jetbrains.kotlin.plugin.compose'  // КРИТИЧНО для Kotlin 2.0+ и Compose
+    id 'com.google.devtools.ksp' version '2.0.21-1.0.27'  // KSP для Room Database
     // Временно отключен до настройки Firebase
     // id 'com.google.gms.google-services'
 }
@@ -116,6 +117,11 @@ dependencies {
     // ==================== DATA STORAGE ====================
     implementation 'androidx.datastore:datastore-preferences:1.0.0'
     implementation 'androidx.datastore:datastore-preferences-core:1.0.0'
+
+    // Room Database (для черновиков)
+    implementation 'androidx.room:room-runtime:2.6.1'
+    implementation 'androidx.room:room-ktx:2.6.1'
+    ksp 'androidx.room:room-compiler:2.6.1'
 
     // ==================== ENCRYPTION ====================
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'

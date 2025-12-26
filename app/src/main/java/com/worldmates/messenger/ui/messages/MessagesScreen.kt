@@ -1087,7 +1087,6 @@ fun MessageBubbleComposable(
                     }
                 }
             }
-        }
 
             // ❤️ Реакції під повідомленням
             MessageReactions(

@@ -33,6 +33,10 @@ class SocketManager(private val listener: SocketListener) {
             opts.reconnectionDelay = 1000 // Начальная задержка 1 сек
             opts.reconnectionDelayMax = 5000 // Максимальная задержка 5 сек
             opts.timeout = 20000 // Тайм-аут подключения 20 сек
+
+            // КРИТИЧНО: Форсируем WebSocket вместо XHR polling для стабильности
+            opts.transports = arrayOf("websocket", "polling")
+
             opts.query = "access_token=${UserSession.accessToken}&user_id=${UserSession.userId}"
 
             socket = IO.socket(Constants.SOCKET_URL, opts)
@@ -73,17 +77,41 @@ class SocketManager(private val listener: SocketListener) {
 
             // 7. Получение нового личного сообщения (основное событие от сервера)
             socket?.on(Constants.SOCKET_EVENT_PRIVATE_MESSAGE) { args ->
-                if (args.isNotEmpty() && args[0] is JSONObject) {
-                    val messageData = args[0] as JSONObject
-                    Log.d("SocketManager", "Received private_message: ${messageData.toString()}")
-                    listener.onNewMessage(messageData)
+                Log.d("SocketManager", "📨 private_message event received with ${args.size} args")
+                if (args.isNotEmpty()) {
+                    Log.d("SocketManager", "Args[0] type: ${args[0]?.javaClass?.simpleName}")
+                    if (args[0] is JSONObject) {
+                        val messageData = args[0] as JSONObject
+                        Log.d("SocketManager", "✅ private_message JSON: ${messageData.toString()}")
+                        listener.onNewMessage(messageData)
+                    } else {
+                        Log.w("SocketManager", "⚠️ private_message args[0] не є JSONObject: ${args[0]}")
+                    }
+                } else {
+                    Log.w("SocketManager", "⚠️ private_message отримано без аргументів")
                 }
             }
 
             // 8. Получение нового сообщения (для обратной совместимости)
             socket?.on(Constants.SOCKET_EVENT_NEW_MESSAGE) { args ->
+                Log.d("SocketManager", "📨 new_message event received with ${args.size} args")
                 if (args.isNotEmpty() && args[0] is JSONObject) {
-                    Log.d("SocketManager", "Received new_message: ${args[0]}")
+                    Log.d("SocketManager", "✅ new_message JSON: ${args[0]}")
+                    listener.onNewMessage(args[0] as JSONObject)
+                }
+            }
+
+            // 8a. ДОДАТКОВО: Слухаємо всі можливі події повідомлень
+            socket?.on("private_message_page") { args ->
+                Log.d("SocketManager", "📨 private_message_page received with ${args.size} args")
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    listener.onNewMessage(args[0] as JSONObject)
+                }
+            }
+
+            socket?.on("page_message") { args ->
+                Log.d("SocketManager", "📨 page_message received with ${args.size} args")
+                if (args.isNotEmpty() && args[0] is JSONObject) {
                     listener.onNewMessage(args[0] as JSONObject)
                 }
             }
@@ -173,27 +201,63 @@ class SocketManager(private val listener: SocketListener) {
             }
 
             // 14. КРИТИЧНО: Обработка события "user_status_change" от WoWonder сервера
-            // Это событие фактически используется сервером вместо on_user_loggedin/on_user_loggedoff
+            // WoWonder отправляет HTML, нужно парсить онлайн пользователей из разметки
             socket?.on("user_status_change") { args ->
                 Log.d("SocketManager", "Received user_status_change event with ${args.size} args")
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    val data = args[0] as JSONObject
+
+                    // WoWonder отправляет HTML в полях online_users и offline_users
+                    val onlineUsersHtml = data.optString("online_users", "")
+                    val offlineUsersHtml = data.optString("offline_users", "")
+
+                    // Парсим онлайн пользователей из HTML
+                    parseOnlineUsers(onlineUsersHtml, true)
+                    parseOnlineUsers(offlineUsersHtml, false)
+                }
+            }
+
+            // 15. ДОПОЛНИТЕЛЬНО: Слушаем событие с конкретным пользователем
+            socket?.on("on_user_loggedin") { args ->
+                Log.d("SocketManager", "Received on_user_loggedin with ${args.size} args")
                 if (args.isNotEmpty()) {
-                    Log.d("SocketManager", "Event data: ${args[0]}")
-                    if (args[0] is JSONObject) {
-                        val data = args[0] as JSONObject
-                        val userId = data.optLong("user_id", 0)
-                        // Проверяем статус: 0 = offline, 1 = online
-                        val status = data.optString("status", "0")
-                        val isOnline = status == "1" || status.equals("online", ignoreCase = true)
-
-                        Log.d("SocketManager", "User $userId status changed: ${if (isOnline) "ONLINE ✅" else "OFFLINE ❌"}")
-
-                        if (listener is ExtendedSocketListener) {
-                            if (isOnline) {
+                    try {
+                        val userId = when (val arg = args[0]) {
+                            is Number -> arg.toLong()
+                            is String -> arg.toLongOrNull() ?: 0
+                            is JSONObject -> arg.optLong("user_id", 0)
+                            else -> 0
+                        }
+                        if (userId > 0) {
+                            Log.d("SocketManager", "✅ User $userId logged in")
+                            if (listener is ExtendedSocketListener) {
                                 listener.onUserOnline(userId)
-                            } else {
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("SocketManager", "Error parsing on_user_loggedin", e)
+                    }
+                }
+            }
+
+            socket?.on("on_user_loggedoff") { args ->
+                Log.d("SocketManager", "Received on_user_loggedoff with ${args.size} args")
+                if (args.isNotEmpty()) {
+                    try {
+                        val userId = when (val arg = args[0]) {
+                            is Number -> arg.toLong()
+                            is String -> arg.toLongOrNull() ?: 0
+                            is JSONObject -> arg.optLong("user_id", 0)
+                            else -> 0
+                        }
+                        if (userId > 0) {
+                            Log.d("SocketManager", "❌ User $userId logged off")
+                            if (listener is ExtendedSocketListener) {
                                 listener.onUserOffline(userId)
                             }
                         }
+                    } catch (e: Exception) {
+                        Log.e("SocketManager", "Error parsing on_user_loggedoff", e)
                     }
                 }
             }
@@ -301,6 +365,35 @@ class SocketManager(private val listener: SocketListener) {
             }
             socket?.emit(Constants.SOCKET_EVENT_GROUP_MESSAGE, messagePayload)
             Log.d("SocketManager", "Emitted group_message to group $groupId: $text")
+        }
+    }
+
+    /**
+     * Парсит HTML разметку с онлайн/оффлайн пользователями от WoWonder
+     */
+    private fun parseOnlineUsers(html: String, isOnline: Boolean) {
+        if (html.isEmpty()) return
+
+        try {
+            // WoWonder использует id="online_XXX" где XXX - это user_id
+            val pattern = """id="online_(\d+)"""".toRegex()
+            val matches = pattern.findAll(html)
+
+            matches.forEach { match ->
+                val userId = match.groupValues[1].toLongOrNull()
+                if (userId != null && userId > 0) {
+                    Log.d("SocketManager", "Parsed user $userId as ${if (isOnline) "ONLINE ✅" else "OFFLINE ❌"}")
+                    if (listener is ExtendedSocketListener) {
+                        if (isOnline) {
+                            listener.onUserOnline(userId)
+                        } else {
+                            listener.onUserOffline(userId)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SocketManager", "Error parsing online users HTML", e)
         }
     }
 

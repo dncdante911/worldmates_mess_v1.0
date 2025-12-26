@@ -576,6 +576,8 @@ class MessagesViewModel(application: Application) :
 
     override fun onNewMessage(messageJson: JSONObject) {
         try {
+            Log.d("MessagesViewModel", "📨 Отримано Socket.IO повідомлення: $messageJson")
+
             val timestamp = messageJson.getLong("time")
             val encryptedText = messageJson.getString("text")
             val mediaUrl = messageJson.optString("media", null)
@@ -668,6 +670,10 @@ class MessagesViewModel(application: Application) :
     override fun onTypingStatus(userId: Long, isTyping: Boolean) {
         if (userId == recipientId) {
             _isTyping.value = isTyping
+            // ВАЖНО: Если пользователь печатает, значит он онлайн!
+            if (isTyping) {
+                _recipientOnlineStatus.value = true
+            }
             Log.d("MessagesViewModel", "Користувач $userId ${if (isTyping) "набирає" else "зупинив набір"}")
         }
     }
@@ -675,14 +681,19 @@ class MessagesViewModel(application: Application) :
     override fun onUserOnline(userId: Long) {
         if (userId == recipientId) {
             _recipientOnlineStatus.value = true
-            Log.d("MessagesViewModel", "Користувач $userId з'явився онлайн")
+            Log.d("MessagesViewModel", "✅ Користувач $userId з'явився онлайн")
         }
     }
 
     override fun onUserOffline(userId: Long) {
         if (userId == recipientId) {
-            _recipientOnlineStatus.value = false
-            Log.d("MessagesViewModel", "Користувач $userId з'явився офлайн")
+            // ВАЖНО: Не сбрасываем статус, если пользователь печатает
+            if (!_isTyping.value) {
+                _recipientOnlineStatus.value = false
+                Log.d("MessagesViewModel", "❌ Користувач $userId з'явився офлайн")
+            } else {
+                Log.d("MessagesViewModel", "⚠️ Ігноруємо offline для $userId (друкує)")
+            }
         }
     }
 

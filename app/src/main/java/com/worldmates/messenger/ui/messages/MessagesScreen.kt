@@ -73,6 +73,8 @@ import com.worldmates.messenger.ui.messages.selection.SelectionBottomBar
 import com.worldmates.messenger.ui.messages.selection.SelectionTopBarActions
 import com.worldmates.messenger.ui.messages.selection.MediaActionMenu
 import com.worldmates.messenger.ui.messages.selection.QuickReactionAnimation
+import com.worldmates.messenger.ui.messages.selection.ForwardMessageDialog
+import com.worldmates.messenger.ui.messages.selection.ForwardRecipient
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -107,6 +109,9 @@ fun MessagesScreen(
     // ✅ Режим множественного выбора
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedMessages by remember { mutableStateOf(setOf<Long>()) }
+
+    // 📤 Пересилання повідомлень
+    var showForwardDialog by remember { mutableStateOf(false) }
 
     // ❤️ Быстрая реакция при двойном тапе
     var showQuickReaction by remember { mutableStateOf(false) }
@@ -577,12 +582,8 @@ fun MessagesScreen(
             SelectionBottomBar(
                 selectedCount = selectedMessages.size,
                 onForward = {
-                    // TODO: Реалізувати пересилання
-                    android.widget.Toast.makeText(
-                        context,
-                        "📤 Пересилання ${selectedMessages.size} повідомлень",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+                    // Відкриваємо діалог вибору отримувачів
+                    showForwardDialog = true
                 },
                 onReply = {
                     // Відповідаємо на вибране повідомлення
@@ -692,6 +693,42 @@ fun MessagesScreen(
                 onDismiss = { showStickerPicker = false }
             )
         }
+
+        // 📤 Діалог пересилання повідомлень
+        ForwardMessageDialog(
+            visible = showForwardDialog,
+            // TODO: Отримати реальний список контактів з ViewModel
+            contacts = listOf(
+                ForwardRecipient(1, "Іван Петренко", "", false),
+                ForwardRecipient(2, "Марія Коваленко", "", false),
+                ForwardRecipient(3, "Олексій Сидоренко", "", false)
+            ),
+            groups = listOf(
+                ForwardRecipient(101, "Робоча група", "", true),
+                ForwardRecipient(102, "Сім'я", "", true),
+                ForwardRecipient(103, "Друзі", "", true)
+            ),
+            selectedCount = selectedMessages.size,
+            onForward = { recipientIds ->
+                // Пересилаємо повідомлення обраним отримувачам
+                Log.d("MessagesScreen", "Пересилання ${selectedMessages.size} повідомлень до ${recipientIds.size} отримувачів")
+                recipientIds.forEach { recipientId ->
+                    selectedMessages.forEach { messageId ->
+                        // TODO: Викликати viewModel.forwardMessage(messageId, recipientId)
+                        Log.d("MessagesScreen", "Forward message $messageId to recipient $recipientId")
+                    }
+                }
+                android.widget.Toast.makeText(
+                    context,
+                    "✅ Переслано ${selectedMessages.size} повідомлень до ${recipientIds.size} отримувачів",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                // Виходимо з режиму вибору
+                isSelectionMode = false
+                selectedMessages = emptySet()
+            },
+            onDismiss = { showForwardDialog = false }
+        )
         }  // Кінець Column
     }  // Кінець Box
 }

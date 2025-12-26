@@ -113,6 +113,16 @@ fun MessagesScreen(
 
     // 📤 Пересилання повідомлень
     var showForwardDialog by remember { mutableStateOf(false) }
+    val forwardContacts by viewModel.forwardContacts.collectAsState()
+    val forwardGroups by viewModel.forwardGroups.collectAsState()
+
+    // Завантажуємо контакти та групи при відкритті діалогу
+    LaunchedEffect(showForwardDialog) {
+        if (showForwardDialog) {
+            viewModel.loadForwardContacts()
+            viewModel.loadForwardGroups()
+        }
+    }
 
     // ❤️ Быстрая реакция при двойном тапе
     var showQuickReaction by remember { mutableStateOf(false) }
@@ -702,32 +712,19 @@ fun MessagesScreen(
         // 📤 Діалог пересилання повідомлень
         ForwardMessageDialog(
             visible = showForwardDialog,
-            // TODO: Отримати реальний список контактів з ViewModel
-            contacts = listOf(
-                ForwardRecipient(1, "Іван Петренко", "", false),
-                ForwardRecipient(2, "Марія Коваленко", "", false),
-                ForwardRecipient(3, "Олексій Сидоренко", "", false)
-            ),
-            groups = listOf(
-                ForwardRecipient(101, "Робоча група", "", true),
-                ForwardRecipient(102, "Сім'я", "", true),
-                ForwardRecipient(103, "Друзі", "", true)
-            ),
+            contacts = forwardContacts,  // Реальні дані з ViewModel
+            groups = forwardGroups,      // Реальні дані з ViewModel
             selectedCount = selectedMessages.size,
             onForward = { recipientIds ->
-                // Пересилаємо повідомлення обраним отримувачам
-                Log.d("MessagesScreen", "Пересилання ${selectedMessages.size} повідомлень до ${recipientIds.size} отримувачів")
-                recipientIds.forEach { recipientId ->
-                    selectedMessages.forEach { messageId ->
-                        // TODO: Викликати viewModel.forwardMessage(messageId, recipientId)
-                        Log.d("MessagesScreen", "Forward message $messageId to recipient $recipientId")
-                    }
-                }
+                // Викликаємо метод ViewModel для пересилання
+                viewModel.forwardMessages(selectedMessages, recipientIds)
+
                 android.widget.Toast.makeText(
                     context,
                     "✅ Переслано ${selectedMessages.size} повідомлень до ${recipientIds.size} отримувачів",
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
+
                 // Виходимо з режиму вибору
                 isSelectionMode = false
                 selectedMessages = emptySet()

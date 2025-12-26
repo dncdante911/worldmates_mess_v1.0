@@ -17,7 +17,7 @@ import com.worldmates.messenger.utils.DecryptionUtility
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import org.json.JSONObject
+import com.worldmates.messenger.ui.messages.selection.ForwardRecipient
 import java.io.File
 
 class MessagesViewModel(application: Application) :
@@ -42,6 +42,12 @@ class MessagesViewModel(application: Application) :
 
     private val _recipientOnlineStatus = MutableStateFlow(false)
     val recipientOnlineStatus: StateFlow<Boolean> = _recipientOnlineStatus
+
+    private val _forwardContacts = MutableStateFlow<List<ForwardRecipient>>(emptyList())
+    val forwardContacts: StateFlow<List<ForwardRecipient>> = _forwardContacts
+
+    private val _forwardGroups = MutableStateFlow<List<ForwardRecipient>>(emptyList())
+    val forwardGroups: StateFlow<List<ForwardRecipient>> = _forwardGroups
 
     private var recipientId: Long = 0
     private var groupId: Long = 0
@@ -725,6 +731,132 @@ class MessagesViewModel(application: Application) :
             decryptedText = decryptedText,
             decryptedMediaUrl = finalMediaUrl
         )
+    }
+
+    /**
+     * 📤 Завантажує список контактів для пересилання
+     */
+    fun loadForwardContacts() {
+        if (UserSession.accessToken == null) {
+            Log.e("MessagesViewModel", "Не авторизовано")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.worldMatesApi.getChats(
+                    accessToken = UserSession.accessToken!!,
+                    dataType = "users", // Тільки користувачі
+                    limit = 100
+                )
+
+                if (response.api_status == 200) {
+                    // Конвертуємо чати в ForwardRecipient
+                    val contacts = response.conversations?.map { chat ->
+                        ForwardRecipient(
+                            id = chat.user.user_id,
+                            name = chat.user.name ?: "Користувач",
+                            avatarUrl = chat.user.avatar ?: "",
+                            isGroup = false
+                        )
+                    } ?: emptyList()
+
+                    _forwardContacts.value = contacts
+                    Log.d("MessagesViewModel", "Завантажено ${contacts.size} контактів для пересилання")
+                } else {
+                    Log.e("MessagesViewModel", "Помилка завантаження контактів: ${response.errors}")
+                }
+            } catch (e: Exception) {
+                Log.e("MessagesViewModel", "Помилка завантаження контактів", e)
+            }
+        }
+    }
+
+    /**
+     * 📤 Завантажує список груп для пересилання
+     */
+    fun loadForwardGroups() {
+        if (UserSession.accessToken == null) {
+            Log.e("MessagesViewModel", "Не авторизовано")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.worldMatesApi.getGroups(
+                    accessToken = UserSession.accessToken!!,
+                    type = "get_list",
+                    limit = 100
+                )
+
+                if (response.api_status == 200) {
+                    // Конвертуємо групи в ForwardRecipient
+                    val groups = response.groups?.map { group ->
+                        ForwardRecipient(
+                            id = group.id,
+                            name = group.name,
+                            avatarUrl = group.avatar ?: "",
+                            isGroup = true
+                        )
+                    } ?: emptyList()
+
+                    _forwardGroups.value = groups
+                    Log.d("MessagesViewModel", "Завантажено ${groups.size} груп для пересилання")
+                } else {
+                    Log.e("MessagesViewModel", "Помилка завантаження груп: ${response.errors}")
+                }
+            } catch (e: Exception) {
+                Log.e("MessagesViewModel", "Помилка завантаження груп", e)
+            }
+        }
+    }
+
+    /**
+     * 📤 Пересилає повідомлення до вибраних отримувачів
+     */
+    fun forwardMessages(messageIds: Set<Long>, recipientIds: List<Long>) {
+        if (UserSession.accessToken == null) {
+            Log.e("MessagesViewModel", "Не авторизовано")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                messageIds.forEach { messageId ->
+                    // Знаходимо повідомлення
+                    val message = _messages.value.find { it.id == messageId }
+                    if (message != null) {
+                        recipientIds.forEach { recipientId ->
+                            // Визначаємо чи це група чи користувач
+                            val isGroup = _forwardGroups.value.any { it.id == recipientId }
+
+                            if (isGroup) {
+                                // Пересилаємо в групу
+                                RetrofitClient.worldMatesApi.sendGroupMessage(
+                                    accessToken = UserSession.accessToken!!,
+                                    type = "send_message",
+                                    groupId = recipientId,
+                                    message = message.decryptedText ?: "",
+                                    mediaUrl = message.decryptedMediaUrl
+                                )
+                                Log.d("MessagesViewModel", "Переслано повідомлення $messageId в групу $recipientId")
+                            } else {
+                                // Пересилаємо користувачу
+                                RetrofitClient.worldMatesApi.sendMessage(
+                                    accessToken = UserSession.accessToken!!,
+                                    recipientId = recipientId,
+                                    text = message.decryptedText ?: "",
+                                    type = message.type
+                                )
+                                Log.d("MessagesViewModel", "Переслано повідомлення $messageId користувачу $recipientId")
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MessagesViewModel", "Помилка пересилання", e)
+            }
+        }
     }
 
     override fun onCleared() {

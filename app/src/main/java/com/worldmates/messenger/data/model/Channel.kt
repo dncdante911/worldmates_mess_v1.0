@@ -158,12 +158,15 @@ data class ChannelStatistics(
  * Підписник каналу
  */
 data class ChannelSubscriber(
-    @SerializedName("user_id") val userId: Long,
-    @SerializedName("username") val username: String,
-    @SerializedName("avatar") val avatarUrl: String,
-    @SerializedName("subscribed_time") val subscribedTime: Long,
+    @SerializedName("id") val id: Long? = null,
+    @SerializedName("user_id") val userId: Long? = null,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("avatar") val avatarUrl: String? = null,
+    @SerializedName("subscribed_time") val subscribedTime: Long? = null,
     @SerializedName("is_muted") val isMuted: Boolean = false,
-    @SerializedName("is_banned") val isBanned: Boolean = false
+    @SerializedName("is_banned") val isBanned: Boolean = false,
+    @SerializedName("role") val role: String? = null,
+    @SerializedName("last_seen") val lastSeen: String? = null
 )
 
 // ==================== API REQUEST MODELS ====================

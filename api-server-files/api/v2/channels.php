@@ -773,10 +773,51 @@ function createPost($db, $user_id, $data) {
 
     $post_id = $db->lastInsertId();
 
+    // Оновлюємо лічильник постів в каналі
+    $stmt = $db->prepare("UPDATE Wo_GroupChat SET posts_count = posts_count + 1 WHERE group_id = ?");
+    $stmt->execute([$channel_id]);
+
+    // Повертаємо створений пост з повними даними
+    $stmt = $db->prepare("
+        SELECT
+            m.id,
+            m.from_id AS author_id,
+            m.text,
+            m.media,
+            m.mediaFileName,
+            m.time AS created_time,
+            m.type_two AS is_pinned,
+            0 AS reactions_count,
+            0 AS comments_count,
+            0 AS views_count
+        FROM Wo_Messages m
+        WHERE m.id = ?
+    ");
+    $stmt->execute([$post_id]);
+    $post = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($post) {
+        $post['is_pinned'] = ($post['is_pinned'] === 'pinned');
+        $post['is_edited'] = false;
+
+        // Форматуємо media
+        if (!empty($post['media'])) {
+            $post['media'] = [[
+                'url' => $post['media'],
+                'type' => 'image',
+                'filename' => $post['mediaFileName']
+            ]];
+        } else {
+            $post['media'] = [];
+        }
+        unset($post['mediaFileName']);
+    }
+
     return [
         'api_status' => 200,
         'message' => 'Post created successfully',
-        'post_id' => $post_id
+        'post_id' => $post_id,
+        'post' => $post
     ];
 }
 

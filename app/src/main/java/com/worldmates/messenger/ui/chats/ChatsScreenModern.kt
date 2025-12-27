@@ -53,19 +53,23 @@ import kotlinx.coroutines.launch
 fun ChatsScreenModern(
     viewModel: ChatsViewModel,
     groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel,
+    channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel,
     onChatClick: (Chat) -> Unit,
     onGroupClick: (Group) -> Unit,
+    onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit,
     onSettingsClick: () -> Unit
 ) {
     val chats by viewModel.chatList.collectAsState()
     val groups by groupsViewModel.groupList.collectAsState()
+    val channels by channelsViewModel.subscribedChannels.collectAsState()
     val isLoadingChats by viewModel.isLoading.collectAsState()
     val isLoadingGroups by groupsViewModel.isLoading.collectAsState()
+    val isLoadingChannels by channelsViewModel.isLoading.collectAsState()
     val availableUsers by groupsViewModel.availableUsers.collectAsState()
     val isCreatingGroup by groupsViewModel.isCreatingGroup.collectAsState()
 
     val uiStyle = rememberUIStyle()
-    val pagerState = rememberPagerState(initialPage = 0) { 2 } // 2 вкладки: Чати, Групи
+    val pagerState = rememberPagerState(initialPage = 0) { 3 } // 3 вкладки: Чати, Канали, Групи
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -76,17 +80,17 @@ fun ChatsScreenModern(
     LaunchedEffect(pagerState.currentPage) {
         while (true) {
             delay(6000) // 6 секунд
-            if (pagerState.currentPage == 0) {
-                viewModel.fetchChats()
-            } else {
-                groupsViewModel.fetchGroups()
+            when (pagerState.currentPage) {
+                0 -> viewModel.fetchChats()
+                1 -> channelsViewModel.fetchSubscribedChannels()
+                2 -> groupsViewModel.fetchGroups()
             }
         }
     }
 
     // Load available users when switching to groups tab
     LaunchedEffect(pagerState.currentPage) {
-        if (pagerState.currentPage == 1) {
+        if (pagerState.currentPage == 2) {
             groupsViewModel.loadAvailableUsers()
         }
     }
@@ -216,6 +220,17 @@ fun ChatsScreenModern(
                             pagerState.animateScrollToPage(1)
                         }
                     },
+                    text = { Text("Канали") },
+                    icon = { Icon(Icons.Default.Campaign, contentDescription = null) }
+                )
+
+                Tab(
+                    selected = pagerState.currentPage == 2,
+                    onClick = {
+                        scope.launch {
+                            pagerState.animateScrollToPage(2)
+                        }
+                    },
                     text = { Text("Групи") },
                     icon = { Icon(Icons.Default.Group, contentDescription = null) }
                 )
@@ -242,6 +257,16 @@ fun ChatsScreenModern(
                         )
                     }
                     1 -> {
+                        // Вкладка "Канали" з pull-to-refresh
+                        ChannelListTab(
+                            channels = channels,
+                            isLoading = isLoadingChannels,
+                            uiStyle = uiStyle,
+                            onRefresh = { channelsViewModel.fetchSubscribedChannels() },
+                            onChannelClick = onChannelClick
+                        )
+                    }
+                    2 -> {
                         // Вкладка "Групи" з pull-to-refresh
                         GroupListTab(
                             groups = groups,
@@ -635,4 +660,85 @@ fun UserSearchDialogForChats(
             }
         }
     )
+}
+
+/**
+ * Вкладка зі списком каналів
+ */
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun ChannelListTab(
+    channels: List<com.worldmates.messenger.data.model.Channel>,
+    isLoading: Boolean,
+    uiStyle: UIStyle,
+    onRefresh: () -> Unit,
+    onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit
+) {
+    val context = LocalContext.current
+    val refreshing by remember { mutableStateOf(false) }
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = refreshing,
+        onRefresh = onRefresh
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        if (channels.isEmpty() && !isLoading) {
+            // Empty state
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Campaign,
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp),
+                    tint = Color.Gray.copy(alpha = 0.3f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "Немає каналів",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Підпишіться на канали, щоб бачити їх тут",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray.copy(alpha = 0.7f)
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(
+                    items = channels,
+                    key = { it.id }
+                ) { channel ->
+                    // Use ChannelCard from ModernChannelComponents
+                    com.worldmates.messenger.ui.channels.ChannelCard(
+                        channel = channel,
+                        onClick = { onChannelClick(channel) },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .animateItemPlacement()
+                    )
+                }
+            }
+        }
+
+        PullRefreshIndicator(
+            refreshing = refreshing,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
 }

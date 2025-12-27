@@ -486,10 +486,17 @@ fun ModernTabsRow(
             modifier = Modifier.weight(1f)
         )
         ModernTab(
-            text = "Групи",
-            icon = Icons.Default.Group,
+            text = "Канали",
+            icon = Icons.Default.Campaign,
             isSelected = selectedTab == 1,
             onClick = { onTabSelected(1) },
+            modifier = Modifier.weight(1f)
+        )
+        ModernTab(
+            text = "Групи",
+            icon = Icons.Default.Group,
+            isSelected = selectedTab == 2,
+            onClick = { onTabSelected(2) },
             modifier = Modifier.weight(1f)
         )
     }

@@ -73,6 +73,7 @@ class ChatsActivity : AppCompatActivity() {
 
     private lateinit var viewModel: ChatsViewModel
     private lateinit var groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel
+    private lateinit var channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,6 +86,7 @@ class ChatsActivity : AppCompatActivity() {
 
         viewModel = ViewModelProvider(this).get(ChatsViewModel::class.java)
         groupsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.groups.GroupsViewModel::class.java)
+        channelsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.channels.ChannelsViewModel::class.java)
 
         setContent {
             WorldMatesThemedApp {
@@ -102,11 +104,15 @@ class ChatsActivity : AppCompatActivity() {
                 ChatsScreenModern(
                     viewModel = viewModel,
                     groupsViewModel = groupsViewModel,
+                    channelsViewModel = channelsViewModel,
                     onChatClick = { chat ->
                         navigateToMessages(chat)
                     },
                     onGroupClick = { group ->
                         navigateToGroupMessages(group)
+                    },
+                    onChannelClick = { channel ->
+                        navigateToChannelDetails(channel)
                     },
                     onSettingsClick = {
                         navigateToSettings()
@@ -121,6 +127,7 @@ class ChatsActivity : AppCompatActivity() {
         // Оновлюємо список чатів при поверненні на екран
         viewModel.fetchChats()
         groupsViewModel.fetchGroups()
+        channelsViewModel.fetchSubscribedChannels()
     }
 
     private fun navigateToMessages(chat: Chat) {
@@ -138,6 +145,12 @@ class ChatsActivity : AppCompatActivity() {
             putExtra("recipient_avatar", group.avatarUrl)
             putExtra("is_group", true)
         })
+    }
+
+    private fun navigateToChannelDetails(channel: com.worldmates.messenger.data.model.Channel) {
+        // TODO: Create ChannelDetailsActivity
+        // For now, show a toast
+        Toast.makeText(this, "Канал: ${channel.name} (в розробці)", Toast.LENGTH_SHORT).show()
     }
 
     private fun navigateToSettings() {

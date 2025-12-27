@@ -43,10 +43,28 @@ if (!$user_id) {
 }
 
 // Роутинг методів
-$action = $data['action'] ?? $_GET['action'] ?? $_POST['action'] ?? '';
+// Android клієнт надсилає 'type', веб клієнт може надсилати 'action'
+$action = $data['type'] ?? $data['action'] ?? $_GET['type'] ?? $_GET['action'] ?? '';
+
+// Мапінг старих type на нові action для сумісності з Android
+$type_mapping = [
+    'get_subscribed' => 'get_channels',
+    'get_list' => 'get_channels',
+    'get_all' => 'get_channels',
+];
+
+// Якщо є маппінг, використовуємо його
+$mapped_action = $type_mapping[$action] ?? $action;
+
+// Якщо використовується get_subscribed, додаємо filter
+if ($action === 'get_subscribed') {
+    $data['filter'] = 'subscribed';
+} elseif ($action === 'get_list' || $action === 'get_all') {
+    $data['filter'] = 'all';
+}
 
 try {
-    switch ($action) {
+    switch ($mapped_action) {
         // ============================================
         // CRUD операції з каналами
         // ============================================

@@ -19,7 +19,7 @@ enum class BubbleStyle(
         icon = "💭"
     ),
     TELEGRAM(
-        displayName = "Telegram",
+        displayName = "Класичний",
         description = "Мінімалістичні кутасті бульбашки",
         icon = "📱"
     ),

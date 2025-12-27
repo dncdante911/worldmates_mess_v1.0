@@ -735,14 +735,25 @@ fun ChannelListTab(
                     items = channels,
                     key = { it.id }
                 ) { channel ->
-                    // Use ChannelCard from ModernChannelComponents
-                    com.worldmates.messenger.ui.channels.ChannelCard(
-                        channel = channel,
-                        onClick = { onChannelClick(channel) },
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
-                            .animateItemPlacement()
-                    )
+                    // Користувач може вибрати стиль в налаштуваннях
+                    when (uiStyle) {
+                        com.worldmates.messenger.ui.preferences.UIStyle.TELEGRAM -> {
+                            com.worldmates.messenger.ui.channels.TelegramChannelItem(
+                                channel = channel,
+                                onClick = { onChannelClick(channel) },
+                                modifier = Modifier.animateItemPlacement()
+                            )
+                        }
+                        com.worldmates.messenger.ui.preferences.UIStyle.WORLDMATES -> {
+                            com.worldmates.messenger.ui.channels.ChannelCard(
+                                channel = channel,
+                                onClick = { onChannelClick(channel) },
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .animateItemPlacement()
+                            )
+                        }
+                    }
                 }
             }
         }

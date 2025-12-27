@@ -21,6 +21,139 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Channel
 
+// ==================== TELEGRAM-STYLE CHANNEL ITEM ====================
+
+/**
+ * Класичний мінімалістичний стиль для каналів
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TelegramChannelItem(
+    channel: Channel,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Аватар (маленький, круглий)
+        if (channel.avatarUrl.isNotBlank()) {
+            AsyncImage(
+                model = channel.avatarUrl,
+                contentDescription = channel.name,
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Placeholder
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF667eea)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = channel.name.take(1).uppercase(),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Інформація про канал
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = channel.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                if (channel.isVerified) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.Default.Verified,
+                        contentDescription = "Verified",
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            // Опис або статистика
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${formatCount(channel.subscribersCount)} підписників",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (channel.postsCount > 0) {
+                    Text(
+                        text = "•",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    )
+                    Text(
+                        text = "${formatCount(channel.postsCount)} постів",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Індикатор статусу
+        if (channel.isAdmin) {
+            Text(
+                text = "Адмін",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF2196F3)
+            )
+        } else if (channel.isPrivate) {
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = "Private",
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+
+    Divider(
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+        modifier = Modifier.padding(start = 76.dp)
+    )
+}
+
 // ==================== CHANNEL CARD ====================
 
 @Composable

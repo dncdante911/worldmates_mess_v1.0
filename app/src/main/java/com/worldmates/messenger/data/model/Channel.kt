@@ -287,20 +287,20 @@ data class ChannelSubscribersResponse(
 val Channel.isOwner: Boolean
     get() {
         return try {
-            adminId == com.worldmates.messenger.data.UserSession.userId
+            ownerId == com.worldmates.messenger.data.UserSession.userId
         } catch (e: Exception) {
             false
         }
     }
 
 val Channel.canPost: Boolean
-    get() = isAdmin || isModerator
+    get() = isAdmin
 
 val Channel.canManage: Boolean
     get() = isAdmin
 
-val Channel.lastActivity: Long?
-    get() = lastPostTime ?: updatedTime ?: createdTime
+val Channel.lastActivity: Long
+    get() = createdTime
 
 /**
  * Конвертує Channel об'єкт в Chat об'єкт (для загального списку чатів)
@@ -308,7 +308,7 @@ val Channel.lastActivity: Long?
 fun Channel.toChat(): Chat {
     return Chat(
         id = this.id,
-        userId = this.adminId,
+        userId = this.ownerId,
         username = this.name,
         avatarUrl = this.avatarUrl,
         lastMessage = null, // Канали не мають lastMessage у чатах
@@ -320,7 +320,7 @@ fun Channel.toChat(): Chat {
         membersCount = this.subscribersCount,
         isAdmin = this.isAdmin,
         isMuted = false,
-        pinnedMessageId = this.pinnedPostId,
+        pinnedMessageId = null,
         lastActivity = this.lastActivity
     )
 }
@@ -329,10 +329,7 @@ fun Channel.toChat(): Chat {
  * Extension properties для ChannelPost
  */
 val ChannelPost.totalEngagement: Int
-    get() = reactionsCount + commentsCount + sharesCount
-
-val ChannelPost.isForwarded: Boolean
-    get() = forwardFromChannelId != null
+    get() = reactionsCount + commentsCount
 
 /**
  * Стандартні емоджі для реакцій

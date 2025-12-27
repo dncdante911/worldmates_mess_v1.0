@@ -516,15 +516,7 @@ fun ChannelInfoCard(
                 value = if (channel.isPrivate) "Приватний" else "Публічний"
             )
 
-            if (channel.link != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                InfoRow(
-                    icon = Icons.Default.Link,
-                    label = "Посилання",
-                    value = channel.link!!,
-                    valueColor = Color(0xFF667eea)
-                )
-            }
+            // Посилання можна додати пізніше
         }
     }
 }

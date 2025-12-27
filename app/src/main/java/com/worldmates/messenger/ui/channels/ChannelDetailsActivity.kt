@@ -330,9 +330,9 @@ fun ChannelDetailsScreen(
                     val media = if (!mediaUrl.isNullOrBlank()) {
                         listOf(
                             com.worldmates.messenger.data.model.PostMedia(
-                                id = System.currentTimeMillis().toString(),
                                 url = mediaUrl,
-                                type = "image" // За замовчуванням вважаємо зображенням
+                                type = "image", // За замовчуванням вважаємо зображенням
+                                filename = null
                             )
                         )
                     } else null

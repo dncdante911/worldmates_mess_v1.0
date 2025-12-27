@@ -94,7 +94,7 @@ fun ChannelDetailsScreen(
 
     // States from ViewModels
     val subscribedChannels by channelsViewModel.subscribedChannels.collectAsState()
-    val allChannels by channelsViewModel.allChannels.collectAsState()
+    val allChannels by channelsViewModel.channelList.collectAsState()
     val posts by detailsViewModel.posts.collectAsState()
     val isLoadingPosts by detailsViewModel.isLoading.collectAsState()
     val error by detailsViewModel.error.collectAsState()
@@ -259,7 +259,7 @@ fun ChannelDetailsScreen(
                         }
                     } else {
                         items(
-                            items = posts.sortedByDescending { it.createdAt },
+                            items = posts.sortedByDescending { it.createdTime },
                             key = { it.id }
                         ) { post ->
                             ChannelPostCard(

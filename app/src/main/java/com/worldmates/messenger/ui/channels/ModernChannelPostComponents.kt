@@ -575,7 +575,7 @@ fun CommentCard(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         TextButton(
-                            onClick = onReactionClick(""),
+                            onClick = { onReactionClick("") },
                             contentPadding = PaddingValues(0.dp)
                         ) {
                             Text("Реакція", fontSize = 12.sp, color = Color.Gray)

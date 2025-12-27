@@ -221,7 +221,7 @@ fun ChatsScreenModern(
                         }
                     },
                     text = { Text("Канали") },
-                    icon = { Icon(Icons.Default.Tag, contentDescription = null) }
+                    icon = { Icon(Icons.Default.Label, contentDescription = null) }
                 )
 
                 Tab(
@@ -696,7 +696,7 @@ fun ChannelListTab(
                 verticalArrangement = Arrangement.Center
             ) {
                 Icon(
-                    Icons.Default.Tag,
+                    Icons.Default.Label,
                     contentDescription = null,
                     modifier = Modifier.size(72.dp),
                     tint = Color.Gray.copy(alpha = 0.3f)

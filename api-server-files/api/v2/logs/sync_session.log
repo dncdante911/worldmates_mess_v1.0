@@ -1,0 +1,190 @@
+[2025-12-11 17:15:14] === SYNC SESSION REQUEST ===
+[2025-12-11 17:15:14] Method: POST
+[2025-12-11 17:15:14] Access token: b29e95d02715bfb76746...
+[2025-12-11 17:15:14] Platform: phone
+[2025-12-11 17:15:14] DB connected successfully
+[2025-12-11 17:15:14] ERROR: Cannot find user_id for this token
+[2025-12-11 17:25:46] === SYNC SESSION REQUEST ===
+[2025-12-11 17:25:46] Method: POST
+[2025-12-11 17:25:46] Access token: 5776acfe79308c512168...
+[2025-12-11 17:25:46] User ID: 1
+[2025-12-11 17:25:46] Platform: phone
+[2025-12-11 17:25:46] DB connected successfully
+[2025-12-11 17:25:46] User found: Alexandr
+[2025-12-11 17:25:46] SUCCESS: Session created: ID=25, user_id=1, platform=phone
+[2025-12-11 17:50:57] === SYNC SESSION REQUEST ===
+[2025-12-11 17:50:57] Method: POST
+[2025-12-11 17:50:57] Access token: ae519b6fd6a7b02262f1...
+[2025-12-11 17:50:57] User ID: 1
+[2025-12-11 17:50:57] Platform: phone
+[2025-12-11 17:50:57] DB connected successfully
+[2025-12-11 17:50:57] User found: Alexandr
+[2025-12-11 17:50:57] SUCCESS: Session created: ID=26, user_id=1, platform=phone
+[2025-12-16 16:33:46] === SYNC SESSION REQUEST ===
+[2025-12-16 16:33:46] Method: POST
+[2025-12-16 16:33:46] Access token: 591d189098318bd5e8b0...
+[2025-12-16 16:33:46] User ID: 1
+[2025-12-16 16:33:46] Platform: phone
+[2025-12-16 16:33:46] DB connected successfully
+[2025-12-16 16:33:46] User found: Alexandr
+[2025-12-16 16:33:46] SUCCESS: Session created: ID=27, user_id=1, platform=phone
+[2025-12-16 16:49:10] === SYNC SESSION REQUEST ===
+[2025-12-16 16:49:10] Method: POST
+[2025-12-16 16:49:10] Access token: 8b4abbaeb6d5c28a822e...
+[2025-12-16 16:49:10] User ID: 1
+[2025-12-16 16:49:10] Platform: phone
+[2025-12-16 16:49:10] DB connected successfully
+[2025-12-16 16:49:10] User found: Alexandr
+[2025-12-16 16:49:10] SUCCESS: Session created: ID=28, user_id=1, platform=phone
+[2025-12-16 22:20:24] === SYNC SESSION REQUEST ===
+[2025-12-16 22:20:24] Method: POST
+[2025-12-16 22:20:24] Access token: 55c99634bc4908a5db02...
+[2025-12-16 22:20:24] User ID: 1
+[2025-12-16 22:20:24] Platform: phone
+[2025-12-16 22:20:24] DB connected successfully
+[2025-12-16 22:20:24] User found: Alexandr
+[2025-12-16 22:20:24] SUCCESS: Session created: ID=29, user_id=1, platform=phone
+[2025-12-16 22:55:50] === SYNC SESSION REQUEST ===
+[2025-12-16 22:55:50] Method: POST
+[2025-12-16 22:55:50] Access token: 07332e98dcf00a36bbbd...
+[2025-12-16 22:55:50] User ID: 1
+[2025-12-16 22:55:50] Platform: phone
+[2025-12-16 22:55:50] DB connected successfully
+[2025-12-16 22:55:50] User found: Alexandr
+[2025-12-16 22:55:50] SUCCESS: Session created: ID=30, user_id=1, platform=phone
+[2025-12-16 23:12:00] === SYNC SESSION REQUEST ===
+[2025-12-16 23:12:00] Method: POST
+[2025-12-16 23:12:00] Access token: 6a08b1d7d436a234ab4c...
+[2025-12-16 23:12:00] User ID: 1
+[2025-12-16 23:12:00] Platform: phone
+[2025-12-16 23:12:00] DB connected successfully
+[2025-12-16 23:12:00] User found: Alexandr
+[2025-12-16 23:12:00] SUCCESS: Session created: ID=31, user_id=1, platform=phone
+[2025-12-17 08:32:01] === SYNC SESSION REQUEST ===
+[2025-12-17 08:32:01] Method: POST
+[2025-12-17 08:32:01] Access token: 5659a34ee07df7783bb5...
+[2025-12-17 08:32:01] User ID: 1
+[2025-12-17 08:32:01] Platform: phone
+[2025-12-17 08:32:01] DB connected successfully
+[2025-12-17 08:32:01] User found: Alexandr
+[2025-12-17 08:32:01] SUCCESS: Session created: ID=32, user_id=1, platform=phone
+[2025-12-17 10:00:50] === SYNC SESSION REQUEST ===
+[2025-12-17 10:00:50] Method: POST
+[2025-12-17 10:00:50] Access token: 9a22c192267b4aef1b58...
+[2025-12-17 10:00:50] User ID: 1
+[2025-12-17 10:00:50] Platform: phone
+[2025-12-17 10:00:50] DB connected successfully
+[2025-12-17 10:00:50] User found: Alexandr
+[2025-12-17 10:00:50] SUCCESS: Session created: ID=33, user_id=1, platform=phone
+[2025-12-17 10:13:24] === SYNC SESSION REQUEST ===
+[2025-12-17 10:13:24] Method: POST
+[2025-12-17 10:13:24] Access token: 479b788bdaf907e56cb0...
+[2025-12-17 10:13:24] User ID: 1
+[2025-12-17 10:13:24] Platform: phone
+[2025-12-17 10:13:24] DB connected successfully
+[2025-12-17 10:13:24] User found: Alexandr
+[2025-12-17 10:13:24] SUCCESS: Session created: ID=34, user_id=1, platform=phone
+[2025-12-17 13:03:36] === SYNC SESSION REQUEST ===
+[2025-12-17 13:03:36] Method: POST
+[2025-12-17 13:03:36] Access token: d595193c8289a8315318...
+[2025-12-17 13:03:36] User ID: 1
+[2025-12-17 13:03:36] Platform: phone
+[2025-12-17 13:03:36] DB connected successfully
+[2025-12-17 13:03:36] User found: Alexandr
+[2025-12-17 13:03:36] SUCCESS: Session created: ID=35, user_id=1, platform=phone
+[2025-12-17 14:20:17] === SYNC SESSION REQUEST ===
+[2025-12-17 14:20:17] Method: POST
+[2025-12-17 14:20:17] Access token: 8d186f06166dac0cf44e...
+[2025-12-17 14:20:17] User ID: 1
+[2025-12-17 14:20:17] Platform: phone
+[2025-12-17 14:20:17] DB connected successfully
+[2025-12-17 14:20:17] User found: Alexandr
+[2025-12-17 14:20:17] SUCCESS: Session created: ID=36, user_id=1, platform=phone
+[2025-12-18 08:50:25] === SYNC SESSION REQUEST ===
+[2025-12-18 08:50:25] Method: POST
+[2025-12-18 08:50:25] Access token: c36dbec7e4bb235efd24...
+[2025-12-18 08:50:25] User ID: 1
+[2025-12-18 08:50:25] Platform: phone
+[2025-12-18 08:50:25] DB connected successfully
+[2025-12-18 08:50:25] User found: Alexandr
+[2025-12-18 08:50:25] SUCCESS: Session created: ID=37, user_id=1, platform=phone
+[2025-12-18 19:09:26] === SYNC SESSION REQUEST ===
+[2025-12-18 19:09:26] Method: POST
+[2025-12-18 19:09:26] Access token: 590ef9e714890060101d...
+[2025-12-18 19:09:26] User ID: 1
+[2025-12-18 19:09:26] Platform: phone
+[2025-12-18 19:09:26] DB connected successfully
+[2025-12-18 19:09:26] User found: Alexandr
+[2025-12-18 19:09:26] SUCCESS: Session created: ID=38, user_id=1, platform=phone
+[2025-12-20 17:23:54] === SYNC SESSION REQUEST ===
+[2025-12-20 17:23:54] Method: POST
+[2025-12-20 17:23:54] Access token: 959a216059823220f07e...
+[2025-12-20 17:23:54] User ID: 1
+[2025-12-20 17:23:54] Platform: phone
+[2025-12-20 17:23:54] DB connected successfully
+[2025-12-20 17:23:54] User found: Alexandr
+[2025-12-20 17:23:54] SUCCESS: Session created: ID=39, user_id=1, platform=phone
+[2025-12-23 16:03:17] === SYNC SESSION REQUEST ===
+[2025-12-23 16:03:17] Method: POST
+[2025-12-23 16:03:17] Access token: 5c950b0cd30960ef3158...
+[2025-12-23 16:03:17] User ID: 1
+[2025-12-23 16:03:17] Platform: phone
+[2025-12-23 16:03:17] DB connected successfully
+[2025-12-23 16:03:17] User found: Alexandr
+[2025-12-23 16:03:17] SUCCESS: Session created: ID=40, user_id=1, platform=phone
+[2025-12-23 16:08:05] === SYNC SESSION REQUEST ===
+[2025-12-23 16:08:05] Method: POST
+[2025-12-23 16:08:05] Access token: f606d681b4af50fb77b7...
+[2025-12-23 16:08:05] User ID: 1
+[2025-12-23 16:08:05] Platform: phone
+[2025-12-23 16:08:05] DB connected successfully
+[2025-12-23 16:08:05] User found: Alexandr
+[2025-12-23 16:08:05] SUCCESS: Session created: ID=41, user_id=1, platform=phone
+[2025-12-24 08:41:28] === SYNC SESSION REQUEST ===
+[2025-12-24 08:41:28] Method: POST
+[2025-12-24 08:41:28] Access token: ab2024c5ba74b93fc8c9...
+[2025-12-24 08:41:28] User ID: 1
+[2025-12-24 08:41:28] Platform: phone
+[2025-12-24 08:41:28] DB connected successfully
+[2025-12-24 08:41:28] User found: Alexandr
+[2025-12-24 08:41:28] SUCCESS: Session created: ID=42, user_id=1, platform=phone
+[2025-12-24 17:31:39] === SYNC SESSION REQUEST ===
+[2025-12-24 17:31:39] Method: POST
+[2025-12-24 17:31:39] Access token: 757576c47150817848cb...
+[2025-12-24 17:31:39] User ID: 1
+[2025-12-24 17:31:39] Platform: phone
+[2025-12-24 17:31:39] DB connected successfully
+[2025-12-24 17:31:39] User found: Alexandr
+[2025-12-24 17:31:39] SUCCESS: Session created: ID=43, user_id=1, platform=phone
+[2025-12-25 08:14:20] === SYNC SESSION REQUEST ===
+[2025-12-25 08:14:20] Method: POST
+[2025-12-25 08:14:20] Access token: aaa25cd222c8ca139da9...
+[2025-12-25 08:14:20] User ID: 1
+[2025-12-25 08:14:20] Platform: phone
+[2025-12-25 08:14:20] DB connected successfully
+[2025-12-25 08:14:20] User found: Alexandr
+[2025-12-25 08:14:20] SUCCESS: Session created: ID=44, user_id=1, platform=phone
+[2025-12-25 17:02:09] === SYNC SESSION REQUEST ===
+[2025-12-25 17:02:09] Method: POST
+[2025-12-25 17:02:09] Access token: d00d1617c8c7f997ab1f...
+[2025-12-25 17:02:09] User ID: 1
+[2025-12-25 17:02:09] Platform: phone
+[2025-12-25 17:02:09] DB connected successfully
+[2025-12-25 17:02:09] User found: Alexandr
+[2025-12-25 17:02:09] SUCCESS: Session created: ID=45, user_id=1, platform=phone
+[2025-12-25 20:37:49] === SYNC SESSION REQUEST ===
+[2025-12-25 20:37:49] Method: POST
+[2025-12-25 20:37:49] Access token: a9b1f9cfdb7317bbfdac...
+[2025-12-25 20:37:49] User ID: 1
+[2025-12-25 20:37:49] Platform: phone
+[2025-12-25 20:37:49] DB connected successfully
+[2025-12-25 20:37:49] User found: Alexandr
+[2025-12-25 20:37:49] SUCCESS: Session created: ID=46, user_id=1, platform=phone
+[2025-12-25 21:26:51] === SYNC SESSION REQUEST ===
+[2025-12-25 21:26:51] Method: POST
+[2025-12-25 21:26:51] Access token: 4ae2b5688676b34cb175...
+[2025-12-25 21:26:51] User ID: 1
+[2025-12-25 21:26:51] Platform: phone
+[2025-12-25 21:26:51] DB connected successfully
+[2025-12-25 21:26:51] User found: Alexandr
+[2025-12-25 21:26:51] SUCCESS: Session created: ID=47, user_id=1, platform=phone

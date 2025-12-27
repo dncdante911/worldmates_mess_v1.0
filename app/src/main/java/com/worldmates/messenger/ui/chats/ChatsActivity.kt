@@ -148,9 +148,9 @@ class ChatsActivity : AppCompatActivity() {
     }
 
     private fun navigateToChannelDetails(channel: com.worldmates.messenger.data.model.Channel) {
-        // TODO: Create ChannelDetailsActivity
-        // For now, show a toast
-        Toast.makeText(this, "Канал: ${channel.name} (в розробці)", Toast.LENGTH_SHORT).show()
+        startActivity(Intent(this, com.worldmates.messenger.ui.channels.ChannelDetailsActivity::class.java).apply {
+            putExtra("channel_id", channel.id)
+        })
     }
 
     private fun navigateToSettings() {

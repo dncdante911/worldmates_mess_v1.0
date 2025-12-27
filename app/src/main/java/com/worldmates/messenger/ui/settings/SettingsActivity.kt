@@ -34,6 +34,8 @@ import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.ui.login.LoginActivity
+import com.worldmates.messenger.ui.settings.security.AppLockSettingsScreen
+import com.worldmates.messenger.ui.settings.security.TwoFactorAuthScreen
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.ThemeSettingsScreen
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
@@ -102,6 +104,17 @@ class SettingsActivity : AppCompatActivity() {
                             onBackClick = { currentScreen = SettingsScreen.Main }
                         )
                     }
+                    SettingsScreen.TwoFactorAuth -> {
+                        TwoFactorAuthScreen(
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
+                    SettingsScreen.AppLock -> {
+                        AppLockSettingsScreen(
+                            activity = this@SettingsActivity,
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
                 }
             }
         }
@@ -115,6 +128,8 @@ sealed class SettingsScreen {
     object Notifications : SettingsScreen()
     object Theme : SettingsScreen()
     object MyGroups : SettingsScreen()
+    object TwoFactorAuth : SettingsScreen()
+    object AppLock : SettingsScreen()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -287,6 +302,29 @@ fun SettingsScreen(
                     title = "Сповіщення",
                     subtitle = "Керування сповіщеннями",
                     onClick = { onNavigate(SettingsScreen.Notifications) }
+                )
+            }
+
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+
+            // Security Settings
+            item {
+                SettingsSection(title = "Безпека")
+            }
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Shield,
+                    title = "Двофакторна аутентифікація",
+                    subtitle = if (com.worldmates.messenger.utils.security.SecurePreferences.is2FAEnabled) "Увімкнено" else "Вимкнено",
+                    onClick = { onNavigate(SettingsScreen.TwoFactorAuth) }
+                )
+            }
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Lock,
+                    title = "Блокування додатку",
+                    subtitle = if (com.worldmates.messenger.utils.security.SecurePreferences.isPINEnabled()) "PIN-код активний" else "Вимкнено",
+                    onClick = { onNavigate(SettingsScreen.AppLock) }
                 )
             }
 

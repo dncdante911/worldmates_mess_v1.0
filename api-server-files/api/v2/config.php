@@ -131,27 +131,32 @@ function secureInput($data) {
  * @param string $message Message to log
  * @param string $level Log level (INFO, ERROR, WARNING)
  */
-function logMessage($message, $level = 'INFO') {
-    if (defined('LOG_FILE')) {
-        $timestamp = date('Y-m-d H:i:s');
-        $log_entry = "[{$timestamp}] [{$level}] {$message}\n";
-        file_put_contents(LOG_FILE, $log_entry, FILE_APPEND);
+if (!function_exists('logMessage')) {
+    function logMessage($message, $level = 'INFO') {
+        if (defined('LOG_FILE')) {
+            $timestamp = date('Y-m-d H:i:s');
+            $log_entry = "[{$timestamp}] [{$level}] {$message}\n";
+            file_put_contents(LOG_FILE, $log_entry, FILE_APPEND);
+        }
     }
 }
 
 /**
  * Send JSON error response
+ * NOTE: channels.php uses ($message, $code), group_chat_v2.php uses ($code, $message)
  *
  * @param string $message Error message
  * @param int $code HTTP status code
  */
-function sendError($message, $code = 400) {
-    http_response_code($code);
-    echo json_encode([
-        'api_status' => $code,
-        'error_message' => $message
-    ]);
-    exit;
+if (!function_exists('sendError')) {
+    function sendError($message, $code = 400) {
+        http_response_code($code);
+        echo json_encode([
+            'api_status' => $code,
+            'error_message' => $message
+        ]);
+        exit;
+    }
 }
 
 /**
@@ -159,7 +164,9 @@ function sendError($message, $code = 400) {
  *
  * @param array $data Response data
  */
-function sendSuccess($data) {
-    echo json_encode(array_merge(['api_status' => 200], $data));
-    exit;
+if (!function_exists('sendSuccess')) {
+    function sendSuccess($data) {
+        echo json_encode(array_merge(['api_status' => 200], $data));
+        exit;
+    }
 }

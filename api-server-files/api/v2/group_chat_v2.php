@@ -22,11 +22,15 @@
  * @version 2.0
  */
 
-// Підключаємо конфігурацію БД
-require_once(__DIR__ . '/config.php');
-
 // Підключаємо модуль шифрування AES-256-GCM
 require_once(__DIR__ . '/crypto_helper.php');
+
+// Налаштування БД (використовуємо ті самі константи що в config.php)
+if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+if (!defined('DB_NAME')) define('DB_NAME', 'socialhub');
+if (!defined('DB_USER')) define('DB_USER', 'social');
+if (!defined('DB_PASS')) define('DB_PASS', '3344Frzaq0607DmC157');
+if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 // Налаштування для розробки (вимкніть на продакшені!)
 error_reporting(E_ALL);
@@ -40,29 +44,37 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Логування
-$log_file = '/var/www/www-root/data/www/worldmates.club/api/v2/logs/group_chat_v2.log';
+// Функції для group_chat_v2.php
+// Перевіряємо чи не оголошені вже в config.php
 
-function logMessage($message) {
-    global $log_file;
-    $timestamp = date('Y-m-d H:i:s');
-    $log_entry = "[$timestamp] $message\n";
-    @file_put_contents($log_file, $log_entry, FILE_APPEND);
+if (!function_exists('logMessage')) {
+    function logMessage($message, $level = 'INFO') {
+        $log_file = '/var/www/www-root/data/www/worldmates.club/api/v2/logs/group_chat_v2.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[{$timestamp}] [{$level}] {$message}\n";
+        @file_put_contents($log_file, $log_entry, FILE_APPEND);
+    }
 }
 
-// Функція для відповіді
-function sendResponse($data) {
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    exit();
+// sendError з порядком параметрів для group_chat_v2.php: ($code, $message)
+if (!function_exists('sendError')) {
+    function sendError($code, $message) {
+        http_response_code($code);
+        echo json_encode([
+            'api_status' => $code,
+            'error_code' => $code,
+            'error_message' => $message
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 }
 
-// Функція для помилки
-function sendError($code, $message) {
-    sendResponse(array(
-        'api_status' => $code,
-        'error_code' => $code,
-        'error_message' => $message
-    ));
+// sendResponse - специфічна для group_chat_v2.php
+if (!function_exists('sendResponse')) {
+    function sendResponse($data) {
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit();
+    }
 }
 
 // ==============================================

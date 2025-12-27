@@ -292,7 +292,16 @@ fun ChannelDetailsScreen(
                                     Toast.makeText(context, "Відкрити пост (в розробці)", Toast.LENGTH_SHORT).show()
                                 },
                                 onReactionClick = { emoji ->
-                                    detailsViewModel.addPostReaction(post.id, emoji)
+                                    detailsViewModel.addPostReaction(
+                                        postId = post.id,
+                                        emoji = emoji,
+                                        onSuccess = {
+                                            Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { error ->
+                                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
                                 },
                                 onCommentsClick = {
                                     detailsViewModel.loadComments(post.id)

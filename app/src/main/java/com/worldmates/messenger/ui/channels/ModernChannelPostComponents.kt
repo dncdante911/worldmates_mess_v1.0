@@ -76,7 +76,7 @@ fun ChannelPostCard(
 
                     Column {
                         Text(
-                            text = "Channel Post",
+                            text = "Пост каналу", // Змінено з "Channel Post"
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF2C3E50)
@@ -156,14 +156,14 @@ fun ChannelPostCard(
                     Icon(
                         Icons.Default.Visibility,
                         contentDescription = "Views",
-                        tint = Color.Gray,
+                        tint = Color(0xFF2196F3), // Активний синій колір
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = formatCount(post.viewsCount),
                         fontSize = 13.sp,
-                        color = Color.Gray
+                        color = Color(0xFF2196F3) // Активний синій колір
                     )
                 }
 
@@ -594,8 +594,11 @@ fun ActionButton(
 // ==================== UTILITY FUNCTIONS ====================
 
 fun formatPostTime(timestamp: Long): String {
+    // Конвертуємо timestamp з секунд в мілісекунди, якщо потрібно
+    val timestampMs = if (timestamp < 10000000000L) timestamp * 1000 else timestamp
+
     val now = System.currentTimeMillis()
-    val diff = now - timestamp
+    val diff = now - timestampMs
 
     return when {
         diff < 60_000 -> "Щойно"
@@ -604,7 +607,7 @@ fun formatPostTime(timestamp: Long): String {
         diff < 604_800_000 -> "${diff / 86_400_000} д"
         else -> {
             val sdf = SimpleDateFormat("dd MMM", Locale("uk"))
-            sdf.format(Date(timestamp))
+            sdf.format(Date(timestampMs))
         }
     }
 }

@@ -934,12 +934,12 @@ fun UIStyleSection() {
                 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Telegram",
+                        text = "Класичний",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "Мінімалістичний список у стилі Telegram",
+                        text = "Мінімалістичний класичний стиль",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

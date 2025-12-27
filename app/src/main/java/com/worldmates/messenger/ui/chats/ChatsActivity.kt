@@ -116,6 +116,9 @@ class ChatsActivity : AppCompatActivity() {
                     },
                     onSettingsClick = {
                         navigateToSettings()
+                    },
+                    onCreateChannelClick = {
+                        navigateToCreateChannel()
                     }
                 )
             }
@@ -155,6 +158,10 @@ class ChatsActivity : AppCompatActivity() {
 
     private fun navigateToSettings() {
         startActivity(Intent(this, com.worldmates.messenger.ui.settings.SettingsActivity::class.java))
+    }
+
+    private fun navigateToCreateChannel() {
+        startActivity(Intent(this, com.worldmates.messenger.ui.channels.CreateChannelActivity::class.java))
     }
 
     private fun navigateToLogin() {

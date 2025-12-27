@@ -1,28 +1,31 @@
 <?php
 /**
- * WorldMates Messenger - API v2 Configuration
- * Database connection and authentication utilities
+ * Конфігурація підключення до бази даних
+ * для group_chat_v2.php та channels.php API
  */
 
-// ============================================
-// DATABASE CONFIGURATION
-// ============================================
-// TODO: Replace with actual database credentials
-define('DB_HOST', 'localhost');           // Database host
-define('DB_NAME', 'your_database_name');  // Database name
-define('DB_USER', 'your_database_user');  // Database username
-define('DB_PASS', 'your_database_pass');  // Database password
+// Налаштування бази даних
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'socialhub');
+define('DB_USER', 'social');
+define('DB_PASS', '3344Frzaq0607DmC157');
 define('DB_CHARSET', 'utf8mb4');
 
-// PDO Options
+// Налаштування PDO
 define('PDO_OPTIONS', [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     PDO::ATTR_EMULATE_PREPARES   => false,
 ]);
 
+// Шлях до лог-файлу
+define('LOG_FILE', '/var/www/www-root/data/www/worldmates.club/api/v2/logs/group_chat_v2.log');
+
+// Timezone
+date_default_timezone_set('Europe/Kyiv');
+
 // ============================================
-// PDO DATABASE CONNECTION
+// PDO підключення (для channels.php та інших API v2)
 // ============================================
 try {
     $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
@@ -38,7 +41,7 @@ try {
 }
 
 // ============================================
-// AUTHENTICATION FUNCTIONS
+// AUTHENTICATION FUNCTIONS (для channels.php)
 // ============================================
 
 /**
@@ -122,9 +125,19 @@ function secureInput($data) {
     return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
 }
 
-// ============================================
-// ERROR HANDLING
-// ============================================
+/**
+ * Log message to file
+ *
+ * @param string $message Message to log
+ * @param string $level Log level (INFO, ERROR, WARNING)
+ */
+function logMessage($message, $level = 'INFO') {
+    if (defined('LOG_FILE')) {
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[{$timestamp}] [{$level}] {$message}\n";
+        file_put_contents(LOG_FILE, $log_entry, FILE_APPEND);
+    }
+}
 
 /**
  * Send JSON error response

@@ -160,6 +160,7 @@ fun TelegramChannelItem(
 fun ChannelCard(
     channel: Channel,
     onClick: () -> Unit,
+    onSubscribeToggle: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -282,10 +283,10 @@ fun ChannelCard(
             // Subscribe button or admin badge
             if (channel.isAdmin) {
                 AdminBadge()
-            } else {
+            } else if (onSubscribeToggle != null) {
                 SubscribeButtonCompact(
                     isSubscribed = channel.isSubscribed,
-                    onToggle = { /* Handled in parent */ }
+                    onToggle = { onSubscribeToggle(channel.isSubscribed) }
                 )
             }
         }

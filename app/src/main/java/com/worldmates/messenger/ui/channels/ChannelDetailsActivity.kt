@@ -197,9 +197,25 @@ fun ChannelDetailsScreen(
                                     isSubscribed = channel.isSubscribed,
                                     onToggle = {
                                         if (channel.isSubscribed) {
-                                            channelsViewModel.unsubscribeChannel(channelId)
+                                            channelsViewModel.unsubscribeChannel(
+                                                channelId = channelId,
+                                                onSuccess = {
+                                                    Toast.makeText(context, "Ви відписалися від каналу", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onError = { error ->
+                                                    Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
                                         } else {
-                                            channelsViewModel.subscribeChannel(channelId)
+                                            channelsViewModel.subscribeChannel(
+                                                channelId = channelId,
+                                                onSuccess = {
+                                                    Toast.makeText(context, "Ви підписалися на канал!", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onError = { error ->
+                                                    Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth()

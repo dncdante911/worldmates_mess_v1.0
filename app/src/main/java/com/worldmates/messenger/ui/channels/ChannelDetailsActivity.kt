@@ -72,9 +72,10 @@ class ChannelDetailsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Завантажуємо дані каналу
-        channelsViewModel.fetchChannelById(channelId)
-        detailsViewModel.selectChannel(channelId)
+        // Завантажуємо дані каналу та пости
+        channelsViewModel.refreshChannel(channelId)
+        detailsViewModel.loadChannelDetails(channelId)
+        detailsViewModel.loadChannelPosts(channelId)
     }
 }
 
@@ -110,8 +111,8 @@ fun ChannelDetailsScreen(
         refreshing = refreshing,
         onRefresh = {
             refreshing = true
-            detailsViewModel.refreshPosts()
-            channelsViewModel.fetchChannelById(channelId)
+            detailsViewModel.loadChannelPosts(channelId)
+            channelsViewModel.refreshChannel(channelId)
             refreshing = false
         }
     )
@@ -196,9 +197,9 @@ fun ChannelDetailsScreen(
                                     isSubscribed = channel.isSubscribed,
                                     onToggle = {
                                         if (channel.isSubscribed) {
-                                            channelsViewModel.unsubscribeFromChannel(channelId)
+                                            channelsViewModel.unsubscribeChannel(channelId)
                                         } else {
-                                            channelsViewModel.subscribeToChannel(channelId)
+                                            channelsViewModel.subscribeChannel(channelId)
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth()
@@ -267,9 +268,10 @@ fun ChannelDetailsScreen(
                                     Toast.makeText(context, "Відкрити пост (в розробці)", Toast.LENGTH_SHORT).show()
                                 },
                                 onReactionClick = { emoji ->
-                                    detailsViewModel.toggleReaction(post.id, emoji)
+                                    detailsViewModel.addPostReaction(post.id, emoji)
                                 },
                                 onCommentsClick = {
+                                    detailsViewModel.loadComments(post.id)
                                     Toast.makeText(context, "Коментарі (в розробці)", Toast.LENGTH_SHORT).show()
                                 },
                                 onShareClick = {
@@ -323,15 +325,31 @@ fun ChannelDetailsScreen(
             CreatePostDialog(
                 channelId = channelId,
                 onDismiss = { showCreatePostDialog = false },
-                onCreate = { title, content, mediaUrl ->
+                onCreate = { text, mediaUrl ->
+                    // Створюємо медіа якщо є URL
+                    val media = if (!mediaUrl.isNullOrBlank()) {
+                        listOf(
+                            com.worldmates.messenger.data.model.PostMedia(
+                                id = System.currentTimeMillis().toString(),
+                                url = mediaUrl,
+                                type = "image" // За замовчуванням вважаємо зображенням
+                            )
+                        )
+                    } else null
+
                     detailsViewModel.createPost(
                         channelId = channelId,
-                        title = title,
-                        content = content,
-                        mediaUrl = mediaUrl
+                        text = text,
+                        media = media,
+                        onSuccess = {
+                            Toast.makeText(context, "Пост створено!", Toast.LENGTH_SHORT).show()
+                            detailsViewModel.loadChannelPosts(channelId)
+                        },
+                        onError = { error ->
+                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                        }
                     )
                     showCreatePostDialog = false
-                    Toast.makeText(context, "Пост створено!", Toast.LENGTH_SHORT).show()
                 }
             )
         }
@@ -346,10 +364,9 @@ fun ChannelDetailsScreen(
 fun CreatePostDialog(
     channelId: Long,
     onDismiss: () -> Unit,
-    onCreate: (title: String, content: String, mediaUrl: String?) -> Unit
+    onCreate: (text: String, mediaUrl: String?) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var content by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf("") }
     var mediaUrl by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -366,23 +383,14 @@ fun CreatePostDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Заголовок") },
-                    placeholder = { Text("Введіть заголовок поста") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    label = { Text("Зміст") },
-                    placeholder = { Text("Введіть текст поста") },
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Текст поста") },
+                    placeholder = { Text("Введіть текст поста...") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp),
-                    maxLines = 8
+                        .height(180.dp),
+                    maxLines = 10
                 )
 
                 OutlinedTextField(
@@ -404,15 +412,14 @@ fun CreatePostDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (title.isNotBlank() && content.isNotBlank()) {
+                    if (text.isNotBlank()) {
                         onCreate(
-                            title.trim(),
-                            content.trim(),
+                            text.trim(),
                             mediaUrl.trim().takeIf { it.isNotBlank() }
                         )
                     }
                 },
-                enabled = title.isNotBlank() && content.isNotBlank(),
+                enabled = text.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF667eea)
                 )

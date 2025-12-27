@@ -105,7 +105,11 @@ fun ChannelDetailsScreen(
 
     // UI States
     var showCreatePostDialog by remember { mutableStateOf(false) }
+    var showSubscribersDialog by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
+
+    // Завантажуємо підписників
+    val subscribers by detailsViewModel.subscribers.collectAsState()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing,
@@ -180,7 +184,11 @@ fun ChannelDetailsScreen(
                             onBackClick = onBackPressed,
                             onSettingsClick = if (channel.isAdmin) {
                                 { Toast.makeText(context, "Налаштування (в розробці)", Toast.LENGTH_SHORT).show() }
-                            } else null
+                            } else null,
+                            onSubscribersClick = {
+                                detailsViewModel.loadSubscribers(channelId)
+                                showSubscribersDialog = true
+                            }
                         )
                     }
 
@@ -197,9 +205,25 @@ fun ChannelDetailsScreen(
                                     isSubscribed = channel.isSubscribed,
                                     onToggle = {
                                         if (channel.isSubscribed) {
-                                            channelsViewModel.unsubscribeChannel(channelId)
+                                            channelsViewModel.unsubscribeChannel(
+                                                channelId = channelId,
+                                                onSuccess = {
+                                                    Toast.makeText(context, "Ви відписалися від каналу", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onError = { error ->
+                                                    Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
                                         } else {
-                                            channelsViewModel.subscribeChannel(channelId)
+                                            channelsViewModel.subscribeChannel(
+                                                channelId = channelId,
+                                                onSuccess = {
+                                                    Toast.makeText(context, "Ви підписалися на канал!", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onError = { error ->
+                                                    Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth()
@@ -268,7 +292,16 @@ fun ChannelDetailsScreen(
                                     Toast.makeText(context, "Відкрити пост (в розробці)", Toast.LENGTH_SHORT).show()
                                 },
                                 onReactionClick = { emoji ->
-                                    detailsViewModel.addPostReaction(post.id, emoji)
+                                    detailsViewModel.addPostReaction(
+                                        postId = post.id,
+                                        emoji = emoji,
+                                        onSuccess = {
+                                            Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { error ->
+                                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
                                 },
                                 onCommentsClick = {
                                     detailsViewModel.loadComments(post.id)
@@ -353,6 +386,14 @@ fun ChannelDetailsScreen(
                 }
             )
         }
+
+        // Діалог підписників
+        if (showSubscribersDialog) {
+            SubscribersDialog(
+                subscribers = subscribers,
+                onDismiss = { showSubscribersDialog = false }
+            )
+        }
     }
 }
 
@@ -433,4 +474,88 @@ fun CreatePostDialog(
             }
         }
     )
+}
+
+/**
+ * Діалог для відображення списку підписників
+ */
+@Composable
+fun SubscribersDialog(
+    subscribers: List<com.worldmates.messenger.data.model.ChannelSubscriber>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Підписники • ${subscribers.size}",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            if (subscribers.isEmpty()) {
+                Text(
+                    text = "Немає підписників",
+                    color = Color.Gray
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                ) {
+                    items(subscribers) { subscriber ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Аватар
+                            AsyncImage(
+                                model = subscriber.avatarUrl,
+                                contentDescription = subscriber.username,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Інфо
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = subscriber.username,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF2C3E50)
+                                )
+                                if (subscriber.isMuted) {
+                                    Text(
+                                        text = "Вимкнено сповіщення",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+
+                        if (subscriber != subscribers.last()) {
+                            Divider(
+                                modifier = Modifier.padding(start = 52.dp),
+                                color = Color(0xFFEEEEEE)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрити")
+            }
+        }
+    )
+}
 }

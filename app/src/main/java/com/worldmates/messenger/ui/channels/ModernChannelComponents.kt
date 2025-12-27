@@ -160,6 +160,7 @@ fun TelegramChannelItem(
 fun ChannelCard(
     channel: Channel,
     onClick: () -> Unit,
+    onSubscribeToggle: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -282,10 +283,10 @@ fun ChannelCard(
             // Subscribe button or admin badge
             if (channel.isAdmin) {
                 AdminBadge()
-            } else {
+            } else if (onSubscribeToggle != null) {
                 SubscribeButtonCompact(
                     isSubscribed = channel.isSubscribed,
-                    onToggle = { /* Handled in parent */ }
+                    onToggle = { onSubscribeToggle(channel.isSubscribed) }
                 )
             }
         }
@@ -454,6 +455,7 @@ fun ChannelHeader(
     channel: Channel,
     onBackClick: () -> Unit,
     onSettingsClick: (() -> Unit)? = null,
+    onSubscribersClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -553,7 +555,8 @@ fun ChannelHeader(
                 ChannelStat(
                     icon = Icons.Default.PeopleAlt,
                     value = formatCount(channel.subscribersCount),
-                    label = "Підписників"
+                    label = "Підписників",
+                    onClick = onSubscribersClick
                 )
                 ChannelStat(
                     icon = Icons.Default.Article,
@@ -571,10 +574,18 @@ fun ChannelHeader(
 fun ChannelStat(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
-    label: String
+    label: String,
+    onClick: (() -> Unit)? = null
 ) {
+    val modifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else {
+        Modifier
+    }
+
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.padding(8.dp)
     ) {
         Icon(
             icon,

@@ -791,7 +791,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun getChannelSubscribers(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "get_subscribers",
+        @Field("type") type: String = "get_channel_subscribers",
         @Field("channel_id") channelId: Long,
         @Field("limit") limit: Int = 100,
         @Field("offset") offset: Int = 0

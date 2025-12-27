@@ -563,6 +563,247 @@ interface WorldMatesApi {
         @Field("limit") limit: Int = 50,
         @Field("offset") offset: Int = 0
     ): GroupListResponse
+
+    // ==================== CHANNELS ====================
+    // Uses /api/v2/channels.php - Channel-specific API endpoint
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun getChannels(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_list", // "get_list", "get_subscribed", "search"
+        @Field("limit") limit: Int = 50,
+        @Field("offset") offset: Int = 0,
+        @Field("query") query: String? = null
+    ): ChannelListResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun getChannelDetails(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_by_id",
+        @Field("id") channelId: Long
+    ): ChannelDetailResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun createChannel(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "create",
+        @Field("name") name: String,
+        @Field("username") username: String? = null,
+        @Field("description") description: String? = null,
+        @Field("avatar_url") avatarUrl: String? = null,
+        @Field("is_private") isPrivate: Int = 0,
+        @Field("category") category: String? = null
+    ): CreateChannelResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun updateChannel(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "update",
+        @Field("id") channelId: Long,
+        @Field("name") name: String? = null,
+        @Field("description") description: String? = null,
+        @Field("avatar_url") avatarUrl: String? = null
+    ): CreateChannelResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun deleteChannel(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "delete",
+        @Field("id") channelId: Long
+    ): CreateChannelResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun subscribeChannel(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "subscribe",
+        @Field("id") channelId: Long
+    ): CreateChannelResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun unsubscribeChannel(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "unsubscribe",
+        @Field("id") channelId: Long
+    ): CreateChannelResponse
+
+    // Channel Posts
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun getChannelPosts(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_posts",
+        @Field("id") channelId: Long,
+        @Field("limit") limit: Int = 20,
+        @Field("before_post_id") beforePostId: Long? = null
+    ): ChannelPostsResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun createChannelPost(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "create_post",
+        @Field("id") channelId: Long,
+        @Field("text") text: String,
+        @Field("media_urls") mediaUrls: String? = null, // JSON array of media
+        @Field("disable_comments") disableComments: Int = 0,
+        @Field("notify_subscribers") notifySubscribers: Int = 1
+    ): CreatePostResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun updateChannelPost(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "update_post",
+        @Field("post_id") postId: Long,
+        @Field("text") text: String,
+        @Field("media_urls") mediaUrls: String? = null
+    ): CreatePostResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun deleteChannelPost(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "delete_post",
+        @Field("post_id") postId: Long
+    ): CreatePostResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun pinChannelPost(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "pin_post",
+        @Field("post_id") postId: Long
+    ): CreatePostResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun unpinChannelPost(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "unpin_post",
+        @Field("post_id") postId: Long
+    ): CreatePostResponse
+
+    // Channel Comments
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun getChannelComments(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_comments",
+        @Field("post_id") postId: Long,
+        @Field("limit") limit: Int = 50,
+        @Field("offset") offset: Int = 0
+    ): ChannelCommentsResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun addChannelComment(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "add_comment",
+        @Field("post_id") postId: Long,
+        @Field("text") text: String,
+        @Field("reply_to_id") replyToId: Long? = null
+    ): CreatePostResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun deleteChannelComment(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "delete_comment",
+        @Field("comment_id") commentId: Long
+    ): CreatePostResponse
+
+    // Channel Reactions
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun addPostReaction(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "add_post_reaction",
+        @Field("post_id") postId: Long,
+        @Field("emoji") emoji: String
+    ): CreatePostResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun removePostReaction(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "remove_post_reaction",
+        @Field("post_id") postId: Long,
+        @Field("emoji") emoji: String
+    ): CreatePostResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun addCommentReaction(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "add_comment_reaction",
+        @Field("comment_id") commentId: Long,
+        @Field("emoji") emoji: String
+    ): CreatePostResponse
+
+    // Channel Admin Management
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun addChannelAdmin(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "add_admin",
+        @Field("id") channelId: Long,
+        @Field("user_id") userId: Long,
+        @Field("role") role: String = "moderator" // "admin", "moderator"
+    ): CreateChannelResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun removeChannelAdmin(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "remove_admin",
+        @Field("id") channelId: Long,
+        @Field("user_id") userId: Long
+    ): CreateChannelResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun updateChannelSettings(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "update_settings",
+        @Field("id") channelId: Long,
+        @Field("settings_json") settingsJson: String // JSON string of ChannelSettings
+    ): CreateChannelResponse
+
+    // Channel Statistics
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun getChannelStatistics(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_statistics",
+        @Field("id") channelId: Long
+    ): ChannelDetailResponse
+
+    // Channel Subscribers
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun getChannelSubscribers(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_subscribers",
+        @Field("id") channelId: Long,
+        @Field("limit") limit: Int = 100,
+        @Field("offset") offset: Int = 0
+    ): ChannelSubscribersResponse
+
+    @Multipart
+    @POST("/api/v2/channels.php")
+    suspend fun uploadChannelAvatar(
+        @Query("access_token") accessToken: String,
+        @Query("type") type: String = "upload_avatar",
+        @Part("id") channelId: RequestBody,
+        @Part avatar: MultipartBody.Part
+    ): CreateChannelResponse
 }
 
 // ==================== RESPONSE MODELS ====================

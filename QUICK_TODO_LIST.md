@@ -68,14 +68,42 @@
    - PIN приложения
 ```
 
-### 7. Каналы (7 дней)
+### 7. Канали (7 дней)
 ```
-❌ НЕТ
-✅ Нужно:
+⚠️ ЧАСТИЧНО (REST API готов, нужен Socket.io)
+✅ Готово:
    - Channel модель (односторонняя связь)
-   - UI создания канала
+   - UI создания канала (4-step Telegram-style)
+   - REST API (/api/v2/channels.php - 28 методов)
+   - SQL миграция (channels_migration.sql)
+   - ChannelDetailsActivity, ModernChannelComponents
    - Неограниченные подписчики
    - Статистика просмотров
+
+🔴 КРИТИЧНО - Нужна миграция на Socket.io:
+   ПРОБЛЕМА: Сейчас polling каждые 6 сек → большая нагрузка
+
+   Node.js (socket-calls-handler.js):
+   ├─ channel:subscribe (join channel room)
+   ├─ channel:unsubscribe (leave channel room)
+   ├─ channel:new_post (broadcast to all subscribers)
+   ├─ channel:post_updated (notify about edits)
+   ├─ channel:post_deleted (notify about deletion)
+   ├─ channel:new_comment (real-time comments)
+   └─ channel:typing (show who's typing)
+
+   Android (ChannelsViewModel.kt):
+   ├─ Добавить Socket.io client (io.socket:socket.io-client:2.1.0)
+   ├─ Подключиться к socket при открытии канала
+   ├─ Слушать события channel:new_post, channel:new_comment
+   ├─ Удалить polling (LaunchedEffect с delay(6000))
+   └─ Auto-reconnect при потере соединения
+
+   Зачем нужно:
+   ├─ Миттєві оновлення (0 затримки замість 6 сек)
+   ├─ Менше навантаження (100 users: 1000 req/min → 100 connections)
+   ├─ Економія батареї (1 WebSocket замість постійних HTTP)
+   └─ Готовність до масштабування (1000+ користувачів)
 ```
 
 ### 8. Истории (Stories) (10 дней)
@@ -177,8 +205,10 @@ MediaProjection API + Screen sharing
    - Группы
    - Аудиозвонки
    - Темы (Material You)
+   - 2FA + Биометрия ✅ ГОТОВО (Google Authenticator + FaceID/Fingerprint)
 
 ⚠️ Частично (нужно доделать):
+   - Каналы (REST API ✅, нужен Socket.io для real-time)
    - Видеозвонки (UI)
    - Мультиустройство (sync)
    - Групповые функции (mute, pin, search)
@@ -188,8 +218,6 @@ MediaProjection API + Screen sharing
    - Блокировка
    - Поиск
    - Секретные чаты
-   - 2FA
-   - Каналы
    - Истории
    - GIF
 ```
@@ -295,7 +323,197 @@ cd /home/user/worldmates_mess_v1.0/app/src/main/java/com/worldmates/messenger
 
 ---
 
-**Дата:** 2025-12-26
+## 🚀 КАНАЛЫ - МИГРАЦИЯ НА SOCKET.IO (2-3 дня)
+
+### ⚠️ ТЕКУЩАЯ ПРОБЛЕМА
+```
+REST API polling каждые 6 секунд:
+├─ 100 users × 10 req/min = 1,000 requests/min
+├─ 1,000 users × 10 req/min = 10,000 requests/min 🔥
+└─ Задержка получения новых постов: 0-6 секунд
+```
+
+### ✅ РЕШЕНИЕ - Socket.io
+```
+WebSocket connections:
+├─ 100 users = 100 connections
+├─ 1,000 users = 1,000 connections ✅
+└─ Задержка: 0 секунд (мгновенно)
+```
+
+---
+
+### 📋 ПЛАН МИГРАЦИИ
+
+#### День 1: Node.js - Добавить события для каналов
+
+**Файл:** `nodejs/socket-calls-handler.js`
+
+```javascript
+// 1. Подключение к каналу
+socket.on('channel:subscribe', async (data) => {
+    const { channelId } = data;
+    socket.join(`channel_${channelId}`);
+    console.log(`User ${socket.userId} subscribed to channel ${channelId}`);
+});
+
+// 2. Отключение от канала
+socket.on('channel:unsubscribe', async (data) => {
+    const { channelId } = data;
+    socket.leave(`channel_${channelId}`);
+});
+
+// 3. Новый пост (сервер сохраняет через PHP, потом broadcast)
+socket.on('channel:new_post', async (data) => {
+    const { channelId, postId, authorId, text, media } = data;
+
+    // Отправить всем подписникам канала
+    io.to(`channel_${channelId}`).emit('channel:post_created', {
+        channelId,
+        post: {
+            id: postId,
+            author_id: authorId,
+            text,
+            media,
+            created_time: Date.now(),
+            reactions_count: 0,
+            comments_count: 0
+        }
+    });
+});
+
+// 4. Редактирование поста
+socket.on('channel:post_updated', async (data) => {
+    const { channelId, postId, text } = data;
+    io.to(`channel_${channelId}`).emit('channel:post_updated', { postId, text });
+});
+
+// 5. Удаление поста
+socket.on('channel:post_deleted', async (data) => {
+    const { channelId, postId } = data;
+    io.to(`channel_${channelId}`).emit('channel:post_deleted', { postId });
+});
+
+// 6. Новый комментарий
+socket.on('channel:new_comment', async (data) => {
+    const { channelId, postId, commentId, userId, text } = data;
+    io.to(`channel_${channelId}`).emit('channel:comment_added', {
+        postId,
+        comment: { id: commentId, user_id: userId, text, time: Date.now() }
+    });
+});
+
+// 7. Typing indicator
+socket.on('channel:typing', async (data) => {
+    const { channelId, postId, isTyping } = data;
+    socket.to(`channel_${channelId}`).emit('channel:typing', { postId, userId: socket.userId, isTyping });
+});
+```
+
+---
+
+#### День 2: Android - Подключить Socket.io
+
+**1. build.gradle.kts (app):**
+```kotlin
+dependencies {
+    implementation("io.socket:socket.io-client:2.1.0")
+}
+```
+
+**2. SocketManager.kt:**
+```kotlin
+object SocketManager {
+    private var socket: Socket? = null
+
+    fun connect(serverUrl: String) {
+        socket = IO.socket(serverUrl)
+        socket?.connect()
+    }
+
+    fun subscribeToChannel(channelId: Long) {
+        socket?.emit("channel:subscribe", JSONObject().put("channelId", channelId))
+    }
+
+    fun onNewPost(callback: (ChannelPost) -> Unit) {
+        socket?.on("channel:post_created") { args ->
+            val data = args[0] as JSONObject
+            val post = Gson().fromJson(data.getJSONObject("post").toString(), ChannelPost::class.java)
+            callback(post)
+        }
+    }
+}
+```
+
+**3. ChannelsViewModel.kt - УДАЛИТЬ polling:**
+```kotlin
+// УДАЛИТЬ ЭТО:
+LaunchedEffect(pagerState.currentPage) {
+    while (true) {
+        delay(6000)  // ❌ Убрать polling
+        channelsViewModel.refreshChannels()
+    }
+}
+
+// ДОБАВИТЬ Socket.io:
+init {
+    SocketManager.connect("https://worldmates.club")
+
+    SocketManager.onNewPost { post ->
+        _posts.value = _posts.value + post
+    }
+}
+
+fun loadChannelPosts(channelId: Long) {
+    SocketManager.subscribeToChannel(channelId)
+    // Загрузить историю через REST API
+    viewModelScope.launch {
+        val response = RetrofitClient.apiService.getChannelPosts(...)
+        _posts.value = response.posts
+    }
+}
+```
+
+---
+
+#### День 3: Тестирование + Оптимизация
+
+**Тесты:**
+- ✅ Создать пост → все подписники получают мгновенно
+- ✅ Редактировать пост → обновление в реал-тайме
+- ✅ Удалить пост → исчезает у всех
+- ✅ Комментарий → появляется без задержки
+- ✅ Reconnect → восстановление соединения при потере сети
+
+**Оптимизации:**
+- Auto-reconnect с экспоненциальной задержкой
+- Offline queue (отправить когда вернется интернет)
+- Compression (gzip для WebSocket)
+- Heartbeat (ping/pong каждые 30 сек)
+
+---
+
+### 📊 РЕЗУЛЬТАТ
+
+**До (REST API polling):**
+```
+Задержка: 0-6 секунд
+Нагрузка: 10,000 req/min (1000 users)
+Батарея: Высокая нагрузка
+Трафик: Много лишних запросов
+```
+
+**После (Socket.io):**
+```
+Задержка: 0 секунд ⚡
+Нагрузка: 1,000 connections (1000 users) ✅
+Батарея: Низкая нагрузка
+Трафик: Только изменения
+```
+
+---
+
+**Дата обновления:** 2025-12-27
 **Автор:** Claude Code
-**Статус:** READY TO START
-**Приоритет:** 🔥🔥🔥 URGENT
+**Статус:** CHANNELS READY (REST), NEED SOCKET.IO
+**Приоритет:** 🔥🔥 HIGH (после альфа-тестов)

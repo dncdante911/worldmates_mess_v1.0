@@ -177,8 +177,7 @@ class ChannelDetailsViewModel : ViewModel() {
                     // Оновлюємо кількість постів у каналі
                     _channel.value?.let { channel ->
                         _channel.value = channel.copy(
-                            postsCount = channel.postsCount + 1,
-                            lastPostTime = System.currentTimeMillis()
+                            postsCount = channel.postsCount + 1
                         )
                     }
                 } else {
@@ -319,13 +318,6 @@ class ChannelDetailsViewModel : ViewModel() {
                         } else {
                             post
                         }
-                    }
-
-                    // Оновлюємо pinned post id в каналі
-                    _channel.value?.let { channel ->
-                        _channel.value = channel.copy(
-                            pinnedPostId = if (!isPinned) postId else null
-                        )
                     }
 
                     _error.value = null
@@ -505,29 +497,10 @@ class ChannelDetailsViewModel : ViewModel() {
                 )
 
                 if (response.apiStatus == 200) {
-                    // Оновлюємо реакції локально (реальні дані прийдуть з сервера)
+                    // Оновлюємо лічильник реакцій локально
                     _posts.value = _posts.value.map { post ->
                         if (post.id == postId) {
-                            val updatedReactions = post.reactions?.toMutableList() ?: mutableListOf()
-                            val existingReaction = updatedReactions.find { it.emoji == emoji }
-                            if (existingReaction != null) {
-                                updatedReactions.remove(existingReaction)
-                                updatedReactions.add(
-                                    existingReaction.copy(
-                                        count = existingReaction.count + 1,
-                                        userReacted = true
-                                    )
-                                )
-                            } else {
-                                updatedReactions.add(
-                                    PostReaction(
-                                        emoji = emoji,
-                                        count = 1,
-                                        userReacted = true
-                                    )
-                                )
-                            }
-                            post.copy(reactions = updatedReactions)
+                            post.copy(reactionsCount = post.reactionsCount + 1)
                         } else {
                             post
                         }
@@ -568,25 +541,10 @@ class ChannelDetailsViewModel : ViewModel() {
                 )
 
                 if (response.apiStatus == 200) {
-                    // Оновлюємо реакції локально
+                    // Оновлюємо лічильник реакцій локально
                     _posts.value = _posts.value.map { post ->
                         if (post.id == postId) {
-                            val updatedReactions = post.reactions?.toMutableList() ?: mutableListOf()
-                            val existingReaction = updatedReactions.find { it.emoji == emoji }
-                            if (existingReaction != null) {
-                                if (existingReaction.count > 1) {
-                                    updatedReactions.remove(existingReaction)
-                                    updatedReactions.add(
-                                        existingReaction.copy(
-                                            count = existingReaction.count - 1,
-                                            userReacted = false
-                                        )
-                                    )
-                                } else {
-                                    updatedReactions.remove(existingReaction)
-                                }
-                            }
-                            post.copy(reactions = updatedReactions.filter { it.count > 0 })
+                            post.copy(reactionsCount = maxOf(0, post.reactionsCount - 1))
                         } else {
                             post
                         }
@@ -625,8 +583,8 @@ class ChannelDetailsViewModel : ViewModel() {
                     channelId = channelId
                 )
 
-                if (response.apiStatus == 200 && response.channel?.statistics != null) {
-                    _statistics.value = response.channel!!.statistics
+                if (response.apiStatus == 200 && response.statistics != null) {
+                    _statistics.value = response.statistics
                     _error.value = null
                     Log.d("ChannelDetailsVM", "Статистику завантажено")
                 } else {

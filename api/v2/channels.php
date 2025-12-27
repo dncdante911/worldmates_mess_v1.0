@@ -11,7 +11,7 @@
  * - Wo_MessageComments (коментарі)
  */
 
-require_once(__DIR__ . '/../db_config.php');
+require_once(__DIR__ . '/config.php');
 
 header('Content-Type: application/json');
 

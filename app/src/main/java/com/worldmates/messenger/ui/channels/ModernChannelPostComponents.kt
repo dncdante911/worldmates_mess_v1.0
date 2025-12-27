@@ -56,21 +56,27 @@ fun ChannelPostCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Author Avatar
-                    AsyncImage(
-                        model = post.authorAvatar,
-                        contentDescription = post.authorName,
+                    // Аватар каналу (TODO: завантажувати дані автора з API)
+                    Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                            .clip(CircleShape)
+                            .background(Color(0xFF667eea)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Campaign,
+                            contentDescription = "Channel",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.width(10.dp))
 
                     Column {
                         Text(
-                            text = post.authorName,
+                            text = "Channel Post",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF2C3E50)
@@ -137,28 +143,6 @@ fun ChannelPostCard(
                 PostMediaGallery(media = post.media!!)
             }
 
-            // Forwarded from
-            if (post.isForwarded) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Default.Forward,
-                        contentDescription = "Forwarded",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Переслано з ${post.forwardFromChannelName}",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.height(12.dp))
 
             // Post Stats
@@ -199,15 +183,6 @@ fun ChannelPostCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Reactions Bar
-            if (!post.reactions.isNullOrEmpty()) {
-                PostReactionsBar(
-                    reactions = post.reactions!!,
-                    onReactionClick = onReactionClick
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
             // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -215,21 +190,19 @@ fun ChannelPostCard(
             ) {
                 ActionButton(
                     icon = Icons.Default.AddReaction,
-                    label = "Реакція",
+                    label = if (post.reactionsCount > 0) formatCount(post.reactionsCount) else "Реакція",
                     onClick = { onReactionClick("") }
                 )
 
-                if (post.isCommentsEnabled) {
-                    ActionButton(
-                        icon = Icons.Default.Comment,
-                        label = formatCount(post.commentsCount),
-                        onClick = onCommentsClick
-                    )
-                }
+                ActionButton(
+                    icon = Icons.Default.Comment,
+                    label = if (post.commentsCount > 0) formatCount(post.commentsCount) else "Коментарі",
+                    onClick = onCommentsClick
+                )
 
                 ActionButton(
                     icon = Icons.Default.Share,
-                    label = if (post.sharesCount > 0) formatCount(post.sharesCount) else "Поділитись",
+                    label = "Поділитись",
                     onClick = onShareClick
                 )
             }
@@ -366,7 +339,7 @@ fun PostMediaItem(
             }
             "video" -> {
                 AsyncImage(
-                    model = media.thumbnail ?: media.url,
+                    model = media.url,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -383,22 +356,6 @@ fun PostMediaItem(
                         tint = Color.White,
                         modifier = Modifier.size(48.dp)
                     )
-                }
-                if (media.duration != null) {
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(8.dp),
-                        color = Color.Black.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = formatDuration(media.duration!!),
-                            fontSize = 12.sp,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
                 }
             }
             else -> {
@@ -502,15 +459,21 @@ fun CommentCard(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.Top
             ) {
-                // Author Avatar
-                AsyncImage(
-                    model = comment.authorAvatar,
-                    contentDescription = comment.authorName,
+                // Author Avatar (TODO: завантажувати дані користувача з API)
+                Box(
                     modifier = Modifier
                         .size(32.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+                        .clip(CircleShape)
+                        .background(Color(0xFF667eea)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "U",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 Spacer(modifier = Modifier.width(10.dp))
 
@@ -521,25 +484,15 @@ fun CommentCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = comment.authorName,
+                            text = "User",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF2C3E50)
                         )
                         Text(
-                            text = formatPostTime(comment.createdTime),
+                            text = formatPostTime(comment.time),
                             fontSize = 12.sp,
                             color = Color.Gray
-                        )
-                    }
-
-                    // Reply to indicator
-                    if (comment.replyToAuthor != null) {
-                        Text(
-                            text = "У відповідь ${comment.replyToAuthor}",
-                            fontSize = 12.sp,
-                            color = Color(0xFF667eea),
-                            modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
 
@@ -551,23 +504,6 @@ fun CommentCard(
                         lineHeight = 20.sp,
                         modifier = Modifier.padding(top = 4.dp)
                     )
-
-                    // Reactions
-                    if (!comment.reactions.isNullOrEmpty()) {
-                        Row(
-                            modifier = Modifier.padding(top = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            comment.reactions!!.forEach { reaction ->
-                                SmallReactionChip(
-                                    emoji = reaction.emoji,
-                                    count = reaction.count,
-                                    isSelected = reaction.userReacted,
-                                    onClick = { onReactionClick(reaction.emoji) }
-                                )
-                            }
-                        }
-                    }
 
                     // Actions
                     Row(

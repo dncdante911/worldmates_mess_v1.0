@@ -582,14 +582,14 @@ interface WorldMatesApi {
     suspend fun getChannelDetails(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_by_id",
-        @Field("id") channelId: Long
+        @Field("channel_id") channelId: Long
     ): ChannelDetailResponse
 
     @FormUrlEncoded
     @POST("/api/v2/channels.php")
     suspend fun createChannel(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "create",
+        @Field("action") action: String = "create_channel",
         @Field("name") name: String,
         @Field("username") username: String? = null,
         @Field("description") description: String? = null,
@@ -602,35 +602,36 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun updateChannel(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "update",
-        @Field("id") channelId: Long,
+        @Field("action") action: String = "update_channel",
+        @Field("channel_id") channelId: Long,
         @Field("name") name: String? = null,
         @Field("description") description: String? = null,
-        @Field("avatar_url") avatarUrl: String? = null
+        @Field("username") username: String? = null,
+        @Field("category") category: String? = null
     ): CreateChannelResponse
 
     @FormUrlEncoded
     @POST("/api/v2/channels.php")
     suspend fun deleteChannel(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "delete",
-        @Field("id") channelId: Long
+        @Field("action") action: String = "delete_channel",
+        @Field("channel_id") channelId: Long
     ): CreateChannelResponse
 
     @FormUrlEncoded
     @POST("/api/v2/channels.php")
     suspend fun subscribeChannel(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "subscribe",
-        @Field("id") channelId: Long
+        @Field("action") action: String = "subscribe_channel",
+        @Field("channel_id") channelId: Long
     ): CreateChannelResponse
 
     @FormUrlEncoded
     @POST("/api/v2/channels.php")
     suspend fun unsubscribeChannel(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "unsubscribe",
-        @Field("id") channelId: Long
+        @Field("action") action: String = "unsubscribe_channel",
+        @Field("channel_id") channelId: Long
     ): CreateChannelResponse
 
     // Channel Posts
@@ -638,8 +639,8 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun getChannelPosts(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "get_posts",
-        @Field("id") channelId: Long,
+        @Field("action") action: String = "get_channel_posts",
+        @Field("channel_id") channelId: Long,
         @Field("limit") limit: Int = 20,
         @Field("before_post_id") beforePostId: Long? = null
     ): ChannelPostsResponse
@@ -648,8 +649,8 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun createChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "create_post",
-        @Field("id") channelId: Long,
+        @Field("action") action: String = "create_post",
+        @Field("channel_id") channelId: Long,
         @Field("text") text: String,
         @Field("media_urls") mediaUrls: String? = null, // JSON array of media
         @Field("disable_comments") disableComments: Int = 0,
@@ -660,7 +661,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun updateChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "update_post",
+        @Field("action") action: String = "update_post",
         @Field("post_id") postId: Long,
         @Field("text") text: String,
         @Field("media_urls") mediaUrls: String? = null
@@ -670,7 +671,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun deleteChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "delete_post",
+        @Field("action") action: String = "delete_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 
@@ -678,7 +679,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun pinChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "pin_post",
+        @Field("action") action: String = "pin_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 
@@ -686,7 +687,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun unpinChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "unpin_post",
+        @Field("action") action: String = "unpin_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 
@@ -753,7 +754,7 @@ interface WorldMatesApi {
     suspend fun addChannelAdmin(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "add_admin",
-        @Field("id") channelId: Long,
+        @Field("channel_id") channelId: Long,
         @Field("user_id") userId: Long,
         @Field("role") role: String = "moderator" // "admin", "moderator"
     ): CreateChannelResponse
@@ -763,7 +764,7 @@ interface WorldMatesApi {
     suspend fun removeChannelAdmin(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "remove_admin",
-        @Field("id") channelId: Long,
+        @Field("channel_id") channelId: Long,
         @Field("user_id") userId: Long
     ): CreateChannelResponse
 
@@ -772,7 +773,7 @@ interface WorldMatesApi {
     suspend fun updateChannelSettings(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "update_settings",
-        @Field("id") channelId: Long,
+        @Field("channel_id") channelId: Long,
         @Field("settings_json") settingsJson: String // JSON string of ChannelSettings
     ): CreateChannelResponse
 
@@ -782,7 +783,7 @@ interface WorldMatesApi {
     suspend fun getChannelStatistics(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_statistics",
-        @Field("id") channelId: Long
+        @Field("channel_id") channelId: Long
     ): ChannelDetailResponse
 
     // Channel Subscribers
@@ -791,7 +792,7 @@ interface WorldMatesApi {
     suspend fun getChannelSubscribers(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_subscribers",
-        @Field("id") channelId: Long,
+        @Field("channel_id") channelId: Long,
         @Field("limit") limit: Int = 100,
         @Field("offset") offset: Int = 0
     ): ChannelSubscribersResponse

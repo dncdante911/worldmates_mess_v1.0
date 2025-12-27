@@ -17,10 +17,18 @@ header('Content-Type: application/json');
 
 // Отримуємо дані запиту
 $request_method = $_SERVER['REQUEST_METHOD'];
-$data = json_decode(file_get_contents('php://input'), true);
+
+// Підтримка як JSON, так і form-encoded даних
+$content_type = $_SERVER['CONTENT_TYPE'] ?? '';
+if (strpos($content_type, 'application/json') !== false) {
+    $data = json_decode(file_get_contents('php://input'), true) ?? [];
+} else {
+    // Для application/x-www-form-urlencoded використовуємо $_POST
+    $data = $_POST;
+}
 
 // Access token для автентифікації
-$access_token = $data['access_token'] ?? $_GET['access_token'] ?? $_POST['access_token'] ?? null;
+$access_token = $data['access_token'] ?? $_GET['access_token'] ?? null;
 
 if (!$access_token) {
     echo json_encode(['api_status' => 400, 'error_message' => 'Access token is required']);
@@ -253,16 +261,7 @@ try {
 // ============================================
 // ФУНКЦІЇ
 // ============================================
-
-/**
- * Валідація access token
- */
-function validateAccessToken($db, $access_token) {
-    $stmt = $db->prepare("SELECT user_id FROM Wo_AccessToken WHERE access_token = ? AND time > (UNIX_TIMESTAMP() - 2592000)");
-    $stmt->execute([$access_token]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    return $result ? $result['user_id'] : null;
-}
+// Функція validateAccessToken оголошена в config.php
 
 /**
  * Отримати список каналів

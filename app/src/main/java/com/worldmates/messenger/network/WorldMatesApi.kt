@@ -782,9 +782,9 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun getChannelStatistics(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "get_statistics",
+        @Field("type") type: String = "get_channel_statistics",
         @Field("channel_id") channelId: Long
-    ): ChannelDetailResponse
+    ): ChannelStatisticsResponse
 
     // Channel Subscribers
     @FormUrlEncoded

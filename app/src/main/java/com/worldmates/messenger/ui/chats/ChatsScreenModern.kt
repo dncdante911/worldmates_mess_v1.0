@@ -57,7 +57,8 @@ fun ChatsScreenModern(
     onChatClick: (Chat) -> Unit,
     onGroupClick: (Group) -> Unit,
     onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onCreateChannelClick: () -> Unit = {}
 ) {
     val chats by viewModel.chatList.collectAsState()
     val groups by groupsViewModel.groupList.collectAsState()
@@ -181,12 +182,23 @@ fun ChatsScreenModern(
             )
         },
         floatingActionButton = {
-            // FAB для створення групи (тільки на вкладці "Групи")
-            if (pagerState.currentPage == 1) {
-                ExpressiveFAB(
-                    onClick = { showCreateGroupDialog = true }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Створити групу")
+            // FAB для створення каналу/групи
+            when (pagerState.currentPage) {
+                1 -> {
+                    // Вкладка Канали - створити канал
+                    ExpressiveFAB(
+                        onClick = onCreateChannelClick
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Створити канал")
+                    }
+                }
+                2 -> {
+                    // Вкладка Групи - створити групу
+                    ExpressiveFAB(
+                        onClick = { showCreateGroupDialog = true }
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Створити групу")
+                    }
                 }
             }
         }

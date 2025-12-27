@@ -487,7 +487,7 @@ fun ModernTabsRow(
         )
         ModernTab(
             text = "Канали",
-            icon = Icons.Default.Announcement,
+            icon = Icons.Default.Tag,
             isSelected = selectedTab == 1,
             onClick = { onTabSelected(1) },
             modifier = Modifier.weight(1f)

@@ -183,17 +183,31 @@ fun ChannelPostCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Quick Reactions
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                listOf("👍", "❤️", "🔥", "😂", "😮", "😢").forEach { emoji ->
+                    Text(
+                        text = emoji,
+                        fontSize = 24.sp,
+                        modifier = Modifier
+                            .clickable { onReactionClick(emoji) }
+                            .padding(8.dp)
+                    )
+                }
+            }
+
+            Divider(color = Color(0xFFEEEEEE))
+
             // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ActionButton(
-                    icon = Icons.Default.AddReaction,
-                    label = if (post.reactionsCount > 0) formatCount(post.reactionsCount) else "Реакція",
-                    onClick = { onReactionClick("") }
-                )
-
                 ActionButton(
                     icon = Icons.Default.Comment,
                     label = if (post.commentsCount > 0) formatCount(post.commentsCount) else "Коментарі",

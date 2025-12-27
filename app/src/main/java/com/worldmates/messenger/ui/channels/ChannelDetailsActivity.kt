@@ -516,31 +516,69 @@ fun SubscribersDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Аватар
-                            AsyncImage(
-                                model = subscriber.avatarUrl,
-                                contentDescription = subscriber.username,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
+                            if (!subscriber.avatarUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = subscriber.avatarUrl,
+                                    contentDescription = subscriber.username,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                // Placeholder
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF667eea)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = (subscriber.username?.take(1) ?: "U").uppercase(),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
 
                             Spacer(modifier = Modifier.width(12.dp))
 
                             // Інфо
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = subscriber.username,
+                                    text = subscriber.username ?: "User #${subscriber.id ?: subscriber.userId ?: "?"}",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF2C3E50)
                                 )
-                                if (subscriber.isMuted) {
-                                    Text(
-                                        text = "Вимкнено сповіщення",
-                                        fontSize = 12.sp,
-                                        color = Color.Gray
-                                    )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (subscriber.role != null) {
+                                        Text(
+                                            text = when(subscriber.role) {
+                                                "owner" -> "Власник"
+                                                "admin" -> "Адміністратор"
+                                                else -> subscriber.role!!
+                                            },
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF2196F3),
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                    if (subscriber.isMuted) {
+                                        if (subscriber.role != null) {
+                                            Text(text = "•", fontSize = 12.sp, color = Color.Gray)
+                                        }
+                                        Text(
+                                            text = "Вимкнено сповіщення",
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
                                 }
                             }
                         }

@@ -117,16 +117,6 @@ data class CommentReaction(
 )
 
 /**
- * Реакція на повідомлення (загальна для Message з Group.kt)
- */
-data class MessageReaction(
-    @SerializedName("emoji") val emoji: String,
-    @SerializedName("count") val count: Int,
-    @SerializedName("user_reacted") val userReacted: Boolean = false,
-    @SerializedName("recent_users") val recentUsers: List<ReactionUser>? = null
-)
-
-/**
  * Користувач, який поставив реакцію
  */
 data class ReactionUser(

@@ -12,88 +12,55 @@ data class Channel(
     @SerializedName("id") val id: Long,
     @SerializedName("name") val name: String,
     @SerializedName("username") val username: String? = null, // @channel_name для пошуку
-    @SerializedName("avatar") val avatarUrl: String,
+    @SerializedName("avatar_url") val avatarUrl: String,
     @SerializedName("description") val description: String? = null,
     @SerializedName("subscribers_count") val subscribersCount: Int = 0,
     @SerializedName("posts_count") val postsCount: Int = 0,
-    @SerializedName("admin_id") val adminId: Long,
-    @SerializedName("admin_name") val adminName: String,
+    @SerializedName("owner_id") val ownerId: Long, // ID власника каналу
     @SerializedName("is_private") val isPrivate: Boolean = false,
     @SerializedName("is_verified") val isVerified: Boolean = false, // Верифікований канал
-    @SerializedName("is_admin") val isAdmin: Boolean = false,
-    @SerializedName("is_moderator") val isModerator: Boolean = false,
+    @SerializedName("is_admin") val isAdmin: Boolean = false, // Чи є користувач адміном/модератором
     @SerializedName("is_subscribed") val isSubscribed: Boolean = false,
     @SerializedName("created_time") val createdTime: Long,
-    @SerializedName("updated_time") val updatedTime: Long? = null,
-    @SerializedName("last_post_time") val lastPostTime: Long? = null,
-    @SerializedName("pinned_post_id") val pinnedPostId: Long? = null,
     @SerializedName("settings") val settings: ChannelSettings? = null,
-    @SerializedName("statistics") val statistics: ChannelStatistics? = null,
-    @SerializedName("admins") val admins: List<ChannelAdmin>? = null,
-    @SerializedName("category") val category: String? = null, // Категорія каналу
-    @SerializedName("link") val link: String? = null // Публічне посилання на канал
+    @SerializedName("category") val category: String? = null // Категорія каналу
 )
 
 /**
- * Пост у каналі
+ * Пост у каналі (з таблиці Wo_Messages)
  */
 data class ChannelPost(
     @SerializedName("id") val id: Long,
-    @SerializedName("channel_id") val channelId: Long,
     @SerializedName("author_id") val authorId: Long,
-    @SerializedName("author_name") val authorName: String,
-    @SerializedName("author_avatar") val authorAvatar: String,
     @SerializedName("text") val text: String,
     @SerializedName("media") val media: List<PostMedia>? = null,
     @SerializedName("created_time") val createdTime: Long,
-    @SerializedName("edited_time") val editedTime: Long? = null,
     @SerializedName("is_edited") val isEdited: Boolean = false,
     @SerializedName("is_pinned") val isPinned: Boolean = false,
     @SerializedName("views_count") val viewsCount: Int = 0,
-    @SerializedName("reactions") val reactions: List<PostReaction>? = null,
     @SerializedName("reactions_count") val reactionsCount: Int = 0,
-    @SerializedName("comments_count") val commentsCount: Int = 0,
-    @SerializedName("shares_count") val sharesCount: Int = 0,
-    @SerializedName("is_comments_enabled") val isCommentsEnabled: Boolean = true,
-    @SerializedName("forward_from_channel_id") val forwardFromChannelId: Long? = null,
-    @SerializedName("forward_from_channel_name") val forwardFromChannelName: String? = null,
-    @SerializedName("forward_from_post_id") val forwardFromPostId: Long? = null
+    @SerializedName("comments_count") val commentsCount: Int = 0
 )
 
 /**
- * Медіа у пості
+ * Медіа у пості (з таблиці Wo_Messages)
  */
 data class PostMedia(
-    @SerializedName("id") val id: String,
     @SerializedName("url") val url: String,
-    @SerializedName("type") val type: String, // "image", "video", "audio", "file", "voice"
-    @SerializedName("mime_type") val mimeType: String? = null,
-    @SerializedName("size") val size: Long? = null,
-    @SerializedName("duration") val duration: Long? = null,
-    @SerializedName("width") val width: Int? = null,
-    @SerializedName("height") val height: Int? = null,
-    @SerializedName("thumbnail") val thumbnail: String? = null,
-    @SerializedName("file_name") val fileName: String? = null
+    @SerializedName("type") val type: String, // "image", "video", "audio", "file"
+    @SerializedName("filename") val filename: String? = null
 )
 
 /**
- * Коментар до поста
+ * Коментар до поста (з таблиці Wo_MessageComments)
  */
 data class ChannelComment(
     @SerializedName("id") val id: Long,
-    @SerializedName("post_id") val postId: Long,
-    @SerializedName("channel_id") val channelId: Long,
-    @SerializedName("author_id") val authorId: Long,
-    @SerializedName("author_name") val authorName: String,
-    @SerializedName("author_avatar") val authorAvatar: String,
+    @SerializedName("user_id") val userId: Long,
     @SerializedName("text") val text: String,
-    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("time") val time: Long,
     @SerializedName("edited_time") val editedTime: Long? = null,
-    @SerializedName("is_edited") val isEdited: Boolean = false,
-    @SerializedName("is_deleted") val isDeleted: Boolean = false,
-    @SerializedName("reply_to_id") val replyToId: Long? = null,
-    @SerializedName("reply_to_author") val replyToAuthor: String? = null,
-    @SerializedName("reactions") val reactions: List<CommentReaction>? = null,
+    @SerializedName("reply_to_comment_id") val replyToCommentId: Long? = null,
     @SerializedName("reactions_count") val reactionsCount: Int = 0
 )
 

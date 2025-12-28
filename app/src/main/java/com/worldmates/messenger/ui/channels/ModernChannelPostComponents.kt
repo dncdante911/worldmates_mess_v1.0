@@ -1606,3 +1606,284 @@ fun ChannelSettingsDialog(
     )
 }
 
+/**
+ * Діалог детального перегляду поста
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PostDetailDialog(
+    post: ChannelPost,
+    comments: List<ChannelComment>,
+    isLoadingComments: Boolean,
+    currentUserId: Long,
+    isAdmin: Boolean,
+    onDismiss: () -> Unit,
+    onReactionClick: (String) -> Unit,
+    onAddComment: (String) -> Unit,
+    onDeleteComment: (Long) -> Unit,
+    onCommentReaction: (commentId: Long, emoji: String) -> Unit = { _, _ -> },
+    modifier: Modifier = Modifier
+) {
+    var commentText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = modifier.fillMaxWidth(),
+        title = {
+            Text(
+                "Деталі поста",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Автор поста
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!post.authorAvatar.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = post.authorAvatar,
+                            contentDescription = "Author Avatar",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF667eea)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF667eea)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = "Author",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF2C3E50)
+                        )
+                        Text(
+                            text = formatPostTime(post.createdTime),
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                // Текст поста
+                Text(
+                    text = post.text,
+                    fontSize = 15.sp,
+                    color = Color(0xFF2C3E50),
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                // Медіа (якщо є)
+                post.media?.forEach { media ->
+                    when (media.type) {
+                        "image" -> {
+                            AsyncImage(
+                                model = media.url,
+                                contentDescription = "Post image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 300.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .padding(bottom = 8.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+                // Статистика
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${post.viewsCount}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2C3E50)
+                        )
+                        Text(
+                            text = "Переглядів",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${post.reactionsCount}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2C3E50)
+                        )
+                        Text(
+                            text = "Реакцій",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${post.commentsCount}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2C3E50)
+                        )
+                        Text(
+                            text = "Коментарів",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                // Реакції
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ReactionEmojis.DEFAULT_REACTIONS.forEach { emoji ->
+                        OutlinedButton(
+                            onClick = { onReactionClick(emoji) },
+                            modifier = Modifier.size(40.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = CircleShape
+                        ) {
+                            Text(text = emoji, fontSize = 18.sp)
+                        }
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+                // Заголовок коментарів
+                Text(
+                    text = "Коментарі (${comments.size})",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2C3E50),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // Список коментарів
+                if (isLoadingComments) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (comments.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Коментарів ще немає",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        comments.take(5).forEach { comment ->
+                            CommentItem(
+                                comment = comment,
+                                canDelete = isAdmin || comment.userId == currentUserId,
+                                onDeleteClick = { onDeleteComment(comment.id) },
+                                onReactionClick = { emoji -> onCommentReaction(comment.id, emoji) }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        if (comments.size > 5) {
+                            Text(
+                                text = "і ще ${comments.size - 5} коментарів...",
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Поле додавання коментаря
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Додати коментар...") },
+                        maxLines = 3,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = {
+                            if (commentText.isNotBlank()) {
+                                onAddComment(commentText)
+                                commentText = ""
+                            }
+                        },
+                        enabled = commentText.isNotBlank()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Надіслати",
+                            tint = if (commentText.isNotBlank())
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрити")
+            }
+        }
+    )
+}

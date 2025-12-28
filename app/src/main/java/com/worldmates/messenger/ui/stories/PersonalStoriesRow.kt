@@ -191,8 +191,8 @@ fun StoryItem(
 
             // Аватар
             AsyncImage(
-                model = story.userData.avatar,
-                contentDescription = story.userData.name,
+                model = story.userData?.avatar,
+                contentDescription = story.userData?.name,
                 modifier = Modifier
                     .size(if (hasUnviewed) 58.dp else 60.dp)
                     .clip(CircleShape)
@@ -207,7 +207,7 @@ fun StoryItem(
 
         // Ім'я користувача
         Text(
-            text = story.userData.name,
+            text = story.userData?.name ?: "Unknown",
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,

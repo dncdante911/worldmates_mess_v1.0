@@ -279,7 +279,7 @@ fun StoryHeader(
     ) {
         // Аватар
         AsyncImage(
-            model = story.userData.avatar,
+            model = story.userData?.avatar,
             contentDescription = "Avatar",
             modifier = Modifier
                 .size(40.dp)
@@ -293,7 +293,7 @@ fun StoryHeader(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = story.userData.name,
+                    text = story.userData?.name ?: "Unknown",
                     color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
@@ -532,7 +532,7 @@ fun CommentItem(
         verticalAlignment = Alignment.Top
     ) {
         AsyncImage(
-            model = comment.userData.avatar,
+            model = comment.userData?.avatar,
             contentDescription = "Avatar",
             modifier = Modifier
                 .size(36.dp)
@@ -544,7 +544,7 @@ fun CommentItem(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = comment.userData.name,
+                text = comment.userData?.name ?: "Unknown",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )

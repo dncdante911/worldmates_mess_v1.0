@@ -15,7 +15,10 @@ if (php_sapi_name() !== 'cli') {
     die('This script can only be run from the command line.');
 }
 
-require_once('../../../assets/init.php');
+// Використовуємо __DIR__ для абсолютного шляху
+// Файл: /var/www/www-root/data/www/worldmates.club/api/v2/cron/delete_expired_stories.php
+// init.php: /var/www/www-root/data/www/worldmates.club/assets/init.php
+require_once(__DIR__ . '/../../../assets/init.php');
 
 global $sqlConnect, $db;
 

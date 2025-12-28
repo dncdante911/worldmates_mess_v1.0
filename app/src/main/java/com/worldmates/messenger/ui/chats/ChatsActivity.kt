@@ -74,6 +74,7 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var viewModel: ChatsViewModel
     private lateinit var groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel
     private lateinit var channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel
+    private lateinit var storyViewModel: com.worldmates.messenger.ui.stories.StoryViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +88,7 @@ class ChatsActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this).get(ChatsViewModel::class.java)
         groupsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.groups.GroupsViewModel::class.java)
         channelsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.channels.ChannelsViewModel::class.java)
+        storyViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.stories.StoryViewModel::class.java)
 
         setContent {
             WorldMatesThemedApp {
@@ -105,6 +107,7 @@ class ChatsActivity : AppCompatActivity() {
                     viewModel = viewModel,
                     groupsViewModel = groupsViewModel,
                     channelsViewModel = channelsViewModel,
+                    storyViewModel = storyViewModel,
                     onChatClick = { chat ->
                         navigateToMessages(chat)
                     },
@@ -131,6 +134,7 @@ class ChatsActivity : AppCompatActivity() {
         viewModel.fetchChats()
         groupsViewModel.fetchGroups()
         channelsViewModel.fetchSubscribedChannels()
+        storyViewModel.loadStories()
     }
 
     private fun navigateToMessages(chat: Chat) {

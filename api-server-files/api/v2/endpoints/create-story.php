@@ -36,6 +36,33 @@ if (empty($_POST['file_type'])) {
 }
 
 if (empty($error_code)) {
+    // Check user subscription limits
+    $is_pro = ($wo['user']['is_pro'] == 1);
+    $max_stories = $is_pro ? 15 : 2;
+    $max_video_duration = $is_pro ? 45 : 25;
+    $expire_hours = $is_pro ? 48 : 24;
+
+    // Count existing active stories
+    $existing_stories = $db->where('user_id', $wo['user']['id'])
+                          ->where('expire', time(), '>')
+                          ->getValue(T_USER_STORY, 'COUNT(*)');
+
+    if ($existing_stories >= $max_stories) {
+        $error_code    = 8;
+        $error_message = $is_pro ? 'You have reached the maximum limit of 15 stories' : 'Free users can only post up to 2 stories. Upgrade to premium for up to 15 stories.';
+    }
+
+    // Check video duration if it's a video
+    if (empty($error_code) && $_POST['file_type'] == 'video' && !empty($_POST['video_duration'])) {
+        $video_duration = (int)$_POST['video_duration'];
+        if ($video_duration > $max_video_duration) {
+            $error_code    = 9;
+            $error_message = $is_pro ? 'Video duration cannot exceed 45 seconds' : 'Free users can only upload videos up to 25 seconds. Upgrade to premium for videos up to 45 seconds.';
+        }
+    }
+}
+
+if (empty($error_code)) {
     $amazone_s3                   = $wo['config']['amazone_s3'];
     $wasabi_storage                   = $wo['config']['wasabi_storage'];
     $backblaze_storage                   = $wo['config']['backblaze_storage'];
@@ -45,10 +72,15 @@ if (empty($error_code)) {
     $story_title       = (!empty($_POST['story_title'])) ? Wo_Secure($_POST['story_title']) : '';
     $story_description = (!empty($_POST['story_description'])) ? Wo_Secure($_POST['story_description']) : '';
     $file_type         = Wo_Secure($_POST['file_type']);
+
+    // Calculate expire time based on subscription
+    $is_pro = ($wo['user']['is_pro'] == 1);
+    $expire_hours = $is_pro ? 48 : 24;
+
     $story_data        = array(
         'user_id' => $wo['user']['id'],
         'posted' => time(),
-        'expire' => time()+(60*60*24),
+        'expire' => time()+($expire_hours*60*60),
         'title' => $story_title,
         'description' => $story_description
     );
@@ -68,11 +100,14 @@ if (empty($error_code)) {
             $filename = $media['filename'];
         }
         if ($filename) {
+            $video_duration = (!empty($_POST['video_duration']) && is_numeric($_POST['video_duration'])) ? (int)$_POST['video_duration'] : 0;
+
             $sources[] = array(
                 'story_id' => $last_id,
                 'type' => Wo_Secure($file_type),
                 'filename' => $filename,
-                'expire' => time()+(60*60*24)
+                'expire' => time()+($expire_hours*60*60),
+                'duration' => $video_duration
             );
             $img_types     = array(
                 'image/png',

@@ -40,6 +40,7 @@ if (!empty($_POST['id']) && is_numeric($_POST['id']) && $_POST['id'] > 0) {
         }
     }
     $story->view_count = $db->where('story_id',$id)->where('user_id',$story->user_id,'!=')->getValue(T_STORY_SEEN,'COUNT(*)');
+    $story->comment_count = $db->where('story_id',$id)->getValue(T_STORY_COMMENTS,'COUNT(*)');
     $response_data = array(
 	    'api_status' => 200,
 	    'story' => $story

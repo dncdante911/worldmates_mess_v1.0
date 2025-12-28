@@ -26,9 +26,15 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.STRING(100),
       allowNull: true,
       defaultValue: ""
+    },
+    duration: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
     }
   }, {
     sequelize,
+    timestamps: false,
     tableName: 'Wo_UserStoryMedia'
   });
 };

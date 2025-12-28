@@ -148,6 +148,15 @@ fun ChannelDetailsScreen(
         }
     }
 
+    // Автоматичне оновлення контенту каналу кожні 15 секунд
+    LaunchedEffect(channelId) {
+        while (true) {
+            kotlinx.coroutines.delay(15000) // 15 секунд
+            // Тихе оновлення без показу індикатора завантаження
+            detailsViewModel.loadChannelPosts(channelId)
+        }
+    }
+
     Scaffold(
         floatingActionButton = {
             // FAB для створення поста (тільки для адмінів)

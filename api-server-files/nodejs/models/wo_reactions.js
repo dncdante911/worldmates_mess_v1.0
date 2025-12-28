@@ -33,6 +33,11 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: true,
       defaultValue: 0
     },
+    story_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
     reaction: {
       type: DataTypes.STRING(50),
       allowNull: true

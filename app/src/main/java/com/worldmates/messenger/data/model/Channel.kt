@@ -42,7 +42,8 @@ data class ChannelPost(
     @SerializedName("is_pinned") val isPinned: Boolean = false,
     @SerializedName("views_count") val viewsCount: Int = 0,
     @SerializedName("reactions_count") val reactionsCount: Int = 0,
-    @SerializedName("comments_count") val commentsCount: Int = 0
+    @SerializedName("comments_count") val commentsCount: Int = 0,
+    @SerializedName("reactions") val reactions: List<PostReaction>? = null
 )
 
 /**
@@ -60,6 +61,9 @@ data class PostMedia(
 data class ChannelComment(
     @SerializedName("id") val id: Long,
     @SerializedName("user_id") val userId: Long,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("user_name") val userName: String? = null,
+    @SerializedName("user_avatar") val userAvatar: String? = null,
     @SerializedName("text") val text: String,
     @SerializedName("time") val time: Long,
     @SerializedName("edited_time") val editedTime: Long? = null,

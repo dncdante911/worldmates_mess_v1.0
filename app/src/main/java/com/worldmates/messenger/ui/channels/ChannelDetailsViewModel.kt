@@ -861,4 +861,40 @@ class ChannelDetailsViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * Зареєструвати перегляд поста
+     */
+    fun registerPostView(
+        postId: Long,
+        onSuccess: (Int) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.registerPostView(
+                    accessToken = UserSession.accessToken!!,
+                    postId = postId
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d("ChannelDetailsVM", "Перегляд зареєстровано для поста $postId")
+                    onSuccess(0) // TODO: можна повертати views_count з response
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка реєстрації перегляду"
+                    Log.w("ChannelDetailsVM", "Помилка реєстрації перегляду: $errorMsg")
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                Log.e("ChannelDetailsVM", "Помилка реєстрації перегляду", e)
+                onError(errorMsg)
+            }
+        }
+    }
 }

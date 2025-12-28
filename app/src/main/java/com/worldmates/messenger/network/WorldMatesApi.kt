@@ -748,6 +748,15 @@ interface WorldMatesApi {
         @Field("reaction") reaction: String
     ): CreatePostResponse
 
+    // Register post view
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun registerPostView(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "register_post_view",
+        @Field("post_id") postId: Long
+    ): CreatePostResponse
+
     // Channel Admin Management
     @FormUrlEncoded
     @POST("/api/v2/channels.php")

@@ -47,6 +47,44 @@ data class Story(
         val elapsed = (System.currentTimeMillis() / 1000) - posted
         return ((elapsed.toFloat() / totalTime.toFloat()) * 100).toInt().coerceIn(0, 100)
     }
+
+    // ========== Helper properties for UI ==========
+
+    /**
+     * Всі медіа файли (об'єднані images + videos)
+     */
+    val mediaItems: List<StoryMedia>
+        get() = (images ?: emptyList()) + (videos ?: emptyList())
+
+    /**
+     * Чи переглянута story
+     */
+    val seen: Boolean
+        get() = isViewed == 1
+
+    /**
+     * Кількість переглядів
+     */
+    val viewsCount: Int
+        get() = viewCount
+
+    /**
+     * Кількість коментарів
+     */
+    val commentsCount: Int
+        get() = commentCount
+
+    /**
+     * Реакції на story
+     */
+    val reactions: StoryReactions
+        get() = reaction ?: StoryReactions()
+
+    /**
+     * Час публікації (для сумісності)
+     */
+    val time: Long
+        get() = posted
 }
 
 /**
@@ -87,6 +125,10 @@ data class StoryUser(
 
     fun isProUser(): Boolean = isPro == 1
     fun isVerified(): Boolean = verified == 1
+
+    // Helper property для UI
+    val name: String
+        get() = getFullName()
 }
 
 /**
@@ -134,6 +176,10 @@ data class StoryReactions(
     fun getTotalReactions(): Int {
         return like + love + haha + wow + sad + angry
     }
+
+    // Helper property для UI
+    val total: Int
+        get() = getTotalReactions()
 }
 
 /**
@@ -145,8 +191,16 @@ data class StoryViewer(
     @SerializedName("first_name") val firstName: String? = null,
     @SerializedName("last_name") val lastName: String? = null,
     @SerializedName("avatar") val avatar: String? = null,
+    @SerializedName("time") val time: Long = System.currentTimeMillis() / 1000, // Unix timestamp
     @SerializedName("offset_id") val offsetId: Long? = null
-)
+) {
+    val name: String
+        get() = when {
+            !firstName.isNullOrBlank() && !lastName.isNullOrBlank() -> "$firstName $lastName"
+            !firstName.isNullOrBlank() -> firstName
+            else -> username
+        }
+}
 
 /**
  * Обмеження для Stories залежно від типу підписки

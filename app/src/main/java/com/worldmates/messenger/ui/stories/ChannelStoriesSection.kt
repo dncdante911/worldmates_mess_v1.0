@@ -1,6 +1,7 @@
 package com.worldmates.messenger.ui.stories
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -89,7 +90,7 @@ fun ChannelStoriesSection(
                     stories = stories,
                     onClick = {
                         context.startActivity(Intent(context, StoryViewerActivity::class.java).apply {
-                            putExtra("user_id", channel.userId)
+                            putExtra("user_id", channel.ownerId)
                             putExtra("is_channel_story", true)
                         })
                     }
@@ -270,7 +271,7 @@ fun CompactChannelStoriesRow(
                     storiesCount = stories.size,
                     onClick = {
                         context.startActivity(Intent(context, StoryViewerActivity::class.java).apply {
-                            putExtra("user_id", channel.userId)
+                            putExtra("user_id", channel.ownerId)
                             putExtra("is_channel_story", true)
                         })
                     }

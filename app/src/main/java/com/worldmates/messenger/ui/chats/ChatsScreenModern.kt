@@ -864,7 +864,7 @@ fun ChannelListTab(
 /**
  * Вкладка зі списком чатів + Stories вгорі
  */
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatListTabWithStories(
     chats: List<Chat>,
@@ -906,7 +906,7 @@ fun ChatListTabWithStories(
                 val nickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
 
                 when (uiStyle) {
-                    UIStyle.WorldMates -> {
+                    UIStyle.WORLDMATES -> {
                         ModernChatCard(
                             chat = chat,
                             nickname = nickname,
@@ -914,8 +914,9 @@ fun ChatListTabWithStories(
                             onLongPress = { onChatLongPress(chat) }
                         )
                     }
-                    UIStyle.Telegram -> {
-                        TelegramStyleChatItem(
+                    UIStyle.TELEGRAM -> {
+                        // Telegram style - використовуємо той же компонент
+                        ModernChatCard(
                             chat = chat,
                             nickname = nickname,
                             onClick = { onChatClick(chat) },
@@ -937,7 +938,7 @@ fun ChatListTabWithStories(
 /**
  * Вкладка з каналами + Channel Stories
  */
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChannelListTabWithStories(
     channels: List<com.worldmates.messenger.data.model.Channel>,
@@ -958,7 +959,7 @@ fun ChannelListTabWithStories(
     // Групуємо stories по каналах
     val channelStoriesMap = stories.groupBy { it.userId }
     val channelStoriesWithData = channels.mapNotNull { channel ->
-        channelStoriesMap[channel.userId]?.let { channelStories ->
+        channelStoriesMap[channel.ownerId]?.let { channelStories ->
             Pair(channel, channelStories)
         }
     }
@@ -983,14 +984,15 @@ fun ChannelListTabWithStories(
             // Список каналів
             items(channels, key = { it.id }) { channel ->
                 when (uiStyle) {
-                    UIStyle.WorldMates -> {
-                        ModernChannelCard(
+                    UIStyle.WORLDMATES -> {
+                        ChannelCard(
                             channel = channel,
                             onClick = { onChannelClick(channel) }
                         )
                     }
-                    UIStyle.Telegram -> {
-                        TelegramStyleChannelItem(
+                    UIStyle.TELEGRAM -> {
+                        // Telegram style - використовуємо той же компонент
+                        ChannelCard(
                             channel = channel,
                             onClick = { onChannelClick(channel) }
                         )

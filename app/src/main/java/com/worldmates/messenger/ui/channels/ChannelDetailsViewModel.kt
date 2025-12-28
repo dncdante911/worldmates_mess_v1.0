@@ -772,4 +772,49 @@ class ChannelDetailsViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * Оновлює інформацію про канал (назва, опис, username)
+     */
+    fun updateChannel(
+        channelId: Long,
+        name: String? = null,
+        description: String? = null,
+        username: String? = null,
+        onSuccess: (Channel) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.updateChannel(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    name = name,
+                    description = description,
+                    username = username
+                )
+
+                if (response.apiStatus == 200 && response.channel != null) {
+                    _channel.value = response.channel
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Канал оновлено: ${response.channel.name}")
+                    onSuccess(response.channel)
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка оновлення каналу"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка оновлення каналу", e)
+                onError(errorMsg)
+            }
+        }
+    }
 }

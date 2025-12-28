@@ -4,8 +4,10 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -1212,6 +1214,116 @@ fun AddAdminDialog(
                 enabled = userIdText.toLongOrNull() != null
             ) {
                 Text("Додати")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Скасувати") }
+        }
+    )
+}
+
+// ==================== EDIT CHANNEL INFO DIALOG ====================
+
+/**
+ * Діалог редагування інформації про канал
+ */
+@Composable
+fun EditChannelInfoDialog(
+    channel: Channel,
+    onDismiss: () -> Unit,
+    onSave: (name: String, description: String, username: String) -> Unit
+) {
+    var channelName by remember { mutableStateOf(channel.name) }
+    var channelDescription by remember { mutableStateOf(channel.description ?: "") }
+    var channelUsername by remember { mutableStateOf(channel.username ?: "") }
+    var usernameError by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Редагувати канал",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Назва каналу
+                OutlinedTextField(
+                    value = channelName,
+                    onValueChange = { channelName = it },
+                    label = { Text("Назва каналу") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = {
+                        Icon(Icons.Default.Title, contentDescription = null)
+                    }
+                )
+
+                // Username
+                OutlinedTextField(
+                    value = channelUsername,
+                    onValueChange = {
+                        val cleaned = it.trim().lowercase()
+                        channelUsername = cleaned
+                        usernameError = when {
+                            cleaned.isEmpty() -> null
+                            !cleaned.matches(Regex("^[a-z0-9_]+$")) -> "Тільки літери, цифри та _"
+                            cleaned.length < 5 -> "Мінімум 5 символів"
+                            else -> null
+                        }
+                    },
+                    label = { Text("Username (@username)") },
+                    placeholder = { Text("channel_name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = usernameError != null,
+                    supportingText = {
+                        if (usernameError != null) {
+                            Text(usernameError!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.AlternateEmail, contentDescription = null)
+                    }
+                )
+
+                // Опис
+                OutlinedTextField(
+                    value = channelDescription,
+                    onValueChange = { channelDescription = it },
+                    label = { Text("Опис") },
+                    placeholder = { Text("Розкажіть про ваш канал...") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 100.dp),
+                    maxLines = 4,
+                    leadingIcon = {
+                        Icon(Icons.Default.Description, contentDescription = null)
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (channelName.isNotBlank() && usernameError == null) {
+                        onSave(
+                            channelName.trim(),
+                            channelDescription.trim(),
+                            channelUsername.trim()
+                        )
+                    }
+                },
+                enabled = channelName.isNotBlank() && usernameError == null
+            ) {
+                Text("Зберегти")
             }
         },
         dismissButton = {

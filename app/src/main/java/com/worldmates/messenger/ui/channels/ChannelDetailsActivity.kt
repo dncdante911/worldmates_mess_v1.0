@@ -115,6 +115,8 @@ fun ChannelDetailsScreen(
     var showEditPostDialog by remember { mutableStateOf(false) }
     var showStatisticsDialog by remember { mutableStateOf(false) }
     var showAdminsDialog by remember { mutableStateOf(false) }
+    var showEditChannelDialog by remember { mutableStateOf(false) }
+    var showChannelMenuDialog by remember { mutableStateOf(false) }
     var selectedPostForOptions by remember { mutableStateOf<ChannelPost?>(null) }
     var refreshing by remember { mutableStateOf(false) }
 
@@ -198,7 +200,7 @@ fun ChannelDetailsScreen(
                             channel = channel,
                             onBackClick = onBackPressed,
                             onSettingsClick = if (channel.isAdmin) {
-                                { Toast.makeText(context, "Налаштування (в розробці)", Toast.LENGTH_SHORT).show() }
+                                { showChannelMenuDialog = true }
                             } else null,
                             onSubscribersClick = {
                                 detailsViewModel.loadSubscribers(channelId)
@@ -566,6 +568,113 @@ fun ChannelDetailsScreen(
                         },
                         onError = { error ->
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+            )
+        }
+
+        // Меню каналу (тільки для адмінів)
+        if (showChannelMenuDialog && channel?.isAdmin == true) {
+            AlertDialog(
+                onDismissRequest = { showChannelMenuDialog = false },
+                title = {
+                    Text("Управління каналом", fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Редагувати інформацію
+                        TextButton(
+                            onClick = {
+                                showChannelMenuDialog = false
+                                showEditChannelDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Редагувати інформацію")
+                            }
+                        }
+
+                        // Статистика
+                        TextButton(
+                            onClick = {
+                                showChannelMenuDialog = false
+                                detailsViewModel.loadStatistics(channelId)
+                                showStatisticsDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.BarChart, contentDescription = null)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Статистика")
+                            }
+                        }
+
+                        // Адміністратори
+                        if (channel.isOwner) {
+                            TextButton(
+                                onClick = {
+                                    showChannelMenuDialog = false
+                                    detailsViewModel.loadChannelDetails(channelId)
+                                    showAdminsDialog = true
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Адміністратори")
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showChannelMenuDialog = false }) {
+                        Text("Закрити")
+                    }
+                }
+            )
+        }
+
+        // Діалог редагування інформації про канал
+        if (showEditChannelDialog && channel?.isAdmin == true) {
+            EditChannelInfoDialog(
+                channel = channel,
+                onDismiss = { showEditChannelDialog = false },
+                onSave = { name, description, username ->
+                    detailsViewModel.updateChannel(
+                        channelId = channelId,
+                        name = name,
+                        description = description,
+                        username = username,
+                        onSuccess = { updatedChannel ->
+                            Toast.makeText(context, "Канал оновлено!", Toast.LENGTH_SHORT).show()
+                            showEditChannelDialog = false
+                            detailsViewModel.loadChannelDetails(channelId)
+                        },
+                        onError = { error ->
+                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_LONG).show()
                         }
                     )
                 }

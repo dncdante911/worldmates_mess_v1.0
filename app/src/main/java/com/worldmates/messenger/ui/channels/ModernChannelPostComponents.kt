@@ -58,27 +58,39 @@ fun ChannelPostCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Аватар каналу (TODO: завантажувати дані автора з API)
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF667eea)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Campaign,
-                            contentDescription = "Channel",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                    // Аватар автора
+                    if (!post.authorAvatar.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = post.authorAvatar,
+                            contentDescription = "Author Avatar",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF667eea)),
+                            contentScale = ContentScale.Crop
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF667eea)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = "Author",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(10.dp))
 
                     Column {
                         Text(
-                            text = "Пост каналу", // Змінено з "Channel Post"
+                            text = post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF2C3E50)

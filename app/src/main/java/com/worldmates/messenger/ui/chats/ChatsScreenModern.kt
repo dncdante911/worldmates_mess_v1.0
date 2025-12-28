@@ -710,6 +710,17 @@ fun ChannelListTab(
             }
         }
 
+        // Автоматичне оновлення списку каналів кожні 20 секунд (тільки якщо не в режимі пошуку)
+        LaunchedEffect(Unit) {
+            while (true) {
+                kotlinx.coroutines.delay(20000) // 20 секунд
+                if (localQuery.isEmpty()) {
+                    // Тихе оновлення без показу індикатора
+                    channelsViewModel.fetchChannels()
+                }
+            }
+        }
+
         com.worldmates.messenger.ui.channels.ChannelSearchBar(
             searchQuery = localQuery,
             onQueryChange = { query ->

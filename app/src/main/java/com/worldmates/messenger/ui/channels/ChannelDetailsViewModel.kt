@@ -817,4 +817,52 @@ class ChannelDetailsViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * Оновлює налаштування каналу
+     */
+    fun updateChannelSettings(
+        channelId: Long,
+        settings: ChannelSettings,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.updateChannelSettings(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    allowComments = settings.allowComments,
+                    allowReactions = settings.allowReactions,
+                    allowShares = settings.allowShares,
+                    showStatistics = settings.showStatistics,
+                    notifySubscribersNewPost = settings.notifySubscribersNewPost,
+                    autoDeletePostsDays = settings.autoDeletePostsDays,
+                    signatureEnabled = settings.signatureEnabled,
+                    commentsModeration = settings.commentsModeration,
+                    slowModeSeconds = settings.slowModeSeconds
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Налаштування оновлено")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка оновлення налаштувань"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка оновлення налаштувань", e)
+                onError(errorMsg)
+            }
+        }
+    }
 }

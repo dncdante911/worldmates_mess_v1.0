@@ -117,6 +117,7 @@ fun ChannelDetailsScreen(
     var showAdminsDialog by remember { mutableStateOf(false) }
     var showEditChannelDialog by remember { mutableStateOf(false) }
     var showChannelMenuDialog by remember { mutableStateOf(false) }
+    var showChannelSettingsDialog by remember { mutableStateOf(false) }
     var selectedPostForOptions by remember { mutableStateOf<ChannelPost?>(null) }
     var refreshing by remember { mutableStateOf(false) }
 
@@ -605,6 +606,25 @@ fun ChannelDetailsScreen(
                             }
                         }
 
+                        // Налаштування
+                        TextButton(
+                            onClick = {
+                                showChannelMenuDialog = false
+                                showChannelSettingsDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = null)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Налаштування")
+                            }
+                        }
+
                         // Статистика
                         TextButton(
                             onClick = {
@@ -671,6 +691,28 @@ fun ChannelDetailsScreen(
                         onSuccess = { updatedChannel ->
                             Toast.makeText(context, "Канал оновлено!", Toast.LENGTH_SHORT).show()
                             showEditChannelDialog = false
+                            detailsViewModel.loadChannelDetails(channelId)
+                        },
+                        onError = { error ->
+                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_LONG).show()
+                        }
+                    )
+                }
+            )
+        }
+
+        // Діалог налаштувань каналу
+        if (showChannelSettingsDialog && channel?.isAdmin == true) {
+            ChannelSettingsDialog(
+                currentSettings = channel.settings,
+                onDismiss = { showChannelSettingsDialog = false },
+                onSave = { settings ->
+                    detailsViewModel.updateChannelSettings(
+                        channelId = channelId,
+                        settings = settings,
+                        onSuccess = {
+                            Toast.makeText(context, "Налаштування збережено!", Toast.LENGTH_SHORT).show()
+                            showChannelSettingsDialog = false
                             detailsViewModel.loadChannelDetails(channelId)
                         },
                         onError = { error ->

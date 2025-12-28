@@ -1332,3 +1332,273 @@ fun EditChannelInfoDialog(
     )
 }
 
+// ==================== CHANNEL SETTINGS DIALOG ====================
+
+/**
+ * Діалог налаштувань каналу
+ */
+@Composable
+fun ChannelSettingsDialog(
+    currentSettings: ChannelSettings?,
+    onDismiss: () -> Unit,
+    onSave: (ChannelSettings) -> Unit
+) {
+    // Якщо налаштування ще не завантажені, використовуємо дефолтні
+    val defaultSettings = currentSettings ?: ChannelSettings()
+
+    var allowComments by remember { mutableStateOf(defaultSettings.allowComments) }
+    var allowReactions by remember { mutableStateOf(defaultSettings.allowReactions) }
+    var allowShares by remember { mutableStateOf(defaultSettings.allowShares) }
+    var showStatistics by remember { mutableStateOf(defaultSettings.showStatistics) }
+    var notifySubscribers by remember { mutableStateOf(defaultSettings.notifySubscribersNewPost) }
+    var signatureEnabled by remember { mutableStateOf(defaultSettings.signatureEnabled) }
+    var commentsModeration by remember { mutableStateOf(defaultSettings.commentsModeration) }
+    var slowModeSeconds by remember { mutableStateOf(defaultSettings.slowModeSeconds?.toString() ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Налаштування каналу",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Публікації",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color(0xFF667eea)
+                )
+
+                // Підпис автора
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Підпис автора поста", fontSize = 14.sp)
+                        Text(
+                            "Показувати ім'я автора в постах",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = signatureEnabled,
+                        onCheckedChange = { signatureEnabled = it }
+                    )
+                }
+
+                Divider()
+
+                Text(
+                    text = "Інтерактивність",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color(0xFF667eea)
+                )
+
+                // Коментарі
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Дозволити коментарі", fontSize = 14.sp)
+                        Text(
+                            "Підписники можуть коментувати пости",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = allowComments,
+                        onCheckedChange = { allowComments = it }
+                    )
+                }
+
+                // Реакції
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Дозволити реакції", fontSize = 14.sp)
+                        Text(
+                            "Підписники можуть ставити реакції",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = allowReactions,
+                        onCheckedChange = { allowReactions = it }
+                    )
+                }
+
+                // Поширення
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Дозволити поширення", fontSize = 14.sp)
+                        Text(
+                            "Можна репостити пости каналу",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = allowShares,
+                        onCheckedChange = { allowShares = it }
+                    )
+                }
+
+                Divider()
+
+                Text(
+                    text = "Модерація",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color(0xFF667eea)
+                )
+
+                // Модерація коментарів
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Модерація коментарів", fontSize = 14.sp)
+                        Text(
+                            "Коментарі потребують схвалення",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = commentsModeration,
+                        onCheckedChange = { commentsModeration = it }
+                    )
+                }
+
+                // Повільний режим
+                OutlinedTextField(
+                    value = slowModeSeconds,
+                    onValueChange = {
+                        if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                            slowModeSeconds = it
+                        }
+                    },
+                    label = { Text("Повільний режим (секунди)") },
+                    placeholder = { Text("0 = вимкнено") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    supportingText = {
+                        Text(
+                            "Затримка між коментарями (0-300 сек)",
+                            fontSize = 11.sp,
+                            color = Color.Gray
+                        )
+                    }
+                )
+
+                Divider()
+
+                Text(
+                    text = "Сповіщення та статистика",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color(0xFF667eea)
+                )
+
+                // Сповіщення про нові пости
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Сповіщення про пости", fontSize = 14.sp)
+                        Text(
+                            "Надсилати push-сповіщення підписникам",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = notifySubscribers,
+                        onCheckedChange = { notifySubscribers = it }
+                    )
+                }
+
+                // Показувати статистику
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Показувати статистику", fontSize = 14.sp)
+                        Text(
+                            "Підписники бачать статистику каналу",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = showStatistics,
+                        onCheckedChange = { showStatistics = it }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val slowMode = slowModeSeconds.toIntOrNull()
+                    val validSlowMode = when {
+                        slowMode == null || slowMode < 0 -> null
+                        slowMode > 300 -> 300
+                        else -> slowMode
+                    }
+
+                    val updatedSettings = ChannelSettings(
+                        allowComments = allowComments,
+                        allowReactions = allowReactions,
+                        allowShares = allowShares,
+                        showStatistics = showStatistics,
+                        showViewsCount = defaultSettings.showViewsCount,
+                        notifySubscribersNewPost = notifySubscribers,
+                        autoDeletePostsDays = defaultSettings.autoDeletePostsDays,
+                        signatureEnabled = signatureEnabled,
+                        commentsModeration = commentsModeration,
+                        allowForwarding = defaultSettings.allowForwarding,
+                        slowModeSeconds = validSlowMode
+                    )
+                    onSave(updatedSettings)
+                }
+            ) {
+                Text("Зберегти")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Скасувати") }
+        }
+    )
+}
+

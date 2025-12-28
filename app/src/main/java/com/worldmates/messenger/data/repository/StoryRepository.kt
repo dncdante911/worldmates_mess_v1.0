@@ -5,10 +5,10 @@ import android.net.Uri
 import android.util.Log
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.*
-import com.worldmates.messenger.network.MediaUploader
 import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.StoriesApiService
 import com.worldmates.messenger.network.StoryReactionType
+import com.worldmates.messenger.utils.FileUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -78,15 +78,14 @@ class StoryRepository(private val context: Context) {
             _isLoading.value = true
 
             // Перевірка обмежень підписки
-            val user = UserSession.currentUser
-            val limits = StoryLimits.forUser(user?.isPro == 1)
+            val limits = StoryLimits.forUser(UserSession.isPro == 1)
 
             // Якщо це відео, перевіряємо тривалість
             if (fileType == "video" && videoDuration != null) {
                 if (videoDuration > limits.maxVideoDuration) {
                     _isLoading.value = false
                     return Result.failure(Exception(
-                        if (user?.isPro == 1) {
+                        if (UserSession.isPro == 1) {
                             "Тривалість відео не може перевищувати ${limits.maxVideoDuration} секунд"
                         } else {
                             "Для безкоштовних користувачів макс. ${limits.maxVideoDuration} сек. Оформіть підписку для відео до 45 сек."
@@ -96,7 +95,7 @@ class StoryRepository(private val context: Context) {
             }
 
             // Конвертуємо файл
-            val mediaFile = MediaUploader.getFileFromUri(context, mediaUri)
+            val mediaFile = FileUtils.getFileFromUri(context, mediaUri)
                 ?: return Result.failure(Exception("Не вдалося прочитати файл"))
 
             val requestFile = mediaFile.asRequestBody("multipart/form-data".toMediaTypeOrNull())
@@ -110,10 +109,9 @@ class StoryRepository(private val context: Context) {
 
             // Якщо є cover для відео
             val coverPart = coverUri?.let { uri ->
-                val coverFile = MediaUploader.getFileFromUri(context, uri)
-                coverFile?.let {
-                    val coverRequestFile = it.asRequestBody("multipart/form-data".toMediaTypeOrNull())
-                    MultipartBody.Part.createFormData("cover", it.name, coverRequestFile)
+                FileUtils.getFileFromUri(context, uri)?.let { coverFile ->
+                    val coverRequestFile = coverFile.asRequestBody("multipart/form-data".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData("cover", coverFile.name, coverRequestFile)
                 }
             }
 

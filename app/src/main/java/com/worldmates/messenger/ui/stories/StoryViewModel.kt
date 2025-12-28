@@ -58,7 +58,7 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
      * Оновити обмеження користувача
      */
     private fun updateUserLimits() {
-        val isPro = UserSession.currentUser?.isPro == 1
+        val isPro = UserSession.isPro == 1
         _userLimits.value = StoryLimits.forUser(isPro)
         Log.d(TAG, "User limits updated: isPro=$isPro, maxStories=${_userLimits.value.maxStories}")
     }
@@ -95,7 +95,7 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         // Перевірка обмежень
         if (!canCreateStory()) {
-            _error.value = if (UserSession.currentUser?.isPro == 1) {
+            _error.value = if (UserSession.isPro == 1) {
                 "Ви досягли максимуму ${_userLimits.value.maxStories} stories"
             } else {
                 "Безкоштовні користувачі можуть мати макс. ${_userLimits.value.maxStories} stories. Оформіть підписку!"
@@ -106,7 +106,7 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
         // Перевірка тривалості відео
         if (fileType == "video" && videoDuration != null) {
             if (videoDuration > _userLimits.value.maxVideoDuration) {
-                _error.value = if (UserSession.currentUser?.isPro == 1) {
+                _error.value = if (UserSession.isPro == 1) {
                     "Максимальна тривалість відео: ${_userLimits.value.maxVideoDuration} сек"
                 } else {
                     "Безкоштовні користувачі можуть завантажити відео до ${_userLimits.value.maxVideoDuration} сек. Оформіть підписку!"

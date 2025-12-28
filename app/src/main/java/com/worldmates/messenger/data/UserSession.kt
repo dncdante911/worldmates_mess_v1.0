@@ -10,6 +10,7 @@ object UserSession {
     private const val KEY_USER_ID = "user_id"
     private const val KEY_USERNAME = "username"
     private const val KEY_AVATAR = "avatar"
+    private const val KEY_IS_PRO = "is_pro"
 
     private val prefs: SharedPreferences by lazy {
         WMApplication.instance.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -31,15 +32,20 @@ object UserSession {
         get() = prefs.getString(KEY_AVATAR, null)
         set(value) = prefs.edit().putString(KEY_AVATAR, value).apply()
 
+    var isPro: Int
+        get() = prefs.getInt(KEY_IS_PRO, 0)
+        set(value) = prefs.edit().putInt(KEY_IS_PRO, value).apply()
+
     val isLoggedIn: Boolean
         get() = !accessToken.isNullOrEmpty() && userId > 0
 
-    fun saveSession(token: String, id: Long, username: String? = null, avatar: String? = null) {
+    fun saveSession(token: String, id: Long, username: String? = null, avatar: String? = null, isPro: Int = 0) {
         prefs.edit().apply {
             putString(KEY_ACCESS_TOKEN, token)
             putLong(KEY_USER_ID, id)
             putString(KEY_USERNAME, username)
             putString(KEY_AVATAR, avatar)
+            putInt(KEY_IS_PRO, isPro)
             commit() // Синхронное сохранение, чтобы токен гарантированно записался
         }
     }

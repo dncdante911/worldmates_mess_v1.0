@@ -600,7 +600,7 @@ fun ChannelDetailsScreen(
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Create, contentDescription = null)
+                                Icon(Icons.Default.Edit, contentDescription = null)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text("Редагувати інформацію")
                             }
@@ -619,7 +619,7 @@ fun ChannelDetailsScreen(
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Build, contentDescription = null)
+                                Icon(Icons.Default.Settings, contentDescription = null)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text("Налаштування")
                             }
@@ -639,7 +639,7 @@ fun ChannelDetailsScreen(
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.DateRange, contentDescription = null)
+                                Icon(Icons.Default.Info, contentDescription = null)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text("Статистика")
                             }
@@ -660,7 +660,7 @@ fun ChannelDetailsScreen(
                                     horizontalArrangement = Arrangement.Start,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Person, contentDescription = null)
+                                    Icon(Icons.Default.AccountCircle, contentDescription = null)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text("Адміністратори")
                                 }

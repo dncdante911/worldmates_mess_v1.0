@@ -1,0 +1,469 @@
+package com.worldmates.messenger.data.repository
+
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import com.worldmates.messenger.data.UserSession
+import com.worldmates.messenger.data.model.*
+import com.worldmates.messenger.network.MediaUploader
+import com.worldmates.messenger.network.RetrofitClient
+import com.worldmates.messenger.network.StoriesApiService
+import com.worldmates.messenger.network.StoryReactionType
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.Retrofit
+import java.io.File
+
+/**
+ * Репозиторій для роботи зі Stories
+ * Обробляє всі операції зі stories: створення, перегляд, коментування, реакції
+ */
+class StoryRepository(private val context: Context) {
+
+    private val TAG = "StoryRepository"
+
+    // API сервіс для stories
+    private val storiesApi: StoriesApiService by lazy {
+        RetrofitClient.retrofit.create(StoriesApiService::class.java)
+    }
+
+    // Поточний список stories
+    private val _stories = MutableStateFlow<List<Story>>(emptyList())
+    val stories: StateFlow<List<Story>> = _stories
+
+    // Поточна активна story
+    private val _currentStory = MutableStateFlow<Story?>(null)
+    val currentStory: StateFlow<Story?> = _currentStory
+
+    // Коментарі поточної story
+    private val _comments = MutableStateFlow<List<StoryComment>>(emptyList())
+    val comments: StateFlow<List<StoryComment>> = _comments
+
+    // Перегляди поточної story
+    private val _viewers = MutableStateFlow<List<StoryViewer>>(emptyList())
+    val viewers: StateFlow<List<StoryViewer>> = _viewers
+
+    // Стан завантаження
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    // ==================== STORIES BASIC ====================
+
+    /**
+     * Створити нову story
+     * @param mediaUri URI медіа файлу (фото або відео)
+     * @param fileType Тип файлу: "image" або "video"
+     * @param title Заголовок story (опціонально)
+     * @param description Опис story (опціонально)
+     * @param videoDuration Тривалість відео в секундах (для відео)
+     * @param coverUri URI обкладинки для відео (опціонально)
+     */
+    suspend fun createStory(
+        mediaUri: Uri,
+        fileType: String,
+        title: String? = null,
+        description: String? = null,
+        videoDuration: Int? = null,
+        coverUri: Uri? = null
+    ): Result<CreateStoryResponse> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            _isLoading.value = true
+
+            // Перевірка обмежень підписки
+            val user = UserSession.currentUser
+            val limits = StoryLimits.forUser(user?.isPro == 1)
+
+            // Якщо це відео, перевіряємо тривалість
+            if (fileType == "video" && videoDuration != null) {
+                if (videoDuration > limits.maxVideoDuration) {
+                    _isLoading.value = false
+                    return Result.failure(Exception(
+                        if (user?.isPro == 1) {
+                            "Тривалість відео не може перевищувати ${limits.maxVideoDuration} секунд"
+                        } else {
+                            "Для безкоштовних користувачів макс. ${limits.maxVideoDuration} сек. Оформіть підписку для відео до 45 сек."
+                        }
+                    ))
+                }
+            }
+
+            // Конвертуємо файл
+            val mediaFile = MediaUploader.getFileFromUri(context, mediaUri)
+                ?: return Result.failure(Exception("Не вдалося прочитати файл"))
+
+            val requestFile = mediaFile.asRequestBody("multipart/form-data".toMediaTypeOrNull())
+            val filePart = MultipartBody.Part.createFormData("file", mediaFile.name, requestFile)
+
+            // Створюємо тіло запиту
+            val fileTypeBody = fileType.toRequestBody("text/plain".toMediaTypeOrNull())
+            val titleBody = title?.toRequestBody("text/plain".toMediaTypeOrNull())
+            val descriptionBody = description?.toRequestBody("text/plain".toMediaTypeOrNull())
+            val durationBody = videoDuration?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            // Якщо є cover для відео
+            val coverPart = coverUri?.let { uri ->
+                val coverFile = MediaUploader.getFileFromUri(context, uri)
+                coverFile?.let {
+                    val coverRequestFile = it.asRequestBody("multipart/form-data".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData("cover", it.name, coverRequestFile)
+                }
+            }
+
+            val response = storiesApi.createStory(
+                accessToken = UserSession.accessToken!!,
+                file = filePart,
+                fileType = fileTypeBody,
+                storyTitle = titleBody,
+                storyDescription = descriptionBody,
+                videoDuration = durationBody,
+                cover = coverPart
+            )
+
+            _isLoading.value = false
+
+            if (response.apiStatus == 200) {
+                // Оновлюємо список stories
+                fetchStories()
+                Log.d(TAG, "Story створена: ${response.storyId}")
+                Result.success(response)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка створення story"))
+            }
+        } catch (e: Exception) {
+            _isLoading.value = false
+            Log.e(TAG, "Помилка створення story", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Отримати список активних stories
+     */
+    suspend fun fetchStories(limit: Int = 35): Result<List<Story>> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            _isLoading.value = true
+
+            val response = storiesApi.getStories(
+                accessToken = UserSession.accessToken!!,
+                limit = limit
+            )
+
+            _isLoading.value = false
+
+            if (response.apiStatus == 200 && response.stories != null) {
+                _stories.value = response.stories.filter { !it.isExpired() }
+                Log.d(TAG, "Завантажено ${response.stories.size} stories")
+                Result.success(_stories.value)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка завантаження stories"))
+            }
+        } catch (e: Exception) {
+            _isLoading.value = false
+            Log.e(TAG, "Помилка завантаження stories", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Отримати story за ID
+     */
+    suspend fun getStoryById(storyId: Long): Result<Story> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.getStoryById(
+                accessToken = UserSession.accessToken!!,
+                storyId = storyId
+            )
+
+            if (response.apiStatus == 200 && response.story != null) {
+                _currentStory.value = response.story
+                Result.success(response.story)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Story не знайдена"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка завантаження story", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Отримати stories користувача
+     */
+    suspend fun getUserStories(userId: Long, limit: Int = 35): Result<List<Story>> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.getUserStories(
+                accessToken = UserSession.accessToken!!,
+                userId = userId,
+                limit = limit
+            )
+
+            if (response.apiStatus == 200 && response.stories != null) {
+                Result.success(response.stories.filter { !it.isExpired() })
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка завантаження stories користувача"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка завантаження stories користувача", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Видалити story
+     */
+    suspend fun deleteStory(storyId: Long): Result<DeleteStoryResponse> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.deleteStory(
+                accessToken = UserSession.accessToken!!,
+                storyId = storyId
+            )
+
+            if (response.apiStatus == 200) {
+                // Видаляємо зі списку
+                _stories.value = _stories.value.filter { it.id != storyId }
+                Log.d(TAG, "Story видалена: $storyId")
+                Result.success(response)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка видалення story"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка видалення story", e)
+            Result.failure(e)
+        }
+    }
+
+    // ==================== STORY VIEWS ====================
+
+    /**
+     * Отримати перегляди story
+     */
+    suspend fun getStoryViews(storyId: Long, limit: Int = 20, offset: Int = 0): Result<List<StoryViewer>> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.getStoryViews(
+                accessToken = UserSession.accessToken!!,
+                storyId = storyId,
+                limit = limit,
+                offset = offset
+            )
+
+            if (response.apiStatus == 200 && response.users != null) {
+                if (offset == 0) {
+                    _viewers.value = response.users
+                } else {
+                    _viewers.value = _viewers.value + response.users
+                }
+                Result.success(response.users)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка завантаження переглядів"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка завантаження переглядів", e)
+            Result.failure(e)
+        }
+    }
+
+    // ==================== STORY REACTIONS ====================
+
+    /**
+     * Додати/видалити реакцію на story
+     */
+    suspend fun reactToStory(storyId: Long, reactionType: StoryReactionType): Result<ReactStoryResponse> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.reactToStory(
+                accessToken = UserSession.accessToken!!,
+                storyId = storyId,
+                reaction = reactionType.value
+            )
+
+            if (response.apiStatus == 200) {
+                // Оновлюємо story в списку
+                _currentStory.value?.let { story ->
+                    if (story.id == storyId) {
+                        getStoryById(storyId)
+                    }
+                }
+                Log.d(TAG, "Реакція на story: $storyId - ${reactionType.value}")
+                Result.success(response)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка додавання реакції"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка додавання реакції", e)
+            Result.failure(e)
+        }
+    }
+
+    // ==================== STORY MUTE ====================
+
+    /**
+     * Приглушити stories користувача
+     */
+    suspend fun muteStory(userId: Long): Result<MuteStoryResponse> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.muteStory(
+                accessToken = UserSession.accessToken!!,
+                userId = userId
+            )
+
+            if (response.apiStatus == 200) {
+                // Видаляємо stories цього користувача зі списку
+                _stories.value = _stories.value.filter { it.userId != userId }
+                Log.d(TAG, "Stories користувача приглушені: $userId")
+                Result.success(response)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка приглушення stories"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка приглушення stories", e)
+            Result.failure(e)
+        }
+    }
+
+    // ==================== STORY COMMENTS ====================
+
+    /**
+     * Створити коментар до story
+     */
+    suspend fun createComment(storyId: Long, text: String): Result<StoryComment> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.createStoryComment(
+                accessToken = UserSession.accessToken!!,
+                storyId = storyId,
+                text = text
+            )
+
+            if (response.apiStatus == 200 && response.comment != null) {
+                // Додаємо коментар на початок списку
+                _comments.value = listOf(response.comment) + _comments.value
+                // Оновлюємо кількість коментарів у story
+                _currentStory.value?.let { story ->
+                    if (story.id == storyId) {
+                        getStoryById(storyId)
+                    }
+                }
+                Log.d(TAG, "Коментар створено: ${response.comment.id}")
+                Result.success(response.comment)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка створення коментаря"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка створення коментаря", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Отримати коментарі до story
+     */
+    suspend fun getComments(storyId: Long, limit: Int = 20, offset: Int = 0): Result<List<StoryComment>> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.getStoryComments(
+                accessToken = UserSession.accessToken!!,
+                storyId = storyId,
+                limit = limit,
+                offset = offset
+            )
+
+            if (response.apiStatus == 200 && response.comments != null) {
+                if (offset == 0) {
+                    _comments.value = response.comments
+                } else {
+                    _comments.value = _comments.value + response.comments
+                }
+                Log.d(TAG, "Завантажено ${response.comments.size} коментарів")
+                Result.success(response.comments)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка завантаження коментарів"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка завантаження коментарів", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Видалити коментар
+     */
+    suspend fun deleteComment(commentId: Long): Result<DeleteStoryCommentResponse> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.deleteStoryComment(
+                accessToken = UserSession.accessToken!!,
+                commentId = commentId
+            )
+
+            if (response.apiStatus == 200) {
+                // Видаляємо зі списку
+                _comments.value = _comments.value.filter { it.id != commentId }
+                Log.d(TAG, "Коментар видалено: $commentId")
+                Result.success(response)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка видалення коментаря"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка видалення коментаря", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Очистити коментарі
+     */
+    fun clearComments() {
+        _comments.value = emptyList()
+    }
+
+    /**
+     * Очистити перегляди
+     */
+    fun clearViewers() {
+        _viewers.value = emptyList()
+    }
+}

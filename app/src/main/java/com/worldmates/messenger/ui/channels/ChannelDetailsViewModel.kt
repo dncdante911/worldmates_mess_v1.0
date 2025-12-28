@@ -834,18 +834,13 @@ class ChannelDetailsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Конвертуємо налаштування в JSON
+                val settingsJson = Gson().toJson(settings)
+
                 val response = RetrofitClient.apiService.updateChannelSettings(
                     accessToken = UserSession.accessToken!!,
                     channelId = channelId,
-                    allowComments = settings.allowComments,
-                    allowReactions = settings.allowReactions,
-                    allowShares = settings.allowShares,
-                    showStatistics = settings.showStatistics,
-                    notifySubscribersNewPost = settings.notifySubscribersNewPost,
-                    autoDeletePostsDays = settings.autoDeletePostsDays,
-                    signatureEnabled = settings.signatureEnabled,
-                    commentsModeration = settings.commentsModeration,
-                    slowModeSeconds = settings.slowModeSeconds
+                    settingsJson = settingsJson
                 )
 
                 if (response.apiStatus == 200) {

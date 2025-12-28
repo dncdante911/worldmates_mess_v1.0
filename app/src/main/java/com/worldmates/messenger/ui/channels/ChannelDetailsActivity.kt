@@ -600,7 +600,7 @@ fun ChannelDetailsScreen(
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Edit, contentDescription = null)
+                                Icon(Icons.Default.Create, contentDescription = null)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text("Редагувати інформацію")
                             }
@@ -619,7 +619,7 @@ fun ChannelDetailsScreen(
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Settings, contentDescription = null)
+                                Icon(Icons.Default.Build, contentDescription = null)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text("Налаштування")
                             }
@@ -639,14 +639,14 @@ fun ChannelDetailsScreen(
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.BarChart, contentDescription = null)
+                                Icon(Icons.Default.DateRange, contentDescription = null)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text("Статистика")
                             }
                         }
 
-                        // Адміністратори
-                        if (channel.isOwner) {
+                        // Адміністратори (тільки для адмінів)
+                        if (channel.isAdmin) {
                             TextButton(
                                 onClick = {
                                     showChannelMenuDialog = false
@@ -660,7 +660,7 @@ fun ChannelDetailsScreen(
                                     horizontalArrangement = Arrangement.Start,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = null)
+                                    Icon(Icons.Default.Person, contentDescription = null)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text("Адміністратори")
                                 }

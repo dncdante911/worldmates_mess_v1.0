@@ -857,3 +857,161 @@ fun CommentItem(
         }
     }
 }
+
+// ==================== POST OPTIONS COMPONENTS ====================
+
+/**
+ * Bottom sheet з опціями для поста (Pin, Edit, Delete)
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PostOptionsBottomSheet(
+    post: ChannelPost,
+    onDismiss: () -> Unit,
+    onPinClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            // Header
+            Text(
+                text = "Опції поста",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            Divider()
+
+            // Pin/Unpin option
+            PostOptionItem(
+                icon = if (post.isPinned) Icons.Default.PushPin else Icons.Default.PushPin,
+                text = if (post.isPinned) "Відкріпити" else "Закріпити",
+                onClick = {
+                    onPinClick()
+                    onDismiss()
+                }
+            )
+
+            // Edit option
+            PostOptionItem(
+                icon = Icons.Default.Edit,
+                text = "Редагувати",
+                onClick = {
+                    onEditClick()
+                    onDismiss()
+                }
+            )
+
+            // Delete option
+            PostOptionItem(
+                icon = Icons.Default.Delete,
+                text = "Видалити",
+                textColor = MaterialTheme.colorScheme.error,
+                onClick = {
+                    onDeleteClick()
+                    onDismiss()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Елемент опції поста
+ */
+@Composable
+fun PostOptionItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    textColor: Color = Color.Unspecified,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = text,
+            tint = if (textColor != Color.Unspecified) textColor else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = textColor
+        )
+    }
+}
+
+/**
+ * Діалог для редагування поста
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditPostDialog(
+    post: ChannelPost,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var editedText by remember { mutableStateOf(post.text) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Редагувати пост",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = editedText,
+                    onValueChange = { editedText = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 150.dp, max = 300.dp),
+                    placeholder = { Text("Текст поста...") },
+                    maxLines = 10,
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (editedText.isNotBlank()) {
+                        onSave(editedText)
+                    }
+                },
+                enabled = editedText.isNotBlank() && editedText != post.text
+            ) {
+                Text("Зберегти")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Скасувати")
+            }
+        }
+    )
+}

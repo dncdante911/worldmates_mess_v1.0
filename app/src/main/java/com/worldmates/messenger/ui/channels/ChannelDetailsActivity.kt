@@ -111,6 +111,9 @@ fun ChannelDetailsScreen(
     var showCreatePostDialog by remember { mutableStateOf(false) }
     var showSubscribersDialog by remember { mutableStateOf(false) }
     var showCommentsSheet by remember { mutableStateOf(false) }
+    var showPostOptions by remember { mutableStateOf(false) }
+    var showEditPostDialog by remember { mutableStateOf(false) }
+    var selectedPostForOptions by remember { mutableStateOf<ChannelPost?>(null) }
     var refreshing by remember { mutableStateOf(false) }
 
     // Завантажуємо підписників та коментарі
@@ -319,7 +322,8 @@ fun ChannelDetailsScreen(
                                     Toast.makeText(context, "Поділитися (в розробці)", Toast.LENGTH_SHORT).show()
                                 },
                                 onMoreClick = {
-                                    Toast.makeText(context, "Більше опцій (в розробці)", Toast.LENGTH_SHORT).show()
+                                    selectedPostForOptions = post
+                                    showPostOptions = true
                                 },
                                 canEdit = channel.isAdmin,
                                 modifier = Modifier
@@ -433,6 +437,72 @@ fun ChannelDetailsScreen(
                             postId = post.id,
                             onSuccess = {
                                 Toast.makeText(context, "Коментар видалено", Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
+            )
+        }
+
+        // Bottom sheet опцій поста
+        if (showPostOptions && selectedPostForOptions != null) {
+            PostOptionsBottomSheet(
+                post = selectedPostForOptions!!,
+                onDismiss = { showPostOptions = false },
+                onPinClick = {
+                    selectedPostForOptions?.let { post ->
+                        detailsViewModel.togglePinPost(
+                            postId = post.id,
+                            isPinned = post.isPinned,
+                            onSuccess = {
+                                val message = if (post.isPinned) "Пост відкріплено" else "Пост закріплено"
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                },
+                onEditClick = {
+                    showEditPostDialog = true
+                },
+                onDeleteClick = {
+                    selectedPostForOptions?.let { post ->
+                        detailsViewModel.deletePost(
+                            postId = post.id,
+                            onSuccess = {
+                                Toast.makeText(context, "Пост видалено", Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
+            )
+        }
+
+        // Діалог редагування поста
+        if (showEditPostDialog && selectedPostForOptions != null) {
+            EditPostDialog(
+                post = selectedPostForOptions!!,
+                onDismiss = {
+                    showEditPostDialog = false
+                    selectedPostForOptions = null
+                },
+                onSave = { newText ->
+                    selectedPostForOptions?.let { post ->
+                        detailsViewModel.updatePost(
+                            postId = post.id,
+                            text = newText,
+                            onSuccess = {
+                                Toast.makeText(context, "Пост оновлено!", Toast.LENGTH_SHORT).show()
+                                showEditPostDialog = false
+                                selectedPostForOptions = null
                             },
                             onError = { error ->
                                 Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()

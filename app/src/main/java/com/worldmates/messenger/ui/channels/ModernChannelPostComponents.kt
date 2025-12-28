@@ -650,6 +650,7 @@ fun CommentsBottomSheet(
     onDismiss: () -> Unit,
     onAddComment: (String) -> Unit,
     onDeleteComment: (Long) -> Unit,
+    onCommentReaction: (commentId: Long, emoji: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var commentText by remember { mutableStateOf("") }
@@ -716,7 +717,8 @@ fun CommentsBottomSheet(
                         CommentItem(
                             comment = comment,
                             canDelete = isAdmin || comment.userId == currentUserId,
-                            onDeleteClick = { onDeleteComment(comment.id) }
+                            onDeleteClick = { onDeleteComment(comment.id) },
+                            onReactionClick = { emoji -> onCommentReaction(comment.id, emoji) }
                         )
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
                     }
@@ -778,6 +780,7 @@ fun CommentItem(
     comment: ChannelComment,
     canDelete: Boolean,
     onDeleteClick: () -> Unit,
+    onReactionClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -830,14 +833,32 @@ fun CommentItem(
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // Reactions count (if any)
-            if (comment.reactionsCount > 0) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "❤️ ${comment.reactionsCount}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Reaction buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 2.dp)
+            ) {
+                listOf("👍", "❤️", "😂").forEach { emoji ->
+                    Text(
+                        text = emoji,
+                        fontSize = 16.sp,
+                        modifier = Modifier
+                            .clickable { onReactionClick(emoji) }
+                            .padding(4.dp)
+                    )
+                }
+
+                // Reactions count
+                if (comment.reactionsCount > 0) {
+                    Text(
+                        text = "• ${comment.reactionsCount}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+                }
             }
         }
 
@@ -1015,3 +1036,175 @@ fun EditPostDialog(
         }
     )
 }
+
+// ==================== STATISTICS DIALOG ====================
+
+/**
+ * Діалог статистики каналу
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StatisticsDialog(
+    statistics: ChannelStatistics?,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Статистика каналу", fontWeight = FontWeight.Bold) },
+        text = {
+            if (statistics == null) {
+                CircularProgressIndicator()
+            } else {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatItem("Підписників", "${statistics.subscribersCount}")
+                    StatItem("Всього постів", "${statistics.postsCount}")
+                    StatItem("Постів за тиждень", "${statistics.postsLastWeek}")
+                    StatItem("Активних за 24 год", "${statistics.activeSubscribers24h}")
+
+                    if (!statistics.topPosts.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Топ пости:", fontWeight = FontWeight.SemiBold)
+                        statistics.topPosts.take(3).forEach { topPost ->
+                            Text("• ${topPost.text.take(40)}... (${topPost.views} переглядів)", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Закрити") }
+        }
+    )
+}
+
+@Composable
+fun StatItem(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+// ==================== ADMIN MANAGEMENT ====================
+
+/**
+ * Діалог управління адмінами
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ManageAdminsDialog(
+    admins: List<ChannelAdmin>,
+    onDismiss: () -> Unit,
+    onAddAdmin: (Long, String) -> Unit,
+    onRemoveAdmin: (Long) -> Unit
+) {
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Адміністратори • ${admins.size}", fontWeight = FontWeight.Bold) },
+        text = {
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                items(admins) { admin ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Користувач #${admin.userId}", fontWeight = FontWeight.Medium)
+                            Text(
+                                when(admin.role) {
+                                    "owner" -> "Власник"
+                                    "admin" -> "Адміністратор"
+                                    else -> admin.role
+                                },
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (admin.role != "owner") {
+                            IconButton(onClick = { onRemoveAdmin(admin.userId) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Delete, "Видалити", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { showAddDialog = true }) { Text("Додати") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Закрити") }
+        }
+    )
+
+    if (showAddDialog) {
+        AddAdminDialog(
+            onDismiss = { showAddDialog = false },
+            onAdd = { userId, role ->
+                onAddAdmin(userId, role)
+                showAddDialog = false
+            }
+        )
+    }
+}
+
+/**
+ * Діалог додавання адміна
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddAdminDialog(
+    onDismiss: () -> Unit,
+    onAdd: (Long, String) -> Unit
+) {
+    var userIdText by remember { mutableStateOf("") }
+    var selectedRole by remember { mutableStateOf("admin") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Додати адміністратора") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = userIdText,
+                    onValueChange = { userIdText = it },
+                    label = { Text("ID користувача") },
+                    placeholder = { Text("Введіть ID...") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Роль:")
+                    Spacer(Modifier.width(8.dp))
+                    Row {
+                        FilterChip(
+                            selected = selectedRole == "admin",
+                            onClick = { selectedRole = "admin" },
+                            label = { Text("Адмін") }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        FilterChip(
+                            selected = selectedRole == "moderator",
+                            onClick = { selectedRole = "moderator" },
+                            label = { Text("Модератор") }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    userIdText.toLongOrNull()?.let { userId ->
+                        onAdd(userId, selectedRole)
+                    }
+                },
+                enabled = userIdText.toLongOrNull() != null
+            ) {
+                Text("Додати")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Скасувати") }
+        }
+    )
+}
+

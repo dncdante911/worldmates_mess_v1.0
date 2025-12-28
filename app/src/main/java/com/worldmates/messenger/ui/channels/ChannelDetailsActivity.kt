@@ -113,14 +113,18 @@ fun ChannelDetailsScreen(
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showPostOptions by remember { mutableStateOf(false) }
     var showEditPostDialog by remember { mutableStateOf(false) }
+    var showStatisticsDialog by remember { mutableStateOf(false) }
+    var showAdminsDialog by remember { mutableStateOf(false) }
     var selectedPostForOptions by remember { mutableStateOf<ChannelPost?>(null) }
     var refreshing by remember { mutableStateOf(false) }
 
-    // Завантажуємо підписників та коментарі
+    // Завантажуємо підписників, коментарі, статистику, адмінів
     val subscribers by detailsViewModel.subscribers.collectAsState()
     val comments by detailsViewModel.comments.collectAsState()
     val selectedPost by detailsViewModel.selectedPost.collectAsState()
     val isLoadingComments by detailsViewModel.isLoadingComments.collectAsState()
+    val statistics by detailsViewModel.statistics.collectAsState()
+    val admins by detailsViewModel.admins.collectAsState()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing,
@@ -443,6 +447,18 @@ fun ChannelDetailsScreen(
                             }
                         )
                     }
+                },
+                onCommentReaction = { commentId, emoji ->
+                    detailsViewModel.addCommentReaction(
+                        commentId = commentId,
+                        emoji = emoji,
+                        onSuccess = {
+                            Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
+                        },
+                        onError = { error ->
+                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             )
         }
@@ -509,6 +525,49 @@ fun ChannelDetailsScreen(
                             }
                         )
                     }
+                }
+            )
+        }
+
+        // Діалог статистики (тільки для адмінів)
+        if (showStatisticsDialog && channel?.isAdmin == true) {
+            StatisticsDialog(
+                statistics = statistics,
+                onDismiss = { showStatisticsDialog = false }
+            )
+        }
+
+        // Діалог управління адмінами (тільки для власника)
+        if (showAdminsDialog && channel?.isAdmin == true) {
+            ManageAdminsDialog(
+                admins = admins,
+                onDismiss = { showAdminsDialog = false },
+                onAddAdmin = { userId, role ->
+                    detailsViewModel.addChannelAdmin(
+                        channelId = channelId,
+                        userId = userId,
+                        role = role,
+                        onSuccess = {
+                            Toast.makeText(context, "Адміністратора додано!", Toast.LENGTH_SHORT).show()
+                            detailsViewModel.loadChannelDetails(channelId)
+                        },
+                        onError = { error ->
+                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                },
+                onRemoveAdmin = { userId ->
+                    detailsViewModel.removeChannelAdmin(
+                        channelId = channelId,
+                        userId = userId,
+                        onSuccess = {
+                            Toast.makeText(context, "Адміністратора видалено", Toast.LENGTH_SHORT).show()
+                            detailsViewModel.loadChannelDetails(channelId)
+                        },
+                        onError = { error ->
+                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             )
         }

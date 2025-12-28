@@ -745,7 +745,7 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "add_comment_reaction",
         @Field("comment_id") commentId: Long,
-        @Field("emoji") emoji: String
+        @Field("reaction") reaction: String
     ): CreatePostResponse
 
     // Channel Admin Management
@@ -753,17 +753,17 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun addChannelAdmin(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "add_admin",
+        @Field("type") type: String = "add_channel_admin",
         @Field("channel_id") channelId: Long,
         @Field("user_id") userId: Long,
-        @Field("role") role: String = "moderator" // "admin", "moderator"
+        @Field("role") role: String = "admin" // "admin", "moderator"
     ): CreateChannelResponse
 
     @FormUrlEncoded
     @POST("/api/v2/channels.php")
     suspend fun removeChannelAdmin(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "remove_admin",
+        @Field("type") type: String = "remove_channel_admin",
         @Field("channel_id") channelId: Long,
         @Field("user_id") userId: Long
     ): CreateChannelResponse

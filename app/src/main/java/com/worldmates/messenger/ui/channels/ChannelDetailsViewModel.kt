@@ -642,4 +642,134 @@ class ChannelDetailsViewModel : ViewModel() {
         _selectedPost.value = null
         _comments.value = emptyList()
     }
+
+    /**
+     * Додає реакцію на коментар
+     */
+    fun addCommentReaction(
+        commentId: Long,
+        emoji: String,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.addCommentReaction(
+                    accessToken = UserSession.accessToken!!,
+                    commentId = commentId,
+                    reaction = emoji
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо кількість реакцій на коментарі
+                    _comments.value = _comments.value.map { comment ->
+                        if (comment.id == commentId) {
+                            comment.copy(reactionsCount = comment.reactionsCount + 1)
+                        } else {
+                            comment
+                        }
+                    }
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Реакцію на коментар додано")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка додавання реакції"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка додавання реакції на коментар", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Додає адміністратора каналу
+     */
+    fun addChannelAdmin(
+        channelId: Long,
+        userId: Long,
+        role: String = "admin",
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.addChannelAdmin(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    userId = userId,
+                    role = role
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Адміністратора додано")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка додавання адміністратора"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка додавання адміністратора", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Видаляє адміністратора каналу
+     */
+    fun removeChannelAdmin(
+        channelId: Long,
+        userId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.removeChannelAdmin(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    userId = userId
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Адміністратора видалено")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка видалення адміністратора"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка видалення адміністратора", e)
+                onError(errorMsg)
+            }
+        }
+    }
 }

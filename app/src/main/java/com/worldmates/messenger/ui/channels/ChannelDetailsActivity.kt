@@ -545,10 +545,10 @@ fun ChannelDetailsScreen(
             ManageAdminsDialog(
                 admins = admins,
                 onDismiss = { showAdminsDialog = false },
-                onAddAdmin = { userId, role ->
+                onAddAdmin = { searchText, role ->
                     detailsViewModel.addChannelAdmin(
                         channelId = channelId,
-                        userId = userId,
+                        userSearch = searchText,
                         role = role,
                         onSuccess = {
                             Toast.makeText(context, "Адміністратора додано!", Toast.LENGTH_SHORT).show()
@@ -872,7 +872,7 @@ fun SubscribersDialog(
                             // Інфо
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = subscriber.username ?: "User #${subscriber.id ?: subscriber.userId ?: "?"}",
+                                    text = subscriber.name ?: subscriber.username ?: "User #${subscriber.id ?: subscriber.userId ?: "?"}",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF2C3E50)

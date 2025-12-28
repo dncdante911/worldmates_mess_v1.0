@@ -696,7 +696,7 @@ class ChannelDetailsViewModel : ViewModel() {
      */
     fun addChannelAdmin(
         channelId: Long,
-        userId: Long,
+        userSearch: String,
         role: String = "admin",
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
@@ -711,13 +711,14 @@ class ChannelDetailsViewModel : ViewModel() {
                 val response = RetrofitClient.apiService.addChannelAdmin(
                     accessToken = UserSession.accessToken!!,
                     channelId = channelId,
-                    userId = userId,
+                    userId = null,
+                    userSearch = userSearch,
                     role = role
                 )
 
                 if (response.apiStatus == 200) {
                     _error.value = null
-                    Log.d("ChannelDetailsVM", "Адміністратора додано")
+                    Log.d("ChannelDetailsVM", "Адміністратора додано: $userSearch")
                     onSuccess()
                 } else {
                     val errorMsg = response.errorMessage ?: "Помилка додавання адміністратора"

@@ -755,7 +755,8 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "add_channel_admin",
         @Field("channel_id") channelId: Long,
-        @Field("user_id") userId: Long,
+        @Field("user_id") userId: Long? = null,
+        @Field("user_search") userSearch: String? = null,
         @Field("role") role: String = "admin" // "admin", "moderator"
     ): CreateChannelResponse
 

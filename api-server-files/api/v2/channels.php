@@ -664,9 +664,13 @@ function getChannelSubscribers($db, $user_id, $channel_id) {
     $stmt = $db->prepare("
         SELECT
             gcu.user_id AS id,
+            u.username,
+            CONCAT(u.first_name, ' ', u.last_name) AS name,
+            u.avatar,
             gcu.role,
             gcu.last_seen
         FROM Wo_GroupChatUsers gcu
+        LEFT JOIN Wo_Users u ON u.user_id = gcu.user_id
         WHERE gcu.group_id = ?
         ORDER BY
             CASE gcu.role
@@ -1200,10 +1204,54 @@ function addCommentReaction($db, $user_id, $data) {
 function addChannelAdmin($db, $user_id, $data) {
     $channel_id = $data['channel_id'] ?? null;
     $admin_user_id = $data['user_id'] ?? null;
+    $user_search = $data['user_search'] ?? null; // ID, username або ім'я
     $role = $data['role'] ?? 'admin'; // admin, moderator
 
-    if (!$channel_id || !$admin_user_id) {
-        return ['api_status' => 400, 'error_message' => 'channel_id and user_id are required'];
+    if (!$channel_id) {
+        return ['api_status' => 400, 'error_message' => 'channel_id is required'];
+    }
+
+    // Якщо передано user_search замість user_id, шукаємо користувача
+    if (!$admin_user_id && $user_search) {
+        $search_term = trim($user_search);
+
+        // Спочатку пробуємо як ID
+        if (is_numeric($search_term)) {
+            $stmt = $db->prepare("SELECT user_id FROM Wo_Users WHERE user_id = ?");
+            $stmt->execute([$search_term]);
+            $admin_user_id = $stmt->fetchColumn();
+        }
+
+        // Якщо не знайдено, шукаємо по username
+        if (!$admin_user_id) {
+            // Видаляємо @ якщо є
+            $username = ltrim($search_term, '@');
+            $stmt = $db->prepare("SELECT user_id FROM Wo_Users WHERE username = ?");
+            $stmt->execute([$username]);
+            $admin_user_id = $stmt->fetchColumn();
+        }
+
+        // Якщо не знайдено, шукаємо по імені
+        if (!$admin_user_id) {
+            $stmt = $db->prepare("
+                SELECT user_id FROM Wo_Users
+                WHERE CONCAT(first_name, ' ', last_name) LIKE ?
+                   OR first_name LIKE ?
+                   OR last_name LIKE ?
+                LIMIT 1
+            ");
+            $like_term = "%{$search_term}%";
+            $stmt->execute([$like_term, $like_term, $like_term]);
+            $admin_user_id = $stmt->fetchColumn();
+        }
+
+        if (!$admin_user_id) {
+            return ['api_status' => 404, 'error_message' => 'User not found'];
+        }
+    }
+
+    if (!$admin_user_id) {
+        return ['api_status' => 400, 'error_message' => 'user_id or user_search is required'];
     }
 
     if (!in_array($role, ['admin', 'moderator'])) {

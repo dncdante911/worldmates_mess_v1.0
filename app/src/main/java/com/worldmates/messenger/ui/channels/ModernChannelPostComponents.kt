@@ -1109,7 +1109,7 @@ fun StatItem(label: String, value: String) {
 fun ManageAdminsDialog(
     admins: List<ChannelAdmin>,
     onDismiss: () -> Unit,
-    onAddAdmin: (Long, String) -> Unit,
+    onAddAdmin: (String, String) -> Unit,
     onRemoveAdmin: (Long) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
@@ -1122,7 +1122,10 @@ fun ManageAdminsDialog(
                 items(admins) { admin ->
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Користувач #${admin.userId}", fontWeight = FontWeight.Medium)
+                            Text(
+                                text = admin.username.takeIf { !it.isNullOrEmpty() } ?: "Користувач #${admin.userId}",
+                                fontWeight = FontWeight.Medium
+                            )
                             Text(
                                 when(admin.role) {
                                     "owner" -> "Власник"
@@ -1153,8 +1156,8 @@ fun ManageAdminsDialog(
     if (showAddDialog) {
         AddAdminDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { userId, role ->
-                onAddAdmin(userId, role)
+            onAdd = { searchText, role ->
+                onAddAdmin(searchText, role)
                 showAddDialog = false
             }
         )
@@ -1168,9 +1171,9 @@ fun ManageAdminsDialog(
 @Composable
 fun AddAdminDialog(
     onDismiss: () -> Unit,
-    onAdd: (Long, String) -> Unit
+    onAdd: (String, String) -> Unit
 ) {
-    var userIdText by remember { mutableStateOf("") }
+    var searchText by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf("admin") }
 
     AlertDialog(
@@ -1179,10 +1182,11 @@ fun AddAdminDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    value = userIdText,
-                    onValueChange = { userIdText = it },
-                    label = { Text("ID користувача") },
-                    placeholder = { Text("Введіть ID...") },
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    label = { Text("ID, username або ім'я") },
+                    placeholder = { Text("Введіть ID, @username або ім'я...") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1207,11 +1211,11 @@ fun AddAdminDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    userIdText.toLongOrNull()?.let { userId ->
-                        onAdd(userId, selectedRole)
+                    if (searchText.isNotBlank()) {
+                        onAdd(searchText.trim(), selectedRole)
                     }
                 },
-                enabled = userIdText.toLongOrNull() != null
+                enabled = searchText.isNotBlank()
             ) {
                 Text("Додати")
             }

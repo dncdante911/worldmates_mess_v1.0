@@ -118,7 +118,9 @@ fun ChannelDetailsScreen(
     var showEditChannelDialog by remember { mutableStateOf(false) }
     var showChannelMenuDialog by remember { mutableStateOf(false) }
     var showChannelSettingsDialog by remember { mutableStateOf(false) }
+    var showPostDetailDialog by remember { mutableStateOf(false) }
     var selectedPostForOptions by remember { mutableStateOf<ChannelPost?>(null) }
+    var selectedPostForDetail by remember { mutableStateOf<ChannelPost?>(null) }
     var refreshing by remember { mutableStateOf(false) }
 
     // Завантажуємо підписників, коментарі, статистику, адмінів
@@ -307,7 +309,9 @@ fun ChannelDetailsScreen(
                             ChannelPostCard(
                                 post = post,
                                 onPostClick = {
-                                    Toast.makeText(context, "Відкрити пост (в розробці)", Toast.LENGTH_SHORT).show()
+                                    selectedPostForDetail = post
+                                    detailsViewModel.loadComments(post.id)
+                                    showPostDetailDialog = true
                                 },
                                 onReactionClick = { emoji ->
                                     detailsViewModel.addPostReaction(
@@ -326,7 +330,23 @@ fun ChannelDetailsScreen(
                                     showCommentsSheet = true
                                 },
                                 onShareClick = {
-                                    Toast.makeText(context, "Поділитися (в розробці)", Toast.LENGTH_SHORT).show()
+                                    // Використовуємо Android Share Intent для поширення поста
+                                    val shareText = buildString {
+                                        append(post.text)
+                                        append("\n\n")
+                                        append("Від: ${post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}"}")
+                                        append("\n")
+                                        append("Канал: ${channel?.name ?: "WorldMates Channel"}")
+                                    }
+
+                                    val sendIntent = android.content.Intent().apply {
+                                        action = android.content.Intent.ACTION_SEND
+                                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                        type = "text/plain"
+                                    }
+
+                                    val shareIntent = android.content.Intent.createChooser(sendIntent, "Поділитися постом")
+                                    context.startActivity(shareIntent)
                                 },
                                 onMoreClick = {
                                     selectedPostForOptions = post
@@ -466,6 +486,75 @@ fun ChannelDetailsScreen(
             )
         }
 
+        // Діалог детального перегляду поста
+        if (showPostDetailDialog && selectedPostForDetail != null) {
+            PostDetailDialog(
+                post = selectedPostForDetail!!,
+                comments = comments,
+                isLoadingComments = isLoadingComments,
+                currentUserId = UserSession.userId ?: 0L,
+                isAdmin = channel?.isAdmin ?: false,
+                onDismiss = { showPostDetailDialog = false },
+                onReactionClick = { emoji ->
+                    selectedPostForDetail?.let { post ->
+                        detailsViewModel.addPostReaction(
+                            postId = post.id,
+                            emoji = emoji,
+                            onSuccess = {
+                                Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
+                                detailsViewModel.loadChannelPosts(channelId)
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                },
+                onAddComment = { text ->
+                    selectedPostForDetail?.let { post ->
+                        detailsViewModel.addComment(
+                            postId = post.id,
+                            text = text,
+                            onSuccess = {
+                                Toast.makeText(context, "Коментар додано!", Toast.LENGTH_SHORT).show()
+                                detailsViewModel.loadComments(post.id)
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                },
+                onDeleteComment = { commentId ->
+                    selectedPostForDetail?.let { post ->
+                        detailsViewModel.deleteComment(
+                            commentId = commentId,
+                            postId = post.id,
+                            onSuccess = {
+                                Toast.makeText(context, "Коментар видалено", Toast.LENGTH_SHORT).show()
+                                detailsViewModel.loadComments(post.id)
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                },
+                onCommentReaction = { commentId, emoji ->
+                    detailsViewModel.addCommentReaction(
+                        commentId = commentId,
+                        emoji = emoji,
+                        onSuccess = {
+                            Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
+                        },
+                        onError = { error ->
+                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+            )
+        }
+
         // Bottom sheet опцій поста
         if (showPostOptions && selectedPostForOptions != null) {
             PostOptionsBottomSheet(
@@ -545,10 +634,10 @@ fun ChannelDetailsScreen(
             ManageAdminsDialog(
                 admins = admins,
                 onDismiss = { showAdminsDialog = false },
-                onAddAdmin = { userId, role ->
+                onAddAdmin = { searchText, role ->
                     detailsViewModel.addChannelAdmin(
                         channelId = channelId,
-                        userId = userId,
+                        userSearch = searchText,
                         role = role,
                         onSuccess = {
                             Toast.makeText(context, "Адміністратора додано!", Toast.LENGTH_SHORT).show()
@@ -872,7 +961,7 @@ fun SubscribersDialog(
                             // Інфо
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = subscriber.username ?: "User #${subscriber.id ?: subscriber.userId ?: "?"}",
+                                    text = subscriber.name ?: subscriber.username ?: "User #${subscriber.id ?: subscriber.userId ?: "?"}",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF2C3E50)

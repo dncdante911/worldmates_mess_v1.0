@@ -168,6 +168,7 @@ data class ChannelSubscriber(
     @SerializedName("id") val id: Long? = null,
     @SerializedName("user_id") val userId: Long? = null,
     @SerializedName("username") val username: String? = null,
+    @SerializedName("name") val name: String? = null,
     @SerializedName("avatar") val avatarUrl: String? = null,
     @SerializedName("subscribed_time") val subscribedTime: Long? = null,
     @SerializedName("is_muted") val isMuted: Boolean = false,

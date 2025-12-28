@@ -288,6 +288,7 @@ function getChannels($db, $user_id, $data) {
     $filter = $data['filter'] ?? 'all'; // 'all', 'subscribed', 'owned'
     $limit = isset($data['limit']) ? (int)$data['limit'] : 20;
     $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
+    $query = isset($data['query']) ? trim($data['query']) : '';
 
     $where = "WHERE type = 'channel'";
     $params = [];
@@ -298,6 +299,15 @@ function getChannels($db, $user_id, $data) {
     } elseif ($filter === 'owned') {
         $where .= " AND user_id = ?";
         $params[] = $user_id;
+    }
+
+    // Пошук по назві або username
+    if (!empty($query)) {
+        $where .= " AND (g.group_name LIKE ? OR g.username LIKE ? OR g.description LIKE ?)";
+        $searchTerm = "%{$query}%";
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
     }
 
     $stmt = $db->prepare("
@@ -679,11 +689,14 @@ function getChannelPosts($db, $user_id, $channel_id, $data) {
         return ['api_status' => 403, 'error_message' => 'Subscribe to view posts'];
     }
 
-    // Отримуємо пости
+    // Отримуємо пости з інформацією про автора
     $stmt = $db->prepare("
         SELECT
             m.id,
             m.from_id AS author_id,
+            u.username AS author_username,
+            u.name AS author_name,
+            u.avatar AS author_avatar,
             m.text,
             m.media,
             m.mediaFileName,
@@ -693,6 +706,7 @@ function getChannelPosts($db, $user_id, $channel_id, $data) {
             (SELECT COUNT(*) FROM Wo_MessageComments WHERE message_id = m.id) AS comments_count,
             (SELECT COUNT(*) FROM Wo_MessageViews WHERE message_id = m.id) AS views_count
         FROM Wo_Messages m
+        LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.group_id = ?
         ORDER BY
             CASE WHEN m.type_two = 'pinned' THEN 0 ELSE 1 END,
@@ -782,6 +796,9 @@ function createPost($db, $user_id, $data) {
         SELECT
             m.id,
             m.from_id AS author_id,
+            u.username AS author_username,
+            u.name AS author_name,
+            u.avatar AS author_avatar,
             m.text,
             m.media,
             m.mediaFileName,
@@ -791,6 +808,7 @@ function createPost($db, $user_id, $data) {
             0 AS comments_count,
             0 AS views_count
         FROM Wo_Messages m
+        LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.id = ?
     ");
     $stmt->execute([$post_id]);

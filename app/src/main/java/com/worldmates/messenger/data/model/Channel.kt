@@ -32,6 +32,9 @@ data class Channel(
 data class ChannelPost(
     @SerializedName("id") val id: Long,
     @SerializedName("author_id") val authorId: Long,
+    @SerializedName("author_username") val authorUsername: String? = null,
+    @SerializedName("author_name") val authorName: String? = null,
+    @SerializedName("author_avatar") val authorAvatar: String? = null,
     @SerializedName("text") val text: String,
     @SerializedName("media") val media: List<PostMedia>? = null,
     @SerializedName("created_time") val createdTime: Long,

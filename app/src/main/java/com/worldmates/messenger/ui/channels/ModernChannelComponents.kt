@@ -699,6 +699,63 @@ fun InfoRow(
     }
 }
 
+// ==================== SEARCH BAR ====================
+
+/**
+ * Пошукова панель для каналів
+ */
+@Composable
+fun ChannelSearchBar(
+    searchQuery: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = onQueryChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = {
+            Text(
+                text = "Пошук каналів...",
+                color = Color.Gray,
+                fontSize = 15.sp
+            )
+        },
+        leadingIcon = {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = "Пошук",
+                tint = Color(0xFF667eea)
+            )
+        },
+        trailingIcon = {
+            if (searchQuery.isNotEmpty()) {
+                IconButton(onClick = {
+                    onClear()
+                }) {
+                    Icon(
+                        Icons.Default.Clear,
+                        contentDescription = "Очистити",
+                        tint = Color.Gray
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFF667eea),
+            unfocusedBorderColor = Color.LightGray,
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White
+        )
+    )
+}
+
 // ==================== UTILITY FUNCTIONS ====================
 
 fun formatCount(count: Int): String {

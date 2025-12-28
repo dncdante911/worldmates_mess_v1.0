@@ -631,3 +631,227 @@ fun formatDuration(seconds: Long): String {
     val secs = seconds % 60
     return String.format("%d:%02d", minutes, secs)
 }
+
+// ==================== COMMENTS COMPONENTS ====================
+
+/**
+ * Bottom sheet для відображення коментарів
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CommentsBottomSheet(
+    post: ChannelPost?,
+    comments: List<ChannelComment>,
+    isLoading: Boolean,
+    currentUserId: Long,
+    isAdmin: Boolean,
+    onDismiss: () -> Unit,
+    onAddComment: (String) -> Unit,
+    onDeleteComment: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var commentText by remember { mutableStateOf("") }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Коментарі",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${comments.size}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Comments list
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (comments.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Коментарів ще немає",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                ) {
+                    items(comments) { comment ->
+                        CommentItem(
+                            comment = comment,
+                            canDelete = isAdmin || comment.userId == currentUserId,
+                            onDeleteClick = { onDeleteComment(comment.id) }
+                        )
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Add comment field
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = commentText,
+                    onValueChange = { commentText = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    placeholder = { Text("Додати коментар...") },
+                    maxLines = 3,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
+
+                IconButton(
+                    onClick = {
+                        if (commentText.isNotBlank()) {
+                            onAddComment(commentText)
+                            commentText = ""
+                        }
+                    },
+                    enabled = commentText.isNotBlank()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Надіслати",
+                        tint = if (commentText.isNotBlank())
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Компонент для відображення одного коментаря
+ */
+@Composable
+fun CommentItem(
+    comment: ChannelComment,
+    canDelete: Boolean,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        // Avatar placeholder
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "U",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            // User name and time
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Користувач #${comment.userId}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = formatTimeAgo(comment.time),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Comment text
+            Text(
+                text = comment.text,
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            // Reactions count (if any)
+            if (comment.reactionsCount > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "❤️ ${comment.reactionsCount}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Delete button
+        if (canDelete) {
+            IconButton(
+                onClick = onDeleteClick,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Видалити",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}

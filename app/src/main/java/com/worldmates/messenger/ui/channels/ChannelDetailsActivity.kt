@@ -110,10 +110,14 @@ fun ChannelDetailsScreen(
     // UI States
     var showCreatePostDialog by remember { mutableStateOf(false) }
     var showSubscribersDialog by remember { mutableStateOf(false) }
+    var showCommentsSheet by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
 
-    // Завантажуємо підписників
+    // Завантажуємо підписників та коментарі
     val subscribers by detailsViewModel.subscribers.collectAsState()
+    val comments by detailsViewModel.comments.collectAsState()
+    val selectedPost by detailsViewModel.selectedPost.collectAsState()
+    val isLoadingComments by detailsViewModel.isLoadingComments.collectAsState()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing,
@@ -309,7 +313,7 @@ fun ChannelDetailsScreen(
                                 },
                                 onCommentsClick = {
                                     detailsViewModel.loadComments(post.id)
-                                    Toast.makeText(context, "Коментарі (в розробці)", Toast.LENGTH_SHORT).show()
+                                    showCommentsSheet = true
                                 },
                                 onShareClick = {
                                     Toast.makeText(context, "Поділитися (в розробці)", Toast.LENGTH_SHORT).show()
@@ -396,6 +400,46 @@ fun ChannelDetailsScreen(
             SubscribersDialog(
                 subscribers = subscribers,
                 onDismiss = { showSubscribersDialog = false }
+            )
+        }
+
+        // Bottom sheet коментарів
+        if (showCommentsSheet && selectedPost != null) {
+            CommentsBottomSheet(
+                post = selectedPost,
+                comments = comments,
+                isLoading = isLoadingComments,
+                currentUserId = UserSession.userId ?: 0L,
+                isAdmin = channel?.isAdmin ?: false,
+                onDismiss = { showCommentsSheet = false },
+                onAddComment = { text ->
+                    selectedPost?.let { post ->
+                        detailsViewModel.addComment(
+                            postId = post.id,
+                            text = text,
+                            onSuccess = {
+                                Toast.makeText(context, "Коментар додано!", Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                },
+                onDeleteComment = { commentId ->
+                    selectedPost?.let { post ->
+                        detailsViewModel.deleteComment(
+                            commentId = commentId,
+                            postId = post.id,
+                            onSuccess = {
+                                Toast.makeText(context, "Коментар видалено", Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
             )
         }
     }

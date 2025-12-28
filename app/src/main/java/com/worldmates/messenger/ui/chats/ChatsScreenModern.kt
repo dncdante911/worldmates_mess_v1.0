@@ -54,6 +54,7 @@ fun ChatsScreenModern(
     viewModel: ChatsViewModel,
     groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel,
     channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel,
+    storyViewModel: com.worldmates.messenger.ui.stories.StoryViewModel,
     onChatClick: (Chat) -> Unit,
     onGroupClick: (Group) -> Unit,
     onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit,
@@ -68,6 +69,10 @@ fun ChatsScreenModern(
     val isLoadingChannels by channelsViewModel.isLoading.collectAsState()
     val availableUsers by groupsViewModel.availableUsers.collectAsState()
     val isCreatingGroup by groupsViewModel.isCreatingGroup.collectAsState()
+
+    // Stories state
+    val stories by storyViewModel.stories.collectAsState()
+    val isLoadingStories by storyViewModel.isLoading.collectAsState()
 
     val uiStyle = rememberUIStyle()
     val pagerState = rememberPagerState(initialPage = 0) { 3 } // 3 вкладки: Чати, Канали, Групи
@@ -98,6 +103,7 @@ fun ChatsScreenModern(
 
     // Стан для діалогів
     var showCreateGroupDialog by remember { mutableStateOf(false) }
+    var showCreateStoryDialog by remember { mutableStateOf(false) }
     var selectedGroup by remember { mutableStateOf<Group?>(null) }
     var showEditGroupDialog by remember { mutableStateOf(false) }
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
@@ -255,27 +261,40 @@ fun ChatsScreenModern(
             ) { page ->
                 when (page) {
                     0 -> {
-                        // Вкладка "Чати" з pull-to-refresh
-                        ChatListTab(
+                        // Вкладка "Чати" з pull-to-refresh + Stories
+                        ChatListTabWithStories(
                             chats = chats,
+                            stories = stories,
                             isLoading = isLoadingChats,
+                            isLoadingStories = isLoadingStories,
                             uiStyle = uiStyle,
-                            onRefresh = { viewModel.fetchChats() },
+                            onRefresh = {
+                                viewModel.fetchChats()
+                                storyViewModel.loadStories()
+                            },
                             onChatClick = onChatClick,
                             onChatLongPress = { chat ->
                                 selectedChat = chat
                                 showContactMenu = true
+                            },
+                            onCreateStoryClick = {
+                                showCreateStoryDialog = true
                             }
                         )
                     }
                     1 -> {
-                        // Вкладка "Канали" з pull-to-refresh
-                        ChannelListTab(
+                        // Вкладка "Канали" з pull-to-refresh + Channel Stories
+                        ChannelListTabWithStories(
                             channels = channels,
+                            stories = stories,
                             isLoading = isLoadingChannels,
+                            isLoadingStories = isLoadingStories,
                             uiStyle = uiStyle,
                             channelsViewModel = channelsViewModel,
-                            onRefresh = { channelsViewModel.fetchSubscribedChannels() },
+                            onRefresh = {
+                                channelsViewModel.fetchSubscribedChannels()
+                                storyViewModel.loadStories()
+                            },
                             onChannelClick = onChannelClick
                         )
                     }
@@ -426,6 +445,14 @@ fun ChatsScreenModern(
             onDismiss = {
                 showContactPicker = false
             }
+        )
+    }
+
+    // Create Story Dialog
+    if (showCreateStoryDialog) {
+        com.worldmates.messenger.ui.stories.CreateStoryDialog(
+            onDismiss = { showCreateStoryDialog = false },
+            viewModel = storyViewModel
         )
     }
     }  // Закриваємо ModalNavigationDrawer
@@ -831,5 +858,151 @@ fun ChannelListTab(
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
+    }
+}
+
+/**
+ * Вкладка зі списком чатів + Stories вгорі
+ */
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun ChatListTabWithStories(
+    chats: List<Chat>,
+    stories: List<com.worldmates.messenger.data.model.Story>,
+    isLoading: Boolean,
+    isLoadingStories: Boolean,
+    uiStyle: UIStyle,
+    onRefresh: () -> Unit,
+    onChatClick: (Chat) -> Unit,
+    onChatLongPress: (Chat) -> Unit = {},
+    onCreateStoryClick: () -> Unit = {}
+) {
+    val refreshing by remember { mutableStateOf(false) }
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = refreshing || isLoading,
+        onRefresh = onRefresh
+    )
+    val context = LocalContext.current
+    val nicknameRepository = remember { ContactNicknameRepository(context) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Stories row вгорі
+            item {
+                com.worldmates.messenger.ui.stories.PersonalStoriesRow(
+                    stories = stories,
+                    onCreateStoryClick = onCreateStoryClick
+                )
+            }
+
+            // Чати
+            items(chats, key = { it.id }) { chat ->
+                val nickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
+
+                when (uiStyle) {
+                    UIStyle.WorldMates -> {
+                        ModernChatCard(
+                            chat = chat,
+                            nickname = nickname,
+                            onClick = { onChatClick(chat) },
+                            onLongPress = { onChatLongPress(chat) }
+                        )
+                    }
+                    UIStyle.Telegram -> {
+                        TelegramStyleChatItem(
+                            chat = chat,
+                            nickname = nickname,
+                            onClick = { onChatClick(chat) },
+                            onLongPress = { onChatLongPress(chat) }
+                        )
+                    }
+                }
+            }
+        }
+
+        PullRefreshIndicator(
+            refreshing = refreshing || isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
+}
+
+/**
+ * Вкладка з каналами + Channel Stories
+ */
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun ChannelListTabWithStories(
+    channels: List<com.worldmates.messenger.data.model.Channel>,
+    stories: List<com.worldmates.messenger.data.model.Story>,
+    isLoading: Boolean,
+    isLoadingStories: Boolean,
+    uiStyle: UIStyle,
+    channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel,
+    onRefresh: () -> Unit,
+    onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit
+) {
+    val refreshing by remember { mutableStateOf(false) }
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = refreshing || isLoading,
+        onRefresh = onRefresh
+    )
+
+    // Групуємо stories по каналах
+    val channelStoriesMap = stories.groupBy { it.userId }
+    val channelStoriesWithData = channels.mapNotNull { channel ->
+        channelStoriesMap[channel.userId]?.let { channelStories ->
+            Pair(channel, channelStories)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Channel Stories секція (якщо є)
+            if (channelStoriesWithData.isNotEmpty()) {
+                item {
+                    com.worldmates.messenger.ui.stories.ChannelStoriesSection(
+                        channelStories = channelStoriesWithData
+                    )
+                }
+            }
+
+            // Список каналів
+            items(channels, key = { it.id }) { channel ->
+                when (uiStyle) {
+                    UIStyle.WorldMates -> {
+                        ModernChannelCard(
+                            channel = channel,
+                            onClick = { onChannelClick(channel) }
+                        )
+                    }
+                    UIStyle.Telegram -> {
+                        TelegramStyleChannelItem(
+                            channel = channel,
+                            onClick = { onChannelClick(channel) }
+                        )
+                    }
+                }
+            }
+        }
+
+        PullRefreshIndicator(
+            refreshing = refreshing || isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }

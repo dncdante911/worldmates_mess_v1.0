@@ -727,7 +727,7 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "add_post_reaction",
         @Field("post_id") postId: Long,
-        @Field("emoji") emoji: String
+        @Field("reaction") emoji: String
     ): CreatePostResponse
 
     @FormUrlEncoded
@@ -736,7 +736,7 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "remove_post_reaction",
         @Field("post_id") postId: Long,
-        @Field("emoji") emoji: String
+        @Field("reaction") emoji: String
     ): CreatePostResponse
 
     @FormUrlEncoded

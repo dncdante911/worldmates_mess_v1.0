@@ -690,17 +690,48 @@ fun ChannelListTab(
 ) {
     val context = LocalContext.current
     val refreshing by remember { mutableStateOf(false) }
+    val searchQuery by channelsViewModel.searchQuery.collectAsState()
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing,
         onRefresh = onRefresh
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pullRefresh(pullRefreshState)
-    ) {
-        if (channels.isEmpty() && !isLoading) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Пошукова панель
+        var localQuery by remember { mutableStateOf(searchQuery) }
+
+        // Автоматичний пошук з затримкою після введення
+        LaunchedEffect(localQuery) {
+            kotlinx.coroutines.delay(500) // Затримка 500мс після введення
+            if (localQuery.isEmpty()) {
+                channelsViewModel.fetchChannels()
+            } else if (localQuery.length >= 2) {
+                channelsViewModel.searchChannels(localQuery)
+            }
+        }
+
+        com.worldmates.messenger.ui.channels.ChannelSearchBar(
+            searchQuery = localQuery,
+            onQueryChange = { query ->
+                localQuery = query
+            },
+            onSearch = {
+                if (localQuery.isNotEmpty()) {
+                    channelsViewModel.searchChannels(localQuery)
+                }
+            },
+            onClear = {
+                localQuery = ""
+                channelsViewModel.fetchChannels()
+            }
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
+            if (channels.isEmpty() && !isLoading) {
             // Empty state
             Column(
                 modifier = Modifier
@@ -783,10 +814,11 @@ fun ChannelListTab(
             }
         }
 
-        PullRefreshIndicator(
-            refreshing = refreshing,
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
+            PullRefreshIndicator(
+                refreshing = refreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
     }
 }

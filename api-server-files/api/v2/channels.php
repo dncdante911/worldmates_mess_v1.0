@@ -288,6 +288,7 @@ function getChannels($db, $user_id, $data) {
     $filter = $data['filter'] ?? 'all'; // 'all', 'subscribed', 'owned'
     $limit = isset($data['limit']) ? (int)$data['limit'] : 20;
     $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
+    $query = isset($data['query']) ? trim($data['query']) : '';
 
     $where = "WHERE type = 'channel'";
     $params = [];
@@ -298,6 +299,15 @@ function getChannels($db, $user_id, $data) {
     } elseif ($filter === 'owned') {
         $where .= " AND user_id = ?";
         $params[] = $user_id;
+    }
+
+    // Пошук по назві або username
+    if (!empty($query)) {
+        $where .= " AND (g.group_name LIKE ? OR g.username LIKE ? OR g.description LIKE ?)";
+        $searchTerm = "%{$query}%";
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
     }
 
     $stmt = $db->prepare("

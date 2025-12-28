@@ -1219,22 +1219,31 @@ function updateChannelSettings($db, $user_id, $channel_id, $data) {
     // Отримуємо поточні налаштування
     $current_settings = json_decode($result['settings'] ?? '{}', true);
 
-    // Оновлюємо налаштування
-    $settings_to_update = [
-        'allow_comments',
-        'allow_reactions',
-        'allow_shares',
-        'show_statistics',
-        'notify_subscribers_new_post',
-        'auto_delete_posts_days',
-        'signature_enabled',
-        'comments_moderation',
-        'slow_mode_seconds'
-    ];
+    // Якщо надіслано JSON налаштувань
+    if (isset($data['settings_json'])) {
+        $new_settings = json_decode($data['settings_json'], true);
+        if ($new_settings !== null) {
+            // Оновлюємо існуючі налаштування новими
+            $current_settings = array_merge($current_settings, $new_settings);
+        }
+    } else {
+        // Підтримка старого формату (окремі параметри)
+        $settings_to_update = [
+            'allow_comments',
+            'allow_reactions',
+            'allow_shares',
+            'show_statistics',
+            'notify_subscribers_new_post',
+            'auto_delete_posts_days',
+            'signature_enabled',
+            'comments_moderation',
+            'slow_mode_seconds'
+        ];
 
-    foreach ($settings_to_update as $key) {
-        if (isset($data[$key])) {
-            $current_settings[$key] = $data[$key];
+        foreach ($settings_to_update as $key) {
+            if (isset($data[$key])) {
+                $current_settings[$key] = $data[$key];
+            }
         }
     }
 

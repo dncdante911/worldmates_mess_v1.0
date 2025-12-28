@@ -661,7 +661,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun updateChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("action") action: String = "update_post",
+        @Field("type") type: String = "update_post",
         @Field("post_id") postId: Long,
         @Field("text") text: String,
         @Field("media_urls") mediaUrls: String? = null
@@ -671,7 +671,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun deleteChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("action") action: String = "delete_post",
+        @Field("type") type: String = "delete_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 
@@ -679,7 +679,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun pinChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("action") action: String = "pin_post",
+        @Field("type") type: String = "pin_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 
@@ -687,7 +687,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun unpinChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("action") action: String = "unpin_post",
+        @Field("type") type: String = "unpin_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 

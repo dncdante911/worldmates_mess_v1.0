@@ -12,6 +12,23 @@
  */
 
 require_once(__DIR__ . '/config.php');
+require_once(__DIR__ . '/crypto_helper.php');
+
+// Налаштування логування
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', '/var/www/www-root/data/www/worldmates.club/api/v2/logs/php_errors.log');
+
+// Функція логування для каналів
+if (!function_exists('logChannelMessage')) {
+    function logChannelMessage($message, $level = 'INFO') {
+        $log_file = '/var/www/www-root/data/www/worldmates.club/api/v2/logs/channels.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[{$timestamp}] [{$level}] {$message}\n";
+        @file_put_contents($log_file, $log_entry, FILE_APPEND);
+    }
+}
 
 header('Content-Type: application/json');
 
@@ -38,6 +55,7 @@ if (!$access_token) {
 // Валідація токену та отримання user_id
 $user_id = validateAccessToken($db, $access_token);
 if (!$user_id) {
+    logChannelMessage("Invalid access token attempt", 'WARNING');
     echo json_encode(['api_status' => 401, 'error_message' => 'Invalid access token']);
     exit;
 }
@@ -45,6 +63,8 @@ if (!$user_id) {
 // Роутинг методів
 // Android клієнт надсилає 'type', веб клієнт може надсилати 'action'
 $action = $data['type'] ?? $data['action'] ?? $_GET['type'] ?? $_GET['action'] ?? '';
+
+logChannelMessage("User $user_id: action=$action", 'INFO');
 
 // Мапінг старих type на нові action для сумісності з Android
 $type_mapping = [
@@ -475,11 +495,14 @@ function createChannel($db, $user_id, $data) {
 
         $db->commit();
 
+        logChannelMessage("User $user_id created channel $channel_id: $name (private=$is_private)", 'INFO');
+
         // Повертаємо створений канал
         return getChannelDetails($db, $user_id, $channel_id);
 
     } catch (Exception $e) {
         $db->rollBack();
+        logChannelMessage("Failed to create channel for user $user_id: " . $e->getMessage(), 'ERROR');
         return ['api_status' => 500, 'error_message' => 'Failed to create channel: ' . $e->getMessage()];
     }
 }
@@ -698,6 +721,8 @@ function getChannelPosts($db, $user_id, $channel_id, $data) {
             u.name AS author_name,
             u.avatar AS author_avatar,
             m.text,
+            m.iv,
+            m.tag,
             m.media,
             m.mediaFileName,
             m.time AS created_time,
@@ -720,6 +745,22 @@ function getChannelPosts($db, $user_id, $channel_id, $data) {
     foreach ($posts as &$post) {
         $post['is_pinned'] = ($post['is_pinned'] === 'pinned');
         $post['is_edited'] = false; // TODO: додати підтримку edited_time
+
+        // Дешифруємо текст для приватних каналів
+        if ($channel['is_private'] === '1' && !empty($post['iv']) && !empty($post['tag'])) {
+            $decrypted = CryptoHelper::decryptGCM(
+                $post['text'],
+                $post['created_time'],
+                $post['iv'],
+                $post['tag']
+            );
+            if ($decrypted !== false) {
+                $post['text'] = $decrypted;
+            }
+        }
+
+        // Видаляємо технічні поля
+        unset($post['iv'], $post['tag']);
 
         // Перетворюємо media у масив
         if (!empty($post['media'])) {
@@ -757,33 +798,58 @@ function createPost($db, $user_id, $data) {
         return ['api_status' => 400, 'error_message' => 'Post text or media is required'];
     }
 
-    // Перевіряємо права на публікацію
-    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    // Перевіряємо права на публікацію та чи канал приватний
+    $stmt = $db->prepare("
+        SELECT gcu.role, gc.is_private
+        FROM Wo_GroupChatUsers gcu
+        JOIN Wo_GroupChat gc ON gc.group_id = gcu.group_id
+        WHERE gcu.group_id = ? AND gcu.user_id = ?
+    ");
     $stmt->execute([$channel_id, $user_id]);
-    $role = $stmt->fetchColumn();
+    $channel_info = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!in_array($role, ['owner', 'admin', 'moderator'])) {
+    if (!$channel_info || !in_array($channel_info['role'], ['owner', 'admin', 'moderator'])) {
+        logChannelMessage("User $user_id attempted to post in channel $channel_id without permission", 'WARNING');
         return ['api_status' => 403, 'error_message' => 'You do not have permission to post in this channel'];
+    }
+
+    $time = time();
+    $encrypted_text = $text;
+    $iv = '';
+    $tag = '';
+
+    // Шифруємо текст для приватних каналів
+    if ($channel_info['is_private'] === '1' && !empty($text)) {
+        $encryption_result = CryptoHelper::encryptGCM($text, $time);
+        if ($encryption_result) {
+            $encrypted_text = $encryption_result['ciphertext'];
+            $iv = $encryption_result['iv'];
+            $tag = $encryption_result['tag'];
+            logChannelMessage("Post text encrypted for private channel $channel_id", 'DEBUG');
+        }
     }
 
     // Створюємо пост
     $stmt = $db->prepare("
         INSERT INTO Wo_Messages
-        (from_id, group_id, text, media, mediaFileName, time, seen, sent_push)
-        VALUES (?, ?, ?, ?, ?, ?, 0, 0)
+        (from_id, group_id, text, media, mediaFileName, time, seen, sent_push, iv, tag)
+        VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
     ");
 
-    $time = time();
     $filename = $media_url ? basename($media_url) : '';
 
     $stmt->execute([
         $user_id,
         $channel_id,
-        $text,
+        $encrypted_text,
         $media_url ?: '',
         $filename,
-        $time
+        $time,
+        $iv,
+        $tag
     ]);
+
+    logChannelMessage("User $user_id created post in channel $channel_id (private=" . $channel_info['is_private'] . ")", 'INFO');
 
     $post_id = $db->lastInsertId();
 

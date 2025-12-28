@@ -311,6 +311,11 @@ fun ChannelDetailsScreen(
                                 onPostClick = {
                                     selectedPostForDetail = post
                                     detailsViewModel.loadComments(post.id)
+                                    detailsViewModel.registerPostView(
+                                        postId = post.id,
+                                        onSuccess = { /* Просмотр зареєстровано */ },
+                                        onError = { /* Помилка реєстрації, але не показуємо користувачу */ }
+                                    )
                                     showPostDetailDialog = true
                                 },
                                 onReactionClick = { emoji ->

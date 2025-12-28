@@ -245,6 +245,15 @@ try {
             echo json_encode(addCommentReaction($db, $user_id, $data));
             break;
 
+        case 'register_post_view':
+            $post_id = $data['post_id'] ?? null;
+            if (!$post_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
+                exit;
+            }
+            echo json_encode(registerPostView($db, $user_id, $post_id));
+            break;
+
         // ============================================
         // Адміністрування
         // ============================================
@@ -777,6 +786,52 @@ function getChannelPosts($db, $user_id, $channel_id, $data) {
             $post['media'] = [];
         }
         unset($post['mediaFileName']);
+
+        // Отримуємо реакції до поста з інформацією про користувачів
+        $stmt = $db->prepare("
+            SELECT
+                r.reaction AS emoji,
+                r.user_id,
+                u.username,
+                u.avatar
+            FROM wo_reactions r
+            LEFT JOIN Wo_Users u ON u.user_id = r.user_id
+            WHERE r.message_id = ?
+            ORDER BY r.id ASC
+        ");
+        $stmt->execute([$post['id']]);
+        $all_reactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Групуємо реакції по емодзі
+        $reactions_grouped = [];
+        foreach ($all_reactions as $reaction) {
+            $emoji = $reaction['emoji'];
+            if (!isset($reactions_grouped[$emoji])) {
+                $reactions_grouped[$emoji] = [
+                    'emoji' => $emoji,
+                    'count' => 0,
+                    'user_reacted' => false,
+                    'recent_users' => []
+                ];
+            }
+            $reactions_grouped[$emoji]['count']++;
+
+            // Перевіряємо чи поточний користувач поставив цю реакцію
+            if ($reaction['user_id'] == $user_id) {
+                $reactions_grouped[$emoji]['user_reacted'] = true;
+            }
+
+            // Додаємо перших 3 користувачів
+            if (count($reactions_grouped[$emoji]['recent_users']) < 3) {
+                $reactions_grouped[$emoji]['recent_users'][] = [
+                    'user_id' => $reaction['user_id'],
+                    'username' => $reaction['username'],
+                    'avatar' => $reaction['avatar']
+                ];
+            }
+        }
+
+        $post['reactions'] = array_values($reactions_grouped);
     }
 
     return [
@@ -1020,12 +1075,16 @@ function getComments($db, $user_id, $post_id) {
         SELECT
             mc.id,
             mc.user_id,
+            u.username,
+            CONCAT(u.first_name, ' ', u.last_name) AS user_name,
+            u.avatar AS user_avatar,
             mc.text,
             mc.time,
             mc.edited_time,
             mc.reply_to_comment_id,
             (SELECT COUNT(*) FROM Wo_MessageCommentReactions WHERE comment_id = mc.id) AS reactions_count
         FROM Wo_MessageComments mc
+        LEFT JOIN Wo_Users u ON u.user_id = mc.user_id
         WHERE mc.message_id = ?
         ORDER BY mc.time ASC
     ");
@@ -1196,6 +1255,44 @@ function addCommentReaction($db, $user_id, $data) {
     $stmt->execute([$comment_id, $user_id, $reaction, time()]);
 
     return ['api_status' => 200, 'message' => 'Reaction added successfully'];
+}
+
+/**
+ * Зареєструвати перегляд поста
+ */
+function registerPostView($db, $user_id, $post_id) {
+    // Перевіряємо чи існує пост
+    $stmt = $db->prepare("SELECT id FROM Wo_Messages WHERE id = ?");
+    $stmt->execute([$post_id]);
+    if (!$stmt->fetch()) {
+        return ['api_status' => 404, 'error_message' => 'Post not found'];
+    }
+
+    // Перевіряємо чи вже є запис про перегляд від цього користувача
+    $stmt = $db->prepare("SELECT id FROM Wo_MessageViews WHERE message_id = ? AND user_id = ?");
+    $stmt->execute([$post_id, $user_id]);
+
+    if (!$stmt->fetch()) {
+        // Додаємо новий перегляд
+        $stmt = $db->prepare("
+            INSERT INTO Wo_MessageViews (message_id, user_id, time)
+            VALUES (?, ?, ?)
+        ");
+        $stmt->execute([$post_id, $user_id, time()]);
+
+        logChannelMessage("Post view registered: post_id=$post_id, user_id=$user_id", 'DEBUG');
+    }
+
+    // Повертаємо оновлену кількість переглядів
+    $stmt = $db->prepare("SELECT COUNT(*) as views_count FROM Wo_MessageViews WHERE message_id = ?");
+    $stmt->execute([$post_id]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return [
+        'api_status' => 200,
+        'message' => 'View registered',
+        'views_count' => $result['views_count'] ?? 0
+    ];
 }
 
 /**

@@ -195,6 +195,68 @@ fun ChannelPostCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Display existing reactions with user info
+            if (!post.reactions.isNullOrEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    post.reactions.forEach { reaction ->
+                        Surface(
+                            modifier = Modifier,
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (reaction.userReacted) Color(0xFFE3F2FD) else Color(0xFFF5F5F5),
+                            border = BorderStroke(
+                                1.dp,
+                                if (reaction.userReacted) Color(0xFF2196F3) else Color(0xFFE0E0E0)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = reaction.emoji,
+                                    fontSize = 16.sp
+                                )
+                                Text(
+                                    text = "${reaction.count}",
+                                    fontSize = 13.sp,
+                                    fontWeight = if (reaction.userReacted) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (reaction.userReacted) Color(0xFF2196F3) else Color(0xFF757575)
+                                )
+
+                                // Show avatars of first 3 users who reacted
+                                if (!reaction.recentUsers.isNullOrEmpty()) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
+                                        reaction.recentUsers.take(3).forEach { user ->
+                                            if (!user.avatar.isNullOrEmpty()) {
+                                                AsyncImage(
+                                                    model = user.avatar,
+                                                    contentDescription = user.username,
+                                                    modifier = Modifier
+                                                        .size(20.dp)
+                                                        .clip(CircleShape)
+                                                        .border(1.dp, Color.White, CircleShape),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Divider(color = Color(0xFFEEEEEE))
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -802,20 +864,32 @@ fun CommentItem(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {
-        // Avatar placeholder
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "U",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontWeight = FontWeight.Bold
+        // Avatar
+        if (!comment.userAvatar.isNullOrEmpty()) {
+            AsyncImage(
+                model = comment.userAvatar,
+                contentDescription = "User Avatar",
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentScale = ContentScale.Crop
             )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = "User",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -828,7 +902,7 @@ fun CommentItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Користувач #${comment.userId}",
+                    text = comment.userName ?: comment.username ?: "Користувач #${comment.userId}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold
                 )

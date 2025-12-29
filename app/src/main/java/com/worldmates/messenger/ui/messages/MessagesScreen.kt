@@ -441,7 +441,7 @@ fun MessagesScreen(
                         ) + fadeIn(
                             initialAlpha = 0.3f
                         ),
-                        modifier = Modifier.animateItemPlacement()
+                        modifier = Modifier.animateItem()
                     ) {
                     MessageBubbleComposable(
                         message = message,
@@ -2577,4 +2577,3 @@ fun performSelectionVibration(context: Context) {
         Log.e("MessagesScreen", "Помилка вібрації: ${e.message}")
     }
 }
-

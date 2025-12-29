@@ -10,9 +10,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -32,6 +34,7 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.data.ContactNicknameRepository
 import com.worldmates.messenger.data.model.Chat
 import com.worldmates.messenger.data.model.Group
+import com.worldmates.messenger.ui.channels.ChannelCard
 import com.worldmates.messenger.ui.preferences.UIStyle
 import com.worldmates.messenger.ui.preferences.rememberUIStyle
 import com.worldmates.messenger.ui.theme.ExpressiveFAB
@@ -812,7 +815,7 @@ fun ChannelListTab(
                             com.worldmates.messenger.ui.channels.TelegramChannelItem(
                                 channel = channel,
                                 onClick = { onChannelClick(channel) },
-                                modifier = Modifier.animateItemPlacement()
+                                modifier = Modifier.animateItem()
                             )
                         }
                         com.worldmates.messenger.ui.preferences.UIStyle.WORLDMATES -> {
@@ -844,7 +847,7 @@ fun ChannelListTab(
                                 },
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp, vertical = 4.dp)
-                                    .animateItemPlacement()
+                                    .animateItem()
                             )
                         }
                     }

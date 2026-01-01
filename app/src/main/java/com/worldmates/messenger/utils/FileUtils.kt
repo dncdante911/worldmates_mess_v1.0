@@ -2,6 +2,10 @@ package com.worldmates.messenger.utils
 
 import android.content.Context
 import android.database.Cursor
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -9,6 +13,7 @@ import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import kotlin.math.min
 
 /**
  * Утиліти для роботи з файлами
@@ -167,6 +172,135 @@ object FileUtils {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error cleaning up temp files", e)
+        }
+    }
+
+    /**
+     * Стиснути зображення для завантаження
+     * Зменшує розмір файлу для зображень > 100KB
+     * @param imageFile Вхідний файл зображення
+     * @param maxSizeKB Максимальний розмір в KB (за замовчуванням 800KB)
+     * @param quality Якість JPEG (0-100, за замовчуванням 85)
+     * @return Стиснутий файл або оригінал якщо стиснення не потрібне
+     */
+    fun compressImageIfNeeded(
+        context: Context,
+        imageFile: File,
+        maxSizeKB: Int = 800,
+        quality: Int = 85
+    ): File {
+        return try {
+            val fileSizeKB = imageFile.length() / 1024
+            Log.d(TAG, "Розмір оригінального файлу: ${fileSizeKB}KB")
+
+            // Якщо файл менше 100KB, повертаємо оригінал
+            if (fileSizeKB <= 100) {
+                Log.d(TAG, "Файл достатньо малий, стиснення не потрібне")
+                return imageFile
+            }
+
+            // Декодуємо зображення
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(imageFile.absolutePath, options)
+
+            val originalWidth = options.outWidth
+            val originalHeight = options.outHeight
+
+            // Обчислюємо inSampleSize для зменшення розміру
+            val maxDimension = if (fileSizeKB > maxSizeKB) 1920 else 2560
+            val inSampleSize = calculateInSampleSize(options, maxDimension, maxDimension)
+
+            // Декодуємо з inSampleSize
+            val decodingOptions = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+
+            val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath, decodingOptions)
+                ?: return imageFile
+
+            Log.d(TAG, "Зображення декодовано: ${bitmap.width}x${bitmap.height}, original: ${originalWidth}x${originalHeight}")
+
+            // Виправляємо орієнтацію за EXIF
+            val correctedBitmap = fixImageOrientation(imageFile.absolutePath, bitmap)
+
+            // Створюємо стиснутий файл
+            val compressedFile = File(context.cacheDir, "compressed_${System.currentTimeMillis()}.jpg")
+
+            FileOutputStream(compressedFile).use { out ->
+                correctedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+            }
+
+            correctedBitmap.recycle()
+            if (correctedBitmap != bitmap) {
+                bitmap.recycle()
+            }
+
+            val compressedSizeKB = compressedFile.length() / 1024
+            Log.d(TAG, "Файл стиснуто: ${fileSizeKB}KB → ${compressedSizeKB}KB (${100 - (compressedSizeKB * 100 / fileSizeKB)}% економії)")
+
+            compressedFile
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка стиснення зображення", e)
+            imageFile
+        }
+    }
+
+    /**
+     * Обчислити inSampleSize для зменшення зображення
+     */
+    private fun calculateInSampleSize(
+        options: BitmapFactory.Options,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        val height = options.outHeight
+        val width = options.outWidth
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+
+        return inSampleSize
+    }
+
+    /**
+     * Виправити орієнтацію зображення згідно EXIF даних
+     */
+    private fun fixImageOrientation(imagePath: String, bitmap: Bitmap): Bitmap {
+        return try {
+            val exif = ExifInterface(imagePath)
+            val orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+
+            val matrix = Matrix()
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+                ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+                else -> return bitmap
+            }
+
+            val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (rotatedBitmap != bitmap) {
+                bitmap.recycle()
+            }
+            rotatedBitmap
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка виправлення орієнтації", e)
+            bitmap
         }
     }
 }

@@ -98,8 +98,17 @@ class StoryRepository(private val context: Context) {
             val mediaFile = FileUtils.getFileFromUri(context, mediaUri)
                 ?: return Result.failure(Exception("Не вдалося прочитати файл"))
 
-            val requestFile = mediaFile.asRequestBody("multipart/form-data".toMediaTypeOrNull())
-            val filePart = MultipartBody.Part.createFormData("file", mediaFile.name, requestFile)
+            // Стискаємо зображення якщо це фото (не відео)
+            val finalMediaFile = if (fileType == "image") {
+                FileUtils.compressImageIfNeeded(context, mediaFile, maxSizeKB = 800, quality = 85)
+            } else {
+                mediaFile
+            }
+
+            Log.d(TAG, "Файл для завантаження: ${finalMediaFile.absolutePath}, розмір: ${finalMediaFile.length() / 1024}KB")
+
+            val requestFile = finalMediaFile.asRequestBody("multipart/form-data".toMediaTypeOrNull())
+            val filePart = MultipartBody.Part.createFormData("file", finalMediaFile.name, requestFile)
 
             // Створюємо тіло запиту
             val fileTypeBody = fileType.toRequestBody("text/plain".toMediaTypeOrNull())

@@ -1,5 +1,11 @@
 <?php
 
+// Load WoWonder initialization
+$depth = '../../../';
+if (file_exists($depth . 'assets/init.php')) {
+    require_once($depth . 'assets/init.php');
+}
+
 // Enable error logging for debugging
 error_reporting(E_ALL);
 ini_set('log_errors', 1);
@@ -11,12 +17,30 @@ ini_set('error_log', $log_dir . '/create-story-debug.log');
 error_log("=== create-story.php START ===");
 error_log("FILES: " . print_r($_FILES, true));
 error_log("POST: " . print_r($_POST, true));
+error_log("GET: " . print_r($_GET, true));
 
 $response_data = array(
     'api_status' => 400
 );
 
 try {
+
+// Check authentication
+if (empty($wo['user']) || empty($wo['user']['id'])) {
+    $response_data = array(
+        'api_status' => 400,
+        'errors' => array(
+            'error_id' => 1,
+            'error_text' => 'Not authorized'
+        )
+    );
+    header('Content-Type: application/json');
+    echo json_encode($response_data);
+    error_log("ERROR: User not authorized");
+    exit;
+}
+
+error_log("User authenticated: ID=" . $wo['user']['id'] . ", username=" . ($wo['user']['username'] ?? 'unknown'));
 
 if (empty($_FILES["file"]["tmp_name"])) {
     $error_code    = 3;
@@ -48,10 +72,14 @@ if (empty($error_code)) {
     $max_video_duration = $is_pro ? 45 : 25;
     $expire_hours = $is_pro ? 48 : 24;
 
+    error_log("User subscription: is_pro=" . ($is_pro ? 'yes' : 'no') . ", max_stories=$max_stories, expire_hours=$expire_hours");
+
     // Count existing active stories
     $existing_stories = $db->where('user_id', $wo['user']['id'])
                           ->where('expire', time(), '>')
                           ->getValue(T_USER_STORY, 'COUNT(*)');
+
+    error_log("Existing active stories: $existing_stories");
 
     if ($existing_stories >= $max_stories) {
         $error_code    = 8;

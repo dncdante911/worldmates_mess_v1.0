@@ -40,6 +40,8 @@ import com.worldmates.messenger.ui.preferences.rememberUIStyle
 import com.worldmates.messenger.ui.theme.ExpressiveFAB
 import com.worldmates.messenger.ui.theme.ExpressiveIconButton
 import com.worldmates.messenger.ui.theme.GlassTopAppBar
+import com.worldmates.messenger.ui.theme.rememberThemeState
+import com.worldmates.messenger.ui.theme.BackgroundImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -78,6 +80,7 @@ fun ChatsScreenModern(
     val isLoadingStories by storyViewModel.isLoading.collectAsState()
 
     val uiStyle = rememberUIStyle()
+    val themeState = rememberThemeState()
     val pagerState = rememberPagerState(initialPage = 0) { 3 } // 3 вкладки: Чати, Канали, Групи
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -154,9 +157,17 @@ fun ChatsScreenModern(
         },
         gesturesEnabled = true
     ) {
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+    // Box з фоновим зображенням з налаштувань тем
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Фонове зображення з налаштувань тем
+        BackgroundImage(
+            backgroundImageUri = themeState.backgroundImageUri,
+            presetBackgroundId = themeState.presetBackgroundId
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent,  // Прозорий фон, щоб було видно BackgroundImage
+            snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             GlassTopAppBar(
                 title = {
@@ -458,6 +469,7 @@ fun ChatsScreenModern(
             viewModel = storyViewModel
         )
     }
+    }  // Закриваємо Box з фоновим зображенням
     }  // Закриваємо ModalNavigationDrawer
 }
 

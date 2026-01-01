@@ -68,5 +68,5 @@ object StrapiClient {
     /**
      * CDN URL для побудови повних шляхів до медіа файлів
      */
-    const val CDN_URL = BASE_URL.trimEnd('/')
+    val CDN_URL: String = "https://cdn.worldmates.club"
 }

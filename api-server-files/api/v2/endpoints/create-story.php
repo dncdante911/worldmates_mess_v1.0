@@ -12,7 +12,11 @@
 // Enable error logging for debugging
 error_reporting(E_ALL);
 ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/create-story-debug.log');
+$log_dir = '/var/www/www-root/data/www/worldmates.club/api/v2/logs';
+if (!file_exists($log_dir)) {
+    @mkdir($log_dir, 0755, true);
+}
+ini_set('error_log', $log_dir . '/create-story-debug.log');
 error_log("=== create-story.php START ===");
 error_log("FILES: " . print_r($_FILES, true));
 error_log("POST: " . print_r($_POST, true));

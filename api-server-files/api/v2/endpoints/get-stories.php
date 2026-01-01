@@ -12,7 +12,11 @@
 // Enable error logging
 error_reporting(E_ALL);
 ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/get-stories-debug.log');
+$log_dir = '/var/www/www-root/data/www/worldmates.club/api/v2/logs';
+if (!file_exists($log_dir)) {
+    @mkdir($log_dir, 0755, true);
+}
+ini_set('error_log', $log_dir . '/get-stories-debug.log');
 error_log("=== get-stories.php START ===");
 
 $response_data = array('api_status' => 400);

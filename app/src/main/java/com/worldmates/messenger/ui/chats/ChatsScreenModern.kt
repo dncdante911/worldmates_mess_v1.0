@@ -950,6 +950,7 @@ fun ChannelListTabWithStories(
     onRefresh: () -> Unit,
     onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit
 ) {
+    val context = LocalContext.current
     val refreshing by remember { mutableStateOf(false) }
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing || isLoading,
@@ -985,16 +986,43 @@ fun ChannelListTabWithStories(
             items(channels, key = { it.id }) { channel ->
                 when (uiStyle) {
                     UIStyle.WORLDMATES -> {
-                        ChannelCard(
+                        com.worldmates.messenger.ui.channels.ChannelCard(
                             channel = channel,
-                            onClick = { onChannelClick(channel) }
+                            onClick = { onChannelClick(channel) },
+                            onSubscribeToggle = { isCurrentlySubscribed ->
+                                if (isCurrentlySubscribed) {
+                                    channelsViewModel.unsubscribeChannel(
+                                        channelId = channel.id,
+                                        onSuccess = {
+                                            android.widget.Toast.makeText(context, "Відписано", android.widget.Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { error ->
+                                            android.widget.Toast.makeText(context, "Помилка: $error", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                } else {
+                                    channelsViewModel.subscribeChannel(
+                                        channelId = channel.id,
+                                        onSuccess = {
+                                            android.widget.Toast.makeText(context, "Підписано!", android.widget.Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { error ->
+                                            android.widget.Toast.makeText(context, "Помилка: $error", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .animateItemPlacement()
                         )
                     }
                     UIStyle.TELEGRAM -> {
-                        // Telegram style - використовуємо той же компонент
-                        ChannelCard(
+                        // Telegram style - використовуємо TelegramChannelItem
+                        com.worldmates.messenger.ui.channels.TelegramChannelItem(
                             channel = channel,
-                            onClick = { onChannelClick(channel) }
+                            onClick = { onChannelClick(channel) },
+                            modifier = Modifier.animateItemPlacement()
                         )
                     }
                 }

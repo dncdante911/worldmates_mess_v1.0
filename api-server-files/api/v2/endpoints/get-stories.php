@@ -8,6 +8,30 @@
 // | WoWonder - The Ultimate Social Networking Platform
 // | Copyright (c) 2018 WoWonder. All rights reserved.
 // +------------------------------------------------------------------------+
+
+// Enable error logging
+error_reporting(E_ALL);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/get-stories-debug.log');
+error_log("=== get-stories.php START ===");
+
+$response_data = array('api_status' => 400);
+
+try {
+    // Перевіряємо авторизацію
+    if (empty($wo['user']) || empty($wo['user']['id'])) {
+        $response_data = array(
+            'api_status' => 400,
+            'errors' => array(
+                'error_id' => 1,
+                'error_text' => 'Not authorized'
+            )
+        );
+        header('Content-Type: application/json');
+        echo json_encode($response_data);
+        exit;
+    }
+
 $stories = array();
 
 $options['limit'] = (!empty($_POST['limit'])) ? (int) $_POST['limit'] : 35;
@@ -34,7 +58,28 @@ foreach ($get_all_stories as $key => $one_story) {
     } 
 }
 
-$response_data = array(
-    'api_status' => 200,
-    'stories' => $stories
-);
+    $response_data = array(
+        'api_status' => 200,
+        'stories' => $stories
+    );
+
+    error_log("Successfully loaded " . count($stories) . " stories");
+
+} catch (Exception $e) {
+    // Catch any unexpected errors
+    error_log("EXCEPTION in get-stories.php: " . $e->getMessage());
+    error_log("Stack trace: " . $e->getTraceAsString());
+
+    $response_data = array(
+        'api_status' => 400,
+        'errors' => array(
+            'error_id' => 99,
+            'error_text' => 'Server error: ' . $e->getMessage()
+        )
+    );
+}
+
+// Return JSON response
+header('Content-Type: application/json');
+echo json_encode($response_data);
+error_log("Final response: api_status=" . $response_data['api_status']);

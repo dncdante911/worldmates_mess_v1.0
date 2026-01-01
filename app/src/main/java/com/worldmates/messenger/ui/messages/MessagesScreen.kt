@@ -66,6 +66,9 @@ import com.worldmates.messenger.ui.theme.rememberThemeState
 import com.worldmates.messenger.ui.theme.PresetBackground
 import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
 import com.worldmates.messenger.ui.preferences.rememberQuickReaction
+import com.worldmates.messenger.ui.preferences.UIStyle
+import com.worldmates.messenger.ui.preferences.UIStylePreferences
+import com.worldmates.messenger.ui.preferences.rememberUIStyle
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import com.worldmates.messenger.utils.VoiceRecorder
@@ -150,6 +153,7 @@ fun MessagesScreen(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val themeState = rememberThemeState()
+    val uiStyle = rememberUIStyle()
 
     // 📜 Auto-scroll для автоматичної прокрутки до нових повідомлень
     val listState = rememberLazyListState()
@@ -1015,6 +1019,28 @@ fun MessagesHeaderBar(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Image, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    if (uiStyle == UIStyle.WORLDMATES)
+                                        "Класичний стиль"
+                                    else
+                                        "WorldMates стиль"
+                                )
+                            },
+                            onClick = {
+                                showUserMenu = false
+                                val newStyle = if (uiStyle == UIStyle.WORLDMATES) {
+                                    UIStyle.TELEGRAM
+                                } else {
+                                    UIStyle.WORLDMATES
+                                }
+                                UIStylePreferences.setStyle(context, newStyle)
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Palette, contentDescription = null)
                             }
                         )
                         Divider()

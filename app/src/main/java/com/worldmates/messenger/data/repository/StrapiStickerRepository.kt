@@ -198,7 +198,7 @@ class StrapiStickerRepository(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 val response = StrapiClient.api.getPackBySlug(slug)
-                val pack = response.data.firstOrNull()?.toStickerPack(StrapiClient.CDN_URL)
+                val pack = response.data.firstOrNull()?.toStrapiContentPack(StrapiClient.CDN_URL)
                 Result.success(pack)
             } catch (e: Exception) {
                 Log.e(TAG, "Помилка завантаження паку $slug", e)

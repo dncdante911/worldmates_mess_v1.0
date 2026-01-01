@@ -325,10 +325,21 @@ if (empty($error_code)) {
             'types' => 'jpg,png,mp4,gif,jpeg,mov,webm'
         );
         error_log("Attempting to upload file: " . print_r($fileInfo, true));
+
+        // ВАЖНО: Меняем директорию на корень проекта для Wo_ShareFile
+        // Wo_ShareFile использует относительные пути (upload/photos, upload/videos и т.д.)
+        $current_dir = getcwd();
+        chdir($_SERVER['DOCUMENT_ROOT']);
+        error_log("Changed directory to DOCUMENT_ROOT for file upload: " . getcwd());
+
         error_log("Upload directory writable: " . (is_writable('upload/photos') ? 'YES' : 'NO'));
         error_log("Upload directory exists: " . (file_exists('upload/photos') ? 'YES' : 'NO'));
 
         $media    = Wo_ShareFile($fileInfo);
+
+        // Возвращаем директорию обратно
+        chdir($current_dir);
+        error_log("Restored directory after file upload: " . getcwd());
 
         error_log("Wo_ShareFile result type: " . gettype($media));
         error_log("Wo_ShareFile result: " . print_r($media, true));
@@ -427,7 +438,15 @@ if (empty($error_code)) {
                         'size' => $_FILES["cover"]["size"],
                         'type' => $_FILES["cover"]["type"]
                     );
+
+                    // Меняем директорию для Wo_ShareFile (cover upload)
+                    $current_dir = getcwd();
+                    chdir($_SERVER['DOCUMENT_ROOT']);
+
                     $media            = Wo_ShareFile($fileInfo);
+
+                    // Возвращаем директорию
+                    chdir($current_dir);
                     $file_type        = explode('/', $fileInfo['type']);
                     if (empty($thumb)) {
                         if (in_array(strtolower(pathinfo($media['filename'], PATHINFO_EXTENSION)), array(

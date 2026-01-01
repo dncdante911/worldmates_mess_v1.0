@@ -3,14 +3,25 @@
 // | @author Deen Doughouz (DoughouzForest)
 // | @author_url 1: http://www.wowonder.com
 // | @author_url 2: http://codecanyon.net/user/doughouzforest
-// | @author_email: wowondersocial@gmail.com   
+// | @author_email: wowondersocial@gmail.com
 // +------------------------------------------------------------------------+
 // | WoWonder - The Ultimate Social Networking Platform
 // | Copyright (c) 2018 WoWonder. All rights reserved.
 // +------------------------------------------------------------------------+
+
+// Enable error logging for debugging
+error_reporting(E_ALL);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/create-story-debug.log');
+error_log("=== create-story.php START ===");
+error_log("FILES: " . print_r($_FILES, true));
+error_log("POST: " . print_r($_POST, true));
+
 $response_data = array(
     'api_status' => 400
 );
+
+try {
 
 if (empty($_FILES["file"]["tmp_name"])) {
     $error_code    = 3;
@@ -95,11 +106,19 @@ if (empty($error_code)) {
             'type' => $_FILES["file"]["type"],
             'types' => 'jpg,png,mp4,gif,jpeg,mov,webm'
         );
+        error_log("Attempting to upload file: " . print_r($fileInfo, true));
         $media    = Wo_ShareFile($fileInfo);
-        if (!empty($media)) {
+        error_log("Wo_ShareFile result: " . print_r($media, true));
+        $filename = '';
+        if (!empty($media) && !empty($media['filename'])) {
             $filename = $media['filename'];
+            error_log("File uploaded successfully: " . $filename);
+        } else {
+            $error_code    = 10;
+            $error_message = 'Failed to upload file. Please check file size and format.';
+            error_log("ERROR: File upload failed - media result: " . print_r($media, true));
         }
-        if ($filename) {
+        if (!empty($filename) && empty($error_code)) {
             $video_duration = (!empty($_POST['video_duration']) && is_numeric($_POST['video_duration'])) ? (int)$_POST['video_duration'] : 0;
 
             $sources[] = array(
@@ -200,6 +219,43 @@ if (empty($error_code)) {
                 'api_status' => 200,
                 'story_id' => $last_id
             );
+        } else {
+            // No sources were added
+            if (empty($error_code)) {
+                $error_code    = 11;
+                $error_message = 'Failed to process media file';
+            }
+        }
+    } else {
+        // Story creation failed
+        if (empty($error_code)) {
+            $error_code    = 12;
+            $error_message = 'Failed to create story';
         }
     }
 }
+
+} catch (Exception $e) {
+    // Catch any unexpected errors
+    error_log("EXCEPTION in create-story.php: " . $e->getMessage());
+    error_log("Stack trace: " . $e->getTraceAsString());
+    $error_code = 99;
+    $error_message = 'Server error: ' . $e->getMessage();
+}
+
+// Return error if any
+if (!empty($error_code)) {
+    $response_data = array(
+        'api_status' => 400,
+        'errors' => array(
+            'error_id' => $error_code,
+            'error_text' => $error_message
+        )
+    );
+}
+
+error_log("Final response: " . print_r($response_data, true));
+
+// Return JSON response
+header('Content-Type: application/json');
+echo json_encode($response_data);

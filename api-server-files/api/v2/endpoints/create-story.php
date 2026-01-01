@@ -70,11 +70,26 @@ if (file_exists($init_path)) {
 
     error_log("About to require_once init.php...");
 
+    // Сохраняем текущую директорию
+    $original_dir = getcwd();
+    error_log("Original working directory: " . $original_dir);
+
+    // Меняем рабочую директорию на корень проекта (где находится init.php)
+    $root_dir = dirname($init_path);
+    chdir($root_dir);
+    error_log("Changed working directory to: " . getcwd());
+
     try {
         // Загружаем init.php
         require_once($init_path);
         error_log("✅ init.php loaded successfully");
+
+        // Возвращаем оригинальную рабочую директорию
+        chdir($original_dir);
+        error_log("Restored working directory to: " . getcwd());
     } catch (Exception $e) {
+        // Возвращаем оригинальную директорию при ошибке
+        @chdir($original_dir);
         error_log("❌ EXCEPTION while loading init.php: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
         header('Content-Type: application/json');
@@ -84,6 +99,8 @@ if (file_exists($init_path)) {
         ]);
         exit;
     } catch (Throwable $t) {
+        // Возвращаем оригинальную директорию при ошибке
+        @chdir($original_dir);
         error_log("❌ THROWABLE while loading init.php: " . $t->getMessage());
         error_log("Stack trace: " . $t->getTraceAsString());
         header('Content-Type: application/json');

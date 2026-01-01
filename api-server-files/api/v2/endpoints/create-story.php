@@ -11,6 +11,31 @@ if (!file_exists($log_dir)) {
 $log_file = $log_dir . '/create-story-debug.log';
 ini_set('error_log', $log_file);
 
+// Обработчик фатальных ошибок
+register_shutdown_function(function() use ($log_file) {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        error_log("=== FATAL ERROR DETECTED ===");
+        error_log("Type: " . $error['type']);
+        error_log("Message: " . $error['message']);
+        error_log("File: " . $error['file']);
+        error_log("Line: " . $error['line']);
+        error_log("=========================");
+
+        // Возвращаем JSON ошибку клиенту
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'api_status' => 500,
+                'errors' => [
+                    'error_id' => 102,
+                    'error_text' => 'Server fatal error: ' . $error['message']
+                ]
+            ]);
+        }
+    }
+});
+
 // Write initial log
 error_log("=== create-story.php START at " . date('Y-m-d H:i:s') . " ===");
 error_log("Log file: " . $log_file);
@@ -38,19 +63,49 @@ if (file_exists($init_path)) {
     error_log("PHP limits increased: memory_limit=" . ini_get('memory_limit') .
               ", max_execution_time=" . ini_get('max_execution_time'));
 
+    // Проверка на уже запущенную сессию
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        error_log("WARNING: Session already started before loading init.php");
+    }
+
+    error_log("About to require_once init.php...");
+
     try {
+        // Загружаем init.php
         require_once($init_path);
-        error_log("init.php loaded successfully");
+        error_log("✅ init.php loaded successfully");
     } catch (Exception $e) {
-        error_log("EXCEPTION while loading init.php: " . $e->getMessage());
+        error_log("❌ EXCEPTION while loading init.php: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
         header('Content-Type: application/json');
         echo json_encode([
             'api_status' => 500,
-            'errors' => ['error_id' => 100, 'error_text' => 'Server initialization error']
+            'errors' => ['error_id' => 100, 'error_text' => 'Server initialization error: ' . $e->getMessage()]
+        ]);
+        exit;
+    } catch (Throwable $t) {
+        error_log("❌ THROWABLE while loading init.php: " . $t->getMessage());
+        error_log("Stack trace: " . $t->getTraceAsString());
+        header('Content-Type: application/json');
+        echo json_encode([
+            'api_status' => 500,
+            'errors' => ['error_id' => 100, 'error_text' => 'Server initialization error: ' . $t->getMessage()]
         ]);
         exit;
     }
+
+    // Проверяем, что все необходимые глобальные переменные загружены
+    if (!isset($wo)) {
+        error_log("❌ ERROR: \$wo global variable not set after loading init.php");
+        header('Content-Type: application/json');
+        echo json_encode([
+            'api_status' => 500,
+            'errors' => ['error_id' => 103, 'error_text' => 'Server configuration incomplete']
+        ]);
+        exit;
+    }
+
+    error_log("✅ \$wo variable is set, config loaded successfully");
 } else {
     error_log("ERROR: init.php not found at " . $init_path);
     header('Content-Type: application/json');

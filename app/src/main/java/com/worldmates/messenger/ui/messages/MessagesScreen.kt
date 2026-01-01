@@ -862,6 +862,8 @@ fun MessagesHeaderBar(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var showUserMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val uiStyle = rememberUIStyle()
 
     // Telegram-style AppBar - четкий и читаемый
     TopAppBar(
@@ -1269,7 +1271,7 @@ fun MessageBubbleComposable(
                 }
 
                 // Определяем тип медиа по URL
-                val detectedMediaType = detectMediaType(effectiveMediaUrl, message.type)
+                val detectedMediaType = detectMediaType(effectiveMediaUrl ?: "", message.type)
                 Log.d("MessageBubble", "ID повідомлення: ${message.id}, Тип: ${message.type}, Визначений тип: $detectedMediaType, URL: $effectiveMediaUrl")
 
                 // Показываем текст ТОЛЬКО если:

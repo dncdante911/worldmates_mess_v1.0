@@ -899,7 +899,7 @@ class MessagesViewModel(application: Application) :
             Log.d("MessagesViewModel", "📨 Отримано Socket.IO повідомлення: $messageJson")
 
             val timestamp = messageJson.getLong("time")
-            val encryptedText = messageJson.getString("text")
+            val encryptedText = messageJson.optString("text", null)
             val mediaUrl = messageJson.optString("media", null)
 
             // Поддержка AES-GCM (v2) - новые поля

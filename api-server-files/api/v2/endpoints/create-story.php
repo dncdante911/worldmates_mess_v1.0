@@ -124,6 +124,46 @@ if (file_exists($init_path)) {
     }
 
     error_log("✅ \$wo variable is set, config loaded successfully");
+
+    // ============================================
+    // AUTHENTICATION через access_token из GET
+    // ============================================
+    // app_start.php не обрабатывает GET параметры, поэтому делаем вручную
+    if (empty($wo['user']) || empty($wo['user']['id'])) {
+        $access_token = !empty($_GET['access_token']) ? Wo_Secure($_GET['access_token']) :
+                       (!empty($_GET['s']) ? Wo_Secure($_GET['s']) : '');
+
+        if (!empty($access_token)) {
+            error_log("Attempting authentication with access_token: " . substr($access_token, 0, 20) . "...");
+
+            // Находим сессию по access_token
+            $query = "SELECT user_id FROM " . T_APP_SESSIONS . " WHERE session_id = '" . $access_token . "' LIMIT 1";
+            $sql_query = mysqli_query($sqlConnect, $query);
+
+            if ($sql_query && mysqli_num_rows($sql_query) > 0) {
+                $session_data = mysqli_fetch_assoc($sql_query);
+                $user_id = $session_data['user_id'];
+
+                error_log("Found user_id from access_token: " . $user_id);
+
+                // Загружаем данные пользователя
+                $wo['user'] = Wo_UserData($user_id);
+
+                if (!empty($wo['user']) && !empty($wo['user']['user_id'])) {
+                    error_log("✅ User authenticated successfully: user_id=" . $wo['user']['user_id'] . ", username=" . ($wo['user']['username'] ?? 'unknown'));
+                } else {
+                    error_log("❌ Failed to load user data for user_id: " . $user_id);
+                }
+            } else {
+                error_log("❌ No session found for access_token");
+            }
+        } else {
+            error_log("❌ No access_token provided in GET parameters");
+        }
+    } else {
+        error_log("✅ User already authenticated from session");
+    }
+
 } else {
     error_log("ERROR: init.php not found at " . $init_path);
     header('Content-Type: application/json');

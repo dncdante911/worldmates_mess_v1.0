@@ -1,23 +1,35 @@
 <?php
 
-// Load WoWonder initialization
-$depth = '../../../';
-if (file_exists($depth . 'assets/init.php')) {
-    require_once($depth . 'assets/init.php');
-}
-
-// Enable error logging for debugging
+// Enable error logging BEFORE loading init.php to catch all errors
 error_reporting(E_ALL);
+ini_set('display_errors', 0);  // Don't display errors in output
 ini_set('log_errors', 1);
-$log_dir = '/var/www/www-root/data/www/worldmates.club/api/v2/logs';
+$log_dir = $_SERVER['DOCUMENT_ROOT'] . '/api/v2/logs';
 if (!file_exists($log_dir)) {
-    @mkdir($log_dir, 0755, true);
+    @mkdir($log_dir, 0777, true);
 }
-ini_set('error_log', $log_dir . '/create-story-debug.log');
-error_log("=== create-story.php START ===");
+$log_file = $log_dir . '/create-story-debug.log';
+ini_set('error_log', $log_file);
+
+// Write initial log
+error_log("=== create-story.php START at " . date('Y-m-d H:i:s') . " ===");
+error_log("Log file: " . $log_file);
+error_log("Document root: " . $_SERVER['DOCUMENT_ROOT']);
+error_log("REQUEST_METHOD: " . $_SERVER['REQUEST_METHOD']);
+error_log("CONTENT_TYPE: " . ($_SERVER['CONTENT_TYPE'] ?? 'not set'));
 error_log("FILES: " . print_r($_FILES, true));
 error_log("POST: " . print_r($_POST, true));
 error_log("GET: " . print_r($_GET, true));
+
+// Load WoWonder initialization
+$depth = '../../../';
+error_log("Loading init.php from: " . $depth . 'assets/init.php');
+if (file_exists($depth . 'assets/init.php')) {
+    require_once($depth . 'assets/init.php');
+    error_log("init.php loaded successfully");
+} else {
+    error_log("ERROR: init.php not found at " . $depth . 'assets/init.php');
+}
 
 $response_data = array(
     'api_status' => 400
@@ -42,9 +54,34 @@ if (empty($wo['user']) || empty($wo['user']['id'])) {
 
 error_log("User authenticated: ID=" . $wo['user']['id'] . ", username=" . ($wo['user']['username'] ?? 'unknown'));
 
+// Check PHP upload limits
+error_log("PHP upload_max_filesize: " . ini_get('upload_max_filesize'));
+error_log("PHP post_max_size: " . ini_get('post_max_size'));
+error_log("PHP max_execution_time: " . ini_get('max_execution_time'));
+error_log("PHP memory_limit: " . ini_get('memory_limit'));
+
 if (empty($_FILES["file"]["tmp_name"])) {
     $error_code    = 3;
     $error_message = 'file (STREAM FILE) is missing';
+    error_log("ERROR: File upload missing - FILES array: " . print_r($_FILES, true));
+
+    // Check for upload errors
+    if (isset($_FILES["file"]["error"])) {
+        $upload_error = $_FILES["file"]["error"];
+        $error_messages = array(
+            UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize (' . ini_get('upload_max_filesize') . ')',
+            UPLOAD_ERR_FORM_SIZE => 'File exceeds MAX_FILE_SIZE in HTML form',
+            UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+            UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
+            UPLOAD_ERR_EXTENSION => 'PHP extension stopped the file upload'
+        );
+        if (isset($error_messages[$upload_error])) {
+            $error_message .= ' - ' . $error_messages[$upload_error];
+            error_log("Upload error code $upload_error: " . $error_messages[$upload_error]);
+        }
+    }
 }
 if (isset($_POST['story_title']) && strlen($_POST['story_title']) > 100) {
     $error_code    = 4;
@@ -69,10 +106,10 @@ if (empty($error_code)) {
     // Check user subscription limits
     $is_pro = ($wo['user']['is_pro'] == 1);
     $max_stories = $is_pro ? 15 : 2;
-    $max_video_duration = $is_pro ? 45 : 25;
+    $max_video_duration = $is_pro ? 45 : 30;  // Changed from 25 to 30 seconds
     $expire_hours = $is_pro ? 48 : 24;
 
-    error_log("User subscription: is_pro=" . ($is_pro ? 'yes' : 'no') . ", max_stories=$max_stories, expire_hours=$expire_hours");
+    error_log("User subscription: is_pro=" . ($is_pro ? 'yes' : 'no') . ", max_stories=$max_stories, max_video_duration=$max_video_duration, expire_hours=$expire_hours");
 
     // Count existing active stories
     $existing_stories = $db->where('user_id', $wo['user']['id'])
@@ -91,7 +128,7 @@ if (empty($error_code)) {
         $video_duration = (int)$_POST['video_duration'];
         if ($video_duration > $max_video_duration) {
             $error_code    = 9;
-            $error_message = $is_pro ? 'Video duration cannot exceed 45 seconds' : 'Free users can only upload videos up to 25 seconds. Upgrade to premium for videos up to 45 seconds.';
+            $error_message = $is_pro ? 'Video duration cannot exceed 45 seconds' : 'Free users can only upload videos up to 30 seconds. Upgrade to premium for videos up to 45 seconds.';
         }
     }
 }
@@ -130,16 +167,27 @@ if (empty($error_code)) {
             'types' => 'jpg,png,mp4,gif,jpeg,mov,webm'
         );
         error_log("Attempting to upload file: " . print_r($fileInfo, true));
+        error_log("Upload directory writable: " . (is_writable('upload/photos') ? 'YES' : 'NO'));
+        error_log("Upload directory exists: " . (file_exists('upload/photos') ? 'YES' : 'NO'));
+
         $media    = Wo_ShareFile($fileInfo);
+
+        error_log("Wo_ShareFile result type: " . gettype($media));
         error_log("Wo_ShareFile result: " . print_r($media, true));
+
         $filename = '';
-        if (!empty($media) && !empty($media['filename'])) {
+        if (!empty($media) && is_array($media) && !empty($media['filename'])) {
             $filename = $media['filename'];
             error_log("File uploaded successfully: " . $filename);
 
+            // Отримуємо повний шлях до файлу
+            $file_full_path = $_SERVER['DOCUMENT_ROOT'] . '/' . $filename;
+            error_log("Full file path: " . $file_full_path);
+
             // Стиснення відео якщо розмір > 50MB та ffmpeg увімкнено
             if ($file_type == 'video' && $wo['config']['ffmpeg_system'] == 'on') {
-                $video_path = $filename;
+                $video_path = $file_full_path;
+                error_log("Checking if video file exists: " . $video_path);
                 if (file_exists($video_path)) {
                     $file_size_mb = filesize($video_path) / (1024 * 1024);
                     error_log("Video file size: {$file_size_mb}MB");
@@ -180,7 +228,11 @@ if (empty($error_code)) {
                     } else {
                         error_log("Video < 50MB, compression not needed");
                     }
+                } else {
+                    error_log("ERROR: Video file does not exist at path: " . $video_path);
                 }
+            } else {
+                error_log("Video compression skipped: file_type=$file_type, ffmpeg_system=" . ($wo['config']['ffmpeg_system'] ?? 'not set'));
             }
         } else {
             $error_code    = 10;

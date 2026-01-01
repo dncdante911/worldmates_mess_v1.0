@@ -216,7 +216,7 @@ data class StoryLimits(
         fun forFreeUser(): StoryLimits {
             return StoryLimits(
                 maxStories = 2,
-                maxVideoDuration = 25,
+                maxVideoDuration = 30,
                 expireHours = 24
             )
         }

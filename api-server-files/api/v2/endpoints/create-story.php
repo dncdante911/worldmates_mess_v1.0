@@ -317,11 +317,20 @@ if (empty($error_code)) {
         error_log("Story created with ID: $last_id, proceeding with file upload...");
         $true     = false;
         $sources  = array();
+
+        // Получаем правильный MIME тип из загруженного файла
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $detected_mime = finfo_file($finfo, $_FILES["file"]["tmp_name"]);
+        finfo_close($finfo);
+
+        error_log("Original MIME type from client: " . $_FILES["file"]["type"]);
+        error_log("Detected MIME type from file: " . $detected_mime);
+
         $fileInfo = array(
             'file' => $_FILES["file"]["tmp_name"],
             'name' => $_FILES['file']['name'],
             'size' => $_FILES["file"]["size"],
-            'type' => $_FILES["file"]["type"],
+            'type' => $detected_mime,  // Используем определенный MIME тип, а не от клиента
             'types' => 'jpg,png,mp4,gif,jpeg,mov,webm'
         );
         error_log("Attempting to upload file: " . print_r($fileInfo, true));
@@ -343,6 +352,14 @@ if (empty($error_code)) {
 
         error_log("Wo_ShareFile result type: " . gettype($media));
         error_log("Wo_ShareFile result: " . print_r($media, true));
+
+        if ($media === false) {
+            error_log("❌ Wo_ShareFile returned FALSE - possible reasons:");
+            error_log("  - Invalid file extension");
+            error_log("  - File size exceeds maxUpload: " . ($wo['config']['maxUpload'] ?? 'not set'));
+            error_log("  - Invalid MIME type (not in allowed list)");
+            error_log("  - move_uploaded_file() failed");
+        }
 
         $filename = '';
         if (!empty($media) && is_array($media) && !empty($media['filename'])) {

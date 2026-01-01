@@ -177,25 +177,31 @@ object FileUtils {
 
     /**
      * Стиснути зображення для завантаження
-     * Зменшує розмір файлу для зображень > 100KB
+     * Зменшує розмір файлу для зображень > 1MB
      * @param imageFile Вхідний файл зображення
-     * @param maxSizeKB Максимальний розмір в KB (за замовчуванням 800KB)
-     * @param quality Якість JPEG (0-100, за замовчуванням 85)
+     * @param maxSizeKB Максимальний розмір в KB (за замовчуванням 15MB = 15360KB)
+     * @param quality Якість JPEG (0-100, за замовчуванням 90 - висока якість)
      * @return Стиснутий файл або оригінал якщо стиснення не потрібне
      */
     fun compressImageIfNeeded(
         context: Context,
         imageFile: File,
-        maxSizeKB: Int = 800,
-        quality: Int = 85
+        maxSizeKB: Int = 15360,  // 15MB за замовчуванням
+        quality: Int = 90  // Висока якість за замовчуванням
     ): File {
         return try {
             val fileSizeKB = imageFile.length() / 1024
-            Log.d(TAG, "Розмір оригінального файлу: ${fileSizeKB}KB")
+            Log.d(TAG, "Розмір оригінального файлу: ${fileSizeKB}KB (${fileSizeKB / 1024.0}MB)")
 
-            // Якщо файл менше 100KB, повертаємо оригінал
-            if (fileSizeKB <= 100) {
-                Log.d(TAG, "Файл достатньо малий, стиснення не потрібне")
+            // Якщо файл менше 1MB, повертаємо оригінал (не стискаємо малі файли)
+            if (fileSizeKB <= 1024) {
+                Log.d(TAG, "Файл < 1MB, стиснення не потрібне")
+                return imageFile
+            }
+
+            // Якщо файл вже менший за maxSizeKB, також не стискаємо
+            if (fileSizeKB <= maxSizeKB) {
+                Log.d(TAG, "Файл вже в межах ліміту ${maxSizeKB}KB, стиснення не потрібне")
                 return imageFile
             }
 
@@ -209,7 +215,12 @@ object FileUtils {
             val originalHeight = options.outHeight
 
             // Обчислюємо inSampleSize для зменшення розміру
-            val maxDimension = if (fileSizeKB > maxSizeKB) 1920 else 2560
+            // Для файлів > 15MB використовуємо більш агресивне стиснення
+            val maxDimension = when {
+                fileSizeKB > 20480 -> 2560  // > 20MB: зменшуємо до 2560px
+                fileSizeKB > 10240 -> 3840  // > 10MB: зменшуємо до 4K
+                else -> 4096  // Інакше: макс 4K
+            }
             val inSampleSize = calculateInSampleSize(options, maxDimension, maxDimension)
 
             // Декодуємо з inSampleSize

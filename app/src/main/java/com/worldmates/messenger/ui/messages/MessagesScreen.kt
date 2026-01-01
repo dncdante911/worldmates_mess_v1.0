@@ -16,7 +16,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -38,7 +37,6 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -47,7 +45,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
-import com.worldmates.messenger.ui.media.FullscreenImageViewer
 import com.worldmates.messenger.ui.media.ImageGalleryViewer
 import com.worldmates.messenger.ui.media.InlineVideoPlayer
 import com.worldmates.messenger.ui.media.MiniAudioPlayer
@@ -56,12 +53,6 @@ import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.model.ReactionGroup
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.FileManager
-import com.worldmates.messenger.ui.theme.WMShapes
-import com.worldmates.messenger.ui.theme.MessageBubbleOwn
-import com.worldmates.messenger.ui.theme.MessageBubbleOther
-import com.worldmates.messenger.ui.theme.WMGradients
-import com.worldmates.messenger.ui.theme.AnimatedGradientBackground
-import com.worldmates.messenger.ui.theme.WMColors
 import com.worldmates.messenger.ui.theme.rememberThemeState
 import com.worldmates.messenger.ui.theme.PresetBackground
 import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
@@ -81,7 +72,6 @@ import com.worldmates.messenger.ui.messages.selection.SelectionTopBarActions
 import com.worldmates.messenger.ui.messages.selection.MediaActionMenu
 import com.worldmates.messenger.ui.messages.selection.QuickReactionAnimation
 import com.worldmates.messenger.ui.messages.selection.ForwardMessageDialog
-import com.worldmates.messenger.ui.messages.selection.ForwardRecipient
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -447,61 +437,61 @@ fun MessagesScreen(
                         ),
                         modifier = Modifier.animateItem()
                     ) {
-                    MessageBubbleComposable(
-                        message = message,
-                        voicePlayer = voicePlayer,
-                        replyToMessage = replyToMessage,
-                        onLongPress = {
-                            // 🔥 Активуємо режим вибору при довгому натисканні
-                            if (!isSelectionMode) {
-                                isSelectionMode = true
-                                // 📳 Вібрація при активації
-                                performSelectionVibration(context)
+                        MessageBubbleComposable(
+                            message = message,
+                            voicePlayer = voicePlayer,
+                            replyToMessage = replyToMessage,
+                            onLongPress = {
+                                // 🔥 Активуємо режим вибору при довгому натисканні
+                                if (!isSelectionMode) {
+                                    isSelectionMode = true
+                                    // 📳 Вібрація при активації
+                                    performSelectionVibration(context)
+                                }
+                            },
+                            onImageClick = { imageUrl ->
+                                Log.d("MessagesScreen", "🖼️ onImageClick викликано! URL: $imageUrl")
+                                Log.d("MessagesScreen", "📋 Всього imageUrls: ${imageUrls.size}, список: $imageUrls")
+                                // Знаходимо індекс вибраного фото в списку
+                                selectedImageIndex = imageUrls.indexOf(imageUrl).coerceAtLeast(0)
+                                Log.d("MessagesScreen", "📍 selectedImageIndex: $selectedImageIndex")
+                                showImageGallery = true
+                                Log.d("MessagesScreen", "🎬 showImageGallery = true (встановлено)")
+                            },
+                            onReply = { msg ->
+                                // Встановлюємо повідомлення для відповіді
+                                replyToMessage = msg
+                            },
+                            onToggleReaction = { messageId, emoji ->
+                                viewModel.toggleReaction(messageId, emoji)
+                            },
+                            // 🔥 Нові параметри для режиму вибору
+                            isSelectionMode = isSelectionMode,
+                            isSelected = selectedMessages.contains(message.id),
+                            onToggleSelection = { messageId ->
+                                selectedMessages = if (selectedMessages.contains(messageId)) {
+                                    selectedMessages - messageId
+                                } else {
+                                    selectedMessages + messageId
+                                }
+                                // Якщо нічого не вибрано - виходимо з режиму
+                                if (selectedMessages.isEmpty()) {
+                                    isSelectionMode = false
+                                }
+                            },
+                            onDoubleTap = { messageId ->
+                                // ❤️ Швидка реакція при подвійному тапі
+                                quickReactionMessageId = messageId
+                                showQuickReaction = true
+                                // Додаємо реакцію
+                                viewModel.toggleReaction(messageId, defaultQuickReaction)
+                                // Ховаємо анімацію через 1 секунду
+                                scope.launch {
+                                    kotlinx.coroutines.delay(1000)
+                                    showQuickReaction = false
+                                }
                             }
-                        },
-                        onImageClick = { imageUrl ->
-                            Log.d("MessagesScreen", "🖼️ onImageClick викликано! URL: $imageUrl")
-                            Log.d("MessagesScreen", "📋 Всього imageUrls: ${imageUrls.size}, список: $imageUrls")
-                            // Знаходимо індекс вибраного фото в списку
-                            selectedImageIndex = imageUrls.indexOf(imageUrl).coerceAtLeast(0)
-                            Log.d("MessagesScreen", "📍 selectedImageIndex: $selectedImageIndex")
-                            showImageGallery = true
-                            Log.d("MessagesScreen", "🎬 showImageGallery = true (встановлено)")
-                        },
-                        onReply = { msg ->
-                            // Встановлюємо повідомлення для відповіді
-                            replyToMessage = msg
-                        },
-                        onToggleReaction = { messageId, emoji ->
-                            viewModel.toggleReaction(messageId, emoji)
-                        },
-                        // 🔥 Нові параметри для режиму вибору
-                        isSelectionMode = isSelectionMode,
-                        isSelected = selectedMessages.contains(message.id),
-                        onToggleSelection = { messageId ->
-                            selectedMessages = if (selectedMessages.contains(messageId)) {
-                                selectedMessages - messageId
-                            } else {
-                                selectedMessages + messageId
-                            }
-                            // Якщо нічого не вибрано - виходимо з режиму
-                            if (selectedMessages.isEmpty()) {
-                                isSelectionMode = false
-                            }
-                        },
-                        onDoubleTap = { messageId ->
-                            // ❤️ Швидка реакція при подвійному тапі
-                            quickReactionMessageId = messageId
-                            showQuickReaction = true
-                            // Додаємо реакцію
-                            viewModel.toggleReaction(messageId, defaultQuickReaction)
-                            // Ховаємо анімацію через 1 секунду
-                            scope.launch {
-                                kotlinx.coroutines.delay(1000)
-                                showQuickReaction = false
-                            }
-                        }
-                    )
+                        )
                     }  // Закриття AnimatedVisibility
                 }
             }
@@ -523,314 +513,314 @@ fun MessagesScreen(
                 }
             }
 
-        // Message Context Menu Bottom Sheet
-        if (showContextMenu && selectedMessage != null) {
-            MessageContextMenu(
-                message = selectedMessage!!,
-                onDismiss = {
-                    showContextMenu = false
-                    selectedMessage = null
-                },
-                onReply = { message ->
-                    replyToMessage = message
-                    showContextMenu = false
-                    selectedMessage = null
-                },
-                onEdit = { message ->
-                    // 🧪 ТЕСТОВЕ ПОВІДОМЛЕННЯ
-                    android.widget.Toast.makeText(
-                        context,
-                        "✏️ Редагування розпочато! Текст: ${message.decryptedText?.take(20)}...",
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                    editingMessage = message
-                    messageText = message.decryptedText ?: ""
-                    showContextMenu = false
-                    selectedMessage = null
-                },
-                onForward = { message ->
-                    // TODO: Implement forward to another chat
-                    android.widget.Toast.makeText(
-                        context,
-                        "Переслання: ${message.decryptedText}",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                    showContextMenu = false
-                    selectedMessage = null
-                },
-                onDelete = { message ->
-                    viewModel.deleteMessage(message.id)
-                    showContextMenu = false
-                    selectedMessage = null
-                },
-                onCopy = { message ->
-                    message.decryptedText?.let {
-                        clipboardManager.setText(AnnotatedString(it))
-                        android.widget.Toast.makeText(
-                            context,
-                            "Текст скопійовано",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                    showContextMenu = false
-                    selectedMessage = null
-                }
-            )
-        }
-
-        // Upload Progress
-        if (uploadProgress > 0 && uploadProgress < 100) {
-            LinearProgressIndicator(
-                progress = uploadProgress / 100f,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-            )
-        }
-
-        // Reply Indicator
-        ReplyIndicator(
-            replyToMessage = replyToMessage,
-            onCancelReply = { replyToMessage = null }
-        )
-
-        // Edit Indicator
-        EditIndicator(
-            editingMessage = editingMessage,
-            onCancelEdit = {
-                editingMessage = null
-                messageText = ""
-            }
-        )
-
-        // 🎵 Мінімізований аудіо плеєр
-        if (showMiniPlayer) {
-            MiniAudioPlayer(
-                audioUrl = "",
-                audioTitle = "Аудіо повідомлення",
-                isPlaying = playbackState is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Playing,
-                currentPosition = currentPosition,
-                duration = duration,
-                onPlayPauseClick = {
-                    scope.launch {
-                        if (playbackState is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Playing) {
-                            voicePlayer.pause()
-                        } else {
-                            voicePlayer.resume()
-                        }
-                    }
-                },
-                onSeek = { position ->
-                    voicePlayer.seek(position)
-                },
-                onClose = {
-                    voicePlayer.stop()
-                    showMiniPlayer = false  // Закриваємо UI плеєра
-                }
-            )
-        }
-
-        // 🔥 Нижня панель дій (режим вибору)
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            if (isSelectionMode) {
-                SelectionBottomBar(
-                    selectedCount = selectedMessages.size,
-                    onForward = {
-                        // Відкриваємо діалог вибору отримувачів
-                        showForwardDialog = true
+            // Message Context Menu Bottom Sheet
+            if (showContextMenu && selectedMessage != null) {
+                MessageContextMenu(
+                    message = selectedMessage!!,
+                    onDismiss = {
+                        showContextMenu = false
+                        selectedMessage = null
                     },
-                    onReply = {
-                        // Відповідаємо на вибране повідомлення
-                        if (selectedMessages.size == 1) {
-                            val messageId = selectedMessages.first()
-                            replyToMessage = messages.find { it.id == messageId }
-                            isSelectionMode = false
-                            selectedMessages = emptySet()
-                        }
-                    }
-                )
-            }
-        }
-
-        // ❤️ Анімація швидкої реакції
-        if (showQuickReaction) {
-            QuickReactionAnimation(
-                visible = showQuickReaction,
-                emoji = defaultQuickReaction,
-                onAnimationEnd = {
-                    showQuickReaction = false
-                    quickReactionMessageId = null
-                }
-            )
-        }
-
-        // Message Input (ховається в режимі вибору)
-        if (!isSelectionMode) {
-        MessageInputBar(
-            messageText = messageText,
-            onMessageChange = {
-                messageText = it
-                viewModel.updateDraftText(it) // Автосохранение черновика
-            },
-            onSendClick = {
-                if (messageText.isNotBlank()) {
-                    if (editingMessage != null) {
+                    onReply = { message ->
+                        replyToMessage = message
+                        showContextMenu = false
+                        selectedMessage = null
+                    },
+                    onEdit = { message ->
                         // 🧪 ТЕСТОВЕ ПОВІДОМЛЕННЯ
                         android.widget.Toast.makeText(
                             context,
-                            "💾 Зберігаю зміни для повідомлення ID: ${editingMessage!!.id}",
+                            "✏️ Редагування розпочато! Текст: ${message.decryptedText?.take(20)}...",
                             android.widget.Toast.LENGTH_LONG
                         ).show()
-                        // Редагуємо повідомлення
-                        viewModel.editMessage(editingMessage!!.id, messageText)
-                        messageText = ""
-                        editingMessage = null
-                    } else {
-                        // Надсилаємо нове повідомлення
-                        viewModel.sendMessage(messageText, replyToMessage?.id)
-                        messageText = ""
-                        replyToMessage = null  // Очищаємо reply після відправки
+                        editingMessage = message
+                        messageText = message.decryptedText ?: ""
+                        showContextMenu = false
+                        selectedMessage = null
+                    },
+                    onForward = { message ->
+                        // TODO: Implement forward to another chat
+                        android.widget.Toast.makeText(
+                            context,
+                            "Переслання: ${message.decryptedText}",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        showContextMenu = false
+                        selectedMessage = null
+                    },
+                    onDelete = { message ->
+                        viewModel.deleteMessage(message.id)
+                        showContextMenu = false
+                        selectedMessage = null
+                    },
+                    onCopy = { message ->
+                        message.decryptedText?.let {
+                            clipboardManager.setText(AnnotatedString(it))
+                            android.widget.Toast.makeText(
+                                context,
+                                "Текст скопійовано",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        showContextMenu = false
+                        selectedMessage = null
                     }
-                }
-            },
-            isLoading = isLoading,
-            recordingState = recordingState,
-            recordingDuration = recordingDuration,
-            voiceRecorder = voiceRecorder,
-            onStartVoiceRecord = {
-                scope.launch {
-                    voiceRecorder.startRecording()
-                }
-            },
-            onCancelVoiceRecord = {
-                scope.launch {
-                    voiceRecorder.cancelRecording()
-                }
-            },
-            onStopVoiceRecord = {
-                scope.launch {
-                    val stopped = voiceRecorder.stopRecording()
-                    if (stopped && voiceRecorder.recordingState.value is VoiceRecorder.RecordingState.Completed) {
-                        val filePath = (voiceRecorder.recordingState.value as VoiceRecorder.RecordingState.Completed).filePath
-                        viewModel.uploadAndSendMedia(java.io.File(filePath), "voice")
-                    }
-                }
-            },
-            onShowMediaOptions = { showMediaOptions = !showMediaOptions },
-            onPickImage = { imagePickerLauncher.launch("image/*") },
-            onPickVideo = { videoPickerLauncher.launch("video/*") },
-            onPickAudio = { audioPickerLauncher.launch("audio/*") },
-            onPickFile = { filePickerLauncher.launch("*/*") },
-            showMediaOptions = showMediaOptions,
-            showEmojiPicker = showEmojiPicker,
-            onToggleEmojiPicker = { showEmojiPicker = !showEmojiPicker },
-            showStickerPicker = showStickerPicker,
-            onToggleStickerPicker = { showStickerPicker = !showStickerPicker },
-            showGifPicker = showGifPicker,
-            onToggleGifPicker = { showGifPicker = !showGifPicker },
-            showLocationPicker = showLocationPicker,
-            onToggleLocationPicker = { showLocationPicker = !showLocationPicker },
-            showContactPicker = showContactPicker,
-            onToggleContactPicker = { showContactPicker = !showContactPicker }
-        )
-
-        // 💾 Draft saving indicator
-        if (isDraftSaving && messageText.isNotEmpty()) {
-            androidx.compose.foundation.layout.Box(
-                modifier = androidx.compose.ui.Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                contentAlignment = androidx.compose.ui.Alignment.CenterEnd
-            ) {
-                androidx.compose.material3.Text(
-                    text = "💾 Сохраняется...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
-        }
-        }  // Закриття if (!isSelectionMode)
 
-        // 😊 Emoji Picker
-        if (showEmojiPicker) {
-            com.worldmates.messenger.ui.components.EmojiPicker(
-                onEmojiSelected = { emoji ->
-                    messageText += emoji
-                    // Не закриваємо picker автоматично, щоб можна було вибрати кілька емоджі
-                },
-                onDismiss = { showEmojiPicker = false }
+            // Upload Progress
+            if (uploadProgress > 0 && uploadProgress < 100) {
+                LinearProgressIndicator(
+                    progress = uploadProgress / 100f,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                )
+            }
+
+            // Reply Indicator
+            ReplyIndicator(
+                replyToMessage = replyToMessage,
+                onCancelReply = { replyToMessage = null }
             )
-        }
 
-        // 🎭 Sticker Picker
-        if (showStickerPicker) {
-            com.worldmates.messenger.ui.components.StickerPicker(
-                onStickerSelected = { sticker ->
-                    viewModel.sendSticker(sticker.id)
-                    showStickerPicker = false
-                },
-                onDismiss = { showStickerPicker = false }
+            // Edit Indicator
+            EditIndicator(
+                editingMessage = editingMessage,
+                onCancelEdit = {
+                    editingMessage = null
+                    messageText = ""
+                }
             )
-        }
 
-        // 🎬 GIF Picker
-        if (showGifPicker) {
-            com.worldmates.messenger.ui.components.GifPicker(
-                onGifSelected = { gifUrl ->
-                    viewModel.sendGif(gifUrl)
-                    showGifPicker = false
+            // 🎵 Мінімізований аудіо плеєр
+            if (showMiniPlayer) {
+                MiniAudioPlayer(
+                    audioUrl = "",
+                    audioTitle = "Аудіо повідомлення",
+                    isPlaying = playbackState is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Playing,
+                    currentPosition = currentPosition,
+                    duration = duration,
+                    onPlayPauseClick = {
+                        scope.launch {
+                            if (playbackState is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Playing) {
+                                voicePlayer.pause()
+                            } else {
+                                voicePlayer.resume()
+                            }
+                        }
+                    },
+                    onSeek = { position ->
+                        voicePlayer.seek(position)
+                    },
+                    onClose = {
+                        voicePlayer.stop()
+                        showMiniPlayer = false  // Закриваємо UI плеєра
+                    }
+                )
+            }
+
+            // 🔥 Нижня панель дій (режим вибору)
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                if (isSelectionMode) {
+                    SelectionBottomBar(
+                        selectedCount = selectedMessages.size,
+                        onForward = {
+                            // Відкриваємо діалог вибору отримувачів
+                            showForwardDialog = true
+                        },
+                        onReply = {
+                            // Відповідаємо на вибране повідомлення
+                            if (selectedMessages.size == 1) {
+                                val messageId = selectedMessages.first()
+                                replyToMessage = messages.find { it.id == messageId }
+                                isSelectionMode = false
+                                selectedMessages = emptySet()
+                            }
+                        }
+                    )
+                }
+            }
+
+            // ❤️ Анімація швидкої реакції
+            if (showQuickReaction) {
+                QuickReactionAnimation(
+                    visible = showQuickReaction,
+                    emoji = defaultQuickReaction,
+                    onAnimationEnd = {
+                        showQuickReaction = false
+                        quickReactionMessageId = null
+                    }
+                )
+            }
+
+            // Message Input (ховається в режимі вибору)
+            if (!isSelectionMode) {
+                MessageInputBar(
+                    messageText = messageText,
+                    onMessageChange = {
+                        messageText = it
+                        viewModel.updateDraftText(it) // Автосохранение черновика
+                    },
+                    onSendClick = {
+                        if (messageText.isNotBlank()) {
+                            if (editingMessage != null) {
+                                // 🧪 ТЕСТОВЕ ПОВІДОМЛЕННЯ
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "💾 Зберігаю зміни для повідомлення ID: ${editingMessage!!.id}",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                                // Редагуємо повідомлення
+                                viewModel.editMessage(editingMessage!!.id, messageText)
+                                messageText = ""
+                                editingMessage = null
+                            } else {
+                                // Надсилаємо нове повідомлення
+                                viewModel.sendMessage(messageText, replyToMessage?.id)
+                                messageText = ""
+                                replyToMessage = null  // Очищаємо reply після відправки
+                            }
+                        }
+                    },
+                    isLoading = isLoading,
+                    recordingState = recordingState,
+                    recordingDuration = recordingDuration,
+                    voiceRecorder = voiceRecorder,
+                    onStartVoiceRecord = {
+                        scope.launch {
+                            voiceRecorder.startRecording()
+                        }
+                    },
+                    onCancelVoiceRecord = {
+                        scope.launch {
+                            voiceRecorder.cancelRecording()
+                        }
+                    },
+                    onStopVoiceRecord = {
+                        scope.launch {
+                            val stopped = voiceRecorder.stopRecording()
+                            if (stopped && voiceRecorder.recordingState.value is VoiceRecorder.RecordingState.Completed) {
+                                val filePath = (voiceRecorder.recordingState.value as VoiceRecorder.RecordingState.Completed).filePath
+                                viewModel.uploadAndSendMedia(java.io.File(filePath), "voice")
+                            }
+                        }
+                    },
+                    onShowMediaOptions = { showMediaOptions = !showMediaOptions },
+                    onPickImage = { imagePickerLauncher.launch("image/*") },
+                    onPickVideo = { videoPickerLauncher.launch("video/*") },
+                    onPickAudio = { audioPickerLauncher.launch("audio/*") },
+                    onPickFile = { filePickerLauncher.launch("*/*") },
+                    showMediaOptions = showMediaOptions,
+                    showEmojiPicker = showEmojiPicker,
+                    onToggleEmojiPicker = { showEmojiPicker = !showEmojiPicker },
+                    showStickerPicker = showStickerPicker,
+                    onToggleStickerPicker = { showStickerPicker = !showStickerPicker },
+                    showGifPicker = showGifPicker,
+                    onToggleGifPicker = { showGifPicker = !showGifPicker },
+                    showLocationPicker = showLocationPicker,
+                    onToggleLocationPicker = { showLocationPicker = !showLocationPicker },
+                    showContactPicker = showContactPicker,
+                    onToggleContactPicker = { showContactPicker = !showContactPicker }
+                )
+
+                // 💾 Draft saving indicator
+                if (isDraftSaving && messageText.isNotEmpty()) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = androidx.compose.ui.Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        contentAlignment = androidx.compose.ui.Alignment.CenterEnd
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = "💾 Сохраняется...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }  // Закриття if (!isSelectionMode)
+
+            // 😊 Emoji Picker
+            if (showEmojiPicker) {
+                com.worldmates.messenger.ui.components.EmojiPicker(
+                    onEmojiSelected = { emoji ->
+                        messageText += emoji
+                        // Не закриваємо picker автоматично, щоб можна було вибрати кілька емоджі
+                    },
+                    onDismiss = { showEmojiPicker = false }
+                )
+            }
+
+            // 🎭 Sticker Picker
+            if (showStickerPicker) {
+                com.worldmates.messenger.ui.components.StickerPicker(
+                    onStickerSelected = { sticker ->
+                        viewModel.sendSticker(sticker.id)
+                        showStickerPicker = false
+                    },
+                    onDismiss = { showStickerPicker = false }
+                )
+            }
+
+            // 🎬 GIF Picker
+            if (showGifPicker) {
+                com.worldmates.messenger.ui.components.GifPicker(
+                    onGifSelected = { gifUrl ->
+                        viewModel.sendGif(gifUrl)
+                        showGifPicker = false
+                    },
+                    onDismiss = { showGifPicker = false }
+                )
+            }
+
+            // 📍 Location Picker
+            if (showLocationPicker) {
+                com.worldmates.messenger.ui.components.LocationPicker(
+                    onLocationSelected = { locationData ->
+                        viewModel.sendLocation(locationData)
+                        showLocationPicker = false
+                    },
+                    onDismiss = { showLocationPicker = false }
+                )
+            }
+
+            // 📇 Contact Picker
+            if (showContactPicker) {
+                com.worldmates.messenger.ui.components.ContactPicker(
+                    onContactSelected = { contact ->
+                        viewModel.sendContact(contact)
+                        showContactPicker = false
+                    },
+                    onDismiss = { showContactPicker = false }
+                )
+            }
+
+            // 📤 Діалог пересилання повідомлень
+            ForwardMessageDialog(
+                visible = showForwardDialog,
+                contacts = forwardContacts,  // Реальні дані з ViewModel
+                groups = forwardGroups,      // Реальні дані з ViewModel
+                selectedCount = selectedMessages.size,
+                onForward = { recipientIds ->
+                    // Викликаємо метод ViewModel для пересилання
+                    viewModel.forwardMessages(selectedMessages, recipientIds)
+
+                    android.widget.Toast.makeText(
+                        context,
+                        "✅ Переслано ${selectedMessages.size} повідомлень до ${recipientIds.size} отримувачів",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+
+                    // Виходимо з режиму вибору
+                    isSelectionMode = false
+                    selectedMessages = emptySet()
                 },
-                onDismiss = { showGifPicker = false }
+                onDismiss = { showForwardDialog = false }
             )
-        }
-
-        // 📍 Location Picker
-        if (showLocationPicker) {
-            com.worldmates.messenger.ui.components.LocationPicker(
-                onLocationSelected = { locationData ->
-                    viewModel.sendLocation(locationData)
-                    showLocationPicker = false
-                },
-                onDismiss = { showLocationPicker = false }
-            )
-        }
-
-        // 📇 Contact Picker
-        if (showContactPicker) {
-            com.worldmates.messenger.ui.components.ContactPicker(
-                onContactSelected = { contact ->
-                    viewModel.sendContact(contact)
-                    showContactPicker = false
-                },
-                onDismiss = { showContactPicker = false }
-            )
-        }
-
-        // 📤 Діалог пересилання повідомлень
-        ForwardMessageDialog(
-            visible = showForwardDialog,
-            contacts = forwardContacts,  // Реальні дані з ViewModel
-            groups = forwardGroups,      // Реальні дані з ViewModel
-            selectedCount = selectedMessages.size,
-            onForward = { recipientIds ->
-                // Викликаємо метод ViewModel для пересилання
-                viewModel.forwardMessages(selectedMessages, recipientIds)
-
-                android.widget.Toast.makeText(
-                    context,
-                    "✅ Переслано ${selectedMessages.size} повідомлень до ${recipientIds.size} отримувачів",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
-
-                // Виходимо з режиму вибору
-                isSelectionMode = false
-                selectedMessages = emptySet()
-            },
-            onDismiss = { showForwardDialog = false }
-        )
         }  // Кінець Column
     }  // Кінець Box
 }
@@ -1238,265 +1228,265 @@ fun MessageBubbleComposable(
             } else {
                 // 💬 ТЕКСТ В БУЛЬБАШЦІ - використовуємо вибраний стиль
                 Column {
-            StyledBubble(
-                bubbleStyle = bubbleStyle,
-                isOwn = isOwn,
-                bgColor = bgColor,
-                modifier = Modifier
-                    .wrapContentWidth()
-                    .widthIn(min = 60.dp, max = 260.dp)
-                    .padding(horizontal = 12.dp)
-                    .combinedClickable(
-                        onClick = { },
-                        onLongClick = onLongPress
-                    )
-            ) {
-                // Получаем URL медиа из разных источников
-                var effectiveMediaUrl: String? = null
-
-                // 1. Сначала пытаемся использовать decryptedMediaUrl
-                if (!message.decryptedMediaUrl.isNullOrEmpty()) {
-                    effectiveMediaUrl = message.decryptedMediaUrl
-                    Log.d("MessageBubble", "Використовую decryptedMediaUrl: $effectiveMediaUrl")
-                }
-                // 2. Если пусто, проверяем mediaUrl
-                else if (!message.mediaUrl.isNullOrEmpty()) {
-                    effectiveMediaUrl = message.mediaUrl
-                    Log.d("MessageBubble", "Використовую mediaUrl: $effectiveMediaUrl")
-                }
-                // 3. Если все еще пусто, пытаемся извлечь URL из decryptedText
-                else if (!message.decryptedText.isNullOrEmpty()) {
-                    effectiveMediaUrl = extractMediaUrlFromText(message.decryptedText!!)
-                    Log.d("MessageBubble", "Витягнуто з тексту: $effectiveMediaUrl")
-                }
-
-                // Определяем тип медиа по URL
-                val detectedMediaType = detectMediaType(effectiveMediaUrl ?: "", message.type)
-                Log.d("MessageBubble", "ID повідомлення: ${message.id}, Тип: ${message.type}, Визначений тип: $detectedMediaType, URL: $effectiveMediaUrl")
-
-                // Показываем текст ТОЛЬКО если:
-                // 1. Текст есть И не пустой
-                // 2. И это НЕ чистый URL медиа (текст + медиа можно, чистый URL - нет)
-                val shouldShowText = !message.decryptedText.isNullOrEmpty() &&
-                    !isOnlyMediaUrl(message.decryptedText!!)
-
-                // 💬 Цитата Reply (якщо є)
-                if (message.replyToId != null && message.replyToText != null) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = textColor.copy(alpha = 0.1f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Вертикальна лінія
-                            Box(
-                                modifier = Modifier
-                                    .width(3.dp)
-                                    .height(40.dp)
-                                    .background(
-                                        color = colorScheme.primary,
-                                        shape = RoundedCornerShape(2.dp)
-                                    )
-                            )
-                            // Текст цитати
-                            Column {
-                                Text(
-                                    text = "Відповідь",
-                                    color = colorScheme.primary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = message.replyToText!!,
-                                    color = textColor.copy(alpha = 0.7f),
-                                    fontSize = 14.sp,
-                                    maxLines = 2,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Text message
-                if (shouldShowText) {
-                    // 📇 Проверяем, является ли сообщение vCard контактом
-                    val isContactMessage = com.worldmates.messenger.ui.components.isVCardMessage(message.decryptedText!!)
-
-                    if (isContactMessage) {
-                        // Рендерим контакт
-                        val contact = com.worldmates.messenger.ui.components.parseContactFromMessage(message.decryptedText!!)
-                        if (contact != null) {
-                            com.worldmates.messenger.ui.components.ContactMessageBubble(
-                                contact = contact
-                            )
-                        } else {
-                            // Если не удалось распарсить, показываем как обычный текст
-                            Text(
-                                text = message.decryptedText!!,
-                                color = textColor,
-                                fontSize = 15.sp,
-                                lineHeight = 20.sp,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    } else if (isEmojiMessage) {
-                        // 😊 ЕМОДЗІ БЕЗ БУЛЬБАШКИ - просто великі емодзі на прозорому фоні
-                        Text(
-                            text = message.decryptedText!!,
-                            fontSize = getEmojiSize(message.decryptedText!!),
-                            lineHeight = (getEmojiSize(message.decryptedText!!).value + 4).sp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .wrapContentWidth(Alignment.CenterHorizontally)
-                                .padding(vertical = 4.dp)
-                        )
-                    } else {
-                        // 💬 ТЕКСТ В БУЛЬБАШЦІ
-                        Text(
-                            text = message.decryptedText!!,
-                            color = textColor,
-                            fontSize = 15.sp,
-                            lineHeight = 20.sp,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-
-                // Image - показываем если тип "image" или если URL указывает на изображение
-                if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "image") {
-                    Box(
-                        modifier = Modifier
-                            .wrapContentWidth()  // Адаптується під розмір зображення
-                            .widthIn(max = 250.dp)  // Максимальна ширина для зображень
-                            .heightIn(min = 120.dp, max = 300.dp)
-                            .padding(top = if (shouldShowText) 6.dp else 0.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black.copy(alpha = 0.1f))
-                    ) {
-                        AsyncImage(
-                            model = effectiveMediaUrl,
-                            contentDescription = "Media",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(message.id) {
-                                    detectTapGestures(
-                                        onLongPress = {
-                                            // Показуємо меню для медіа
-                                            showMediaMenu = true
-                                        },
-                                        onTap = {
-                                            // Звичайний клік - відкриваємо галерею
-                                            Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
-                                            onImageClick(effectiveMediaUrl)
-                                        }
-                                    )
-                                },
-                            contentScale = ContentScale.Crop,
-                            onError = {
-                                Log.e("MessageBubble", "Помилка завантаження зображення: $effectiveMediaUrl, error: ${it.result.throwable}")
-                            }
-                        )
-                    }
-                }
-
-                // Video - інлайн плеєр
-                if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "video") {
-                    InlineVideoPlayer(
-                        videoUrl = effectiveMediaUrl,
+                    StyledBubble(
+                        bubbleStyle = bubbleStyle,
+                        isOwn = isOwn,
+                        bgColor = bgColor,
                         modifier = Modifier
                             .wrapContentWidth()
-                            .widthIn(max = 250.dp)
-                            .padding(top = if (shouldShowText) 8.dp else 0.dp),
-                        onFullscreenClick = {
-                            // Відкриваємо повноекранний плеєр
-                            showVideoPlayer = true
-                        }
-                    )
-
-                    // Повноекранний плеєр (опціонально)
-                    if (showVideoPlayer) {
-                        FullscreenVideoPlayer(
-                            videoUrl = effectiveMediaUrl,
-                            onDismiss = { showVideoPlayer = false }
-                        )
-                    }
-                }
-
-                // Voice/Audio message player
-                if (!effectiveMediaUrl.isNullOrEmpty() &&
-                    (detectedMediaType == "voice" || detectedMediaType == "audio")) {
-                    VoiceMessagePlayer(
-                        message = message,
-                        voicePlayer = voicePlayer,
-                        textColor = textColor,
-                        mediaUrl = effectiveMediaUrl
-                    )
-                }
-
-                // File attachment
-                if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "file") {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = if (shouldShowText) 8.dp else 0.dp)
+                            .widthIn(min = 60.dp, max = 260.dp)
+                            .padding(horizontal = 12.dp)
+                            .combinedClickable(
+                                onClick = { },
+                                onLongClick = onLongPress
+                            )
                     ) {
-                        Icon(
-                            Icons.Default.InsertDriveFile,
-                            contentDescription = "File",
-                            tint = textColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = effectiveMediaUrl.substringAfterLast("/"),
-                            color = textColor,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
+                        // Получаем URL медиа из разных источников
+                        var effectiveMediaUrl: String? = null
 
-                // Время с более стильным форматированием + галочки прочитано
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = formatTime(message.timeStamp),
-                        color = textColor.copy(alpha = 0.6f),
-                        fontSize = 12.sp,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(top = 4.dp)
+                        // 1. Сначала пытаемся использовать decryptedMediaUrl
+                        if (!message.decryptedMediaUrl.isNullOrEmpty()) {
+                            effectiveMediaUrl = message.decryptedMediaUrl
+                            Log.d("MessageBubble", "Використовую decryptedMediaUrl: $effectiveMediaUrl")
+                        }
+                        // 2. Если пусто, проверяем mediaUrl
+                        else if (!message.mediaUrl.isNullOrEmpty()) {
+                            effectiveMediaUrl = message.mediaUrl
+                            Log.d("MessageBubble", "Використовую mediaUrl: $effectiveMediaUrl")
+                        }
+                        // 3. Если все еще пусто, пытаемся извлечь URL из decryptedText
+                        else if (!message.decryptedText.isNullOrEmpty()) {
+                            effectiveMediaUrl = extractMediaUrlFromText(message.decryptedText!!)
+                            Log.d("MessageBubble", "Витягнуто з тексту: $effectiveMediaUrl")
+                        }
+
+                        // Определяем тип медиа по URL
+                        val detectedMediaType = detectMediaType(effectiveMediaUrl ?: "", message.type)
+                        Log.d("MessageBubble", "ID повідомлення: ${message.id}, Тип: ${message.type}, Визначений тип: $detectedMediaType, URL: $effectiveMediaUrl")
+
+                        // Показываем текст ТОЛЬКО если:
+                        // 1. Текст есть И не пустой
+                        // 2. И это НЕ чистый URL медиа (текст + медиа можно, чистый URL - нет)
+                        val shouldShowText = !message.decryptedText.isNullOrEmpty() &&
+                                !isOnlyMediaUrl(message.decryptedText!!)
+
+                        // 💬 Цитата Reply (якщо є)
+                        if (message.replyToId != null && message.replyToText != null) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = textColor.copy(alpha = 0.1f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // Вертикальна лінія
+                                    Box(
+                                        modifier = Modifier
+                                            .width(3.dp)
+                                            .height(40.dp)
+                                            .background(
+                                                color = colorScheme.primary,
+                                                shape = RoundedCornerShape(2.dp)
+                                            )
+                                    )
+                                    // Текст цитати
+                                    Column {
+                                        Text(
+                                            text = "Відповідь",
+                                            color = colorScheme.primary,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = message.replyToText!!,
+                                            color = textColor.copy(alpha = 0.7f),
+                                            fontSize = 14.sp,
+                                            maxLines = 2,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Text message
+                        if (shouldShowText) {
+                            // 📇 Проверяем, является ли сообщение vCard контактом
+                            val isContactMessage = com.worldmates.messenger.ui.components.isVCardMessage(message.decryptedText!!)
+
+                            if (isContactMessage) {
+                                // Рендерим контакт
+                                val contact = com.worldmates.messenger.ui.components.parseContactFromMessage(message.decryptedText!!)
+                                if (contact != null) {
+                                    com.worldmates.messenger.ui.components.ContactMessageBubble(
+                                        contact = contact
+                                    )
+                                } else {
+                                    // Если не удалось распарсить, показываем как обычный текст
+                                    Text(
+                                        text = message.decryptedText!!,
+                                        color = textColor,
+                                        fontSize = 15.sp,
+                                        lineHeight = 20.sp,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            } else if (isEmojiMessage) {
+                                // 😊 ЕМОДЗІ БЕЗ БУЛЬБАШКИ - просто великі емодзі на прозорому фоні
+                                Text(
+                                    text = message.decryptedText!!,
+                                    fontSize = getEmojiSize(message.decryptedText!!),
+                                    lineHeight = (getEmojiSize(message.decryptedText!!).value + 4).sp,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .wrapContentWidth(Alignment.CenterHorizontally)
+                                        .padding(vertical = 4.dp)
+                                )
+                            } else {
+                                // 💬 ТЕКСТ В БУЛЬБАШЦІ
+                                Text(
+                                    text = message.decryptedText!!,
+                                    color = textColor,
+                                    fontSize = 15.sp,
+                                    lineHeight = 20.sp,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+
+                        // Image - показываем если тип "image" или если URL указывает на изображение
+                        if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "image") {
+                            Box(
+                                modifier = Modifier
+                                    .wrapContentWidth()  // Адаптується під розмір зображення
+                                    .widthIn(max = 250.dp)  // Максимальна ширина для зображень
+                                    .heightIn(min = 120.dp, max = 300.dp)
+                                    .padding(top = if (shouldShowText) 6.dp else 0.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.Black.copy(alpha = 0.1f))
+                            ) {
+                                AsyncImage(
+                                    model = effectiveMediaUrl,
+                                    contentDescription = "Media",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .pointerInput(message.id) {
+                                            detectTapGestures(
+                                                onLongPress = {
+                                                    // Показуємо меню для медіа
+                                                    showMediaMenu = true
+                                                },
+                                                onTap = {
+                                                    // Звичайний клік - відкриваємо галерею
+                                                    Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
+                                                    onImageClick(effectiveMediaUrl)
+                                                }
+                                            )
+                                        },
+                                    contentScale = ContentScale.Crop,
+                                    onError = {
+                                        Log.e("MessageBubble", "Помилка завантаження зображення: $effectiveMediaUrl, error: ${it.result.throwable}")
+                                    }
+                                )
+                            }
+                        }
+
+                        // Video - інлайн плеєр
+                        if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "video") {
+                            InlineVideoPlayer(
+                                videoUrl = effectiveMediaUrl,
+                                modifier = Modifier
+                                    .wrapContentWidth()
+                                    .widthIn(max = 250.dp)
+                                    .padding(top = if (shouldShowText) 8.dp else 0.dp),
+                                onFullscreenClick = {
+                                    // Відкриваємо повноекранний плеєр
+                                    showVideoPlayer = true
+                                }
+                            )
+
+                            // Повноекранний плеєр (опціонально)
+                            if (showVideoPlayer) {
+                                FullscreenVideoPlayer(
+                                    videoUrl = effectiveMediaUrl,
+                                    onDismiss = { showVideoPlayer = false }
+                                )
+                            }
+                        }
+
+                        // Voice/Audio message player
+                        if (!effectiveMediaUrl.isNullOrEmpty() &&
+                            (detectedMediaType == "voice" || detectedMediaType == "audio")) {
+                            VoiceMessagePlayer(
+                                message = message,
+                                voicePlayer = voicePlayer,
+                                textColor = textColor,
+                                mediaUrl = effectiveMediaUrl
+                            )
+                        }
+
+                        // File attachment
+                        if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "file") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = if (shouldShowText) 8.dp else 0.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.InsertDriveFile,
+                                    contentDescription = "File",
+                                    tint = textColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = effectiveMediaUrl.substringAfterLast("/"),
+                                    color = textColor,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        // Время с более стильным форматированием + галочки прочитано
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = formatTime(message.timeStamp),
+                                color = textColor.copy(alpha = 0.6f),
+                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+
+                            // ✓✓ Галочки прочитано (тільки для власних повідомлень)
+                            if (isOwn) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                MessageStatusIcon(
+                                    isRead = message.isRead ?: false,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // ❤️ Реакції під повідомленням
+                    MessageReactions(
+                        reactions = reactionGroups,
+                        onReactionClick = { emoji ->
+                            onToggleReaction(message.id, emoji)
+                        },
+                        modifier = Modifier.align(if (isOwn) Alignment.End else Alignment.Start)
                     )
-
-                    // ✓✓ Галочки прочитано (тільки для власних повідомлень)
-                    if (isOwn) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        MessageStatusIcon(
-                            isRead = message.isRead ?: false,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            // ❤️ Реакції під повідомленням
-            MessageReactions(
-                reactions = reactionGroups,
-                onReactionClick = { emoji ->
-                    onToggleReaction(message.id, emoji)
-                },
-                modifier = Modifier.align(if (isOwn) Alignment.End else Alignment.Start)
-            )
-        }  // Закриття Column
-        }  // Закриття else block
+                }  // Закриття Column
+            }  // Закриття else block
         }  // Закриття Row
 
         // 🎯 ReactionPicker overlay (показується при довгому натисканні)
@@ -1794,7 +1784,7 @@ fun MessageInputBar(
         }
 
         // Voice Recording UI
-        if (recordingState is VoiceRecorder.RecordingState.Recording || 
+        if (recordingState is VoiceRecorder.RecordingState.Recording ||
             recordingState is VoiceRecorder.RecordingState.Paused) {
             VoiceRecordingBar(
                 duration = recordingDuration,
@@ -1974,11 +1964,11 @@ private fun formatTime(timestamp: Long): String {
  * Если message.type указан явно (не "text"), используем его.
  * Иначе определяем по расширению файла или пути в URL.
  */
-private fun detectMediaType(url: String?, messageType: String): String {
+private fun detectMediaType(url: String?, messageType: String?): String? {
     // Если URL пустой, используем тип сообщения
     if (url.isNullOrEmpty()) {
         Log.d("detectMediaType", "URL пустий, тип повідомлення: $messageType")
-        return if (messageType.isNotEmpty() && messageType != "text") messageType else "text"
+        return if (messageType?.isNotEmpty() == true && messageType != "text") messageType else "text"
     }
 
     val lowerUrl = url.lowercase()
@@ -2002,24 +1992,24 @@ private fun detectMediaType(url: String?, messageType: String): String {
     val typeByExtension = when {
         // Изображения
         lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
-        lowerUrl.endsWith(".png") || lowerUrl.endsWith(".gif") ||
-        lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".bmp") -> "image"
+                lowerUrl.endsWith(".png") || lowerUrl.endsWith(".gif") ||
+                lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".bmp") -> "image"
 
         // Видео
         lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".webm") ||
-        lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".avi") ||
-        lowerUrl.endsWith(".mkv") || lowerUrl.endsWith(".3gp") -> "video"
+                lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".avi") ||
+                lowerUrl.endsWith(".mkv") || lowerUrl.endsWith(".3gp") -> "video"
 
         // Аудио/Голос
         lowerUrl.endsWith(".mp3") || lowerUrl.endsWith(".wav") ||
-        lowerUrl.endsWith(".ogg") || lowerUrl.endsWith(".m4a") ||
-        lowerUrl.endsWith(".aac") || lowerUrl.endsWith(".opus") -> "audio"
+                lowerUrl.endsWith(".ogg") || lowerUrl.endsWith(".m4a") ||
+                lowerUrl.endsWith(".aac") || lowerUrl.endsWith(".opus") -> "audio"
 
         // Файлы
         lowerUrl.endsWith(".pdf") || lowerUrl.endsWith(".doc") ||
-        lowerUrl.endsWith(".docx") || lowerUrl.endsWith(".xls") ||
-        lowerUrl.endsWith(".xlsx") || lowerUrl.endsWith(".zip") ||
-        lowerUrl.endsWith(".rar") || lowerUrl.endsWith(".txt") -> "file"
+                lowerUrl.endsWith(".docx") || lowerUrl.endsWith(".xls") ||
+                lowerUrl.endsWith(".xlsx") || lowerUrl.endsWith(".zip") ||
+                lowerUrl.endsWith(".rar") || lowerUrl.endsWith(".txt") -> "file"
 
         else -> null
     }
@@ -2030,7 +2020,7 @@ private fun detectMediaType(url: String?, messageType: String): String {
     }
 
     // Якщо нічого не знайшли, використовуємо messageType
-    if (messageType.isNotEmpty() && messageType != "text") {
+    if (messageType?.isNotEmpty() == true && messageType != "text") {
         Log.d("detectMediaType", "Використовую тип повідомлення: $messageType")
         return messageType
     }
@@ -2091,16 +2081,16 @@ private fun isOnlyMediaUrl(text: String): Boolean {
     // Проверяем, содержит ли URL только медиа-ресурс без дополнительного текста
     val lowerText = trimmed.lowercase()
     val isMediaUrl = lowerText.contains("/upload/photos/") ||
-        lowerText.contains("/upload/videos/") ||
-        lowerText.contains("/upload/sounds/") ||
-        lowerText.contains("/upload/files/") ||
-        lowerText.endsWith(".jpg") ||
-        lowerText.endsWith(".jpeg") ||
-        lowerText.endsWith(".png") ||
-        lowerText.endsWith(".gif") ||
-        lowerText.endsWith(".mp4") ||
-        lowerText.endsWith(".mp3") ||
-        lowerText.endsWith(".webm")
+            lowerText.contains("/upload/videos/") ||
+            lowerText.contains("/upload/sounds/") ||
+            lowerText.contains("/upload/files/") ||
+            lowerText.endsWith(".jpg") ||
+            lowerText.endsWith(".jpeg") ||
+            lowerText.endsWith(".png") ||
+            lowerText.endsWith(".gif") ||
+            lowerText.endsWith(".mp4") ||
+            lowerText.endsWith(".mp3") ||
+            lowerText.endsWith(".webm")
 
     // Если это URL медиа и нет дополнительного текста после URL
     return isMediaUrl && !trimmed.contains(" ") && !trimmed.contains("\n")
@@ -2527,9 +2517,9 @@ private fun isImageUrl(url: String): Boolean {
     val imageExtensions = listOf(".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")
     val lowerUrl = url.lowercase()
     return imageExtensions.any { lowerUrl.contains(it) } ||
-           lowerUrl.contains("image") ||
-           lowerUrl.contains("/img/") ||
-           lowerUrl.contains("/images/")
+            lowerUrl.contains("image") ||
+            lowerUrl.contains("/img/") ||
+            lowerUrl.contains("/images/")
 }
 
 /**

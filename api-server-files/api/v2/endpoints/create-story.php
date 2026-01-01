@@ -150,6 +150,9 @@ if (file_exists($init_path)) {
                 $wo['user'] = Wo_UserData($user_id);
 
                 if (!empty($wo['user']) && !empty($wo['user']['user_id'])) {
+                    // ВАЖНО: Устанавливаем $wo['loggedin'] = true
+                    // Без этого Wo_InsertUserStory() вернет false
+                    $wo['loggedin'] = true;
                     error_log("✅ User authenticated successfully: user_id=" . $wo['user']['user_id'] . ", username=" . ($wo['user']['username'] ?? 'unknown'));
                 } else {
                     error_log("❌ Failed to load user data for user_id: " . $user_id);

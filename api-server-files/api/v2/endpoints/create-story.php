@@ -23,12 +23,42 @@ error_log("GET: " . print_r($_GET, true));
 
 // Load WoWonder initialization
 $depth = '../../../';
-error_log("Loading init.php from: " . $depth . 'assets/init.php');
-if (file_exists($depth . 'assets/init.php')) {
-    require_once($depth . 'assets/init.php');
-    error_log("init.php loaded successfully");
+$init_path = realpath(dirname(__FILE__) . '/' . $depth . 'assets/init.php');
+error_log("Loading init.php from: " . $init_path);
+error_log("File exists check: " . (file_exists($init_path) ? 'YES' : 'NO'));
+
+if (file_exists($init_path)) {
+    // Увеличиваем лимиты PHP для больших файлов
+    @ini_set('memory_limit', '512M');
+    @ini_set('max_execution_time', '300');
+    @ini_set('max_input_time', '300');
+    @ini_set('post_max_size', '600M');
+    @ini_set('upload_max_filesize', '600M');
+
+    error_log("PHP limits increased: memory_limit=" . ini_get('memory_limit') .
+              ", max_execution_time=" . ini_get('max_execution_time'));
+
+    try {
+        require_once($init_path);
+        error_log("init.php loaded successfully");
+    } catch (Exception $e) {
+        error_log("EXCEPTION while loading init.php: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
+        header('Content-Type: application/json');
+        echo json_encode([
+            'api_status' => 500,
+            'errors' => ['error_id' => 100, 'error_text' => 'Server initialization error']
+        ]);
+        exit;
+    }
 } else {
-    error_log("ERROR: init.php not found at " . $depth . 'assets/init.php');
+    error_log("ERROR: init.php not found at " . $init_path);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'api_status' => 500,
+        'errors' => ['error_id' => 101, 'error_text' => 'Server configuration error']
+    ]);
+    exit;
 }
 
 $response_data = array(

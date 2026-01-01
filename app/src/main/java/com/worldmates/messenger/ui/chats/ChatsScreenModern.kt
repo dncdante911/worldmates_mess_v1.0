@@ -486,6 +486,8 @@ fun ChatListTab(
     onChatClick: (Chat) -> Unit,
     onChatLongPress: (Chat) -> Unit
 ) {
+    val context = LocalContext.current
+    val nicknameRepository = remember { ContactNicknameRepository(context) }
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isLoading,
         onRefresh = onRefresh
@@ -514,11 +516,14 @@ fun ChatListTab(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(chats, key = { it.id }) { chat ->
+                    val nickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
+
                     // Користувач може вибрати стиль в налаштуваннях
                     when (uiStyle) {
                         UIStyle.TELEGRAM -> {
                             TelegramChatItem(
                                 chat = chat,
+                                nickname = nickname,
                                 onClick = { onChatClick(chat) },
                                 onLongPress = { onChatLongPress(chat) }
                             )
@@ -526,6 +531,7 @@ fun ChatListTab(
                         UIStyle.WORLDMATES -> {
                             ModernChatCard(
                                 chat = chat,
+                                nickname = nickname,
                                 onClick = { onChatClick(chat) },
                                 onLongPress = { onChatLongPress(chat) }
                             )
@@ -930,8 +936,7 @@ fun ChatListTabWithStories(
                         )
                     }
                     UIStyle.TELEGRAM -> {
-                        // Telegram style - використовуємо той же компонент
-                        ModernChatCard(
+                        TelegramChatItem(
                             chat = chat,
                             nickname = nickname,
                             onClick = { onChatClick(chat) },

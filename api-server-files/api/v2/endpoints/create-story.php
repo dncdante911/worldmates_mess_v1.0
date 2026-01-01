@@ -74,8 +74,9 @@ if (file_exists($init_path)) {
     $original_dir = getcwd();
     error_log("Original working directory: " . $original_dir);
 
-    // Меняем рабочую директорию на корень проекта (где находится init.php)
-    $root_dir = dirname($init_path);
+    // Меняем рабочую директорию на КОРЕНЬ проекта (на уровень выше assets/)
+    // init.php находится в assets/, но config.php в корне проекта
+    $root_dir = dirname(dirname($init_path)); // Поднимаемся на 2 уровня выше
     chdir($root_dir);
     error_log("Changed working directory to: " . getcwd());
 

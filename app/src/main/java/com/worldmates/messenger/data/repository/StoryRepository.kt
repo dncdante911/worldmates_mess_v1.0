@@ -99,13 +99,27 @@ class StoryRepository(private val context: Context) {
                 ?: return Result.failure(Exception("Не вдалося прочитати файл"))
 
             // Стискаємо зображення якщо це фото (не відео)
+            // Фото: макс 15MB, якість 90% (висока)
+            // Відео: без стиснення на клієнті (ffmpeg на сервері)
             val finalMediaFile = if (fileType == "image") {
-                FileUtils.compressImageIfNeeded(context, mediaFile, maxSizeKB = 800, quality = 85)
+                FileUtils.compressImageIfNeeded(context, mediaFile, maxSizeKB = 15360, quality = 90)
             } else {
+                // Для відео перевіряємо розмір
+                val videoSizeKB = mediaFile.length() / 1024
+                val videoSizeMB = videoSizeKB / 1024
+                Log.d(TAG, "Розмір відео: ${videoSizeMB}MB")
+
+                // Максимум 500MB для відео
+                if (videoSizeMB > 500) {
+                    _isLoading.value = false
+                    return Result.failure(Exception("Розмір відео не може перевищувати 500MB. Ваше відео: ${videoSizeMB}MB"))
+                }
                 mediaFile
             }
 
-            Log.d(TAG, "Файл для завантаження: ${finalMediaFile.absolutePath}, розмір: ${finalMediaFile.length() / 1024}KB")
+            val fileSizeKB = finalMediaFile.length() / 1024
+            val fileSizeMB = fileSizeKB / 1024.0
+            Log.d(TAG, "Файл для завантаження: ${finalMediaFile.absolutePath}, розмір: ${fileSizeKB}KB (${String.format("%.2f", fileSizeMB)}MB)")
 
             val requestFile = finalMediaFile.asRequestBody("multipart/form-data".toMediaTypeOrNull())
             val filePart = MultipartBody.Part.createFormData("file", finalMediaFile.name, requestFile)

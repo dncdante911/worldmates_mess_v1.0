@@ -136,6 +136,52 @@ if (empty($error_code)) {
         if (!empty($media) && !empty($media['filename'])) {
             $filename = $media['filename'];
             error_log("File uploaded successfully: " . $filename);
+
+            // Стиснення відео якщо розмір > 50MB та ffmpeg увімкнено
+            if ($file_type == 'video' && $wo['config']['ffmpeg_system'] == 'on') {
+                $video_path = $filename;
+                if (file_exists($video_path)) {
+                    $file_size_mb = filesize($video_path) / (1024 * 1024);
+                    error_log("Video file size: {$file_size_mb}MB");
+
+                    // Стискаємо відео якщо > 50MB
+                    if ($file_size_mb > 50) {
+                        $ffmpeg_b = $wo['config']['ffmpeg_binary_file'];
+                        $compressed_path = str_replace('.', '_compressed.', $video_path);
+
+                        // FFmpeg команда для стиснення з високою якістю
+                        // -crf 23 - хороша якість (18-28, де 18=найкраща)
+                        // -preset medium - баланс швидкість/якість
+                        // -movflags +faststart - швидкий старт відео
+                        $ffmpeg_command = "$ffmpeg_b -i $video_path -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 128k -movflags +faststart $compressed_path 2>&1";
+
+                        error_log("Compressing video with ffmpeg: $ffmpeg_command");
+                        $ffmpeg_output = shell_exec($ffmpeg_command);
+                        error_log("FFmpeg output: " . $ffmpeg_output);
+
+                        if (file_exists($compressed_path)) {
+                            $compressed_size_mb = filesize($compressed_path) / (1024 * 1024);
+                            error_log("Compressed video size: {$compressed_size_mb}MB");
+
+                            // Використовуємо стиснуте відео тільки якщо воно менше
+                            if ($compressed_size_mb < $file_size_mb) {
+                                // Видаляємо оригінал та перейменовуємо стиснуте
+                                @unlink($video_path);
+                                @rename($compressed_path, $video_path);
+                                error_log("Video compressed successfully: {$file_size_mb}MB → {$compressed_size_mb}MB");
+                            } else {
+                                // Стиснене більше - видаляємо його
+                                @unlink($compressed_path);
+                                error_log("Compressed video is larger, keeping original");
+                            }
+                        } else {
+                            error_log("ERROR: FFmpeg compression failed");
+                        }
+                    } else {
+                        error_log("Video < 50MB, compression not needed");
+                    }
+                }
+            }
         } else {
             $error_code    = 10;
             $error_message = 'Failed to upload file. Please check file size and format.';

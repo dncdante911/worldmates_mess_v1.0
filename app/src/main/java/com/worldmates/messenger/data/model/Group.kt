@@ -54,10 +54,10 @@ data class Message(
     @SerializedName("from_id") val fromId: Long,
     @SerializedName("to_id") val toId: Long,
     @SerializedName("group_id") val groupId: Long? = null,
-    @SerializedName("text") val encryptedText: String,
+    @SerializedName("text") val encryptedText: String?,
     @SerializedName("time") val timeStamp: Long,
     @SerializedName("media") val mediaUrl: String? = null,
-    @SerializedName("type") val type: String, // "text", "image", "video", "audio", "voice", "file", "call"
+    @SerializedName("type") val type: String? = "text", // "text", "image", "video", "audio", "voice", "file", "call"
     @SerializedName("media_type") val mediaType: String? = null,
     @SerializedName("media_duration") val mediaDuration: Long? = null,
     @SerializedName("media_size") val mediaSize: Long? = null,

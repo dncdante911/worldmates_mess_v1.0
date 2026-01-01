@@ -87,7 +87,7 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
                             val lastMessage = chat.lastMessage?.let { msg ->
                                 // Перевіряємо чи є текст повідомлення
-                                val encryptedText = msg.encryptedText ?: msg.text ?: ""
+                                val encryptedText = msg.encryptedText ?: ""
 
                                 // Дешифруємо з підтримкою AES-GCM (v2)
                                 val decryptedText = if (encryptedText.isNotEmpty()) {
@@ -111,7 +111,10 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
                                 // Конвертуємо URL медіа в зрозумілі мітки
                                 val displayText = convertMediaUrlToLabel(decryptedText)
-                                msg.copy(decryptedText = displayText)
+                                msg.copy(
+                                    encryptedText = msg.encryptedText,
+                                    decryptedText = displayText
+                                )
                             }
                             chat.copy(lastMessage = lastMessage)
                         }

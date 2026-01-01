@@ -168,14 +168,17 @@ object DecryptionUtility {
      * @return Расшифрованный текст или исходный текст, если расшифровка не удалась
      */
     fun decryptMessageOrOriginal(
-        text: String,
+        text: String?,
         timestamp: Long,
         iv: String? = null,
         tag: String? = null,
         cipherVersion: Int? = null
     ): String {
-        // Проверяем, пустая ли строка
-        if (text.isEmpty()) return text
+        // Проверяем, null или пустая ли строка
+        if (text.isNullOrEmpty()) {
+            Log.d(TAG, "Текст null или пустой, возвращаю пустую строку")
+            return ""
+        }
 
         // Проверяем, похоже ли это на Base64 строку
         if (!isBase64(text)) {

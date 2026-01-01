@@ -80,7 +80,7 @@ fun TelegramChatItem(
             // Останнє повідомлення
             if (chat.lastMessage != null) {
                 Text(
-                    text = chat.lastMessage.decryptedText ?: chat.lastMessage.encryptedText,
+                    text = chat.lastMessage.decryptedText ?: chat.lastMessage.encryptedText ?: "",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 14.sp,
                         fontWeight = if (chat.unreadCount > 0) FontWeight.Medium else FontWeight.Normal

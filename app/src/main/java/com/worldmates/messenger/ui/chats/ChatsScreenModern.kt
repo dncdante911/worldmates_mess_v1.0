@@ -1017,7 +1017,7 @@ fun ChannelListTabWithStories(
                             },
                             modifier = Modifier
                                 .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .animateItemPlacement()
+                                .animateItem()
                         )
                     }
                     UIStyle.TELEGRAM -> {
@@ -1025,7 +1025,7 @@ fun ChannelListTabWithStories(
                         com.worldmates.messenger.ui.channels.TelegramChannelItem(
                             channel = channel,
                             onClick = { onChannelClick(channel) },
-                            modifier = Modifier.animateItemPlacement()
+                            modifier = Modifier.animateItem()
                         )
                     }
                 }

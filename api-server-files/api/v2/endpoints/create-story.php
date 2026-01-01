@@ -53,12 +53,15 @@ if (empty($wo['user']) || empty($wo['user']['id'])) {
 }
 
 error_log("User authenticated: ID=" . $wo['user']['id'] . ", username=" . ($wo['user']['username'] ?? 'unknown'));
+error_log("User is_pro: " . ($wo['user']['is_pro'] ?? 'not set'));
 
 // Check PHP upload limits
 error_log("PHP upload_max_filesize: " . ini_get('upload_max_filesize'));
 error_log("PHP post_max_size: " . ini_get('post_max_size'));
 error_log("PHP max_execution_time: " . ini_get('max_execution_time'));
 error_log("PHP memory_limit: " . ini_get('memory_limit'));
+
+error_log("Checking file upload...");
 
 if (empty($_FILES["file"]["tmp_name"])) {
     $error_code    = 3;
@@ -134,6 +137,8 @@ if (empty($error_code)) {
 }
 
 if (empty($error_code)) {
+    error_log("All validations passed, creating story...");
+
     $amazone_s3                   = $wo['config']['amazone_s3'];
     $wasabi_storage                   = $wo['config']['wasabi_storage'];
     $backblaze_storage                   = $wo['config']['backblaze_storage'];
@@ -143,6 +148,8 @@ if (empty($error_code)) {
     $story_title       = (!empty($_POST['story_title'])) ? Wo_Secure($_POST['story_title']) : '';
     $story_description = (!empty($_POST['story_description'])) ? Wo_Secure($_POST['story_description']) : '';
     $file_type         = Wo_Secure($_POST['file_type']);
+
+    error_log("Story data: title='$story_title', description='$story_description', file_type='$file_type'");
 
     // Calculate expire time based on subscription
     $is_pro = ($wo['user']['is_pro'] == 1);
@@ -155,8 +162,13 @@ if (empty($error_code)) {
         'title' => $story_title,
         'description' => $story_description
     );
+
+    error_log("Calling Wo_InsertUserStory with data: " . print_r($story_data, true));
     $last_id           = Wo_InsertUserStory($story_data);
+    error_log("Wo_InsertUserStory returned: " . ($last_id ? $last_id : 'FALSE'));
+
     if ($last_id && is_numeric($last_id) && !empty($_FILES["file"]["tmp_name"])) {
+        error_log("Story created with ID: $last_id, proceeding with file upload...");
         $true     = false;
         $sources  = array();
         $fileInfo = array(

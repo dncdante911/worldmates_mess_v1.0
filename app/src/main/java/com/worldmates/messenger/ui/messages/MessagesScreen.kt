@@ -66,6 +66,7 @@ import com.worldmates.messenger.ui.theme.rememberThemeState
 import com.worldmates.messenger.ui.theme.PresetBackground
 import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
 import com.worldmates.messenger.ui.preferences.rememberQuickReaction
+import com.worldmates.messenger.ui.preferences.rememberUIStyle
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import com.worldmates.messenger.utils.VoiceRecorder
@@ -1061,6 +1062,7 @@ fun MessageBubbleComposable(
     val isOwn = message.fromId == UserSession.userId
     val colorScheme = MaterialTheme.colorScheme
     val bubbleStyle = rememberBubbleStyle()  // 🎨 Отримуємо вибраний стиль бульбашок
+    val uiStyle = com.worldmates.messenger.ui.preferences.rememberUIStyle()  // 🎨 Отримуємо стиль інтерфейсу
 
     // 💬 Свайп для Reply
     var offsetX by remember { mutableStateOf(0f) }
@@ -1081,18 +1083,38 @@ fun MessageBubbleComposable(
         } ?: emptyList()
     }
 
-    // Більш нейтральні та м'які кольори бульбашок
-    val bgColor = if (isOwn) {
-        // Власні повідомлення - м'який зелено-синій (як в Telegram/WhatsApp)
-        Color(0xFFDCF8C6)  // Світло-зелений
-    } else {
-        // Вхідні повідомлення - світло-сірий
-        Color(0xFFF0F0F0)  // Світло-сірий
+    // 🎨 Кольори бульбашок залежать від стилю інтерфейсу
+    val bgColor = when (uiStyle) {
+        com.worldmates.messenger.ui.preferences.UIStyle.WORLDMATES -> {
+            // WorldMates стиль - яскраві градієнтні кольори
+            if (isOwn) {
+                Color(0xFF4A90E2)  // Яскравий синій для власних
+            } else {
+                Color(0xFFF0F0F0)  // Світло-сірий для вхідних
+            }
+        }
+        com.worldmates.messenger.ui.preferences.UIStyle.TELEGRAM -> {
+            // Telegram/Класичний стиль - м'які нейтральні тони
+            if (isOwn) {
+                Color(0xFFDCF8C6)  // Світло-зелений як в Telegram
+            } else {
+                Color(0xFFFFFFFF)  // Білий для вхідних
+            }
+        }
     }
-    val textColor = if (isOwn) {
-        Color(0xFF1F1F1F)  // Темно-сірий для власних
-    } else {
-        Color(0xFF1F1F1F)  // Темно-сірий для вхідних
+
+    val textColor = when (uiStyle) {
+        com.worldmates.messenger.ui.preferences.UIStyle.WORLDMATES -> {
+            if (isOwn) {
+                Color.White  // Білий текст на яскравому фоні
+            } else {
+                Color(0xFF1F1F1F)  // Темний текст
+            }
+        }
+        com.worldmates.messenger.ui.preferences.UIStyle.TELEGRAM -> {
+            // Класичний стиль - завжди темний текст
+            Color(0xFF1F1F1F)
+        }
     }
 
     val playbackState by voicePlayer.playbackState.collectAsState()

@@ -176,23 +176,33 @@ class StoryRepository(private val context: Context) {
 
             _isLoading.value = true
 
+            Log.d(TAG, "Fetching stories with limit=$limit, access_token=${UserSession.accessToken?.take(10)}...")
+
             val response = storiesApi.getStories(
                 accessToken = UserSession.accessToken!!,
                 limit = limit
             )
 
+            Log.d(TAG, "API Response: apiStatus=${response.apiStatus}, stories count=${response.stories?.size}, errorMessage=${response.errorMessage}")
+
             _isLoading.value = false
 
             if (response.apiStatus == 200 && response.stories != null) {
+                Log.d(TAG, "Raw stories from API: ${response.stories.size} stories")
+                response.stories.forEachIndexed { index, story ->
+                    Log.d(TAG, "Story[$index]: id=${story.id}, userId=${story.userId}, images=${story.images?.size}, videos=${story.videos?.size}")
+                }
+
                 _stories.value = response.stories.filter { !it.isExpired() }
-                Log.d(TAG, "Завантажено ${response.stories.size} stories")
+                Log.d(TAG, "После фильтрации: ${_stories.value.size} активних stories")
                 Result.success(_stories.value)
             } else {
+                Log.e(TAG, "API error: ${response.errorMessage ?: "Unknown error"}")
                 Result.failure(Exception(response.errorMessage ?: "Помилка завантаження stories"))
             }
         } catch (e: Exception) {
             _isLoading.value = false
-            Log.e(TAG, "Помилка завантаження stories", e)
+            Log.e(TAG, "Exception while fetching stories: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -232,19 +242,29 @@ class StoryRepository(private val context: Context) {
                 return Result.failure(Exception("Не авторизовано"))
             }
 
+            Log.d(TAG, "getUserStories: userId=$userId, limit=$limit")
+
             val response = storiesApi.getUserStories(
                 accessToken = UserSession.accessToken!!,
                 userId = userId,
                 limit = limit
             )
 
+            Log.d(TAG, "getUserStories Response: apiStatus=${response.apiStatus}, stories=${response.stories?.size}, error=${response.errorMessage}")
+
             if (response.apiStatus == 200 && response.stories != null) {
-                Result.success(response.stories.filter { !it.isExpired() })
+                response.stories.forEachIndexed { index, story ->
+                    Log.d(TAG, "UserStory[$index]: id=${story.id}, userId=${story.userId}, images=${story.images?.size}, videos=${story.videos?.size}, mediaItems=${story.mediaItems.size}")
+                }
+                val filtered = response.stories.filter { !it.isExpired() }
+                Log.d(TAG, "getUserStories: Повертаємо ${filtered.size} активних stories")
+                Result.success(filtered)
             } else {
+                Log.e(TAG, "getUserStories API error: ${response.errorMessage}")
                 Result.failure(Exception(response.errorMessage ?: "Помилка завантаження stories користувача"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Помилка завантаження stories користувача", e)
+            Log.e(TAG, "getUserStories Exception: ${e.message}", e)
             Result.failure(e)
         }
     }

@@ -162,6 +162,14 @@
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.chats.ChatsActivity" />
 
+        <!-- Story Viewer Activity -->
+        <activity
+            android:name=".ui.stories.StoryViewerActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:parentActivityName=".ui.chats.ChatsActivity" />
+
         <!-- Firebase Messaging Service -->
         <service
             android:name=".services.MyFirebaseMessagingService"

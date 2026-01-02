@@ -98,61 +98,60 @@ $data_array = array();
 
 if ($requested_user_id > 0) {
     // Get stories for specific user
-    $user_data = Wo_UserData($requested_user_id);
-    if (!empty($user_data)) {
+    $get_stories = Wo_GetStroies(array('user' => $requested_user_id));
+    foreach ($get_stories as $key => $story) {
+        // Add user data to each story
+        if (empty($story['user_data'])) {
+            $story['user_data'] = Wo_UserData($story['user_id']);
+        }
+
         foreach ($non_allowed as $key => $value) {
-           unset($user_data[$value]);
-        }
-        $user_data['stories'] = array();
-
-        $get_stories = Wo_GetStroies(array('user' => $requested_user_id));
-        foreach ($get_stories as $key => $story) {
-            foreach ($non_allowed as $key => $value) {
-               unset($story['user_data'][$value]);
-            }
-            if (!empty($story['thumb']['filename'])) {
-                $story['thumbnail'] = $story['thumb']['filename'];
-                unset($story['thumb']);
-            } else {
-                $story['thumbnail'] = $story['user_data']['avatar'];
-            }
-            $story['time_text'] = Wo_Time_Elapsed_String($story['posted']);
-            $story['view_count'] = $db->where('story_id',$story['id'])->where('user_id',$story['user_id'],'!=')->getValue(T_STORY_SEEN,'COUNT(*)');
-            $user_data['stories'][] = $story;
+           unset($story['user_data'][$value]);
         }
 
-        // Only add if user has stories
-        if (!empty($user_data['stories'])) {
-            $data_array[] = $user_data;
+        if (!empty($story['thumb']['filename'])) {
+            $story['thumbnail'] = $story['thumb']['filename'];
+            unset($story['thumb']);
+        } else {
+            $story['thumbnail'] = $story['user_data']['avatar'];
         }
+
+        $story['time_text'] = Wo_Time_Elapsed_String($story['posted']);
+        $story['view_count'] = $db->where('story_id',$story['id'])->where('user_id',$story['user_id'],'!=')->getValue(T_STORY_SEEN,'COUNT(*)');
+
+        // Add directly to data_array
+        $data_array[] = $story;
     }
 } else {
-    // Original behavior: Get stories from all friends
+    // Original behavior: Get stories from all friends and flatten them
     $get_all_stories = Wo_GetFriendsStatusAPI($options);
     foreach ($get_all_stories as $key => $one_story) {
         $is_muted = $db->where('user_id',$wo['user']['id'])->where('story_user_id',$one_story['user_id'])->getValue(T_MUTE_STORY,'COUNT(*)');
         if ($is_muted == 0) {
-            $user_data = $one_story['user_data'];
-            foreach ($non_allowed as $key => $value) {
-               unset($user_data[$value]);
-            }
-            $user_data['stories'] = array();
              $get_stories = Wo_GetStroies(array('user' => $one_story['user_id']));
             foreach ($get_stories as $key => $story) {
+                // Add user data to each story
+                if (empty($story['user_data'])) {
+                    $story['user_data'] = Wo_UserData($story['user_id']);
+                }
+
                 foreach ($non_allowed as $key => $value) {
                    unset($story['user_data'][$value]);
                 }
+
                 if (!empty($story['thumb']['filename'])) {
                     $story['thumbnail'] = $story['thumb']['filename'];
                     unset($story['thumb']);
                 } else {
                     $story['thumbnail'] = $story['user_data']['avatar'];
                 }
+
                 $story['time_text'] = Wo_Time_Elapsed_String($story['posted']);
                 $story['view_count'] = $db->where('story_id',$story['id'])->where('user_id',$story['user_id'],'!=')->getValue(T_STORY_SEEN,'COUNT(*)');
-                $user_data['stories'][] = $story;
+
+                // Add directly to data_array
+                $data_array[] = $story;
             }
-            $data_array[] = $user_data;
         }
     }
 }

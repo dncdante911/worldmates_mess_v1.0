@@ -42,6 +42,11 @@ fun PersonalStoriesRow(
 ) {
     val context = LocalContext.current
 
+    // Перевіряємо, чи є у користувача власні Stories
+    val currentUserId = UserSession.userId
+    val ownStories = stories.filter { it.userId == currentUserId }
+    val hasOwnStories = ownStories.isNotEmpty()
+
     LazyRow(
         modifier = modifier
             .fillMaxWidth()
@@ -50,13 +55,23 @@ fun PersonalStoriesRow(
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Кнопка створення нової story (завжди перша)
+        // Кнопка створення нової story або перегляду власних stories (завжди перша)
         item {
-            CreateStoryButton(onClick = onCreateStoryClick)
+            CreateStoryButton(
+                hasOwnStories = hasOwnStories,
+                onCreateClick = onCreateStoryClick,
+                onViewClick = {
+                    // Відкриваємо перегляд власних stories
+                    context.startActivity(Intent(context, StoryViewerActivity::class.java).apply {
+                        putExtra("user_id", currentUserId)
+                        putExtra("is_channel_story", false)
+                    })
+                }
+            )
         }
 
-        // Список stories згрупованих по користувачам
-        val groupedStories = stories.groupBy { it.userId }
+        // Список stories згрупованих по користувачам (виключаємо власні stories)
+        val groupedStories = stories.filter { it.userId != currentUserId }.groupBy { it.userId }
         items(groupedStories.entries.toList()) { (userId, userStories) ->
             val firstStory = userStories.first()
             val hasUnviewed = userStories.any { !it.seen }
@@ -77,15 +92,19 @@ fun PersonalStoriesRow(
 }
 
 /**
- * Кнопка створення нової story
+ * Кнопка створення нової story або перегляду власних stories
  */
 @Composable
-fun CreateStoryButton(onClick: () -> Unit) {
+fun CreateStoryButton(
+    hasOwnStories: Boolean,
+    onCreateClick: () -> Unit,
+    onViewClick: () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(72.dp)
-            .clickable(onClick = onClick)
+            .clickable(onClick = if (hasOwnStories) onViewClick else onCreateClick)
     ) {
         Box(
             contentAlignment = Alignment.BottomEnd,
@@ -98,32 +117,44 @@ fun CreateStoryButton(onClick: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape)
-                    .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                    .border(
+                        width = if (hasOwnStories) 3.dp else 2.dp,
+                        color = if (hasOwnStories) {
+                            // Градієнт для активних stories
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        },
+                        shape = CircleShape
+                    ),
                 contentScale = ContentScale.Crop
             )
 
-            // Іконка "+"
-            Surface(
-                modifier = Modifier.size(24.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add story",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
+            // Іконка "+" тільки якщо немає stories
+            if (!hasOwnStories) {
+                Surface(
+                    modifier = Modifier.size(24.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add story",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
 
         Text(
-            text = "Ваша story",
+            text = if (hasOwnStories) "Ваша story" else "Створити",
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = if (hasOwnStories) FontWeight.Bold else FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 4.dp)

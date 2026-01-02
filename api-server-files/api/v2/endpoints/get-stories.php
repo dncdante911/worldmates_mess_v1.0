@@ -92,7 +92,7 @@ try {
 
     foreach ($get_all_stories as $key => $one_story) {
         $is_muted = $db->where('user_id',$wo['user']['id'])->where('story_user_id',$one_story['user_id'])->getValue(T_MUTE_STORY,'COUNT(*)');
-        if ($is_muted == 0 && $wo['user']['id'] != $one_story['user_id']) {
+        if ($is_muted == 0) {
             $get_stories = Wo_GetStroies(array('id' => $one_story['id']));
             foreach ($get_stories as $key => $story) {
                 foreach ($non_allowed as $key => $value) {

@@ -31,7 +31,7 @@ if (!file_exists($init_path)) {
 
 // Change to project root before loading init.php
 $original_dir = getcwd();
-$root_dir = dirname(dirname(dirname($init_path)));
+$root_dir = realpath(__DIR__ . '/' . $depth);
 chdir($root_dir);
 error_log("Changed directory to: " . getcwd());
 

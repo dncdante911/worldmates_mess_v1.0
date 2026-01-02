@@ -119,6 +119,25 @@ if ($requested_user_id > 0) {
         $story['time_text'] = Wo_Time_Elapsed_String($story['posted']);
         $story['view_count'] = $db->where('story_id',$story['id'])->where('user_id',$story['user_id'],'!=')->getValue(T_STORY_SEEN,'COUNT(*)');
 
+        // Load media items for this story
+        $media_items = array();
+        $media_query = "SELECT * FROM " . T_USER_STORY_MEDIA . " WHERE story_id = " . $story['id'];
+        $media_result = mysqli_query($sqlConnect, $media_query);
+
+        if ($media_result) {
+            while ($media = mysqli_fetch_assoc($media_result)) {
+                $media_items[] = array(
+                    'id' => $media['id'],
+                    'type' => $media['type'],
+                    'filename' => $media['filename'],
+                    'expire' => $media['expire']
+                );
+            }
+        }
+
+        $story['mediaItems'] = $media_items;
+        error_log("Story id={$story['id']}: loaded " . count($media_items) . " media items");
+
         // Add directly to data_array
         $data_array[] = $story;
     }
@@ -148,6 +167,25 @@ if ($requested_user_id > 0) {
 
                 $story['time_text'] = Wo_Time_Elapsed_String($story['posted']);
                 $story['view_count'] = $db->where('story_id',$story['id'])->where('user_id',$story['user_id'],'!=')->getValue(T_STORY_SEEN,'COUNT(*)');
+
+                // Load media items for this story
+                $media_items = array();
+                $media_query = "SELECT * FROM " . T_USER_STORY_MEDIA . " WHERE story_id = " . $story['id'];
+                $media_result = mysqli_query($sqlConnect, $media_query);
+
+                if ($media_result) {
+                    while ($media = mysqli_fetch_assoc($media_result)) {
+                        $media_items[] = array(
+                            'id' => $media['id'],
+                            'type' => $media['type'],
+                            'filename' => $media['filename'],
+                            'expire' => $media['expire']
+                        );
+                    }
+                }
+
+                $story['mediaItems'] = $media_items;
+                error_log("Story id={$story['id']}: loaded " . count($media_items) . " media items");
 
                 // Add directly to data_array
                 $data_array[] = $story;

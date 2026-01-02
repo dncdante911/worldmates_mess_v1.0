@@ -617,7 +617,8 @@ fun SettingsDrawerContent(
     onNavigateToFullSettings: () -> Unit,
     onClose: () -> Unit,
     onShowContactPicker: () -> Unit = {},
-    onShowDrafts: () -> Unit = {}
+    onShowDrafts: () -> Unit = {},
+    onCreateStoryClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -705,6 +706,17 @@ fun SettingsDrawerContent(
                     onClick = {
                         onClose()
                         Toast.makeText(context, "Створити групу", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.PhotoCamera,
+                    title = "Створити Story",
+                    onClick = {
+                        onClose()
+                        onCreateStoryClick()
                     }
                 )
             }

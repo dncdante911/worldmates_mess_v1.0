@@ -151,6 +151,9 @@ fun ChatsScreenModern(
                         context.startActivity(
                             android.content.Intent(context, com.worldmates.messenger.ui.drafts.DraftsActivity::class.java)
                         )
+                    },
+                    onCreateStoryClick = {
+                        showCreateStoryDialog = true
                     }
                 )
             }

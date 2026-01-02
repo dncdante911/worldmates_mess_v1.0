@@ -19,6 +19,7 @@ data class Story(
     @SerializedName("thumb") val thumb: StoryMedia? = null,
     @SerializedName("images") val images: List<StoryMedia>? = null,
     @SerializedName("videos") val videos: List<StoryMedia>? = null,
+    @SerializedName("mediaItems") val apiMediaItems: List<StoryMedia>? = null, // NEW: Support for mediaItems from API
     @SerializedName("is_owner") val isOwner: Boolean = false,
     @SerializedName("is_viewed") val isViewed: Int = 0,
     @SerializedName("view_count") val viewCount: Int = 0,
@@ -52,9 +53,10 @@ data class Story(
 
     /**
      * Всі медіа файли (об'єднані images + videos)
+     * Використовує apiMediaItems якщо доступно, інакше комбінує images + videos
      */
     val mediaItems: List<StoryMedia>
-        get() = (images ?: emptyList()) + (videos ?: emptyList())
+        get() = apiMediaItems ?: ((images ?: emptyList()) + (videos ?: emptyList()))
 
     /**
      * Чи переглянута story

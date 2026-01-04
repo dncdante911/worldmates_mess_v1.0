@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
+import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Story
 import com.worldmates.messenger.data.model.StoryComment
@@ -151,9 +152,18 @@ fun StoryViewerScreen(
 
             // Медіа контент
             story.mediaItems.firstOrNull()?.let { media ->
+                // Build full URL for media
+                val mediaUrl = if (media.filename.startsWith("http")) {
+                    media.filename // Already full URL
+                } else {
+                    "${Constants.MEDIA_BASE_URL}${media.filename}" // Add base URL
+                }
+
                 android.util.Log.d("StoryViewer", "Loading media: type=${media.type}, filename=${media.filename}")
+                android.util.Log.d("StoryViewer", "Full URL: $mediaUrl")
+
                 AsyncImage(
-                    model = media.filename,
+                    model = mediaUrl,
                     contentDescription = "Story media",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit

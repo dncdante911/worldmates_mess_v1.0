@@ -33,8 +33,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
+import okhttp3.OkHttpClient
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
@@ -745,36 +749,118 @@ fun VideoPlayer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var errorState by remember { mutableStateOf<String?>(null) }
 
-    // Create ExoPlayer instance
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri(videoUrl)
-            setMediaItem(mediaItem)
-            prepare()
-            playWhenReady = true
-            repeatMode = Player.REPEAT_MODE_ONE // Loop video
+    // Create ExoPlayer instance with error handling
+    val exoPlayer = remember(videoUrl) {
+        try {
+            android.util.Log.d("VideoPlayer", "Creating ExoPlayer for URL: $videoUrl")
+
+            // Create OkHttp client for HTTP datasource
+            val okHttpClient = OkHttpClient.Builder()
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .build()
+
+            // Create datasource factory with OkHttp
+            val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+
+            // Build ExoPlayer with custom datasource
+            ExoPlayer.Builder(context)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+                .build()
+                .apply {
+                    // Add error listener
+                    addListener(object : Player.Listener {
+                        override fun onPlayerError(error: PlaybackException) {
+                            val errorMsg = "ExoPlayer error: ${error.errorCodeName} - ${error.message}"
+                            android.util.Log.e("VideoPlayer", errorMsg, error)
+                            errorState = errorMsg
+                        }
+
+                        override fun onPlaybackStateChanged(playbackState: Int) {
+                            when (playbackState) {
+                                Player.STATE_IDLE -> android.util.Log.d("VideoPlayer", "State: IDLE")
+                                Player.STATE_BUFFERING -> android.util.Log.d("VideoPlayer", "State: BUFFERING")
+                                Player.STATE_READY -> android.util.Log.d("VideoPlayer", "State: READY - video loaded successfully")
+                                Player.STATE_ENDED -> android.util.Log.d("VideoPlayer", "State: ENDED")
+                            }
+                        }
+                    })
+
+                    // Set media item and prepare
+                    val mediaItem = MediaItem.fromUri(videoUrl)
+                    setMediaItem(mediaItem)
+                    prepare()
+                    playWhenReady = true
+                    repeatMode = Player.REPEAT_MODE_ONE // Loop video
+
+                    android.util.Log.d("VideoPlayer", "ExoPlayer configured and preparing...")
+                }
+        } catch (e: Exception) {
+            android.util.Log.e("VideoPlayer", "Failed to create ExoPlayer", e)
+            errorState = "Failed to initialize player: ${e.message}"
+            null
         }
     }
 
     // Clean up player when composable is disposed
-    DisposableEffect(Unit) {
+    DisposableEffect(videoUrl) {
         onDispose {
-            exoPlayer.release()
+            android.util.Log.d("VideoPlayer", "Disposing ExoPlayer")
+            exoPlayer?.release()
         }
     }
 
-    // ExoPlayer UI
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = false // Hide default controls for Stories
-                setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+    Box(modifier = modifier) {
+        // Show error if player creation failed or playback error occurred
+        if (errorState != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Error,
+                    contentDescription = "Error",
+                    tint = Color.White,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Не вдалося відтворити відео",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = errorState ?: "",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                )
             }
-        },
-        modifier = modifier
-    )
+        } else if (exoPlayer != null) {
+            // ExoPlayer UI
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = exoPlayer
+                        useController = false // Hide default controls for Stories
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            // Loading state
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.White
+            )
+        }
+    }
 }
 
 private fun formatStoryTime(timestamp: Long): String {

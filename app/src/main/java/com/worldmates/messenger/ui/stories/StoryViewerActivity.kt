@@ -820,7 +820,7 @@ fun VideoPlayer(
                     .fillMaxSize()
                     .background(Color.Black),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Error,

@@ -255,6 +255,9 @@ class StoryRepository(private val context: Context) {
             if (response.apiStatus == 200 && response.stories != null) {
                 response.stories.forEachIndexed { index, story ->
                     Log.d(TAG, "UserStory[$index]: id=${story.id}, userId=${story.userId}, images=${story.images?.size}, videos=${story.videos?.size}, mediaItems=${story.mediaItems.size}")
+                    story.mediaItems.forEachIndexed { mediaIndex, media ->
+                        Log.d(TAG, "  Media[$mediaIndex]: type=${media.type}, filename=${media.filename}")
+                    }
                 }
                 val filtered = response.stories.filter { !it.isExpired() }
                 Log.d(TAG, "getUserStories: Повертаємо ${filtered.size} активних stories")

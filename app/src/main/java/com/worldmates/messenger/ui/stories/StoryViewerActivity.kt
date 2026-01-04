@@ -114,11 +114,17 @@ fun StoryViewerScreen(
     // Автоматичний прогрес story
     LaunchedEffect(currentStory, isPaused) {
         if (currentStory != null && !isPaused) {
-            val duration = if (currentStory!!.mediaItems.firstOrNull()?.type == "video") {
-                currentStory!!.mediaItems.firstOrNull()?.duration?.times(1000L) ?: 15000L // 15 sec for videos without duration
+            val mediaType = currentStory!!.mediaItems.firstOrNull()?.type
+            val videoDuration = currentStory!!.mediaItems.firstOrNull()?.duration?.toLongOrNull()
+
+            val duration = if (mediaType == "video") {
+                // Для видео: используем duration из медиа, но не меньше 10 секунд
+                maxOf(videoDuration?.times(1000L) ?: 10000L, 10000L)
             } else {
-                20000L // 20 секунд для фото (было 5 секунд)
+                20000L // 20 секунд для фото
             }
+
+            android.util.Log.d("StoryViewer", "Progress duration: ${duration}ms for type=$mediaType")
 
             val steps = 100
             val stepDelay = duration / steps
@@ -133,9 +139,10 @@ fun StoryViewerScreen(
                 }
             }
 
-            // Автоматично закриваємо після завершення (тільки якщо дійшли до кінця)
-            if (progress >= 0.99f) { // Changed from 1f to 0.99f to avoid race conditions
-                android.util.Log.d("StoryViewer", "Auto-closing story after completion")
+            // Для видео НЕ закрываем автоматически - пусть пользователь сам закроет
+            // Для фото можно закрывать
+            if (progress >= 0.99f && mediaType != "video") {
+                android.util.Log.d("StoryViewer", "Auto-closing photo story after completion")
                 onClose()
             }
         }

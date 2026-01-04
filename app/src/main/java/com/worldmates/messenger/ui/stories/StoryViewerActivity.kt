@@ -147,14 +147,19 @@ fun StoryViewerScreen(
             }
     ) {
         currentStory?.let { story ->
+            android.util.Log.d("StoryViewer", "Displaying story: id=${story.id}, mediaItems count=${story.mediaItems.size}")
+
             // Медіа контент
             story.mediaItems.firstOrNull()?.let { media ->
+                android.util.Log.d("StoryViewer", "Loading media: type=${media.type}, filename=${media.filename}")
                 AsyncImage(
                     model = media.filename,
                     contentDescription = "Story media",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit
                 )
+            } ?: run {
+                android.util.Log.e("StoryViewer", "No media items found for story id=${story.id}")
             }
 
             // Прогрес бар вгорі

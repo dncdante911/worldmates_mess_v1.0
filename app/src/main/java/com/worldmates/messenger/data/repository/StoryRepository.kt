@@ -261,6 +261,15 @@ class StoryRepository(private val context: Context) {
                 }
                 val filtered = response.stories.filter { !it.isExpired() }
                 Log.d(TAG, "getUserStories: Повертаємо ${filtered.size} активних stories")
+
+                // Set first story as current
+                _currentStory.value = filtered.firstOrNull()
+                if (_currentStory.value != null) {
+                    Log.d(TAG, "✅ Current story set: id=${_currentStory.value!!.id}, mediaItems=${_currentStory.value!!.mediaItems.size}")
+                } else {
+                    Log.w(TAG, "No stories to display")
+                }
+
                 Result.success(filtered)
             } else {
                 Log.e(TAG, "getUserStories API error: ${response.errorMessage}")

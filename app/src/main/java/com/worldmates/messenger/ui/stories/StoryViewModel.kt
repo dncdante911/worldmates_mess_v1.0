@@ -159,8 +159,15 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
     fun loadUserStories(userId: Long) {
         viewModelScope.launch {
             try {
-                repository.getUserStories(userId).onSuccess {
-                    Log.d(TAG, "User stories loaded: ${it.size}")
+                repository.getUserStories(userId).onSuccess { stories ->
+                    Log.d(TAG, "User stories loaded: ${stories.size}")
+                    // Set the first story as current
+                    _currentStory.value = stories.firstOrNull()
+                    if (_currentStory.value != null) {
+                        Log.d(TAG, "Current story set: id=${_currentStory.value!!.id}, mediaItems=${_currentStory.value!!.mediaItems.size}")
+                    } else {
+                        Log.w(TAG, "No stories found for user $userId")
+                    }
                 }.onFailure { e ->
                     _error.value = e.message
                     Log.e(TAG, "Error loading user stories", e)
@@ -178,8 +185,11 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
     fun loadStoryById(storyId: Long) {
         viewModelScope.launch {
             try {
-                repository.getStoryById(storyId).onSuccess {
-                    Log.d(TAG, "Story loaded: ${it.id}")
+                repository.getStoryById(storyId).onSuccess { story ->
+                    Log.d(TAG, "Story loaded: ${story.id}")
+                    // Set as current story
+                    _currentStory.value = story
+                    Log.d(TAG, "Current story set: id=${story.id}, mediaItems=${story.mediaItems.size}")
                 }.onFailure { e ->
                     _error.value = e.message
                     Log.e(TAG, "Error loading story", e)

@@ -105,9 +105,9 @@ fun StoryViewerScreen(
     LaunchedEffect(currentStory, isPaused) {
         if (currentStory != null && !isPaused) {
             val duration = if (currentStory!!.mediaItems.firstOrNull()?.type == "video") {
-                currentStory!!.mediaItems.firstOrNull()?.duration?.times(1000L) ?: 5000L
+                currentStory!!.mediaItems.firstOrNull()?.duration?.times(1000L) ?: 15000L // 15 sec for videos without duration
             } else {
-                5000L // 5 секунд для фото
+                20000L // 20 секунд для фото (было 5 секунд)
             }
 
             val steps = 100
@@ -162,12 +162,58 @@ fun StoryViewerScreen(
                 android.util.Log.d("StoryViewer", "Loading media: type=${media.type}, filename=${media.filename}")
                 android.util.Log.d("StoryViewer", "Full URL: $mediaUrl")
 
-                AsyncImage(
-                    model = mediaUrl,
-                    contentDescription = "Story media",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
+                when (media.type) {
+                    "image" -> {
+                        // Show image with AsyncImage
+                        AsyncImage(
+                            model = mediaUrl,
+                            contentDescription = "Story image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    "video" -> {
+                        // TODO: Add video player support
+                        // For now, show placeholder
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Video",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(80.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Відео Story",
+                                    color = Color.White,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Підтримка відео буде додана найближчим часом",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        // Unknown media type
+                        Text(
+                            text = "Непідтримуваний тип медіа: ${media.type}",
+                            color = Color.White,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                }
             } ?: run {
                 android.util.Log.e("StoryViewer", "No media items found for story id=${story.id}")
             }

@@ -123,6 +123,9 @@ fun StoryViewerScreen(
             val steps = 100
             val stepDelay = duration / steps
 
+            // Reset progress when story changes
+            progress = 0f
+
             for (i in 0..steps) {
                 if (!isPaused) {
                     progress = i.toFloat() / steps
@@ -130,8 +133,9 @@ fun StoryViewerScreen(
                 }
             }
 
-            // Автоматично закриваємо після завершення
-            if (progress >= 1f) {
+            // Автоматично закриваємо після завершення (тільки якщо дійшли до кінця)
+            if (progress >= 0.99f) { // Changed from 1f to 0.99f to avoid race conditions
+                android.util.Log.d("StoryViewer", "Auto-closing story after completion")
                 onClose()
             }
         }
@@ -751,10 +755,10 @@ fun VideoPlayer(
     val context = LocalContext.current
     var errorState by remember { mutableStateOf<String?>(null) }
 
-    // Create ExoPlayer instance with error handling
-    val exoPlayer = remember(videoUrl) {
+    // Create ExoPlayer instance with error handling - use Unit as key to prevent recreation
+    val exoPlayer = remember(Unit) {
         try {
-            android.util.Log.d("VideoPlayer", "Creating ExoPlayer for URL: $videoUrl")
+            android.util.Log.d("VideoPlayer", "🎬 Creating ExoPlayer for URL: $videoUrl")
 
             // Create OkHttp client for HTTP datasource
             val okHttpClient = OkHttpClient.Builder()
@@ -774,40 +778,51 @@ fun VideoPlayer(
                     addListener(object : Player.Listener {
                         override fun onPlayerError(error: PlaybackException) {
                             val errorMsg = "ExoPlayer error: ${error.errorCodeName} - ${error.message}"
-                            android.util.Log.e("VideoPlayer", errorMsg, error)
+                            android.util.Log.e("VideoPlayer", "❌ $errorMsg", error)
                             errorState = errorMsg
                         }
 
                         override fun onPlaybackStateChanged(playbackState: Int) {
                             when (playbackState) {
-                                Player.STATE_IDLE -> android.util.Log.d("VideoPlayer", "State: IDLE")
-                                Player.STATE_BUFFERING -> android.util.Log.d("VideoPlayer", "State: BUFFERING")
-                                Player.STATE_READY -> android.util.Log.d("VideoPlayer", "State: READY - video loaded successfully")
-                                Player.STATE_ENDED -> android.util.Log.d("VideoPlayer", "State: ENDED")
+                                Player.STATE_IDLE -> android.util.Log.d("VideoPlayer", "⏸️ State: IDLE")
+                                Player.STATE_BUFFERING -> android.util.Log.d("VideoPlayer", "⏳ State: BUFFERING")
+                                Player.STATE_READY -> android.util.Log.d("VideoPlayer", "✅ State: READY - video loaded successfully")
+                                Player.STATE_ENDED -> android.util.Log.d("VideoPlayer", "🏁 State: ENDED")
                             }
                         }
                     })
 
-                    // Set media item and prepare
-                    val mediaItem = MediaItem.fromUri(videoUrl)
-                    setMediaItem(mediaItem)
-                    prepare()
-                    playWhenReady = true
-                    repeatMode = Player.REPEAT_MODE_ONE // Loop video
-
-                    android.util.Log.d("VideoPlayer", "ExoPlayer configured and preparing...")
+                    android.util.Log.d("VideoPlayer", "🎥 ExoPlayer instance created successfully")
                 }
         } catch (e: Exception) {
-            android.util.Log.e("VideoPlayer", "Failed to create ExoPlayer", e)
+            android.util.Log.e("VideoPlayer", "❌ Failed to create ExoPlayer", e)
             errorState = "Failed to initialize player: ${e.message}"
             null
         }
     }
 
-    // Clean up player when composable is disposed
-    DisposableEffect(videoUrl) {
+    // Set media source when URL changes
+    LaunchedEffect(videoUrl) {
+        android.util.Log.d("VideoPlayer", "📹 Setting media source: $videoUrl")
+        exoPlayer?.apply {
+            try {
+                val mediaItem = MediaItem.fromUri(videoUrl)
+                setMediaItem(mediaItem)
+                prepare()
+                playWhenReady = true
+                repeatMode = Player.REPEAT_MODE_ONE // Loop video
+                android.util.Log.d("VideoPlayer", "▶️ ExoPlayer prepared and starting playback...")
+            } catch (e: Exception) {
+                android.util.Log.e("VideoPlayer", "❌ Failed to set media item", e)
+                errorState = "Failed to load video: ${e.message}"
+            }
+        }
+    }
+
+    // Clean up player when composable is disposed - use Unit to dispose only once
+    DisposableEffect(Unit) {
         onDispose {
-            android.util.Log.d("VideoPlayer", "Disposing ExoPlayer")
+            android.util.Log.d("VideoPlayer", "🗑️ Disposing ExoPlayer")
             exoPlayer?.release()
         }
     }
@@ -820,7 +835,7 @@ fun VideoPlayer(
                     .fillMaxSize()
                     .background(Color.Black),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Error,

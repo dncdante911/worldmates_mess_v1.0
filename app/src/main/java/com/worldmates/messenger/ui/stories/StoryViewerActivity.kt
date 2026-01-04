@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +30,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
@@ -173,37 +179,11 @@ fun StoryViewerScreen(
                         )
                     }
                     "video" -> {
-                        // TODO: Add video player support
-                        // For now, show placeholder
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Video",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(80.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Відео Story",
-                                    color = Color.White,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "Підтримка відео буде додана найближчим часом",
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.padding(top = 8.dp)
-                                )
-                            }
-                        }
+                        // Show video with ExoPlayer
+                        VideoPlayer(
+                            videoUrl = mediaUrl,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                     else -> {
                         // Unknown media type
@@ -757,6 +737,44 @@ fun ReactionsBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+@Composable
+fun VideoPlayer(
+    videoUrl: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    // Create ExoPlayer instance
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(videoUrl)
+            setMediaItem(mediaItem)
+            prepare()
+            playWhenReady = true
+            repeatMode = Player.REPEAT_MODE_ONE // Loop video
+        }
+    }
+
+    // Clean up player when composable is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    // ExoPlayer UI
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = false // Hide default controls for Stories
+                setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+            }
+        },
+        modifier = modifier
+    )
 }
 
 private fun formatStoryTime(timestamp: Long): String {

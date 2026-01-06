@@ -7,7 +7,7 @@ import com.worldmates.messenger.data.local.entity.CachedMessage
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.RetrofitClient
-import com.worldmates.messenger.utils.security.DecryptionUtility
+import com.worldmates.messenger.utils.DecryptionUtility
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -266,3 +266,4 @@ class BackupRepository(private val context: Context) {
         messageDao.markChatAsRead(chatId, chatType)
     }
 }
+

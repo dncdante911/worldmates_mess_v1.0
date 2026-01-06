@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.worldmates.messenger.data.model.CloudBackupSettings
 import com.worldmates.messenger.data.model.SyncProgress
 import kotlinx.coroutines.launch
@@ -30,8 +31,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CloudBackupSettingsScreen(
-    viewModel: CloudBackupViewModel,
-    onNavigateBack: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: CloudBackupViewModel = viewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
     val syncProgress by viewModel.syncProgress.collectAsState()
@@ -48,7 +49,7 @@ fun CloudBackupSettingsScreen(
             TopAppBar(
                 title = { Text("Данные и память") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, "Назад")
                     }
                 },

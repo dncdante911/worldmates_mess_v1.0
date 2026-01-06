@@ -370,6 +370,27 @@ switch ($type) {
             $group['members'] = $members;
             $group['members_count'] = count($members);
 
+            // 📌 PINNED MESSAGE: Отримуємо закріплене повідомлення якщо є
+            $group['pinned_message'] = null;
+            if (!empty($group['pinned_message_id'])) {
+                $stmt = $db->prepare("
+                    SELECT m.id, m.from_id, m.text, m.time, m.media,
+                           u.username as sender_username,
+                           CONCAT(u.first_name, ' ', u.last_name) as sender_name,
+                           u.avatar as sender_avatar
+                    FROM Wo_Messages m
+                    LEFT JOIN Wo_Users u ON m.from_id = u.user_id
+                    WHERE m.id = ?
+                ");
+                $stmt->execute([$group['pinned_message_id']]);
+                $pinned_msg = $stmt->fetch();
+
+                if ($pinned_msg) {
+                    $group['pinned_message'] = $pinned_msg;
+                    logMessage("📌 Group {$group_id} has pinned message: {$pinned_msg['id']}");
+                }
+            }
+
             sendResponse(array(
                 'api_status' => 200,
                 'data' => $group

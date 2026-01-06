@@ -314,6 +314,22 @@ interface WorldMatesApi {
         @Part avatar: MultipartBody.Part
     ): CreateGroupResponse
 
+    // 📌 Pin/Unpin Group Messages
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/pin_group_message.php")
+    suspend fun pinGroupMessage(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long,
+        @Field("message_id") messageId: Long
+    ): GenericResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unpin_group_message.php")
+    suspend fun unpinGroupMessage(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded

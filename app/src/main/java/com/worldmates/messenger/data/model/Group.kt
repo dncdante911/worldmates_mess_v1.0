@@ -98,6 +98,7 @@ data class Group(
     @SerializedName("updated_time") val updatedTime: Long? = null,
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
+    @SerializedName("pinned_message") val pinnedMessage: Message? = null, // 📌 Закріплене повідомлення
     @SerializedName("settings") val settings: GroupSettings? = null
 )
 

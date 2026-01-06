@@ -112,6 +112,49 @@ interface WorldMatesApi {
         @Field("before_message_id") beforeMessageId: Long = 0
     ): MessageListResponse
 
+    // 📦 CLOUD BACKUP: Получение сообщений с расширенными параметрами
+    @FormUrlEncoded
+    @POST(Constants.GET_MESSAGES_ENDPOINT)
+    suspend fun getMessagesWithOptions(
+        @Query("access_token") accessToken: String,
+        @Field("recipient_id") recipientId: Long,
+        @Field("limit") limit: Int = 30,
+        @Field("before_message_id") beforeMessageId: Long = 0,
+        @Field("full_history") fullHistory: String = "false", // "true" для загрузки всей истории
+        @Field("count_only") countOnly: String = "false" // "true" для получения только количества
+    ): MessageListResponse
+
+    // 📦 CLOUD BACKUP: Подсчет количества сообщений
+    @FormUrlEncoded
+    @POST(Constants.GET_MESSAGES_ENDPOINT)
+    suspend fun getMessageCount(
+        @Query("access_token") accessToken: String,
+        @Field("recipient_id") recipientId: Long,
+        @Field("count_only") countOnly: String = "true"
+    ): MessageCountResponse
+
+    // 📦 CLOUD BACKUP: Получение настроек автозагрузки медиа
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/get_media_settings.php")
+    suspend fun getMediaSettings(
+        @Query("access_token") accessToken: String
+    ): MediaSettingsResponse
+
+    // 📦 CLOUD BACKUP: Обновление настроек автозагрузки медиа
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/update_media_settings.php")
+    suspend fun updateMediaSettings(
+        @Query("access_token") accessToken: String,
+        @Field("auto_download_photos") autoDownloadPhotos: String? = null,
+        @Field("auto_download_videos") autoDownloadVideos: String? = null,
+        @Field("auto_download_audio") autoDownloadAudio: String? = null,
+        @Field("auto_download_documents") autoDownloadDocuments: String? = null,
+        @Field("compress_photos") compressPhotos: String? = null,
+        @Field("compress_videos") compressVideos: String? = null,
+        @Field("backup_enabled") backupEnabled: String? = null,
+        @Field("mark_backup_complete") markBackupComplete: String? = null
+    ): UpdateMediaSettingsResponse
+
     // ==================== GROUP CHATS (Messenger Groups) ====================
     // Uses /api/v2/group_chat_v2.php - NEW custom API endpoint with 'type' parameter
 

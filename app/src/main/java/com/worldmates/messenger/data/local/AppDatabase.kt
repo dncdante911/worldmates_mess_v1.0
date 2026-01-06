@@ -5,23 +5,29 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.worldmates.messenger.data.local.dao.DraftDao
+import com.worldmates.messenger.data.local.dao.MessageDao
 import com.worldmates.messenger.data.local.entity.Draft
+import com.worldmates.messenger.data.local.entity.CachedMessage
 
 /**
  * 💾 AppDatabase - локальная база данных приложения
  *
  * Хранит:
- * - Черновики сообщений
- * - (В будущем: кэш сообщений, медиа, и т.д.)
+ * - Черновики сообщений (Draft)
+ * - Кэш сообщений для офлайн доступа (CachedMessage) 📦 CLOUD BACKUP
  */
 @Database(
-    entities = [Draft::class],
-    version = 1,
+    entities = [
+        Draft::class,
+        CachedMessage::class  // 📦 CLOUD BACKUP: Кэш сообщений
+    ],
+    version = 2,  // 📦 Увеличена версия с 1 до 2
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun draftDao(): DraftDao
+    abstract fun messageDao(): MessageDao  // 📦 CLOUD BACKUP: DAO для кэша сообщений
 
     companion object {
         private const val DATABASE_NAME = "worldmates_messenger.db"

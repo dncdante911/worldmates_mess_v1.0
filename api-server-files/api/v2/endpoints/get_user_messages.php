@@ -28,7 +28,21 @@ if (!empty($_POST['recipient_id']) && is_numeric($_POST['recipient_id']) && $_PO
             $after_message_id  = 0;
             $before_message_id = 0;
             $message_id = 0;
-            if (!empty($_POST['limit']) && is_numeric($_POST['limit']) && $_POST['limit'] > 0) {
+            $full_history = false;
+            $count_only = false;
+
+            // 🔥 CLOUD BACKUP: Параметр для загрузки всей истории
+            if (!empty($_POST['full_history']) && $_POST['full_history'] == 'true') {
+                $full_history = true;
+                $limit = 10000; // Большой лимит для полной истории
+            }
+
+            // 📊 CLOUD BACKUP: Параметр для получения только количества сообщений
+            if (!empty($_POST['count_only']) && $_POST['count_only'] == 'true') {
+                $count_only = true;
+            }
+
+            if (!empty($_POST['limit']) && is_numeric($_POST['limit']) && $_POST['limit'] > 0 && !$full_history) {
                 $limit = $_POST['limit'];
             }
             if (!empty($_POST['after_message_id'])) {
@@ -40,6 +54,26 @@ if (!empty($_POST['recipient_id']) && is_numeric($_POST['recipient_id']) && $_PO
             if (!empty($_POST['message_id'])) {
                 $message_id = $_POST['message_id'];
             }
+
+            // 📊 Если запрошен только подсчет - возвращаем количество
+            if ($count_only) {
+                global $sqlConnect;
+                $count_query = "SELECT COUNT(*) as total FROM " . T_MESSAGES .
+                    " WHERE ((`from_id` = {$recipient_id} AND `to_id` = {$user_id} AND `deleted_two` = '0') " .
+                    " OR (`from_id` = {$user_id} AND `to_id` = {$recipient_id} AND `deleted_one` = '0')) " .
+                    " AND `page_id` = '0'";
+                $count_result = mysqli_query($sqlConnect, $count_query);
+                $count_data = mysqli_fetch_assoc($count_result);
+
+                $response_data = array(
+                    'api_status' => 200,
+                    'total_messages' => intval($count_data['total'])
+                );
+                // Выход из скрипта после подсчета
+                echo json_encode($response_data);
+                exit;
+            }
+
             $message_info = array(
                 'user_id' => $user_id,
                 'recipient_id' => $recipient_id,
@@ -47,7 +81,7 @@ if (!empty($_POST['recipient_id']) && is_numeric($_POST['recipient_id']) && $_PO
                 'after_message_id' => $after_message_id,
                 'message_id' => $message_id
             );
-            
+
             $message_info = Wo_GetMessagesAPPN($message_info,$limit);
             
                 // Подключаем browser_compatibility если он существует

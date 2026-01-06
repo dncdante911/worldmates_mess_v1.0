@@ -65,6 +65,11 @@ class MessagesViewModel(application: Application) :
     private val _forwardGroups = MutableStateFlow<List<ForwardRecipient>>(emptyList())
     val forwardGroups: StateFlow<List<ForwardRecipient>> = _forwardGroups
 
+    // ==================== GROUPS ====================
+    private val _currentGroup = MutableStateFlow<com.worldmates.messenger.data.model.Group?>(null)
+    val currentGroup: StateFlow<com.worldmates.messenger.data.model.Group?> = _currentGroup
+    // ==================== END GROUPS ====================
+
     // ==================== DRAFTS ====================
     private val draftRepository = DraftRepository.getInstance(context)
 
@@ -96,10 +101,32 @@ class MessagesViewModel(application: Application) :
     fun initializeGroup(groupId: Long) {
         this.groupId = groupId
         this.recipientId = 0
+        fetchGroupDetails(groupId) // 📌 Отримуємо деталі групи включаючи закріплене повідомлення
         fetchGroupMessages()
         setupSocket()
         loadDraft() // Загружаем черновик
         Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
+    }
+
+    /**
+     * 📌 Отримати деталі групи (включаючи закріплене повідомлення)
+     */
+    private fun fetchGroupDetails(groupId: Long) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.getGroupDetails(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200 && response.group != null) {
+                    _currentGroup.value = response.group
+                    Log.d(TAG, "📌 Group details loaded: ${response.group.groupName}, pinned: ${response.group.pinnedMessage != null}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error fetching group details", e)
+            }
+        }
     }
 
     /**
@@ -1192,6 +1219,156 @@ class MessagesViewModel(application: Application) :
                 }
             } catch (e: Exception) {
                 Log.e("MessagesViewModel", "Помилка пересилання", e)
+            }
+        }
+    }
+
+    /**
+     * 📌 Закріпити повідомлення в групі
+     */
+    fun pinGroupMessage(
+        messageId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.pinGroupMessage(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    messageId = messageId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "📌 Message $messageId pinned in group $groupId")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося закріпити повідомлення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to pin message: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error pinning message", e)
+            }
+        }
+    }
+
+    /**
+     * 📌 Відкріпити повідомлення в групі
+     */
+    fun unpinGroupMessage(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unpinGroupMessage(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "📌 Message unpinned in group $groupId")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося відкріпити повідомлення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to unpin message: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error unpinning message", e)
+            }
+        }
+    }
+
+    /**
+     * 🔕 Вимкнути сповіщення для групи
+     */
+    fun muteGroup(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.muteGroup(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "🔕 Group $groupId muted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося вимкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to mute group: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error muting group", e)
+            }
+        }
+    }
+
+    /**
+     * 🔔 Увімкнути сповіщення для групи
+     */
+    fun unmuteGroup(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unmuteGroup(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "🔔 Group $groupId unmuted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося увімкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to unmute group: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error unmuting group", e)
             }
         }
     }

@@ -849,6 +849,77 @@ fun loadChannelPosts(channelId: Long) {
 
 ## 📝 CHANGELOG - 2026-01-06
 
+### ✅ GROUPS PHASE 1 - Critical Features (2026-01-06)
+
+**100% COMPLETE - All 3 critical group features implemented**
+
+#### Phase 1.1 - Pinned Messages (✅ Complete):
+1. **Backend (PHP)**:
+   - `pin_group_message.php` - endpoint to pin messages with admin/moderator check
+   - `unpin_group_message.php` - endpoint to unpin messages
+   - Updated `group_chat_v2.php` - added pinned_message retrieval in get_by_id
+   - Updated Group model - added `pinnedMessage` field
+
+2. **UI Components (Kotlin + Compose)**:
+   - `PinnedMessageBanner.kt` with dual UI style support:
+     * **TelegramPinnedBanner**: Minimalist design with Surface & tonalElevation
+     * **WorldMatesPinnedBanner**: Gradient cards with animated pulsing pin icon
+   - Slide-in/out spring animations
+   - Scroll-to-message functionality on banner click
+   - Unpin button (visible only for admins/moderators)
+
+3. **Integration**:
+   - MessagesViewModel: `pinGroupMessage()`, `unpinGroupMessage()`, `fetchGroupDetails()`
+   - MessagesScreen: Integrated PinnedMessageBanner into group message screens
+   - SelectionTopBarActions: Added Pin button to selection mode toolbar
+   - Permission checks (isAdmin || isModerator)
+
+#### Phase 1.2 - Mute/Unmute Notifications (✅ Complete):
+1. **Backend (PHP)**:
+   - `mute_group.php` - sets is_muted = 1 in Wo_GroupChatUsers
+   - `unmute_group.php` - sets is_muted = 0 in Wo_GroupChatUsers
+   - Updated `group_chat_v2.php` - fetches is_muted status for current user
+   - Per-user mute status (not global for group)
+
+2. **Model Updates**:
+   - Added `isMuted: Boolean` field to Group data class
+   - API methods: `muteGroup()`, `unmuteGroup()` in WorldMatesApi.kt
+
+3. **ViewModel & UI**:
+   - MessagesViewModel: `muteGroup()`, `unmuteGroup()` methods
+   - MessagesScreen: Updated onMuteClick handler to toggle mute/unmute
+   - Toast notifications for success/error
+   - Auto-refresh group details after mute/unmute
+
+#### Phase 1.3 - Forward Posts (✅ Already Implemented):
+1. **UI Components**:
+   - `ForwardMessageDialog.kt` - fully implemented dialog for selecting recipients
+   - Support for multiple recipients (contacts + groups)
+   - Search functionality
+   - Animated slide-in/out
+
+2. **ViewModel**:
+   - `loadForwardContacts()` - loads contacts for forwarding
+   - `loadForwardGroups()` - loads groups for forwarding
+   - `forwardMessages()` - forwards selected messages to selected recipients
+   - Detects if recipient is group or user and sends accordingly
+
+3. **Integration**:
+   - MessagesScreen: `showForwardDialog` state variable
+   - SelectionBottomBar: Forward button in selection mode
+   - Auto-exit selection mode after forwarding
+
+**Files Modified/Created**:
+- Backend: pin_group_message.php, unpin_group_message.php, mute_group.php, unmute_group.php, group_chat_v2.php
+- Models: Group.kt (added isMuted, pinnedMessage fields)
+- API: WorldMatesApi.kt (added GenericResponse, pin/unpin/mute/unmute methods)
+- UI: PinnedMessageBanner.kt (new), SelectionTopBarActions.kt, MessagesScreen.kt
+- ViewModels: MessagesViewModel.kt (added pin/unpin/mute/unmute methods), GroupsViewModel.kt
+
+**Result**: Groups now have feature parity with Telegram for critical functionality!
+
+---
+
 ### ✅ CLOUD BACKUP v2 - Полный Telegram-style функционал (2026-01-06)
 
 #### 🎯 Backend (PHP + SQL):

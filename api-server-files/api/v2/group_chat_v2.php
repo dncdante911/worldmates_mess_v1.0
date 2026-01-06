@@ -391,6 +391,17 @@ switch ($type) {
                 }
             }
 
+            // 🔕 MUTE STATUS: Отримуємо статус сповіщень для поточного користувача
+            $stmt = $db->prepare("
+                SELECT is_muted
+                FROM Wo_GroupChatUsers
+                WHERE group_id = ? AND user_id = ?
+            ");
+            $stmt->execute([$group_id, $current_user_id]);
+            $member_data = $stmt->fetch();
+            $group['is_muted'] = ($member_data && $member_data['is_muted'] == 1) ? true : false;
+            logMessage("🔕 Group {$group_id}: is_muted for user {$current_user_id} = " . ($group['is_muted'] ? 'true' : 'false'));
+
             sendResponse(array(
                 'api_status' => 200,
                 'data' => $group

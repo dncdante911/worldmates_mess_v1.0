@@ -330,6 +330,21 @@ interface WorldMatesApi {
         @Field("group_id") groupId: Long
     ): GenericResponse
 
+    // 🔕 Mute/Unmute Group Notifications
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/mute_group.php")
+    suspend fun muteGroup(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unmute_group.php")
+    suspend fun unmuteGroup(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
@@ -1077,4 +1092,12 @@ data class VerificationResponse(
     @SerializedName("message") val message: String?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
+)
+
+/**
+ * Generic response for simple operations (pin/unpin messages, etc.)
+ */
+data class GenericResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?
 )

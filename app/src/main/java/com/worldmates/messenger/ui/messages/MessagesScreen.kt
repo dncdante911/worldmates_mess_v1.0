@@ -461,7 +461,7 @@ fun MessagesScreen(
             // 📌 Pinned Message Banner (for groups only)
             if (isGroup && currentGroup?.pinnedMessage != null) {
                 val pinnedMsg = currentGroup!!.pinnedMessage!!
-                val decryptedText = pinnedMsg.decryptedText ?: pinnedMsg.text ?: ""
+                val decryptedText = pinnedMsg.decryptedText ?: pinnedMsg.encryptedText ?: ""
 
                 // Перевіряємо чи є користувач адміном/модератором
                 val canUnpin = currentGroup?.isAdmin == true || currentGroup?.isModerator == true

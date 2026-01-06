@@ -121,7 +121,7 @@ class MessagesViewModel(application: Application) :
 
                 if (response.apiStatus == 200 && response.group != null) {
                     _currentGroup.value = response.group
-                    Log.d(TAG, "📌 Group details loaded: ${response.group.groupName}, pinned: ${response.group.pinnedMessage != null}")
+                    Log.d(TAG, "📌 Group details loaded: ${response.group.name}, pinned: ${response.group.pinnedMessage != null}")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error fetching group details", e)

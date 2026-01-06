@@ -365,9 +365,32 @@ fun MessagesScreen(
                     android.widget.Toast.makeText(context, "Пошук в чаті", android.widget.Toast.LENGTH_SHORT).show()
                 },
                 onMuteClick = {
-                    Log.d("MessagesScreen", "Вимкнення сповіщень для: $recipientName")
-                    // TODO: Реалізувати збереження налаштувань сповіщень
-                    android.widget.Toast.makeText(context, "Сповіщення вимкнено для $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                    if (isGroup && currentGroup != null) {
+                        // Для груп - перемикаємо сповіщення
+                        if (currentGroup!!.isMuted) {
+                            viewModel.unmuteGroup(
+                                onSuccess = {
+                                    android.widget.Toast.makeText(context, "Сповіщення увімкнено для $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                onError = { error ->
+                                    android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        } else {
+                            viewModel.muteGroup(
+                                onSuccess = {
+                                    android.widget.Toast.makeText(context, "Сповіщення вимкнено для $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                onError = { error ->
+                                    android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    } else {
+                        // Для особистих чатів - TODO
+                        Log.d("MessagesScreen", "Вимкнення сповіщень для: $recipientName")
+                        android.widget.Toast.makeText(context, "Сповіщення вимкнено для $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 },
                 onClearHistoryClick = {
                     Log.d("MessagesScreen", "Очищення історії чату")

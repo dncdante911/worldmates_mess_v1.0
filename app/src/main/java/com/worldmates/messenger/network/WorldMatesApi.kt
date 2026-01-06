@@ -330,6 +330,21 @@ interface WorldMatesApi {
         @Field("group_id") groupId: Long
     ): GenericResponse
 
+    // 🔕 Mute/Unmute Group Notifications
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/mute_group.php")
+    suspend fun muteGroup(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unmute_group.php")
+    suspend fun unmuteGroup(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded

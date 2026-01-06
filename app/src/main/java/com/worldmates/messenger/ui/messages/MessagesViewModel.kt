@@ -1299,6 +1299,80 @@ class MessagesViewModel(application: Application) :
         }
     }
 
+    /**
+     * 🔕 Вимкнути сповіщення для групи
+     */
+    fun muteGroup(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.muteGroup(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "🔕 Group $groupId muted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося вимкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to mute group: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error muting group", e)
+            }
+        }
+    }
+
+    /**
+     * 🔔 Увімкнути сповіщення для групи
+     */
+    fun unmuteGroup(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unmuteGroup(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "🔔 Group $groupId unmuted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося увімкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to unmute group: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error unmuting group", e)
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         socketManager?.disconnect()

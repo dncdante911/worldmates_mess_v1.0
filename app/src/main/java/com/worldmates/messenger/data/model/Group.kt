@@ -94,6 +94,7 @@ data class Group(
     @SerializedName("is_admin") val isAdmin: Boolean = false,
     @SerializedName("is_moderator") val isModerator: Boolean = false,
     @SerializedName("is_member") val isMember: Boolean = true,
+    @SerializedName("is_muted") val isMuted: Boolean = false, // 🔕 Вимкнено сповіщення для користувача
     @SerializedName("created_time") val createdTime: Long,
     @SerializedName("updated_time") val updatedTime: Long? = null,
     @SerializedName("members") val members: List<GroupMember>? = null,

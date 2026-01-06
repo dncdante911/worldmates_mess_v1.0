@@ -115,11 +115,12 @@ fun StoryViewerScreen(
     LaunchedEffect(currentStory, isPaused) {
         if (currentStory != null && !isPaused) {
             val mediaType = currentStory!!.mediaItems.firstOrNull()?.type
-            val videoDuration = currentStory!!.mediaItems.firstOrNull()?.duration?.toLongOrNull()
+            val videoDuration = currentStory!!.mediaItems.firstOrNull()?.duration ?: 0
 
             val duration = if (mediaType == "video") {
                 // Для видео: используем duration из медиа, но не меньше 10 секунд
-                maxOf(videoDuration?.times(1000L) ?: 10000L, 10000L)
+                val durationMs = videoDuration.toLong() * 1000L
+                maxOf(durationMs, 10000L)
             } else {
                 20000L // 20 секунд для фото
             }

@@ -22,7 +22,6 @@ import kotlinx.coroutines.withContext
 class MediaSettingsRepository(private val context: Context) {
 
     private val apiService = RetrofitClient.apiService
-    private val userSession = UserSession.getInstance(context)
 
     private val TAG = "MediaSettingsRepository"
 
@@ -37,7 +36,7 @@ class MediaSettingsRepository(private val context: Context) {
      */
     suspend fun loadSettings(): Result<MediaSettings> = withContext(Dispatchers.IO) {
         try {
-            val accessToken = userSession.getUserData()?.accessToken
+            val accessToken = UserSession.accessToken
                 ?: return@withContext Result.failure(Exception("No access token"))
 
             val response = apiService.getMediaSettings(accessToken = accessToken)
@@ -78,7 +77,7 @@ class MediaSettingsRepository(private val context: Context) {
         markBackupComplete: Boolean = false
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val accessToken = userSession.getUserData()?.accessToken
+            val accessToken = UserSession.accessToken
                 ?: return@withContext Result.failure(Exception("No access token"))
 
             val response = apiService.updateMediaSettings(

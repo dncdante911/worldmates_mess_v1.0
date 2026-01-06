@@ -26,7 +26,6 @@ class BackupRepository(private val context: Context) {
     private val database = AppDatabase.getInstance(context)
     private val messageDao = database.messageDao()
     private val apiService = RetrofitClient.apiService
-    private val userSession = UserSession.getInstance(context)
 
     private val TAG = "BackupRepository"
 
@@ -43,7 +42,7 @@ class BackupRepository(private val context: Context) {
         chatType: String = CachedMessage.CHAT_TYPE_USER
     ): Result<Int> = withContext(Dispatchers.IO) {
         try {
-            val accessToken = userSession.getUserData()?.accessToken
+            val accessToken = UserSession.accessToken
                 ?: return@withContext Result.failure(Exception("No access token"))
 
             Log.d(TAG, "📦 Starting full history sync for chat: $recipientId ($chatType)")
@@ -93,7 +92,7 @@ class BackupRepository(private val context: Context) {
      */
     suspend fun getMessageCount(recipientId: Long): Result<Int> = withContext(Dispatchers.IO) {
         try {
-            val accessToken = userSession.getUserData()?.accessToken
+            val accessToken = UserSession.accessToken
                 ?: return@withContext Result.failure(Exception("No access token"))
 
             val response = apiService.getMessageCount(
@@ -197,8 +196,7 @@ class BackupRepository(private val context: Context) {
         return try {
             // Расшифровываем текст сразу для быстрого доступа
             val decryptedText = if (message.encryptedText != null && message.iv != null && message.tag != null) {
-                DecryptionUtility.decrypt(
-                    context = context,
+                DecryptionUtility.decryptMessage(
                     encryptedText = message.encryptedText,
                     timestamp = message.timeStamp,
                     iv = message.iv,

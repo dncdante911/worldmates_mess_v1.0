@@ -44,7 +44,7 @@ data class MediaSettings(
         NEVER("never");
 
         companion object {
-            fun from Value(value: String): AutoDownloadMode {
+            fun fromValue(value: String): AutoDownloadMode {
                 return values().find { it.value == value } ?: WIFI_ONLY
             }
         }

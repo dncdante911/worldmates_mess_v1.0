@@ -461,6 +461,116 @@ class GroupsViewModel : ViewModel() {
         _error.value = null
     }
 
+    // ==================== 📌 PINNED MESSAGES ====================
+
+    /**
+     * 📌 Закрепить сообщение в группе
+     */
+    fun pinMessage(
+        groupId: Long,
+        messageId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.pinGroupMessage(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    messageId = messageId
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    // Обновляем данные группы чтобы получить закрепленное сообщение
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "📌 Message $messageId pinned in group $groupId")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося закріпити повідомлення"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to pin message: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error pinning message", e)
+            }
+        }
+    }
+
+    /**
+     * 📌 Открепить сообщение в группе
+     */
+    fun unpinMessage(
+        groupId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unpinGroupMessage(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    // Обновляем данные группы
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "📌 Message unpinned in group $groupId")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося відкріпити повідомлення"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to unpin message: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error unpinning message", e)
+            }
+        }
+    }
+
+    /**
+     * Обновить детали группы (для получения pinnedMessage)
+     */
+    private fun fetchGroupDetails(groupId: Long) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.getGroupDetails(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200 && response.group != null) {
+                    _selectedGroup.value = response.group
+                    // Также обновляем в списке групп
+                    _groupList.value = _groupList.value.map {
+                        if (it.id == groupId) response.group!! else it
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("GroupsViewModel", "❌ Error fetching group details", e)
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         Log.d("GroupsViewModel", "ViewModel очищена")

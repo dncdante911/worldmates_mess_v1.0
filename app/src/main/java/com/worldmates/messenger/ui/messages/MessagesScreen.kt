@@ -71,6 +71,9 @@ import com.worldmates.messenger.ui.messages.selection.MediaActionMenu
 import com.worldmates.messenger.ui.messages.selection.QuickReactionAnimation
 import com.worldmates.messenger.ui.messages.selection.ForwardMessageDialog
 
+// 📌 Імпорт компонента закріпленого повідомлення
+import com.worldmates.messenger.ui.groups.components.PinnedMessageBanner
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessagesScreen(
@@ -94,6 +97,9 @@ fun MessagesScreen(
     // 📝 Draft state
     val currentDraft by viewModel.currentDraft.collectAsState()
     val isDraftSaving by viewModel.isDraftSaving.collectAsState()
+
+    // 📌 Group state (for pinned messages)
+    val currentGroup by viewModel.currentGroup.collectAsState()
 
     var messageText by remember { mutableStateOf("") }
 
@@ -378,6 +384,7 @@ fun MessagesScreen(
                 selectedCount = selectedMessages.size,
                 totalCount = messages.size,
                 canEdit = selectedMessages.size == 1 && messages.find { it.id == selectedMessages.first() }?.fromId == UserSession.userId,
+                canPin = isGroup && selectedMessages.size == 1 && (currentGroup?.isAdmin == true || currentGroup?.isModerator == true),
                 onSelectAll = {
                     // Вибираємо всі повідомлення
                     selectedMessages = messages.map { it.id }.toSet()
@@ -395,6 +402,23 @@ fun MessagesScreen(
                         }
                     }
                 },
+                onPinSelected = {
+                    // Закріплюємо вибране повідомлення
+                    if (isGroup && selectedMessages.size == 1) {
+                        val messageId = selectedMessages.first()
+                        viewModel.pinGroupMessage(
+                            messageId = messageId,
+                            onSuccess = {
+                                android.widget.Toast.makeText(context, "Повідомлення закріплено", android.widget.Toast.LENGTH_SHORT).show()
+                                isSelectionMode = false
+                                selectedMessages = emptySet()
+                            },
+                            onError = { error ->
+                                android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                },
                 onDeleteSelected = {
                     // Видаляємо вибрані повідомлення
                     selectedMessages.forEach { messageId ->
@@ -410,6 +434,61 @@ fun MessagesScreen(
                     selectedMessages = emptySet()
                 }
             )
+
+            // 📌 Pinned Message Banner (for groups only)
+            if (isGroup && currentGroup?.pinnedMessage != null) {
+                val pinnedMsg = currentGroup!!.pinnedMessage!!
+                val decryptedText = pinnedMsg.decryptedText ?: pinnedMsg.text ?: ""
+
+                // Перевіряємо чи є користувач адміном/модератором
+                val canUnpin = currentGroup?.isAdmin == true || currentGroup?.isModerator == true
+
+                PinnedMessageBanner(
+                    pinnedMessage = pinnedMsg,
+                    decryptedText = decryptedText,
+                    onBannerClick = {
+                        // Прокручуємо до закріпленого повідомлення
+                        val messageIndex = messages.indexOfFirst { it.id == pinnedMsg.id }
+                        if (messageIndex != -1) {
+                            // Реверсимо індекс, оскільки LazyColumn має reverseLayout = true
+                            val reversedIndex = messages.size - messageIndex - 1
+                            scope.launch {
+                                listState.animateScrollToItem(reversedIndex)
+                            }
+                            android.widget.Toast.makeText(
+                                context,
+                                "Переміщення до закріпленого повідомлення",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Закріплене повідомлення не знайдено в історії",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
+                    onUnpinClick = {
+                        viewModel.unpinGroupMessage(
+                            onSuccess = {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Повідомлення відкріплено",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onError = { error ->
+                                android.widget.Toast.makeText(
+                                    context,
+                                    error,
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
+                    },
+                    canUnpin = canUnpin
+                )
+            }
 
             // Messages List
             LazyColumn(
@@ -842,7 +921,9 @@ fun MessagesHeaderBar(
     selectedCount: Int = 0,
     totalCount: Int = 0,
     canEdit: Boolean = false,
+    canPin: Boolean = false,
     onEditSelected: () -> Unit = {},
+    onPinSelected: () -> Unit = {},
     onDeleteSelected: () -> Unit = {},
     onSelectAll: () -> Unit = {},
     onCloseSelectionMode: () -> Unit = {}
@@ -927,7 +1008,9 @@ fun MessagesHeaderBar(
                     selectedCount = selectedCount,
                     totalCount = totalCount,
                     canEdit = canEdit,
+                    canPin = canPin,
                     onEdit = onEditSelected,
+                    onPin = onPinSelected,
                     onDelete = onDeleteSelected,
                     onSelectAll = onSelectAll,
                     onClose = onCloseSelectionMode

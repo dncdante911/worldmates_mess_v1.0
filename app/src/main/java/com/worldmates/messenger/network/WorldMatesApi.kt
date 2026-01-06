@@ -1078,3 +1078,11 @@ data class VerificationResponse(
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 )
+
+/**
+ * Generic response for simple operations (pin/unpin messages, etc.)
+ */
+data class GenericResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?
+)

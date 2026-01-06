@@ -39,6 +39,7 @@ import com.worldmates.messenger.ui.settings.security.TwoFactorAuthScreen
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.ThemeSettingsScreen
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class SettingsActivity : AppCompatActivity() {
 

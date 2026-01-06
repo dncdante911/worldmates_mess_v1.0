@@ -155,6 +155,43 @@ interface WorldMatesApi {
         @Field("mark_backup_complete") markBackupComplete: String? = null
     ): UpdateMediaSettingsResponse
 
+    // 📦 CLOUD BACKUP v2: Получение расширенных настроек облачного бэкапа
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/get_cloud_backup_settings.php")
+    suspend fun getCloudBackupSettings(
+        @Query("access_token") accessToken: String
+    ): CloudBackupSettingsResponse
+
+    // 📦 CLOUD BACKUP v2: Обновление расширенных настроек облачного бэкапа
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/update_cloud_backup_settings.php")
+    suspend fun updateCloudBackupSettings(
+        @Query("access_token") accessToken: String,
+        @Field("mobile_photos") mobilePhotos: String? = null,
+        @Field("mobile_videos") mobileVideos: String? = null,
+        @Field("mobile_files") mobileFiles: String? = null,
+        @Field("mobile_videos_limit") mobileVideosLimit: Int? = null,
+        @Field("mobile_files_limit") mobileFilesLimit: Int? = null,
+        @Field("wifi_photos") wifiPhotos: String? = null,
+        @Field("wifi_videos") wifiVideos: String? = null,
+        @Field("wifi_files") wifiFiles: String? = null,
+        @Field("wifi_videos_limit") wifiVideosLimit: Int? = null,
+        @Field("wifi_files_limit") wifiFilesLimit: Int? = null,
+        @Field("roaming_photos") roamingPhotos: String? = null,
+        @Field("save_to_gallery_private_chats") saveToGalleryPrivateChats: String? = null,
+        @Field("save_to_gallery_groups") saveToGalleryGroups: String? = null,
+        @Field("save_to_gallery_channels") saveToGalleryChannels: String? = null,
+        @Field("streaming_enabled") streamingEnabled: String? = null,
+        @Field("cache_size_limit") cacheSizeLimit: Long? = null,
+        @Field("backup_enabled") backupEnabled: String? = null,
+        @Field("backup_provider") backupProvider: String? = null,
+        @Field("backup_frequency") backupFrequency: String? = null,
+        @Field("mark_backup_complete") markBackupComplete: String? = null,
+        @Field("proxy_enabled") proxyEnabled: String? = null,
+        @Field("proxy_host") proxyHost: String? = null,
+        @Field("proxy_port") proxyPort: Int? = null
+    ): UpdateCloudBackupSettingsResponse
+
     // ==================== GROUP CHATS (Messenger Groups) ====================
     // Uses /api/v2/group_chat_v2.php - NEW custom API endpoint with 'type' parameter
 

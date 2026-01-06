@@ -115,6 +115,11 @@ class SettingsActivity : AppCompatActivity() {
                             onBackClick = { currentScreen = SettingsScreen.Main }
                         )
                     }
+                    SettingsScreen.CloudBackup -> {
+                        CloudBackupSettingsScreen(
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
                 }
             }
         }
@@ -130,6 +135,7 @@ sealed class SettingsScreen {
     object MyGroups : SettingsScreen()
     object TwoFactorAuth : SettingsScreen()
     object AppLock : SettingsScreen()
+    object CloudBackup : SettingsScreen()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -376,9 +382,9 @@ fun SettingsScreen(
             item {
                 SettingsItem(
                     icon = Icons.Default.Storage,
-                    title = "Сховище даних",
-                    subtitle = "Керування медіа файлами",
-                    onClick = { /* TODO */ }
+                    title = "Сховище та бэкап",
+                    subtitle = "Автозагрузка медіа, кеш, хмарні бекапи",
+                    onClick = { onNavigate(SettingsScreen.CloudBackup) }
                 )
             }
 

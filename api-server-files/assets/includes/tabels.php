@@ -14,6 +14,7 @@ define('T_FOLLOWERS', 'Wo_Followers');
 define('T_NOTIFICATION', 'Wo_Notifications');
 define('T_MESSAGES', 'Wo_Messages');
 define('T_USER_MEDIA_SETTINGS', 'Wo_UserMediaSettings'); // 📦 CLOUD BACKUP: Настройки автозагрузки медиа
+define('T_USER_CLOUD_BACKUP_SETTINGS', 'Wo_UserCloudBackupSettings'); // 📦 CLOUD BACKUP v2: Расширенные настройки облачного бэкапа
 define('T_BLOCKS', 'Wo_Blocks');
 define('T_POSTS', 'Wo_Posts');
 define('T_PINNED_POSTS', 'Wo_PinnedPosts');

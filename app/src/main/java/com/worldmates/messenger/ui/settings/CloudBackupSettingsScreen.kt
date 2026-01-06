@@ -314,7 +314,7 @@ fun CloudBackupSettingsScreen(
             // Удалить черновики
             item {
                 SettingsItem(
-                    icon = Icons.Default.DraftsOutlined,
+                    icon = Icons.Default.DeleteSweep,
                     title = "Удалить черновики",
                     subtitle = null,
                     onClick = {

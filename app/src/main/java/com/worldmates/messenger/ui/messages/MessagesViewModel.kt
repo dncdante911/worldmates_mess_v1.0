@@ -70,6 +70,23 @@ class MessagesViewModel(application: Application) :
     val currentGroup: StateFlow<com.worldmates.messenger.data.model.Group?> = _currentGroup
     // ==================== END GROUPS ====================
 
+    // ==================== SEARCH ====================
+    private val _searchResults = MutableStateFlow<List<Message>>(emptyList())
+    val searchResults: StateFlow<List<Message>> = _searchResults
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    private val _searchTotalCount = MutableStateFlow(0)
+    val searchTotalCount: StateFlow<Int> = _searchTotalCount
+
+    private val _currentSearchIndex = MutableStateFlow(0)
+    val currentSearchIndex: StateFlow<Int> = _currentSearchIndex
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching
+    // ==================== END SEARCH ====================
+
     // ==================== DRAFTS ====================
     private val draftRepository = DraftRepository.getInstance(context)
 
@@ -1371,6 +1388,95 @@ class MessagesViewModel(application: Application) :
                 Log.e(TAG, "❌ Error unmuting group", e)
             }
         }
+    }
+
+    /**
+     * 🔍 Поиск сообщений в группе
+     */
+    fun searchGroupMessages(query: String) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            Log.e(TAG, "Cannot search: not authorized or not in group")
+            return
+        }
+
+        if (query.length < 2) {
+            // Очищаем результаты поиска
+            _searchResults.value = emptyList()
+            _searchQuery.value = ""
+            _searchTotalCount.value = 0
+            _currentSearchIndex.value = 0
+            return
+        }
+
+        _isSearching.value = true
+        _searchQuery.value = query
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.searchGroupMessages(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    query = query,
+                    limit = 100
+                )
+
+                if (response.apiStatus == 200) {
+                    val messages = response.messages ?: emptyList()
+                    _searchResults.value = messages
+                    _searchTotalCount.value = response.totalCount
+                    _currentSearchIndex.value = if (messages.isNotEmpty()) 0 else -1
+                    Log.d(TAG, "🔍 Search completed: found ${response.totalCount} results for '$query'")
+                } else {
+                    Log.e(TAG, "❌ Search failed: ${response.message}")
+                    _searchResults.value = emptyList()
+                    _searchTotalCount.value = 0
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error searching messages", e)
+                _searchResults.value = emptyList()
+                _searchTotalCount.value = 0
+            } finally {
+                _isSearching.value = false
+            }
+        }
+    }
+
+    /**
+     * 🔍 Перейти к следующему результату поиска
+     */
+    fun nextSearchResult() {
+        val results = _searchResults.value
+        if (results.isEmpty()) return
+
+        val currentIndex = _currentSearchIndex.value
+        val nextIndex = (currentIndex + 1) % results.size
+        _currentSearchIndex.value = nextIndex
+        Log.d(TAG, "🔍 Next result: ${nextIndex + 1} of ${results.size}")
+    }
+
+    /**
+     * 🔍 Перейти к предыдущему результату поиска
+     */
+    fun previousSearchResult() {
+        val results = _searchResults.value
+        if (results.isEmpty()) return
+
+        val currentIndex = _currentSearchIndex.value
+        val prevIndex = if (currentIndex > 0) currentIndex - 1 else results.size - 1
+        _currentSearchIndex.value = prevIndex
+        Log.d(TAG, "🔍 Previous result: ${prevIndex + 1} of ${results.size}")
+    }
+
+    /**
+     * 🔍 Очистить результаты поиска
+     */
+    fun clearSearch() {
+        _searchResults.value = emptyList()
+        _searchQuery.value = ""
+        _searchTotalCount.value = 0
+        _currentSearchIndex.value = 0
+        _isSearching.value = false
+        Log.d(TAG, "🔍 Search cleared")
     }
 
     override fun onCleared() {

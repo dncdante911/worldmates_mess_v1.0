@@ -315,10 +315,7 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
                     cacheSizeLimit = settings.cacheSizeLimit,
                     backupEnabled = settings.backupEnabled,
                     backupProvider = settings.backupProvider.name.lowercase(),
-                    backupFrequency = settings.backupFrequency.name.lowercase(),
-                    proxyEnabled = settings.proxyEnabled,
-                    proxyHost = settings.proxyHost,
-                    proxyPort = settings.proxyPort
+                    backupFrequency = settings.backupFrequency.name.lowercase()
                 ).onSuccess { message ->
                     Log.d(TAG, "💾 Settings saved: $message")
                 }.onFailure { error ->

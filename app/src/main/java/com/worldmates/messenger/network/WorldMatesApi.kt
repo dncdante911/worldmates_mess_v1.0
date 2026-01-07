@@ -345,6 +345,17 @@ interface WorldMatesApi {
         @Field("group_id") groupId: Long
     ): GenericResponse
 
+    // 🔍 Search Group Messages
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/search_group_messages.php")
+    suspend fun searchGroupMessages(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long,
+        @Field("query") query: String,
+        @Field("limit") limit: Int = 50,
+        @Field("offset") offset: Int = 0
+    ): SearchMessagesResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
@@ -1099,5 +1110,16 @@ data class VerificationResponse(
  */
 data class GenericResponse(
     @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?
+)
+
+/**
+ * Response for search group messages
+ */
+data class SearchMessagesResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("messages") val messages: List<Message>? = null,
+    @SerializedName("total_count") val totalCount: Int = 0,
+    @SerializedName("query") val query: String? = null,
     @SerializedName("message") val message: String?
 )

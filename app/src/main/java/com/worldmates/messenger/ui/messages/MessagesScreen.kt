@@ -74,6 +74,9 @@ import com.worldmates.messenger.ui.messages.selection.ForwardMessageDialog
 // 📌 Імпорт компонента закріпленого повідомлення
 import com.worldmates.messenger.ui.groups.components.PinnedMessageBanner
 
+// 🔍 Імпорт компонента пошуку
+import com.worldmates.messenger.ui.messages.components.GroupSearchBar
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessagesScreen(
@@ -100,6 +103,13 @@ fun MessagesScreen(
 
     // 📌 Group state (for pinned messages)
     val currentGroup by viewModel.currentGroup.collectAsState()
+
+    // 🔍 Search state (for group search)
+    var showSearchBar by remember { mutableStateOf(false) }
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val searchTotalCount by viewModel.searchTotalCount.collectAsState()
+    val currentSearchIndex by viewModel.currentSearchIndex.collectAsState()
 
     var messageText by remember { mutableStateOf("") }
 
@@ -361,8 +371,17 @@ fun MessagesScreen(
                     android.widget.Toast.makeText(context, "Відеодзвінок до $recipientName", android.widget.Toast.LENGTH_SHORT).show()
                 },
                 onSearchClick = {
-                    Log.d("MessagesScreen", "Пошук в чаті")
-                    android.widget.Toast.makeText(context, "Пошук в чаті", android.widget.Toast.LENGTH_SHORT).show()
+                    if (isGroup) {
+                        // Для групп - открываем search bar
+                        showSearchBar = !showSearchBar
+                        if (!showSearchBar) {
+                            viewModel.clearSearch()
+                        }
+                    } else {
+                        // Для личных чатов - TODO
+                        Log.d("MessagesScreen", "Пошук в чаті")
+                        android.widget.Toast.makeText(context, "Пошук в чаті", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 },
                 onMuteClick = {
                     if (isGroup && currentGroup != null) {
@@ -510,6 +529,51 @@ fun MessagesScreen(
                         )
                     },
                     canUnpin = canUnpin
+                )
+            }
+
+            // 🔍 Search Bar (for groups only)
+            if (isGroup) {
+                GroupSearchBar(
+                    visible = showSearchBar,
+                    query = searchQuery,
+                    onQueryChange = { query ->
+                        viewModel.searchGroupMessages(query)
+                    },
+                    searchResultsCount = searchTotalCount,
+                    currentResultIndex = currentSearchIndex,
+                    onNextResult = {
+                        viewModel.nextSearchResult()
+                        // Scroll to next result
+                        if (searchResults.isNotEmpty() && currentSearchIndex >= 0) {
+                            val nextMessage = searchResults[currentSearchIndex]
+                            val messageIndex = messages.indexOfFirst { it.id == nextMessage.id }
+                            if (messageIndex != -1) {
+                                val reversedIndex = messages.size - messageIndex - 1
+                                scope.launch {
+                                    listState.animateScrollToItem(reversedIndex)
+                                }
+                            }
+                        }
+                    },
+                    onPreviousResult = {
+                        viewModel.previousSearchResult()
+                        // Scroll to previous result
+                        if (searchResults.isNotEmpty() && currentSearchIndex >= 0) {
+                            val prevMessage = searchResults[currentSearchIndex]
+                            val messageIndex = messages.indexOfFirst { it.id == prevMessage.id }
+                            if (messageIndex != -1) {
+                                val reversedIndex = messages.size - messageIndex - 1
+                                scope.launch {
+                                    listState.animateScrollToItem(reversedIndex)
+                                }
+                            }
+                        }
+                    },
+                    onClose = {
+                        showSearchBar = false
+                        viewModel.clearSearch()
+                    }
                 )
             }
 

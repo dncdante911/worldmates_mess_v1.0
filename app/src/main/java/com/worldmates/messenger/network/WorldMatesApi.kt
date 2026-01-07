@@ -356,6 +356,15 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): SearchMessagesResponse
 
+    // 📸 Upload Group Avatar
+    @Multipart
+    @POST("/api/v2/endpoints/upload_group_avatar.php")
+    suspend fun uploadGroupAvatar(
+        @Part("access_token") accessToken: RequestBody,
+        @Part("group_id") groupId: RequestBody,
+        @Part avatar: MultipartBody.Part
+    ): UploadAvatarResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
@@ -1122,4 +1131,13 @@ data class SearchMessagesResponse(
     @SerializedName("total_count") val totalCount: Int = 0,
     @SerializedName("query") val query: String? = null,
     @SerializedName("message") val message: String?
+)
+
+/**
+ * Response for upload group avatar
+ */
+data class UploadAvatarResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("avatar_url") val avatarUrl: String? = null
 )

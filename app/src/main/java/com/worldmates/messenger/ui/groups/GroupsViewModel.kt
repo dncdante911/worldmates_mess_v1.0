@@ -639,6 +639,94 @@ class GroupsViewModel : ViewModel() {
         }
     }
 
+    /**
+     * 🔲 Генерація QR коду для групи
+     */
+    fun generateGroupQr(
+        groupId: Long,
+        onSuccess: (String, String) -> Unit = { _, _ -> }, // qrCode, joinUrl
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.generateGroupQr(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200 && response.qrCode != null && response.joinUrl != null) {
+                    _error.value = null
+                    onSuccess(response.qrCode, response.joinUrl)
+                    Log.d("GroupsViewModel", "🔲 Group $groupId QR generated: ${response.qrCode}")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося згенерувати QR код"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to generate QR: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error generating QR", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * 🔲 Приєднання до групи за QR кодом
+     */
+    fun joinGroupByQr(
+        qrCode: String,
+        onSuccess: (Group) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.joinGroupByQr(
+                    accessToken = UserSession.accessToken!!,
+                    qrCode = qrCode
+                )
+
+                if (response.apiStatus == 200 && response.group != null) {
+                    _error.value = null
+                    // Оновлюємо список груп
+                    fetchGroups()
+                    onSuccess(response.group)
+                    Log.d("GroupsViewModel", "🔲 Joined group ${response.group.id} via QR: $qrCode")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося приєднатися до групи"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to join by QR: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error joining by QR", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         Log.d("GroupsViewModel", "ViewModel очищена")

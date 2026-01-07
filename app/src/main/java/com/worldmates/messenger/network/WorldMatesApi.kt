@@ -365,6 +365,22 @@ interface WorldMatesApi {
         @Part avatar: MultipartBody.Part
     ): UploadAvatarResponse
 
+    // 🔲 Generate Group QR Code
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/generate_group_qr.php")
+    suspend fun generateGroupQr(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenerateQrResponse
+
+    // 🔲 Join Group by QR Code
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/join_group_by_qr.php")
+    suspend fun joinGroupByQr(
+        @Field("access_token") accessToken: String,
+        @Field("qr_code") qrCode: String
+    ): JoinGroupResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
@@ -1140,4 +1156,25 @@ data class UploadAvatarResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("message") val message: String?,
     @SerializedName("avatar_url") val avatarUrl: String? = null
+)
+
+/**
+ * 🔲 Response for QR code generation
+ */
+data class GenerateQrResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("qr_code") val qrCode: String? = null,
+    @SerializedName("join_url") val joinUrl: String? = null,
+    @SerializedName("group_id") val groupId: Long? = null,
+    @SerializedName("group_name") val groupName: String? = null
+)
+
+/**
+ * 🔲 Response for joining group by QR
+ */
+data class JoinGroupResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("group") val group: Group? = null
 )

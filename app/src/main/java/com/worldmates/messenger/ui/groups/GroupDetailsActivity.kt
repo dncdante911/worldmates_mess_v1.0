@@ -36,6 +36,8 @@ import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.data.model.GroupMember
 import com.worldmates.messenger.ui.groups.components.ChangeAvatarDialog
+import com.worldmates.messenger.ui.groups.components.GroupQrDialog
+import com.worldmates.messenger.ui.groups.components.JoinGroupByQrDialog
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import java.text.SimpleDateFormat
@@ -100,6 +102,9 @@ fun GroupDetailsScreen(
     var selectedMember by remember { mutableStateOf<GroupMember?>(null) }
     var showMemberOptionsMenu by remember { mutableStateOf(false) }
     var showAvatarChangeDialog by remember { mutableStateOf(false) }
+    var showGroupQrDialog by remember { mutableStateOf(false) }
+    var groupQrCode by remember { mutableStateOf<String?>(null) }
+    var groupJoinUrl by remember { mutableStateOf<String?>(null) }
 
     // Лаунчер для вибору зображення аватара з галереї
     val avatarPickerLauncher = rememberLauncherForActivityResult(
@@ -243,7 +248,25 @@ fun GroupDetailsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     AdminControlsSection(
                         onEditClick = { showEditDialog = true },
-                        onAddMembersClick = { showAddMemberDialog = true }
+                        onAddMembersClick = { showAddMemberDialog = true },
+                        onQrCodeClick = {
+                            // Генеруємо QR код
+                            viewModel.generateGroupQr(
+                                groupId = groupId,
+                                onSuccess = { qrCode, joinUrl ->
+                                    groupQrCode = qrCode
+                                    groupJoinUrl = joinUrl
+                                    showGroupQrDialog = true
+                                },
+                                onError = { error ->
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        error,
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            )
+                        }
                     )
                 }
             }
@@ -422,6 +445,24 @@ fun GroupDetailsScreen(
                 }
             )
         }
+
+        // Діалог QR коду групи
+        if (showGroupQrDialog && groupQrCode != null && groupJoinUrl != null) {
+            GroupQrDialog(
+                groupName = group.name,
+                qrCode = groupQrCode!!,
+                joinUrl = groupJoinUrl!!,
+                onDismiss = { showGroupQrDialog = false },
+                onShare = { url ->
+                    // Поділитися посиланням
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "Приєднуйтесь до групи \"${group.name}\":\n$url")
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Поділитися посиланням"))
+                }
+            )
+        }
     }
 }
 
@@ -555,7 +596,8 @@ fun ActionButton(
 @Composable
 fun AdminControlsSection(
     onEditClick: () -> Unit,
-    onAddMembersClick: () -> Unit
+    onAddMembersClick: () -> Unit,
+    onQrCodeClick: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -572,6 +614,12 @@ fun AdminControlsSection(
                 icon = Icons.Default.PersonAdd,
                 title = "Додати учасників",
                 onClick = onAddMembersClick
+            )
+            Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(start = 56.dp))
+            SettingsItem(
+                icon = Icons.Default.QrCode,
+                title = "QR код групи",
+                onClick = onQrCodeClick
             )
         }
     }

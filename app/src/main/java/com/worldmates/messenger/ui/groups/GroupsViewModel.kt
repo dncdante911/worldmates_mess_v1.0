@@ -591,7 +591,7 @@ class GroupsViewModel : ViewModel() {
             try {
                 // Создаем RequestBody для файла
                 val requestFile = okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("image/*"),
+                    "image/*".toMediaType(),
                     imageFile
                 )
                 val body = okhttp3.MultipartBody.Part.createFormData(
@@ -602,11 +602,11 @@ class GroupsViewModel : ViewModel() {
 
                 // Создаем RequestBody для других параметров
                 val accessTokenBody = okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("text/plain"),
+                    "text/plain".toMediaType(),
                     UserSession.accessToken!!
                 )
                 val groupIdBody = okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("text/plain"),
+                    "text/plain".toMediaType(),
                     groupId.toString()
                 )
 

@@ -571,6 +571,74 @@ class GroupsViewModel : ViewModel() {
         }
     }
 
+    /**
+     * 📸 Загрузить аватар группы
+     */
+    fun uploadGroupAvatar(
+        groupId: Long,
+        imageFile: java.io.File,
+        onSuccess: (String) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                // Создаем RequestBody для файла
+                val requestFile = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("image/*"),
+                    imageFile
+                )
+                val body = okhttp3.MultipartBody.Part.createFormData(
+                    "avatar",
+                    imageFile.name,
+                    requestFile
+                )
+
+                // Создаем RequestBody для других параметров
+                val accessTokenBody = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("text/plain"),
+                    UserSession.accessToken!!
+                )
+                val groupIdBody = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("text/plain"),
+                    groupId.toString()
+                )
+
+                val response = RetrofitClient.apiService.uploadGroupAvatar(
+                    accessToken = accessTokenBody,
+                    groupId = groupIdBody,
+                    avatar = body
+                )
+
+                if (response.apiStatus == 200 && response.avatarUrl != null) {
+                    _error.value = null
+                    // Обновляем детали группы
+                    fetchGroupDetails(groupId)
+                    onSuccess(response.avatarUrl)
+                    Log.d("GroupsViewModel", "📸 Group $groupId avatar uploaded: ${response.avatarUrl}")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося завантажити аватар"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to upload avatar: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error uploading avatar", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         Log.d("GroupsViewModel", "ViewModel очищена")

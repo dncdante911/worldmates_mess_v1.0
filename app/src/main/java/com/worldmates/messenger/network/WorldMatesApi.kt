@@ -962,6 +962,38 @@ interface WorldMatesApi {
         @Part("id") channelId: RequestBody,
         @Part avatar: MultipartBody.Part
     ): CreateChannelResponse
+
+    // 🔲 Generate Channel QR Code
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/generate_channel_qr.php")
+    suspend fun generateChannelQr(
+        @Field("access_token") accessToken: String,
+        @Field("channel_id") channelId: Long
+    ): GenerateQrResponse
+
+    // 🔲 Subscribe to Channel by QR Code
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/subscribe_channel_by_qr.php")
+    suspend fun subscribeChannelByQr(
+        @Field("access_token") accessToken: String,
+        @Field("qr_code") qrCode: String
+    ): SubscribeChannelResponse
+
+    // 📡 Mute Channel Notifications
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/mute_channel.php")
+    suspend fun muteChannel(
+        @Field("access_token") accessToken: String,
+        @Field("channel_id") channelId: Long
+    ): GenericResponse
+
+    // 📡 Unmute Channel Notifications
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unmute_channel.php")
+    suspend fun unmuteChannel(
+        @Field("access_token") accessToken: String,
+        @Field("channel_id") channelId: Long
+    ): GenericResponse
 }
 
 // ==================== RESPONSE MODELS ====================
@@ -1177,4 +1209,13 @@ data class JoinGroupResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("message") val message: String?,
     @SerializedName("group") val group: Group? = null
+)
+
+/**
+ * 📡 Response for subscribing to channel by QR
+ */
+data class SubscribeChannelResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("channel") val channel: com.worldmates.messenger.data.model.Channel? = null
 )

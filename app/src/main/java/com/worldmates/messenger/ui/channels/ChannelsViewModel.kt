@@ -423,4 +423,162 @@ class ChannelsViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * 🔲 Генерація QR коду для каналу
+     */
+    fun generateChannelQr(
+        channelId: Long,
+        onSuccess: (String, String) -> Unit = { _, _ -> }, // qrCode, joinUrl
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.generateChannelQr(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId
+                )
+
+                if (response.apiStatus == 200 && response.qrCode != null && response.joinUrl != null) {
+                    onSuccess(response.qrCode, response.joinUrl)
+                    Log.d("ChannelsViewModel", "📡 Channel $channelId QR generated: ${response.qrCode}")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося згенерувати QR код"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to generate QR: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error generating QR", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * 🔲 Підписка на канал за QR кодом
+     */
+    fun subscribeChannelByQr(
+        qrCode: String,
+        onSuccess: (com.worldmates.messenger.data.model.Channel) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.subscribeChannelByQr(
+                    accessToken = UserSession.accessToken!!,
+                    qrCode = qrCode
+                )
+
+                if (response.apiStatus == 200 && response.channel != null) {
+                    // Оновлюємо список підписаних каналів
+                    fetchSubscribedChannels()
+                    onSuccess(response.channel)
+                    Log.d("ChannelsViewModel", "📡 Subscribed to channel ${response.channel.id} via QR: $qrCode")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося підписатися на канал"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to subscribe by QR: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error subscribing by QR", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * 📡 Вимкнути сповіщення для каналу
+     */
+    fun muteChannel(
+        channelId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.muteChannel(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо деталі каналу
+                    refreshChannelDetails(channelId)
+                    onSuccess()
+                    Log.d("ChannelsViewModel", "📡 Channel $channelId muted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося вимкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to mute: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error muting channel", e)
+            }
+        }
+    }
+
+    /**
+     * 📡 Увімкнути сповіщення для каналу
+     */
+    fun unmuteChannel(
+        channelId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unmuteChannel(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо деталі каналу
+                    refreshChannelDetails(channelId)
+                    onSuccess()
+                    Log.d("ChannelsViewModel", "📡 Channel $channelId unmuted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося увімкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to unmute: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error unmuting channel", e)
+            }
+        }
+    }
 }

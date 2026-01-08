@@ -173,6 +173,18 @@ interface MessageDao {
     @Query("UPDATE cached_messages SET localMediaPath = :localPath WHERE id = :messageId")
     suspend fun updateLocalMediaPath(messageId: Long, localPath: String)
 
+    /**
+     * Сохранить путь к превью (thumbnail)
+     */
+    @Query("UPDATE cached_messages SET thumbnailPath = :thumbnailPath WHERE id = :messageId")
+    suspend fun updateThumbnailPath(messageId: Long, thumbnailPath: String)
+
+    /**
+     * Обновить состояние загрузки медиа
+     */
+    @Query("UPDATE cached_messages SET mediaLoadingState = :state WHERE id = :messageId")
+    suspend fun updateMediaLoadingState(messageId: Long, state: String)
+
     // ==================== УДАЛЕНИЕ ====================
 
     /**

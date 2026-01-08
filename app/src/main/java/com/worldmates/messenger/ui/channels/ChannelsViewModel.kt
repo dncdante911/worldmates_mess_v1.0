@@ -528,7 +528,7 @@ class ChannelsViewModel : ViewModel() {
 
                 if (response.apiStatus == 200) {
                     // Оновлюємо деталі каналу
-                    refreshChannelDetails(channelId)
+                    refreshChannel(channelId)
                     onSuccess()
                     Log.d("ChannelsViewModel", "📡 Channel $channelId muted")
                 } else {
@@ -566,7 +566,7 @@ class ChannelsViewModel : ViewModel() {
 
                 if (response.apiStatus == 200) {
                     // Оновлюємо деталі каналу
-                    refreshChannelDetails(channelId)
+                    refreshChannel(channelId)
                     onSuccess()
                     Log.d("ChannelsViewModel", "📡 Channel $channelId unmuted")
                 } else {

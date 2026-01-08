@@ -114,6 +114,16 @@ data class CachedMessage(
     val localMediaPath: String? = null,
 
     /**
+     * Путь к превью (thumbnail) медіа
+     */
+    val thumbnailPath: String? = null,
+
+    /**
+     * Стан завантаження медіа: "idle", "loading_thumb", "thumb_loaded", "loading_full", "full_loaded", "error"
+     */
+    val mediaLoadingState: String = "idle",
+
+    /**
      * Имя отправителя
      */
     val senderName: String? = null,

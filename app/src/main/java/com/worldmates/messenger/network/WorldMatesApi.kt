@@ -133,6 +133,29 @@ interface WorldMatesApi {
         @Field("count_only") countOnly: String = "true"
     ): MessageCountResponse
 
+    // 📡 ADAPTIVE TRANSPORT: Легкое получение сообщений (text-only)
+    @FormUrlEncoded
+    @POST(Constants.GET_MESSAGES_ENDPOINT)
+    suspend fun getMessagesLightweight(
+        @Query("access_token") accessToken: String,
+        @Field("recipient_id") recipientId: Long,
+        @Field("limit") limit: Int = 30,
+        @Field("after_message_id") afterMessageId: Long = 0, // Получить сообщения ПОСЛЕ этого ID
+        @Field("load_mode") loadMode: String = "text_only" // "text_only", "with_thumbnails", "full"
+    ): MessageListResponse
+
+    // 📡 ADAPTIVE TRANSPORT: Получить превью медиа (thumbnail)
+    @GET
+    suspend fun getMediaThumbnail(
+        @Url thumbnailUrl: String
+    ): okhttp3.ResponseBody
+
+    // 📡 ADAPTIVE TRANSPORT: Получить полное медиа
+    @GET
+    suspend fun getFullMedia(
+        @Url mediaUrl: String
+    ): okhttp3.ResponseBody
+
     // 📦 CLOUD BACKUP: Получение настроек автозагрузки медиа
     @FormUrlEncoded
     @POST("/api/v2/endpoints/get_media_settings.php")

@@ -2781,19 +2781,19 @@ fun ConnectionQualityBanner(quality: NetworkQualityMonitor.ConnectionQuality) {
             Triple(
                 "🟡 Добре з'єднання. Медіа завантажуються як превью.",
                 Color(0xFFFFA500),
-                Icons.Default.SignalCellular3Bar
+                Icons.Default.SignalCellularAlt
             )
         NetworkQualityMonitor.ConnectionQuality.POOR ->
             Triple(
                 "🟠 Погане з'єднання. Завантажується тільки текст.",
                 Color(0xFFFF6B6B),
-                Icons.Default.SignalCellular2Bar
+                Icons.Default.SignalCellularAlt
             )
         NetworkQualityMonitor.ConnectionQuality.OFFLINE ->
             Triple(
                 "🔴 Немає з'єднання. Показуються кешовані повідомлення.",
                 Color(0xFFE74C3C),
-                Icons.Default.SignalCellularConnectedNoInternet0Bar
+                Icons.Default.WifiOff
             )
         else -> return // Не показуємо для EXCELLENT
     }

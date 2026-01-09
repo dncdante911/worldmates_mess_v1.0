@@ -1,5 +1,6 @@
 package com.worldmates.messenger.ui.chats
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
+class ChatsViewModel(private val context: Context) : ViewModel(), SocketManager.SocketListener {
 
     private val _chatList = MutableStateFlow<List<Chat>>(emptyList())
     val chatList: StateFlow<List<Chat>> = _chatList
@@ -166,7 +167,7 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
      */
     private fun setupSocket() {
         try {
-            socketManager = SocketManager(this)
+            socketManager = SocketManager(this, context)
             socketManager?.connect()
             Log.d("ChatsViewModel", "Socket.IO налаштований")
         } catch (e: Exception) {

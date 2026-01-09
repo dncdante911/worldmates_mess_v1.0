@@ -1009,6 +1009,8 @@ fun MessagesHeaderBar(
     onMuteClick: () -> Unit = {},
     onClearHistoryClick: () -> Unit = {},
     onChangeWallpaperClick: () -> Unit = {},
+    onBlockClick: () -> Unit = {},
+    isUserBlocked: Boolean = false,
     // 🔥 Параметри для режиму вибору
     isSelectionMode: Boolean = false,
     selectedCount: Int = 0,
@@ -1193,6 +1195,26 @@ fun MessagesHeaderBar(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Delete, contentDescription = null)
+                            }
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = if (isUserBlocked) "Розблокувати користувача" else "Заблокувати користувача",
+                                    color = if (isUserBlocked) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                )
+                            },
+                            onClick = {
+                                showUserMenu = false
+                                onBlockClick()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    if (isUserBlocked) Icons.Default.LockOpen else Icons.Default.Block,
+                                    contentDescription = null,
+                                    tint = if (isUserBlocked) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                )
                             }
                         )
                     }

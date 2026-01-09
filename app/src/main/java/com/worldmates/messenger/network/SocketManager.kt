@@ -544,6 +544,208 @@ class SocketManager(
         }
     }
 
+    // ==================== КАНАЛИ - SOCKET.IO ====================
+
+    /**
+     * Підписатися на оновлення каналу
+     */
+    fun subscribeToChannel(channelId: Long) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("channelId", channelId)
+                put("userId", UserSession.userId)
+            }
+            socket?.emit("channel:subscribe", data)
+            Log.d(TAG, "📢 Subscribed to channel $channelId")
+        }
+    }
+
+    /**
+     * Відписатися від оновлень каналу
+     */
+    fun unsubscribeFromChannel(channelId: Long) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("channelId", channelId)
+                put("userId", UserSession.userId)
+            }
+            socket?.emit("channel:unsubscribe", data)
+            Log.d(TAG, "📢 Unsubscribed from channel $channelId")
+        }
+    }
+
+    /**
+     * Слухати нові пости в каналі
+     */
+    fun onChannelPostCreated(callback: (JSONObject) -> Unit) {
+        socket?.on("channel:post_created") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "📝 New channel post received")
+            }
+        }
+    }
+
+    /**
+     * Слухати оновлення постів
+     */
+    fun onChannelPostUpdated(callback: (JSONObject) -> Unit) {
+        socket?.on("channel:post_updated") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "✏️ Channel post updated")
+            }
+        }
+    }
+
+    /**
+     * Слухати видалення постів
+     */
+    fun onChannelPostDeleted(callback: (JSONObject) -> Unit) {
+        socket?.on("channel:post_deleted") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "🗑️ Channel post deleted")
+            }
+        }
+    }
+
+    /**
+     * Слухати нові коментарі
+     */
+    fun onChannelCommentAdded(callback: (JSONObject) -> Unit) {
+        socket?.on("channel:comment_added") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "💬 New channel comment")
+            }
+        }
+    }
+
+    /**
+     * Відправити typing в каналі (коментарі)
+     */
+    fun sendChannelTyping(channelId: Long, postId: Long, isTyping: Boolean) {
+        if (!canSendTypingIndicators()) return
+
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("channelId", channelId)
+                put("postId", postId)
+                put("userId", UserSession.userId)
+                put("isTyping", isTyping)
+            }
+            socket?.emit("channel:typing", data)
+        }
+    }
+
+    // ==================== STORIES - SOCKET.IO ====================
+
+    /**
+     * Підписатися на stories друзів
+     */
+    fun subscribeToStories(friendIds: List<Long>) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("userId", UserSession.userId)
+                put("friendIds", org.json.JSONArray(friendIds))
+            }
+            socket?.emit("story:subscribe", data)
+            Log.d(TAG, "📸 Subscribed to ${friendIds.size} friends' stories")
+        }
+    }
+
+    /**
+     * Відписатися від stories
+     */
+    fun unsubscribeFromStories(friendIds: List<Long>) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("userId", UserSession.userId)
+                put("friendIds", org.json.JSONArray(friendIds))
+            }
+            socket?.emit("story:unsubscribe", data)
+            Log.d(TAG, "📸 Unsubscribed from stories")
+        }
+    }
+
+    /**
+     * Слухати нові stories
+     */
+    fun onStoryCreated(callback: (JSONObject) -> Unit) {
+        socket?.on("story:created") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "📸 New story created")
+            }
+        }
+    }
+
+    /**
+     * Слухати видалення stories
+     */
+    fun onStoryDeleted(callback: (JSONObject) -> Unit) {
+        socket?.on("story:deleted") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "🗑️ Story deleted")
+            }
+        }
+    }
+
+    /**
+     * Повідомити про перегляд story
+     */
+    fun sendStoryView(storyId: Long, storyOwnerId: Long) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("storyId", storyId)
+                put("userId", UserSession.userId)
+                put("storyOwnerId", storyOwnerId)
+            }
+            socket?.emit("story:view", data)
+            Log.d(TAG, "👁️ Story view sent")
+        }
+    }
+
+    /**
+     * Слухати нові коментарі до stories
+     */
+    fun onStoryCommentAdded(callback: (JSONObject) -> Unit) {
+        socket?.on("story:comment_added") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "💬 New story comment")
+            }
+        }
+    }
+
+    /**
+     * Відправити typing в story (коментарі)
+     */
+    fun sendStoryTyping(storyId: Long, storyOwnerId: Long, isTyping: Boolean) {
+        if (!canSendTypingIndicators()) return
+
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("storyId", storyId)
+                put("userId", UserSession.userId)
+                put("storyOwnerId", storyOwnerId)
+                put("isTyping", isTyping)
+            }
+            socket?.emit("story:typing", data)
+        }
+    }
+
+    // ==================== КІНЕЦЬ КАНАЛІВ ТА STORIES ====================
+
     /**
      * Расширенный интерфейс для дополнительных событий
      */

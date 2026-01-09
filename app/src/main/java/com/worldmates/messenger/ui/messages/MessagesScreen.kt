@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.animation.*
@@ -53,6 +54,7 @@ import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.model.ReactionGroup
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.network.FileManager
+import com.worldmates.messenger.network.NetworkQualityMonitor
 import com.worldmates.messenger.ui.theme.rememberThemeState
 import com.worldmates.messenger.ui.theme.PresetBackground
 import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
@@ -96,6 +98,7 @@ fun MessagesScreen(
     val recordingDuration by voiceRecorder.recordingDuration.collectAsState()
     val isTyping by viewModel.isTyping.collectAsState()
     val isOnline by viewModel.recipientOnlineStatus.collectAsState()
+    val connectionQuality by viewModel.connectionQuality.collectAsState()
 
     // 📝 Draft state
     val currentDraft by viewModel.currentDraft.collectAsState()
@@ -476,6 +479,9 @@ fun MessagesScreen(
                     selectedMessages = emptySet()
                 }
             )
+
+            // 📶 Connection Quality Banner (показується при поганому з'єднанні)
+            ConnectionQualityBanner(quality = connectionQuality)
 
             // 📌 Pinned Message Banner (for groups only)
             if (isGroup && currentGroup?.pinnedMessage != null) {
@@ -2757,5 +2763,72 @@ fun performSelectionVibration(context: Context) {
         }
     } catch (e: Exception) {
         Log.e("MessagesScreen", "Помилка вібрації: ${e.message}")
+    }
+}
+
+/**
+ * 📶 Banner якості з'єднання (показується при поганому з'єднанні)
+ */
+@Composable
+fun ConnectionQualityBanner(quality: NetworkQualityMonitor.ConnectionQuality) {
+    // Показуємо banner тільки якщо з'єднання не EXCELLENT
+    if (quality == NetworkQualityMonitor.ConnectionQuality.EXCELLENT) {
+        return
+    }
+
+    val (text, color, icon) = when (quality) {
+        NetworkQualityMonitor.ConnectionQuality.GOOD ->
+            Triple(
+                "🟡 Добре з'єднання. Медіа завантажуються як превью.",
+                Color(0xFFFFA500),
+                Icons.Default.SignalCellular3Bar
+            )
+        NetworkQualityMonitor.ConnectionQuality.POOR ->
+            Triple(
+                "🟠 Погане з'єднання. Завантажується тільки текст.",
+                Color(0xFFFF6B6B),
+                Icons.Default.SignalCellular2Bar
+            )
+        NetworkQualityMonitor.ConnectionQuality.OFFLINE ->
+            Triple(
+                "🔴 Немає з'єднання. Показуються кешовані повідомлення.",
+                Color(0xFFE74C3C),
+                Icons.Default.SignalCellularConnectedNoInternet0Bar
+            )
+        else -> return // Не показуємо для EXCELLENT
+    }
+
+    AnimatedVisibility(
+        visible = true,
+        enter = slideInVertically() + fadeIn(),
+        exit = slideOutVertically() + fadeOut()
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            color = color.copy(alpha = 0.15f),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, color.copy(alpha = 0.3f))
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = text,
+                    fontSize = 14.sp,
+                    color = color,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
     }
 }

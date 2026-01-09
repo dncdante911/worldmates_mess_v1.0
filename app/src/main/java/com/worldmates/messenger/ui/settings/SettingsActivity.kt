@@ -121,6 +121,11 @@ class SettingsActivity : AppCompatActivity() {
                             onBackClick = { currentScreen = SettingsScreen.Main }
                         )
                     }
+                    SettingsScreen.BlockedUsers -> {
+                        BlockedUsersScreen(
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
                 }
             }
         }
@@ -137,6 +142,7 @@ sealed class SettingsScreen {
     object TwoFactorAuth : SettingsScreen()
     object AppLock : SettingsScreen()
     object CloudBackup : SettingsScreen()
+    object BlockedUsers : SettingsScreen()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -332,6 +338,14 @@ fun SettingsScreen(
                     title = "Блокування додатку",
                     subtitle = if (com.worldmates.messenger.utils.security.SecurePreferences.isPINEnabled()) "PIN-код активний" else "Вимкнено",
                     onClick = { onNavigate(SettingsScreen.AppLock) }
+                )
+            }
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Block,
+                    title = "Заблоковані користувачі",
+                    subtitle = "Керування списком блокування",
+                    onClick = { onNavigate(SettingsScreen.BlockedUsers) }
                 )
             }
 

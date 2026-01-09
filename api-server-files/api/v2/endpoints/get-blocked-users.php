@@ -8,6 +8,20 @@
 // | WoWonder - The Ultimate Social Networking Platform
 // | Copyright (c) 2018 WoWonder. All rights reserved.
 // +------------------------------------------------------------------------+
+
+/**
+ * Get Blocked Users Endpoint
+ *
+ * Возвращает список всех заблокированных пользователей
+ *
+ * Response:
+ * {
+ *   "api_status": 200,
+ *   "blocked_users": [...],
+ *   "total_blocked": 5
+ * }
+ */
+
 $blocked_users = Wo_GetBlockedMembers($wo['user']['user_id']);
 
 $users = array();
@@ -18,10 +32,17 @@ foreach ($blocked_users as $key => $blocked_user) {
 	}
 	$blocked_user['gender_text']        = ($blocked_user['gender'] == 'male') ? $wo['lang']['male'] : $wo['lang']['female'];
 	$blocked_user['lastseen_time_text'] = Wo_Time_Elapsed_String($blocked_user['lastseen']);
+
+	// Добавляем дополнительные поля для UI
+	$blocked_user['name'] = $blocked_user['first_name'] . ' ' . $blocked_user['last_name'];
+	$blocked_user['is_verified'] = ($blocked_user['verified'] == 1);
+	$blocked_user['is_pro'] = ($blocked_user['is_pro'] == 1);
+
 	$users[] = $blocked_user;
 }
 
 $response_data = array(
     'api_status' => 200,
-    'blocked_users' => $users
+    'blocked_users' => $users,
+    'total_blocked' => count($users)
 );

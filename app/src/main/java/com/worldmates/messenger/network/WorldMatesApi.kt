@@ -734,6 +734,48 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): GroupListResponse
 
+    // ==================== USER BLOCKING ====================
+
+    /**
+     * Заблокировать пользователя
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/block-user.php")
+    suspend fun blockUser(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long,
+        @Field("block_action") blockAction: String = "block"
+    ): BlockActionResponse
+
+    /**
+     * Разблокировать пользователя
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unblock-user.php")
+    suspend fun unblockUser(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long
+    ): BlockActionResponse
+
+    /**
+     * Получить список заблокированных пользователей
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/get-blocked-users.php")
+    suspend fun getBlockedUsers(
+        @Query("access_token") accessToken: String
+    ): GetBlockedUsersResponse
+
+    /**
+     * Проверить статус блокировки с пользователем
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/check-is-blocked.php")
+    suspend fun checkIsBlocked(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long
+    ): CheckBlockStatusResponse
+
     // ==================== CHANNELS ====================
     // Uses /api/v2/channels.php - Channel-specific API endpoint
 

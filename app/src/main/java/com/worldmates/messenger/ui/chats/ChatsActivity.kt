@@ -725,7 +725,7 @@ fun SettingsDrawerContent(
 
             item {
                 DrawerMenuItem(
-                    icon = Icons.Default.PhotoCamera,
+                    icon = Icons.Default.CameraAlt,
                     title = "Створити Story",
                     onClick = {
                         onClose()

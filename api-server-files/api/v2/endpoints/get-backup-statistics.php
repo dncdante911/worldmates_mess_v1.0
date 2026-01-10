@@ -62,21 +62,28 @@ try {
         SELECT COUNT(*) as groups_count
         FROM Wo_Groups
         WHERE user_id = ? OR id IN (
-            SELECT group_id FROM Wo_GroupMembers WHERE user_id = ?
+            SELECT group_id FROM Wo_Group_Members WHERE user_id = ?
         )
     ");
     $stmt->execute([$user_id, $user_id]);
     $groups_count = $stmt->fetchColumn();
 
-    $stmt = $db->prepare("
-        SELECT COUNT(*) as channels_count
-        FROM Wo_Channels
-        WHERE user_id = ? OR id IN (
-            SELECT channel_id FROM Wo_ChannelSubscribers WHERE user_id = ?
-        )
-    ");
-    $stmt->execute([$user_id, $user_id]);
-    $channels_count = $stmt->fetchColumn();
+    // Channels (may not exist in all installations)
+    $channels_count = 0;
+    try {
+        $stmt = $db->prepare("
+            SELECT COUNT(*) as channels_count
+            FROM Wo_Channels
+            WHERE user_id = ? OR id IN (
+                SELECT channel_id FROM Wo_ChannelSubscribers WHERE user_id = ?
+            )
+        ");
+        $stmt->execute([$user_id, $user_id]);
+        $channels_count = $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        // Table doesn't exist, return 0
+        $channels_count = 0;
+    }
 
     // ==================== BACKUP STORAGE ====================
     $backup_dir = '/var/www/www-root/data/www/worldmates.club/upload/backups/user_' . $user_id;

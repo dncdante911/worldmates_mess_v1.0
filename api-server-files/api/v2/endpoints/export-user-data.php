@@ -116,9 +116,9 @@ try {
 
     // ==================== BLOCKED USERS ====================
     $stmt = $db->prepare("
-        SELECT blocked_id FROM Wo_Blocks WHERE blocker_id = :user_id
+        SELECT blocked FROM Wo_Blocks WHERE blocker = ?
     ");
-    $stmt->execute(['user_id' => $user_id]);
+    $stmt->execute([$user_id]);
     $blocked = $stmt->fetchAll(PDO::FETCH_COLUMN);
     $export_data['blocked_users'] = $blocked;
 

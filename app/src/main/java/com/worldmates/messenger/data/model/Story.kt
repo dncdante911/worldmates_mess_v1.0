@@ -217,7 +217,7 @@ data class StoryLimits(
     companion object {
         fun forFreeUser(): StoryLimits {
             return StoryLimits(
-                maxStories = 2,
+                maxStories = 5,
                 maxVideoDuration = 30,
                 expireHours = 24
             )
@@ -225,8 +225,8 @@ data class StoryLimits(
 
         fun forProUser(): StoryLimits {
             return StoryLimits(
-                maxStories = 15,
-                maxVideoDuration = 45,
+                maxStories = 25,
+                maxVideoDuration = 60,
                 expireHours = 48
             )
         }

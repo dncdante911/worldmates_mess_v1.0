@@ -282,6 +282,14 @@ class StoryRepository(private val context: Context) {
     }
 
     /**
+     * Встановити поточну story
+     */
+    fun setCurrentStory(story: Story) {
+        _currentStory.value = story
+        Log.d(TAG, "Current story set: id=${story.id}, userId=${story.userId}")
+    }
+
+    /**
      * Видалити story
      */
     suspend fun deleteStory(storyId: Long): Result<DeleteStoryResponse> {

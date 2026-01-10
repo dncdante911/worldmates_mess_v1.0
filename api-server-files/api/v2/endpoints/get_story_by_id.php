@@ -121,6 +121,41 @@ if (!empty($_POST['id']) && is_numeric($_POST['id']) && $_POST['id'] > 0) {
     $story->view_count = $db->where('story_id',$id)->where('user_id',$story->user_id,'!=')->getValue(T_STORY_SEEN,'COUNT(*)');
     $story->comment_count = $db->where('story_id',$id)->getValue(T_STORY_COMMENTS,'COUNT(*)');
 
+    // Завантажуємо реакції з нової таблиці Wo_StoryReactions
+    $reaction_data = array(
+        'like' => 0,
+        'love' => 0,
+        'haha' => 0,
+        'wow' => 0,
+        'sad' => 0,
+        'angry' => 0,
+        'is_reacted' => false,
+        'type' => null
+    );
+
+    // Підраховуємо кількість кожного типу реакції
+    $reactions_stats = $db->where('story_id', $id)
+                          ->groupBy('reaction')
+                          ->get('Wo_StoryReactions', null, 'reaction, COUNT(*) as count');
+
+    foreach ($reactions_stats as $stat) {
+        if (isset($reaction_data[$stat->reaction])) {
+            $reaction_data[$stat->reaction] = (int)$stat->count;
+        }
+    }
+
+    // Перевіряємо чи є реакція від поточного користувача
+    $user_reaction = $db->where('story_id', $id)
+                       ->where('user_id', $wo['user']['user_id'])
+                       ->getOne('Wo_StoryReactions');
+
+    if ($user_reaction) {
+        $reaction_data['is_reacted'] = true;
+        $reaction_data['type'] = $user_reaction->reaction;
+    }
+
+    $story->reaction = (object)$reaction_data;
+
     error_log("✅ Story loaded successfully: id={$story->id}, user_id={$story->user_id}");
     error_log("Story has " . count($story->images ?? []) . " images and " . count($story->videos ?? []) . " videos");
 

@@ -46,9 +46,8 @@ class GiphyRepository private constructor(
         private const val BASE_URL = "https://api.giphy.com/v1/"
 
         // GIPHY API Key
-        // TODO: Заменить на реальный ключ от https://developers.giphy.com/
-        // ВАЖНО: В продакшене хранить в BuildConfig или secure storage!
-        const val GIPHY_API_KEY = "YOUR_GIPHY_API_KEY_HERE"
+        // Production key from https://developers.giphy.com/
+        const val GIPHY_API_KEY = "6jkmmXp7Pjkxl4uvXO5AUcL4pl22QrWA"
     }
 
     // Retrofit API для GIPHY

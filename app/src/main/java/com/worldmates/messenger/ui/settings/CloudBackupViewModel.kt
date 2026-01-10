@@ -39,9 +39,12 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
     private val _cacheSize = MutableStateFlow(0L)
     val cacheSize: StateFlow<Long> = _cacheSize.asStateFlow()
 
+    private val _backupStatistics = MutableStateFlow<com.worldmates.messenger.data.model.BackupStatistics?>(null)
+    val backupStatistics: StateFlow<com.worldmates.messenger.data.model.BackupStatistics?> = _backupStatistics.asStateFlow()
+
     init {
         loadSettings()
-        calculateCacheSize()
+        loadBackupStatistics()
     }
 
     // ==================== ЗАГРУЗКА НАСТРОЕК ====================
@@ -57,6 +60,40 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
                 _settings.value = CloudBackupSettings()
             }
         }
+    }
+
+    /**
+     * Загрузить реальную статистику облачного хранилища с сервера
+     */
+    private fun loadBackupStatistics() {
+        viewModelScope.launch {
+            try {
+                val accessToken = com.worldmates.messenger.data.UserSession.accessToken
+                    ?: return@launch
+
+                val response = com.worldmates.messenger.network.RetrofitClient.apiService.getBackupStatistics(
+                    accessToken = accessToken
+                )
+
+                if (response.apiStatus == 200) {
+                    _backupStatistics.value = response.statistics
+                    // Оновити також _cacheSize з реальних даних
+                    _cacheSize.value = response.statistics.totalStorageBytes
+                    Log.d(TAG, "✅ Backup statistics loaded: ${response.statistics.totalStorageMb} MB")
+                } else {
+                    Log.e(TAG, "❌ Failed to load statistics: ${response.apiStatus}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to load backup statistics: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Оновити статистику (викликати коли щось змінилось)
+     */
+    fun refreshStatistics() {
+        loadBackupStatistics()
     }
 
     // ==================== АВТОЗАГРУЗКА МЕДИА ====================

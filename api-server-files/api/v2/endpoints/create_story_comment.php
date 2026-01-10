@@ -50,6 +50,11 @@ if (empty($error_code)) {
     $comment_id = $db->insert(T_STORY_COMMENTS, $comment_data);
 
     if ($comment_id) {
+        // Increment comment count
+        $db->where('id', $story_id)->update(T_USER_STORY, array(
+            'comment_count' => $db->inc(1)
+        ));
+
         // Get the inserted comment with user data
         $comment = $db->where('id', $comment_id)->getOne(T_STORY_COMMENTS);
 

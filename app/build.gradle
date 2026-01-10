@@ -165,14 +165,14 @@ dependencies {
     // Google Drive
     implementation 'com.google.android.gms:play-services-auth:21.0.0'  // Google Sign-In
     implementation 'com.google.api-client:google-api-client-android:2.2.0'  // Google API Client
-    implementation 'com.google.apis:google-api-services-drive:v3-rev20231212-2.0.0'  // Google Drive API
+    implementation 'com.google.apis:google-api-services-drive:v3-rev20240123-2.0.0'  // Google Drive API
+    implementation 'com.google.http-client:google-http-client-gson:1.44.1'  // HTTP Client
 
-    // MEGA
-    implementation 'nz.mega.sdk:sdk:4.23.1'  // MEGA SDK для Android
+    // MEGA - використовуємо HTTP API замість SDK (SDK недоступний в Maven)
+    // Реалізація через REST API в MegaBackupManager
 
     // Dropbox
-    implementation 'com.dropbox.core:dropbox-core-sdk:6.0.0'  // Dropbox Core SDK
-    implementation 'com.dropbox.core:dropbox-android-sdk:6.0.0'  // Dropbox Android SDK
+    implementation 'com.dropbox.core:dropbox-core-sdk:5.4.5'  // Dropbox Core SDK
 
     // ==================== TESTING ====================
     testImplementation 'junit:junit:4.13.2'

@@ -130,10 +130,22 @@ fun StoryViewerScreen(
         pageCount = { userStories.size }
     )
 
+    // Устанавливаем первую story при инициализации
+    LaunchedEffect(userStories) {
+        if (userStories.isNotEmpty() && currentStory == null) {
+            android.util.Log.d("StoryViewer", "Setting initial story at page $initialPage: ${userStories[initialPage].id}")
+            viewModel.setCurrentStory(userStories[initialPage])
+        }
+    }
+
     // Обновляем currentStory при изменении страницы
     LaunchedEffect(pagerState.currentPage) {
         if (userStories.isNotEmpty() && pagerState.currentPage < userStories.size) {
-            viewModel.setCurrentStory(userStories[pagerState.currentPage])
+            val newStory = userStories[pagerState.currentPage]
+            if (currentStory?.id != newStory.id) {
+                android.util.Log.d("StoryViewer", "Page changed to ${pagerState.currentPage}, setting story: ${newStory.id}")
+                viewModel.setCurrentStory(newStory)
+            }
         }
     }
 

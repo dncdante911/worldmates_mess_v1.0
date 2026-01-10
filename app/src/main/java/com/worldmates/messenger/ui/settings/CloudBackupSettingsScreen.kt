@@ -37,12 +37,32 @@ fun CloudBackupSettingsScreen(
     val settings by viewModel.settings.collectAsState()
     val syncProgress by viewModel.syncProgress.collectAsState()
     val cacheSize by viewModel.cacheSize.collectAsState()
+    val backupProgress by viewModel.backupProgress.collectAsState()
+    val backupList by viewModel.backupList.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     val scope = rememberCoroutineScope()
 
     var showMobileDataDialog by remember { mutableStateOf(false) }
     var showWiFiDialog by remember { mutableStateOf(false) }
     var showCacheSizeDialog by remember { mutableStateOf(false) }
     var showBackupProviderDialog by remember { mutableStateOf(false) }
+    var showCreateBackupDialog by remember { mutableStateOf(false) }
+    var showBackupListDialog by remember { mutableStateOf(false) }
+    var showRestoreBackupDialog by remember { mutableStateOf<com.worldmates.messenger.data.backup.BackupFileInfo?>(null) }
+
+    // Загрузить список бэкапов при открытии экрана
+    LaunchedEffect(Unit) {
+        viewModel.loadBackupList()
+    }
+
+    // Показать ошибку если есть
+    errorMessage?.let { error ->
+        LaunchedEffect(error) {
+            // TODO: Показать Snackbar с ошибкой
+            kotlinx.coroutines.delay(3000)
+            viewModel.clearError()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -290,6 +310,36 @@ fun CloudBackupSettingsScreen(
                 }
             }
 
+            // 📦 NEW: Управление бэкапами
+            item {
+                SectionHeader("Управление бэкапами")
+            }
+
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Add,
+                    title = "Создать бэкап сейчас",
+                    subtitle = "Сохранить все данные на сервер",
+                    onClick = { showCreateBackupDialog = true }
+                )
+            }
+
+            item {
+                SettingsItem(
+                    icon = Icons.Default.List,
+                    title = "Список бэкапов",
+                    subtitle = if (backupList.isEmpty()) "Нет доступных бэкапов" else "${backupList.size} бэкапов",
+                    onClick = { showBackupListDialog = true }
+                )
+            }
+
+            // Прогресс-бар создания/восстановления бэкапа
+            item {
+                if (backupProgress.isRunning) {
+                    BackupProgressBar(backupProgress)
+                }
+            }
+
             // Прогресс-бар синхронизации
             item {
                 if (syncProgress.isRunning) {
@@ -378,6 +428,45 @@ fun CloudBackupSettingsScreen(
             onSelect = { provider ->
                 viewModel.updateBackupProvider(provider)
                 showBackupProviderDialog = false
+            }
+        )
+    }
+
+    // 📦 NEW: Диалог создания бэкапа
+    if (showCreateBackupDialog) {
+        CreateBackupDialog(
+            currentProvider = settings!!.backupProvider,
+            onDismiss = { showCreateBackupDialog = false },
+            onCreate = { uploadToCloud ->
+                viewModel.createBackup(uploadToCloud)
+                showCreateBackupDialog = false
+            }
+        )
+    }
+
+    // 📦 NEW: Диалог списка бэкапов
+    if (showBackupListDialog) {
+        BackupListDialog(
+            backups = backupList,
+            onDismiss = { showBackupListDialog = false },
+            onRestore = { backup ->
+                showRestoreBackupDialog = backup
+                showBackupListDialog = false
+            },
+            onDelete = { backup ->
+                viewModel.deleteBackup(backup)
+            }
+        )
+    }
+
+    // 📦 NEW: Диалог подтверждения восстановления
+    showRestoreBackupDialog?.let { backup ->
+        RestoreBackupDialog(
+            backup = backup,
+            onDismiss = { showRestoreBackupDialog = null },
+            onConfirm = {
+                viewModel.restoreFromBackup(backup)
+                showRestoreBackupDialog = null
             }
         )
     }
@@ -572,5 +661,66 @@ private fun formatTime(timestamp: Long): String {
         hours < 1 -> "только что"
         hours < 24 -> "$hours ч. назад"
         else -> "${hours / 24} дн. назад"
+    }
+}
+
+/**
+ * 📦 NEW: Прогресс-бар бэкапа
+ */
+@Composable
+private fun BackupProgressBar(progress: com.worldmates.messenger.data.model.BackupProgress) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = progress.currentStep,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Text(
+                    text = "${progress.progress}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LinearProgressIndicator(
+                progress = progress.progress.toFloat() / 100f,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            progress.error?.let { error ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "❌ $error",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
     }
 }

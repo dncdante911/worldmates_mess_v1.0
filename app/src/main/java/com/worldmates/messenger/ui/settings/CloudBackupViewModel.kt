@@ -443,7 +443,7 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
                 val result = cloudBackupManager.restoreFromBackup(backupInfo)
 
                 result.onSuccess { stats ->
-                    Log.d(TAG, "✅ Backup restored successfully: ${stats.messagesImported} messages")
+                    Log.d(TAG, "✅ Backup restored successfully: ${stats.messages} messages")
 
                     // Обновить статистику
                     refreshStatistics()

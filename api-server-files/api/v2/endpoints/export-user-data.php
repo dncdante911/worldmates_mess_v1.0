@@ -1,205 +1,151 @@
 <?php
-// +------------------------------------------------------------------------+
-// | 📦 CLOUD BACKUP: Експорт всіх даних користувача для бекапу
-// +------------------------------------------------------------------------+
-// | Повертає JSON з усіма повідомленнями, контактами, групами, каналами
-// | Формат: готовий для завантаження на облачні сервіси
-// +------------------------------------------------------------------------+
+/**
+ * 📦 CLOUD BACKUP: Export all user data for backup
+ * Returns JSON with all messages, contacts, groups, channels
+ */
 
-if (empty($_GET['access_token'])) {
-    $error_code    = 3;
-    $error_message = 'access_token is missing';
+require_once(__DIR__ . '/../config.php');
+
+header('Content-Type: application/json');
+
+// Get access token
+$access_token = $_GET['access_token'] ?? null;
+
+if (!$access_token) {
     http_response_code(400);
+    echo json_encode([
+        'api_status' => 400,
+        'message' => 'access_token is required'
+    ]);
+    exit;
 }
 
-if ($error_code == 0) {
-    $user_id = Wo_UserIdFromAccessToken($_GET['access_token']);
-    if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
-        $error_code    = 4;
-        $error_message = 'Invalid access_token';
-        http_response_code(400);
-    } else {
-        $export_data = array();
+// Validate token
+$user_id = validateAccessToken($db, $access_token);
+if (!$user_id) {
+    http_response_code(401);
+    echo json_encode([
+        'api_status' => 401,
+        'message' => 'Invalid access token'
+    ]);
+    exit;
+}
 
-        // ==================== МЕТАДАНІ ====================
-        $export_data['manifest'] = array(
-            'version' => '2.0',
-            'created_at' => time() * 1000, // milliseconds
-            'user_id' => $user_id,
-            'app_version' => '2.0-EDIT-FIX',
-            'encryption' => 'none', // TODO: додати шифрування
-        );
+try {
+    $export_data = [];
 
-        // ==================== КОРИСТУВАЧ ====================
-        $user_query = mysqli_query($sqlConnect, "
-            SELECT user_id, username, first_name, last_name, email, phone_number,
-                   avatar, cover, about, gender, birthday, country_id, city, zip
-            FROM " . T_USERS . "
-            WHERE user_id = {$user_id}
-        ");
+    // ==================== MANIFEST ====================
+    $export_data['manifest'] = [
+        'version' => '2.0',
+        'created_at' => time() * 1000, // milliseconds
+        'user_id' => $user_id,
+        'app_version' => '2.0-EDIT-FIX',
+        'encryption' => 'none',
+        'total_messages' => 0
+    ];
 
-        if (mysqli_num_rows($user_query) > 0) {
-            $export_data['user'] = mysqli_fetch_assoc($user_query);
-        }
+    // ==================== USER ====================
+    $stmt = $db->prepare("
+        SELECT user_id, username, first_name, last_name, email, phone_number,
+               avatar, cover, about, gender, birthday, country_id, city, zip
+        FROM Wo_Users
+        WHERE user_id = :user_id
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $export_data['user'] = $stmt->fetch();
 
-        // ==================== ПОВІДОМЛЕННЯ ====================
-        $messages_query = mysqli_query($sqlConnect, "
-            SELECT id, from_id, to_id, text, media, media_file_names,
-                   time, seen, deleted_fs1, deleted_fs2,
-                   product_id, lat, lng, reply_id, story_id
-            FROM " . T_MESSAGES . "
-            WHERE from_id = {$user_id} OR to_id = {$user_id}
-            ORDER BY time ASC
-        ");
+    // ==================== MESSAGES ====================
+    $stmt = $db->prepare("
+        SELECT id, from_id, to_id, text, media, media_file_names,
+               time, seen, deleted_fs1, deleted_fs2,
+               product_id, lat, lng, reply_id, story_id
+        FROM Wo_Messages
+        WHERE from_id = :user_id OR to_id = :user_id
+        ORDER BY id ASC
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $messages = $stmt->fetchAll();
+    $export_data['messages'] = $messages;
+    $export_data['manifest']['total_messages'] = count($messages);
 
-        $messages = array();
-        while ($message = mysqli_fetch_assoc($messages_query)) {
-            $messages[] = $message;
-        }
-        $export_data['messages'] = $messages;
-        $export_data['manifest']['total_messages'] = count($messages);
+    // ==================== CONTACTS ====================
+    $stmt = $db->prepare("
+        SELECT user_id, username, first_name, last_name, avatar, verified
+        FROM Wo_Users
+        WHERE user_id IN (
+            SELECT following_id FROM Wo_Followers WHERE follower_id = :user_id
+        )
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $export_data['contacts'] = $stmt->fetchAll();
 
-        // ==================== КОНТАКТИ/ЧАТИ ====================
-        $chats_query = mysqli_query($sqlConnect, "
-            SELECT DISTINCT
-                CASE
-                    WHEN from_id = {$user_id} THEN to_id
-                    ELSE from_id
-                END as contact_id
-            FROM " . T_MESSAGES . "
-            WHERE from_id = {$user_id} OR to_id = {$user_id}
-        ");
+    // ==================== GROUPS ====================
+    $stmt = $db->prepare("
+        SELECT id, user_id, group_name, group_title, avatar, cover, about, category
+        FROM Wo_Groups
+        WHERE user_id = :user_id OR id IN (
+            SELECT group_id FROM Wo_GroupMembers WHERE user_id = :user_id
+        )
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $export_data['groups'] = $stmt->fetchAll();
 
-        $contacts = array();
-        while ($chat = mysqli_fetch_assoc($chats_query)) {
-            $contact_id = $chat['contact_id'];
+    // ==================== CHANNELS ====================
+    $stmt = $db->prepare("
+        SELECT id, user_id, channel_name, channel_title, avatar, cover, description
+        FROM Wo_Channels
+        WHERE user_id = :user_id OR id IN (
+            SELECT channel_id FROM Wo_ChannelSubscribers WHERE user_id = :user_id
+        )
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $export_data['channels'] = $stmt->fetchAll();
 
-            // Отримати дані контакту
-            $contact_query = mysqli_query($sqlConnect, "
-                SELECT user_id, username, first_name, last_name, avatar
-                FROM " . T_USERS . "
-                WHERE user_id = {$contact_id}
-            ");
+    // ==================== SETTINGS ====================
+    $stmt = $db->prepare("
+        SELECT * FROM Wo_UserSettings WHERE user_id = :user_id
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $export_data['settings'] = $stmt->fetch();
 
-            if (mysqli_num_rows($contact_query) > 0) {
-                $contacts[] = mysqli_fetch_assoc($contact_query);
-            }
-        }
-        $export_data['contacts'] = $contacts;
+    // ==================== BLOCKED USERS ====================
+    $stmt = $db->prepare("
+        SELECT blocked_id FROM Wo_Blocks WHERE blocker_id = :user_id
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $blocked = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $export_data['blocked_users'] = $blocked;
 
-        // ==================== ГРУПИ ====================
-        $groups_query = mysqli_query($sqlConnect, "
-            SELECT gc.id, gc.user_id, gc.group_name, gc.avatar, gc.time
-            FROM " . T_GROUP_CHAT . " gc
-            INNER JOIN " . T_GROUP_CHAT_USERS . " gcu ON gc.id = gcu.group_id
-            WHERE gcu.user_id = {$user_id}
-        ");
-
-        $groups = array();
-        while ($group = mysqli_fetch_assoc($groups_query)) {
-            // Отримати учасників групи
-            $members_query = mysqli_query($sqlConnect, "
-                SELECT user_id
-                FROM " . T_GROUP_CHAT_USERS . "
-                WHERE group_id = {$group['id']}
-            ");
-
-            $members = array();
-            while ($member = mysqli_fetch_assoc($members_query)) {
-                $members[] = $member['user_id'];
-            }
-
-            $group['members'] = $members;
-
-            // Отримати повідомлення групи
-            $group_messages_query = mysqli_query($sqlConnect, "
-                SELECT id, user_id, text, media, time
-                FROM " . T_GROUP_CHAT_MESSAGES . "
-                WHERE group_id = {$group['id']}
-                ORDER BY time ASC
-            ");
-
-            $group_messages = array();
-            while ($msg = mysqli_fetch_assoc($group_messages_query)) {
-                $group_messages[] = $msg;
-            }
-
-            $group['messages'] = $group_messages;
-            $groups[] = $group;
-        }
-        $export_data['groups'] = $groups;
-        $export_data['manifest']['total_groups'] = count($groups);
-
-        // ==================== КАНАЛИ ====================
-        $channels_query = mysqli_query($sqlConnect, "
-            SELECT c.id, c.channel_name, c.channel_description, c.channel_avatar,
-                   c.owner_id, c.channel_category, c.verified
-            FROM " . T_CHANNELS . " c
-            INNER JOIN " . T_CHANNEL_MEMBERS . " cm ON c.id = cm.channel_id
-            WHERE cm.user_id = {$user_id}
-        ");
-
-        $channels = array();
-        while ($channel = mysqli_fetch_assoc($channels_query)) {
-            $channels[] = $channel;
-        }
-        $export_data['channels'] = $channels;
-
-        // ==================== НАЛАШТУВАННЯ ====================
-        $settings_query = mysqli_query($sqlConnect, "
-            SELECT *
-            FROM " . T_USER_CLOUD_BACKUP_SETTINGS . "
-            WHERE user_id = {$user_id}
-        ");
-
-        if (mysqli_num_rows($settings_query) > 0) {
-            $export_data['settings'] = mysqli_fetch_assoc($settings_query);
-        }
-
-        // ==================== ЗАБЛОКОВАНІ КОРИСТУВАЧІ ====================
-        $blocked_query = mysqli_query($sqlConnect, "
-            SELECT blocked
-            FROM " . T_BLOCKS . "
-            WHERE blocker = {$user_id}
-        ");
-
-        $blocked = array();
-        while ($block = mysqli_fetch_assoc($blocked_query)) {
-            $blocked[] = $block['blocked'];
-        }
-        $export_data['blocked_users'] = $blocked;
-
-        // ==================== ПІДРАХУНОК РОЗМІРУ ====================
-        $export_json = json_encode($export_data);
-        $export_data['manifest']['total_size'] = strlen($export_json);
-
-        // ==================== ЗБЕРЕГТИ НА СЕРВЕРІ ====================
-        $backup_dir = __DIR__ . '/../../../upload/backups/user_' . $user_id;
-        if (!file_exists($backup_dir)) {
-            mkdir($backup_dir, 0755, true);
-        }
-
-        $backup_filename = 'backup_' . date('Y-m-d_H-i-s') . '.json';
-        $backup_path = $backup_dir . '/' . $backup_filename;
-
-        file_put_contents($backup_path, $export_json);
-
-        // Оновити last_backup_time
-        mysqli_query($sqlConnect, "
-            UPDATE " . T_USER_CLOUD_BACKUP_SETTINGS . "
-            SET last_backup_time = " . (time() * 1000) . "
-            WHERE user_id = {$user_id}
-        ");
-
-        // ==================== ВІДПОВІДЬ ====================
-        $data = array(
-            'api_status' => 200,
-            'message' => 'Backup created successfully',
-            'backup_file' => $backup_filename,
-            'backup_url' => $wo['config']['site_url'] . '/upload/backups/user_' . $user_id . '/' . $backup_filename,
-            'backup_size' => strlen($export_json),
-            'export_data' => $export_data // Повертаємо також JSON для прямого завантаження
-        );
+    // ==================== SAVE TO SERVER ====================
+    $backup_dir = '/var/www/www-root/data/www/worldmates.club/upload/backups/user_' . $user_id;
+    if (!is_dir($backup_dir)) {
+        mkdir($backup_dir, 0755, true);
     }
+
+    $filename = 'backup_' . date('Y-m-d_H-i-s') . '.json';
+    $filepath = $backup_dir . '/' . $filename;
+
+    $json = json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    file_put_contents($filepath, $json);
+
+    $backup_size = filesize($filepath);
+    $backup_url = 'https://worldmates.club/upload/backups/user_' . $user_id . '/' . $filename;
+
+    // ==================== RESPONSE ====================
+    echo json_encode([
+        'api_status' => 200,
+        'message' => 'Backup created successfully',
+        'backup_file' => $filename,
+        'backup_url' => $backup_url,
+        'backup_size' => $backup_size,
+        'export_data' => $export_data
+    ]);
+
+} catch (PDOException $e) {
+    error_log("Export error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'api_status' => 500,
+        'message' => 'Database error: ' . $e->getMessage()
+    ]);
 }
-?>

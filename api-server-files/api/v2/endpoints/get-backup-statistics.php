@@ -1,200 +1,137 @@
 <?php
-// +------------------------------------------------------------------------+
-// | 📊 CLOUD BACKUP: Получение статистики облачного хранилища
-// +------------------------------------------------------------------------+
-// | Возвращает реальную статистику о размере бекапа пользователя:
-// | - Количество сообщений
-// | - Размер медиа файлов
-// | - Последний бекап
-// | - Общий размер storage
-// +------------------------------------------------------------------------+
+/**
+ * 📊 CLOUD BACKUP: Get cloud storage statistics
+ * Returns real statistics about user backup:
+ * - Message counts
+ * - Media file sizes
+ * - Last backup
+ * - Total storage size
+ */
 
-if (empty($_GET['access_token']) || empty($_GET['access_token'])) {
-    $error_code    = 3;
-    $error_message = 'access_token is missing';
+require_once(__DIR__ . '/../config.php');
+
+header('Content-Type: application/json');
+
+// Get access token
+$access_token = $_GET['access_token'] ?? null;
+
+if (!$access_token) {
     http_response_code(400);
+    echo json_encode([
+        'api_status' => 400,
+        'message' => 'access_token is required'
+    ]);
+    exit;
 }
 
-if ($error_code == 0) {
-    $user_id = Wo_UserIdFromAccessToken($_GET['access_token']);
-    if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
-        $error_code    = 4;
-        $error_message = 'Invalid access_token';
-        http_response_code(400);
-    } else {
-        // ==================== ПІДРАХУНОК ПОВІДОМЛЕНЬ ====================
+// Validate token
+$user_id = validateAccessToken($db, $access_token);
+if (!$user_id) {
+    http_response_code(401);
+    echo json_encode([
+        'api_status' => 401,
+        'message' => 'Invalid access token'
+    ]);
+    exit;
+}
 
-        // Кількість отриманих повідомлень
-        $messages_received_query = mysqli_query($sqlConnect, "
-            SELECT COUNT(*) as count
-            FROM " . T_MESSAGES . "
-            WHERE to_id = {$user_id}
-        ");
-        $messages_received = mysqli_fetch_assoc($messages_received_query)['count'];
+try {
+    // ==================== MESSAGE STATISTICS ====================
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as total_messages,
+               SUM(CASE WHEN from_id = :user_id THEN 1 ELSE 0 END) as messages_sent,
+               SUM(CASE WHEN to_id = :user_id THEN 1 ELSE 0 END) as messages_received
+        FROM Wo_Messages
+        WHERE from_id = :user_id OR to_id = :user_id
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $message_stats = $stmt->fetch();
 
-        // Кількість відправлених повідомлень
-        $messages_sent_query = mysqli_query($sqlConnect, "
-            SELECT COUNT(*) as count
-            FROM " . T_MESSAGES . "
-            WHERE from_id = {$user_id}
-        ");
-        $messages_sent = mysqli_fetch_assoc($messages_sent_query)['count'];
+    // ==================== MEDIA STATISTICS ====================
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as media_files_count
+        FROM Wo_Messages
+        WHERE (from_id = :user_id OR to_id = :user_id)
+          AND media IS NOT NULL AND media != ''
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $media_stats = $stmt->fetch();
 
-        $total_messages = $messages_received + $messages_sent;
+    // ==================== GROUP & CHANNEL COUNTS ====================
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as groups_count
+        FROM Wo_Groups
+        WHERE user_id = :user_id OR id IN (
+            SELECT group_id FROM Wo_GroupMembers WHERE user_id = :user_id
+        )
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $groups_count = $stmt->fetchColumn();
 
-        // ==================== ПІДРАХУНОК МЕДІА ФАЙЛІВ ====================
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as channels_count
+        FROM Wo_Channels
+        WHERE user_id = :user_id OR id IN (
+            SELECT channel_id FROM Wo_ChannelSubscribers WHERE user_id = :user_id
+        )
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $channels_count = $stmt->fetchColumn();
 
-        // Розмір медіа у відправлених повідомленнях
-        $media_sent_query = mysqli_query($sqlConnect, "
-            SELECT media, media_file_names
-            FROM " . T_MESSAGES . "
-            WHERE from_id = {$user_id}
-            AND (media != '' OR media_file_names != '')
-        ");
+    // ==================== BACKUP STORAGE ====================
+    $backup_dir = '/var/www/www-root/data/www/worldmates.club/upload/backups/user_' . $user_id;
+    $total_storage_bytes = 0;
+    $last_backup_time = null;
 
-        $media_size = 0;
-        $media_count = 0;
-
-        while ($media_row = mysqli_fetch_assoc($media_sent_query)) {
-            // Якщо є media URL
-            if (!empty($media_row['media'])) {
-                $media_path = str_replace($wo['config']['site_url'] . '/', '', $media_row['media']);
-                $full_path = __DIR__ . '/../../../' . $media_path;
-
-                if (file_exists($full_path)) {
-                    $media_size += filesize($full_path);
-                    $media_count++;
-                }
-            }
-
-            // Якщо є media_file_names (JSON з файлами)
-            if (!empty($media_row['media_file_names'])) {
-                $files = json_decode($media_row['media_file_names'], true);
-                if (is_array($files)) {
-                    foreach ($files as $file) {
-                        $file_path = str_replace($wo['config']['site_url'] . '/', '', $file);
-                        $full_path = __DIR__ . '/../../../' . $file_path;
-
-                        if (file_exists($full_path)) {
-                            $media_size += filesize($full_path);
-                            $media_count++;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Розмір медіа у отриманих повідомленнях
-        $media_received_query = mysqli_query($sqlConnect, "
-            SELECT media, media_file_names
-            FROM " . T_MESSAGES . "
-            WHERE to_id = {$user_id}
-            AND (media != '' OR media_file_names != '')
-        ");
-
-        while ($media_row = mysqli_fetch_assoc($media_received_query)) {
-            if (!empty($media_row['media'])) {
-                $media_path = str_replace($wo['config']['site_url'] . '/', '', $media_row['media']);
-                $full_path = __DIR__ . '/../../../' . $media_path;
-
-                if (file_exists($full_path)) {
-                    $media_size += filesize($full_path);
-                    $media_count++;
-                }
-            }
-
-            if (!empty($media_row['media_file_names'])) {
-                $files = json_decode($media_row['media_file_names'], true);
-                if (is_array($files)) {
-                    foreach ($files as $file) {
-                        $file_path = str_replace($wo['config']['site_url'] . '/', '', $file);
-                        $full_path = __DIR__ . '/../../../' . $file_path;
-
-                        if (file_exists($full_path)) {
-                            $media_size += filesize($full_path);
-                            $media_count++;
-                        }
-                    }
+    if (is_dir($backup_dir)) {
+        $files = scandir($backup_dir);
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..') continue;
+            $filepath = $backup_dir . '/' . $file;
+            if (is_file($filepath)) {
+                $total_storage_bytes += filesize($filepath);
+                $file_time = filemtime($filepath);
+                if ($last_backup_time === null || $file_time > $last_backup_time) {
+                    $last_backup_time = $file_time;
                 }
             }
         }
-
-        // ==================== ОСТАННІЙ БЕКАП ====================
-
-        $backup_settings_query = mysqli_query($sqlConnect, "
-            SELECT last_backup_time, backup_frequency
-            FROM " . T_USER_CLOUD_BACKUP_SETTINGS . "
-            WHERE user_id = {$user_id}
-        ");
-
-        $last_backup_time = null;
-        $backup_frequency = 'daily';
-
-        if (mysqli_num_rows($backup_settings_query) > 0) {
-            $backup_settings = mysqli_fetch_assoc($backup_settings_query);
-            $last_backup_time = $backup_settings['last_backup_time'];
-            $backup_frequency = $backup_settings['backup_frequency'];
-        }
-
-        // ==================== ГРУПИ ТА КАНАЛИ ====================
-
-        // Кількість груп
-        $groups_query = mysqli_query($sqlConnect, "
-            SELECT COUNT(*) as count
-            FROM " . T_GROUP_CHAT_USERS . "
-            WHERE user_id = {$user_id}
-        ");
-        $groups_count = mysqli_fetch_assoc($groups_query)['count'];
-
-        // Кількість каналів
-        $channels_query = mysqli_query($sqlConnect, "
-            SELECT COUNT(*) as count
-            FROM " . T_CHANNEL_MEMBERS . "
-            WHERE user_id = {$user_id}
-        ");
-        $channels_count = mysqli_fetch_assoc($channels_query)['count'];
-
-        // ==================== ЗАГАЛЬНИЙ РОЗМІР ====================
-
-        // Примерний підрахунок: 1 текстове повідомлення ≈ 500 bytes
-        $text_messages_size = $total_messages * 500;
-
-        // Загальний розмір = текст + медіа
-        $total_storage = $text_messages_size + $media_size;
-
-        // ==================== ВІДПОВІДЬ ====================
-
-        $data = array(
-            'api_status' => 200,
-            'statistics' => array(
-                // Повідомлення
-                'total_messages' => (int)$total_messages,
-                'messages_sent' => (int)$messages_sent,
-                'messages_received' => (int)$messages_received,
-
-                // Медіа
-                'media_files_count' => (int)$media_count,
-                'media_size_bytes' => (int)$media_size,
-                'media_size_mb' => round($media_size / 1024 / 1024, 2),
-
-                // Групи та канали
-                'groups_count' => (int)$groups_count,
-                'channels_count' => (int)$channels_count,
-
-                // Загальний розмір
-                'total_storage_bytes' => (int)$total_storage,
-                'total_storage_mb' => round($total_storage / 1024 / 1024, 2),
-                'total_storage_gb' => round($total_storage / 1024 / 1024 / 1024, 2),
-
-                // Бекап
-                'last_backup_time' => $last_backup_time,
-                'backup_frequency' => $backup_frequency,
-
-                // Додаткова інформація
-                'server_name' => 'WorldMates Server',
-                'backup_provider' => 'local_server'
-            )
-        );
     }
+
+    // ==================== CALCULATE SIZES ====================
+    $total_storage_mb = round($total_storage_bytes / 1024 / 1024, 2);
+    $total_storage_gb = round($total_storage_bytes / 1024 / 1024 / 1024, 3);
+
+    // Estimate media size (rough calculation)
+    $media_size_mb = round($media_stats['media_files_count'] * 0.5, 2); // ~0.5 MB per media file
+
+    // ==================== RESPONSE ====================
+    echo json_encode([
+        'api_status' => 200,
+        'statistics' => [
+            'total_messages' => (int)$message_stats['total_messages'],
+            'messages_sent' => (int)$message_stats['messages_sent'],
+            'messages_received' => (int)$message_stats['messages_received'],
+            'media_files_count' => (int)$media_stats['media_files_count'],
+            'media_size_bytes' => (int)($media_stats['media_files_count'] * 500000), // 500KB per file
+            'media_size_mb' => $media_size_mb,
+            'groups_count' => (int)$groups_count,
+            'channels_count' => (int)$channels_count,
+            'total_storage_bytes' => $total_storage_bytes,
+            'total_storage_mb' => $total_storage_mb,
+            'total_storage_gb' => $total_storage_gb,
+            'last_backup_time' => $last_backup_time ? $last_backup_time * 1000 : null,
+            'backup_frequency' => 'manual',
+            'server_name' => 'worldmates.club',
+            'backup_provider' => 'local_server'
+        ]
+    ]);
+
+} catch (PDOException $e) {
+    error_log("Statistics error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'api_status' => 500,
+        'message' => 'Database error: ' . $e->getMessage()
+    ]);
 }
-?>

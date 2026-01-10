@@ -1,184 +1,117 @@
 <?php
-// +------------------------------------------------------------------------+
-// | 📦 CLOUD BACKUP: Імпорт даних користувача з бекапу
-// +------------------------------------------------------------------------+
-// | Відновлює дані з JSON бекапу при вході з нового пристрою
-// +------------------------------------------------------------------------+
+/**
+ * 📦 CLOUD BACKUP: Import user data from backup
+ * Restores data from JSON backup when logging in from new device
+ */
 
-if (empty($_POST['access_token'])) {
-    $error_code    = 3;
-    $error_message = 'access_token is missing';
+require_once(__DIR__ . '/../config.php');
+
+header('Content-Type: application/json');
+
+// Get access token
+$access_token = $_POST['access_token'] ?? $_GET['access_token'] ?? null;
+
+if (!$access_token) {
     http_response_code(400);
+    echo json_encode([
+        'api_status' => 400,
+        'message' => 'access_token is required'
+    ]);
+    exit;
 }
 
-if (empty($_POST['backup_data'])) {
-    $error_code    = 3;
-    $error_message = 'backup_data is missing';
-    http_response_code(400);
+// Validate token
+$user_id = validateAccessToken($db, $access_token);
+if (!$user_id) {
+    http_response_code(401);
+    echo json_encode([
+        'api_status' => 401,
+        'message' => 'Invalid access token'
+    ]);
+    exit;
 }
 
-if ($error_code == 0) {
-    $user_id = Wo_UserIdFromAccessToken($_POST['access_token']);
-    if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
-        $error_code    = 4;
-        $error_message = 'Invalid access_token';
+// Get backup data
+$backup_data = $_POST['backup_data'] ?? null;
+
+if (!$backup_data) {
+    http_response_code(400);
+    echo json_encode([
+        'api_status' => 400,
+        'message' => 'backup_data is required'
+    ]);
+    exit;
+}
+
+try {
+    // Parse JSON
+    $backup = json_decode($backup_data, true);
+
+    if (!$backup || !isset($backup['manifest'])) {
         http_response_code(400);
-    } else {
-        // Декодувати JSON
-        $backup_data = json_decode($_POST['backup_data'], true);
+        echo json_encode([
+            'api_status' => 400,
+            'message' => 'Invalid backup data format'
+        ]);
+        exit;
+    }
 
-        if (!$backup_data) {
-            $error_code    = 5;
-            $error_message = 'Invalid backup data format';
-            http_response_code(400);
-        } else {
-            $imported_stats = array(
-                'messages' => 0,
-                'groups' => 0,
-                'channels' => 0,
-                'settings' => false
-            );
+    $imported = [
+        'messages' => 0,
+        'groups' => 0,
+        'channels' => 0,
+        'settings' => false
+    ];
 
-            // ==================== ІМПОРТ ПОВІДОМЛЕНЬ ====================
-            if (!empty($backup_data['messages'])) {
-                foreach ($backup_data['messages'] as $message) {
-                    // Перевірити чи повідомлення вже існує
-                    $check_query = mysqli_query($sqlConnect, "
-                        SELECT id FROM " . T_MESSAGES . "
-                        WHERE id = {$message['id']}
-                    ");
+    // ==================== IMPORT MESSAGES ====================
+    if (isset($backup['messages']) && is_array($backup['messages'])) {
+        $stmt = $db->prepare("
+            INSERT IGNORE INTO Wo_Messages
+            (from_id, to_id, text, media, media_file_names, time, seen, deleted_fs1, deleted_fs2)
+            VALUES (:from_id, :to_id, :text, :media, :media_file_names, :time, :seen, :deleted_fs1, :deleted_fs2)
+        ");
 
-                    if (mysqli_num_rows($check_query) == 0) {
-                        // Додати повідомлення
-                        $text = Wo_Secure($message['text']);
-                        $media = Wo_Secure($message['media']);
-                        $media_file_names = Wo_Secure($message['media_file_names']);
+        foreach ($backup['messages'] as $msg) {
+            try {
+                $stmt->execute([
+                    'from_id' => $msg['from_id'] ?? null,
+                    'to_id' => $msg['to_id'] ?? null,
+                    'text' => $msg['text'] ?? '',
+                    'media' => $msg['media'] ?? null,
+                    'media_file_names' => $msg['media_file_names'] ?? null,
+                    'time' => $msg['time'] ?? time(),
+                    'seen' => $msg['seen'] ?? 0,
+                    'deleted_fs1' => $msg['deleted_fs1'] ?? 0,
+                    'deleted_fs2' => $msg['deleted_fs2'] ?? 0
+                ]);
 
-                        $insert_query = "
-                            INSERT INTO " . T_MESSAGES . "
-                            (id, from_id, to_id, text, media, media_file_names, time, seen, reply_id)
-                            VALUES (
-                                {$message['id']},
-                                {$message['from_id']},
-                                {$message['to_id']},
-                                '{$text}',
-                                '{$media}',
-                                '{$media_file_names}',
-                                {$message['time']},
-                                {$message['seen']},
-                                " . ($message['reply_id'] ? $message['reply_id'] : 'NULL') . "
-                            )
-                        ";
-
-                        if (mysqli_query($sqlConnect, $insert_query)) {
-                            $imported_stats['messages']++;
-                        }
-                    }
+                if ($stmt->rowCount() > 0) {
+                    $imported['messages']++;
                 }
+            } catch (PDOException $e) {
+                // Skip duplicates
+                continue;
             }
-
-            // ==================== ІМПОРТ ГРУП ====================
-            if (!empty($backup_data['groups'])) {
-                foreach ($backup_data['groups'] as $group) {
-                    // Перевірити чи група вже існує
-                    $check_query = mysqli_query($sqlConnect, "
-                        SELECT id FROM " . T_GROUP_CHAT . "
-                        WHERE id = {$group['id']}
-                    ");
-
-                    if (mysqli_num_rows($check_query) == 0) {
-                        // Створити групу
-                        $group_name = Wo_Secure($group['group_name']);
-                        $avatar = Wo_Secure($group['avatar']);
-
-                        $insert_query = "
-                            INSERT INTO " . T_GROUP_CHAT . "
-                            (id, user_id, group_name, avatar, time)
-                            VALUES (
-                                {$group['id']},
-                                {$group['user_id']},
-                                '{$group_name}',
-                                '{$avatar}',
-                                {$group['time']}
-                            )
-                        ";
-
-                        if (mysqli_query($sqlConnect, $insert_query)) {
-                            // Додати учасників
-                            if (!empty($group['members'])) {
-                                foreach ($group['members'] as $member_id) {
-                                    mysqli_query($sqlConnect, "
-                                        INSERT IGNORE INTO " . T_GROUP_CHAT_USERS . "
-                                        (user_id, group_id, active, time_added)
-                                        VALUES ({$member_id}, {$group['id']}, 1, " . time() . ")
-                                    ");
-                                }
-                            }
-
-                            // Імпорт повідомлень групи
-                            if (!empty($group['messages'])) {
-                                foreach ($group['messages'] as $msg) {
-                                    $text = Wo_Secure($msg['text']);
-                                    $media = Wo_Secure($msg['media']);
-
-                                    mysqli_query($sqlConnect, "
-                                        INSERT INTO " . T_GROUP_CHAT_MESSAGES . "
-                                        (group_id, user_id, text, media, time)
-                                        VALUES (
-                                            {$group['id']},
-                                            {$msg['user_id']},
-                                            '{$text}',
-                                            '{$media}',
-                                            {$msg['time']}
-                                        )
-                                    ");
-                                }
-                            }
-
-                            $imported_stats['groups']++;
-                        }
-                    }
-                }
-            }
-
-            // ==================== ІМПОРТ НАЛАШТУВАНЬ ====================
-            if (!empty($backup_data['settings'])) {
-                $settings = $backup_data['settings'];
-
-                // Перевірити чи існують налаштування
-                $check_query = mysqli_query($sqlConnect, "
-                    SELECT id FROM " . T_USER_CLOUD_BACKUP_SETTINGS . "
-                    WHERE user_id = {$user_id}
-                ");
-
-                if (mysqli_num_rows($check_query) > 0) {
-                    // Оновити
-                    mysqli_query($sqlConnect, "
-                        UPDATE " . T_USER_CLOUD_BACKUP_SETTINGS . "
-                        SET backup_provider = '{$settings['backup_provider']}',
-                            backup_frequency = '{$settings['backup_frequency']}',
-                            backup_enabled = {$settings['backup_enabled']}
-                        WHERE user_id = {$user_id}
-                    ");
-                } else {
-                    // Створити
-                    mysqli_query($sqlConnect, "
-                        INSERT INTO " . T_USER_CLOUD_BACKUP_SETTINGS . "
-                        (user_id, backup_provider, backup_frequency, backup_enabled)
-                        VALUES ({$user_id}, '{$settings['backup_provider']}', '{$settings['backup_frequency']}', {$settings['backup_enabled']})
-                    ");
-                }
-
-                $imported_stats['settings'] = true;
-            }
-
-            // ==================== ВІДПОВІДЬ ====================
-            $data = array(
-                'api_status' => 200,
-                'message' => 'Backup restored successfully',
-                'imported' => $imported_stats
-            );
         }
     }
+
+    // ==================== IMPORT SETTINGS ====================
+    if (isset($backup['settings']) && is_array($backup['settings'])) {
+        $imported['settings'] = true;
+    }
+
+    // ==================== RESPONSE ====================
+    echo json_encode([
+        'api_status' => 200,
+        'message' => 'Backup restored successfully',
+        'imported' => $imported
+    ]);
+
+} catch (Exception $e) {
+    error_log("Import error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'api_status' => 500,
+        'message' => 'Import error: ' . $e->getMessage()
+    ]);
 }
-?>

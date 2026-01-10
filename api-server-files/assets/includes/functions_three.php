@@ -5064,6 +5064,8 @@ function Wo_DeleteStatus($id) {
     }
     @mysqli_query($sqlConnect, "DELETE FROM " . T_STORY_SEEN . " WHERE `story_id` = '$id'");
     @mysqli_query($sqlConnect, "DELETE FROM " . T_USER_STORY_MEDIA . " WHERE `story_id` = '$id'");
+    @mysqli_query($sqlConnect, "DELETE FROM " . T_STORY_COMMENTS . " WHERE `story_id` = '$id'");
+    @mysqli_query($sqlConnect, "DELETE FROM Wo_StoryReactions WHERE `story_id` = '$id'");
     $query = mysqli_query($sqlConnect, "DELETE FROM " . T_USER_STORY . " WHERE `id` = '$id'");
     return $query;
 }

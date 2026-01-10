@@ -43,9 +43,16 @@ if (empty($error_code)) {
 }
 
 if (empty($error_code)) {
+    $story_id = $comment->story_id; // Save story_id before deletion
+
     $delete = $db->where('id', $comment_id)->delete(T_STORY_COMMENTS);
 
     if ($delete) {
+        // Decrement comment count
+        $db->where('id', $story_id)->update(T_USER_STORY, array(
+            'comment_count' => $db->dec(1)
+        ));
+
         $response_data = array(
             'api_status' => 200,
             'message' => 'Comment deleted successfully'

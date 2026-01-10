@@ -25,9 +25,7 @@ import com.worldmates.messenger.data.model.BackupFileInfo
 import kotlinx.coroutines.launch
 
 /**
- * 📦 CLOUD BACKUP v2: Экран настроек данных и памяти
- *
- * Полный аналог Telegram с расширенными возможностями
+ * 📦 CLOUD BACKUP: Экран управления бэкапами
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,16 +34,12 @@ fun CloudBackupSettingsScreen(
     viewModel: CloudBackupViewModel = viewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
-    val syncProgress by viewModel.syncProgress.collectAsState()
-    val cacheSize by viewModel.cacheSize.collectAsState()
     val backupProgress by viewModel.backupProgress.collectAsState()
     val backupList by viewModel.backupList.collectAsState()
+    val backupStatistics by viewModel.backupStatistics.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var showMobileDataDialog by remember { mutableStateOf(false) }
-    var showWiFiDialog by remember { mutableStateOf(false) }
-    var showCacheSizeDialog by remember { mutableStateOf(false) }
     var showBackupProviderDialog by remember { mutableStateOf(false) }
     var showCreateBackupDialog by remember { mutableStateOf(false) }
     var showBackupListDialog by remember { mutableStateOf(false) }
@@ -54,12 +48,12 @@ fun CloudBackupSettingsScreen(
     // Загрузить список бэкапов при открытии экрана
     LaunchedEffect(Unit) {
         viewModel.loadBackupList()
+        viewModel.refreshStatistics()
     }
 
     // Показать ошибку если есть
     errorMessage?.let { error ->
         LaunchedEffect(error) {
-            // TODO: Показать Snackbar с ошибкой
             kotlinx.coroutines.delay(3000)
             viewModel.clearError()
         }
@@ -68,7 +62,7 @@ fun CloudBackupSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Данные и память") },
+                title = { Text("Сховище та бэкап") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, "Назад")
@@ -85,196 +79,69 @@ fun CloudBackupSettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ==================== ИСПОЛЬЗОВАНИЕ СЕТИ И КЭША ====================
+            // ==================== СТАТИСТИКА ====================
             item {
-                SectionHeader("Использование сети и кэша")
-            }
-
-            // Использование памяти
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Storage,
-                    title = "Использование памяти",
-                    subtitle = formatBytes(cacheSize),
-                    onClick = { /* Navigate to storage details */ }
-                )
-            }
-
-            // Использование трафика
-            item {
-                SettingsItem(
-                    icon = Icons.Default.NetworkCheck,
-                    title = "Использование трафика",
-                    subtitle = "42.94 GB", // TODO: Real data
-                    onClick = { /* Navigate to network usage */ }
-                )
-            }
-
-            // ==================== АВТОЗАГРУЗКА МЕДИА ====================
-            item {
-                SectionHeader("Автозагрузка медиа")
-            }
-
-            // Через мобильную сеть
-            item {
-                settings?.let { s ->
-                    SettingsItem(
-                        icon = Icons.Default.PhoneAndroid,
-                        title = "Через мобильную сеть",
-                        subtitle = buildMediaDownloadString(
-                            s.mobilePhotos,
-                            s.mobileVideos,
-                            s.mobileFiles,
-                            s.mobileVideosLimit,
-                            s.mobileFilesLimit
-                        ),
-                        onClick = { showMobileDataDialog = true }
-                    )
-                }
-            }
-
-            // Через сети Wi-Fi
-            item {
-                settings?.let { s ->
-                    SettingsItem(
-                        icon = Icons.Default.Wifi,
-                        title = "Через сети Wi-Fi",
-                        subtitle = buildMediaDownloadString(
-                            s.wifiPhotos,
-                            s.wifiVideos,
-                            s.wifiFiles,
-                            s.wifiVideosLimit,
-                            s.wifiFilesLimit
-                        ),
-                        onClick = { showWiFiDialog = true }
-                    )
-                }
-            }
-
-            // В роуминге
-            item {
-                settings?.let { s ->
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.FlightTakeoff,
-                        title = "В роуминге",
-                        subtitle = "Фото",
-                        checked = s.roamingPhotos,
-                        onCheckedChange = { viewModel.updateRoamingPhotos(it) }
-                    )
-                }
-            }
-
-            // Кнопка сброса настроек
-            item {
-                TextButton(
-                    onClick = { viewModel.resetMediaSettings() },
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        "Сбросить настройки",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-
-            // ==================== СОХРАНЯТЬ В ГАЛЕРЕЕ ====================
-            item {
-                SectionHeader("Сохранять в галерее")
+                SectionHeader("Статистика сховища")
             }
 
             item {
-                settings?.let { s ->
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.Chat,
-                        title = "Личные чаты",
-                        subtitle = if (s.saveToGalleryPrivateChats) "Фотографии, Видео" else "Нет",
-                        checked = s.saveToGalleryPrivateChats,
-                        onCheckedChange = { viewModel.updateSaveToGalleryPrivateChats(it) }
-                    )
-                }
-            }
-
-            item {
-                settings?.let { s ->
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.Group,
-                        title = "Группы",
-                        subtitle = "Нет",
-                        checked = s.saveToGalleryGroups,
-                        onCheckedChange = { viewModel.updateSaveToGalleryGroups(it) }
-                    )
-                }
-            }
-
-            item {
-                settings?.let { s ->
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.Campaign,
-                        title = "Каналы",
-                        subtitle = "Нет",
-                        checked = s.saveToGalleryChannels,
-                        onCheckedChange = { viewModel.updateSaveToGalleryChannels(it) }
-                    )
-                }
-            }
-
-            // ==================== СТРИМИНГ ====================
-            item {
-                SectionHeader("Стриминг")
-            }
-
-            item {
-                settings?.let { s ->
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.Stream,
-                        title = "Стриминг аудиофайлов и видео",
-                        subtitle = "Когда это возможно, приложение будет воспроизводить видеозаписи и музыку, не дожидаясь завершения загрузки.",
-                        checked = s.streamingEnabled,
-                        onCheckedChange = { viewModel.updateStreaming(it) }
-                    )
-                }
-            }
-
-            // ==================== УПРАВЛЕНИЕ КЭШЕМ ====================
-            item {
-                SectionHeader("Управление кэшем")
-            }
-
-            item {
-                settings?.let { s ->
-                    SettingsItem(
-                        icon = Icons.Default.DataUsage,
-                        title = "Максимальный размер кэша",
-                        subtitle = CloudBackupSettings.cacheSizeToString(s.cacheSizeLimit),
-                        onClick = { showCacheSizeDialog = true }
-                    )
-                }
-            }
-
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Delete,
-                    title = "Очистить кэш",
-                    subtitle = "Освободить ${formatBytes(cacheSize)}",
-                    onClick = {
-                        scope.launch {
-                            viewModel.clearCache()
+                backupStatistics?.let { stats ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            StatRow("📊 Всього повідомлень:", "${stats.totalMessages}")
+                            StatRow("💬 Текстових:", "${stats.textMessages}")
+                            StatRow("📷 З медіа:", "${stats.mediaMessages}")
+                            StatRow("📦 Розмір бекапів:", "${stats.totalStorageMb} MB")
+                            StatRow("📁 Кількість бекапів:", "${stats.backupCount}")
                         }
                     }
-                )
+                } ?: run {
+                    // Загрузка статистики
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Завантаження статистики...")
+                        }
+                    }
+                }
             }
 
-            // ==================== CLOUD BACKUP ====================
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+
+            // ==================== ОБЛАЧНЫЙ БЭКАП ====================
             item {
-                SectionHeader("Облачный бэкап")
+                SectionHeader("Налаштування бекапу")
             }
 
             item {
                 settings?.let { s ->
                     SettingsItemWithSwitch(
                         icon = Icons.Default.CloudUpload,
-                        title = "Включить бэкап",
-                        subtitle = "Автоматическое сохранение сообщений в облако",
+                        title = "Увімкнути бекап",
+                        subtitle = "Автоматичне збереження в хмару",
                         checked = s.backupEnabled,
                         onCheckedChange = { viewModel.updateBackupEnabled(it) }
                     )
@@ -286,7 +153,7 @@ fun CloudBackupSettingsScreen(
                     if (s.backupEnabled) {
                         SettingsItem(
                             icon = Icons.Default.Cloud,
-                            title = "Провайдер облака",
+                            title = "Провайдер хмари",
                             subtitle = s.backupProvider.displayName,
                             onClick = { showBackupProviderDialog = true }
                         )
@@ -296,31 +163,44 @@ fun CloudBackupSettingsScreen(
 
             item {
                 settings?.let { s ->
-                    if (s.backupEnabled) {
-                        SettingsItem(
-                            icon = Icons.Default.Sync,
-                            title = "Синхронизировать сейчас",
-                            subtitle = s.lastBackupTime?.let { "Последний бэкап: ${formatTime(it)}" } ?: "Еще не синхронизировано",
-                            onClick = {
-                                scope.launch {
-                                    viewModel.startSync()
-                                }
+                    if (s.backupEnabled && s.lastBackupTime != null) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Останній бекап: ${formatTime(s.lastBackupTime)}")
                             }
-                        )
+                        }
                     }
                 }
             }
 
-            // 📦 NEW: Управление бэкапами
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+
+            // ==================== УПРАВЛЕНИЕ БЭКАПАМИ ====================
             item {
-                SectionHeader("Управление бэкапами")
+                SectionHeader("Керування бекапами")
             }
 
             item {
                 SettingsItem(
                     icon = Icons.Default.Add,
-                    title = "Создать бэкап сейчас",
-                    subtitle = "Сохранить все данные на сервер",
+                    title = "Створити бекап зараз",
+                    subtitle = "Зберегти всі дані на сервер",
                     onClick = { showCreateBackupDialog = true }
                 )
             }
@@ -328,8 +208,8 @@ fun CloudBackupSettingsScreen(
             item {
                 SettingsItem(
                     icon = Icons.Default.List,
-                    title = "Список бэкапов",
-                    subtitle = if (backupList.isEmpty()) "Нет доступных бэкапов" else "${backupList.size} бэкапов",
+                    title = "Список бекапів",
+                    subtitle = if (backupList.isEmpty()) "Немає доступних бекапів" else "${backupList.size} бекапів",
                     onClick = { showBackupListDialog = true }
                 )
             }
@@ -341,86 +221,41 @@ fun CloudBackupSettingsScreen(
                 }
             }
 
-            // Прогресс-бар синхронизации
-            item {
-                if (syncProgress.isRunning) {
-                    SyncProgressBar(syncProgress)
+            // Ошибка
+            errorMessage?.let { error ->
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
                 }
             }
 
-            // ==================== ПРОКСИ ====================
-            item {
-                SectionHeader("Прокси")
-            }
-
-            item {
-                SettingsItem(
-                    icon = Icons.Default.VpnKey,
-                    title = "Настройки прокси",
-                    subtitle = "Не используется",
-                    onClick = { /* Navigate to proxy settings */ }
-                )
-            }
-
-            // Удалить черновики
-            item {
-                SettingsItem(
-                    icon = Icons.Default.DeleteSweep,
-                    title = "Удалить черновики",
-                    subtitle = null,
-                    onClick = {
-                        scope.launch {
-                            viewModel.deleteDrafts()
-                        }
-                    }
-                )
-            }
-
-            // Отступ снизу
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
+            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 
     // ==================== ДИАЛОГИ ====================
-
-    if (showMobileDataDialog) {
-        MediaDownloadDialog(
-            title = "Через мобильную сеть",
-            settings = settings!!,
-            isMobile = true,
-            onDismiss = { showMobileDataDialog = false },
-            onSave = { photos, videos, files, videoLimit, fileLimit ->
-                viewModel.updateMobileDataSettings(photos, videos, files, videoLimit, fileLimit)
-                showMobileDataDialog = false
-            }
-        )
-    }
-
-    if (showWiFiDialog) {
-        MediaDownloadDialog(
-            title = "Через сети Wi-Fi",
-            settings = settings!!,
-            isMobile = false,
-            onDismiss = { showWiFiDialog = false },
-            onSave = { photos, videos, files, videoLimit, fileLimit ->
-                viewModel.updateWiFiSettings(photos, videos, files, videoLimit, fileLimit)
-                showWiFiDialog = false
-            }
-        )
-    }
-
-    if (showCacheSizeDialog) {
-        CacheSizeDialog(
-            currentSize = settings!!.cacheSizeLimit,
-            onDismiss = { showCacheSizeDialog = false },
-            onSelect = { size ->
-                viewModel.updateCacheSize(size)
-                showCacheSizeDialog = false
-            }
-        )
-    }
 
     if (showBackupProviderDialog) {
         BackupProviderDialog(
@@ -433,7 +268,7 @@ fun CloudBackupSettingsScreen(
         )
     }
 
-    // 📦 NEW: Диалог создания бэкапа
+    // Диалог создания бэкапа
     if (showCreateBackupDialog) {
         CreateBackupDialog(
             currentProvider = settings!!.backupProvider,
@@ -445,7 +280,7 @@ fun CloudBackupSettingsScreen(
         )
     }
 
-    // 📦 NEW: Диалог списка бэкапов
+    // Диалог списка бэкапов
     if (showBackupListDialog) {
         BackupListDialog(
             backups = backupList,
@@ -460,7 +295,7 @@ fun CloudBackupSettingsScreen(
         )
     }
 
-    // 📦 NEW: Диалог подтверждения восстановления
+    // Диалог подтверждения восстановления
     showRestoreBackupDialog?.let { backup ->
         RestoreBackupDialog(
             backup = backup,
@@ -483,6 +318,28 @@ private fun SectionHeader(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp)
     )
+}
+
+@Composable
+private fun StatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    }
 }
 
 @Composable
@@ -569,104 +426,8 @@ private fun SettingsItemWithSwitch(
     }
 }
 
-@Composable
-private fun SyncProgressBar(progress: SyncProgress) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Синхронизация...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    progress.currentChatName?.let { chatName ->
-                        Text(
-                            text = chatName,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Text(
-                    text = "${progress.progressPercent.toInt()}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LinearProgressIndicator(
-                progress = progress.progressPercent / 100f,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "${progress.currentItem} из ${progress.totalItems} чатов",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
-
-private fun buildMediaDownloadString(
-    photos: Boolean,
-    videos: Boolean,
-    files: Boolean,
-    videoLimit: Int,
-    fileLimit: Int
-): String {
-    val parts = mutableListOf<String>()
-    if (photos) parts.add("Фото")
-    if (videos) parts.add("Видео ($videoLimit МБ)")
-    if (files) parts.add("Файлы ($fileLimit МБ)")
-    return if (parts.isEmpty()) "Нет" else parts.joinToString(", ")
-}
-
-private fun formatBytes(bytes: Long): String {
-    val gb = bytes.toFloat() / (1024 * 1024 * 1024)
-    return "%.2f GB".format(gb)
-}
-
-private fun formatTime(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-    val hours = diff / (1000 * 60 * 60)
-    return when {
-        hours < 1 -> "только что"
-        hours < 24 -> "$hours ч. назад"
-        else -> "${hours / 24} дн. назад"
-    }
-}
-
 /**
- * 📦 NEW: Прогресс-бар бэкапа
+ * Прогресс-бар бэкапа
  */
 @Composable
 private fun BackupProgressBar(progress: com.worldmates.messenger.data.model.BackupProgress) {
@@ -723,5 +484,18 @@ private fun BackupProgressBar(progress: com.worldmates.messenger.data.model.Back
                 )
             }
         }
+    }
+}
+
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+private fun formatTime(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+    val hours = diff / (1000 * 60 * 60)
+    return when {
+        hours < 1 -> "щойно"
+        hours < 24 -> "$hours год. тому"
+        else -> "${hours / 24} дн. тому"
     }
 }

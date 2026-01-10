@@ -203,3 +203,67 @@ data class SyncProgress(
     val progressPercent: Float
         get() = if (totalItems > 0) (currentItem.toFloat() / totalItems.toFloat()) * 100f else 0f
 }
+
+/**
+ * Статистика облачного бекапу
+ */
+data class BackupStatistics(
+    @SerializedName("total_messages")
+    val totalMessages: Int,
+
+    @SerializedName("messages_sent")
+    val messagesSent: Int,
+
+    @SerializedName("messages_received")
+    val messagesReceived: Int,
+
+    @SerializedName("media_files_count")
+    val mediaFilesCount: Int,
+
+    @SerializedName("media_size_bytes")
+    val mediaSizeBytes: Long,
+
+    @SerializedName("media_size_mb")
+    val mediaSizeMb: Double,
+
+    @SerializedName("groups_count")
+    val groupsCount: Int,
+
+    @SerializedName("channels_count")
+    val channelsCount: Int,
+
+    @SerializedName("total_storage_bytes")
+    val totalStorageBytes: Long,
+
+    @SerializedName("total_storage_mb")
+    val totalStorageMb: Double,
+
+    @SerializedName("total_storage_gb")
+    val totalStorageGb: Double,
+
+    @SerializedName("last_backup_time")
+    val lastBackupTime: Long?,
+
+    @SerializedName("backup_frequency")
+    val backupFrequency: String,
+
+    @SerializedName("server_name")
+    val serverName: String,
+
+    @SerializedName("backup_provider")
+    val backupProvider: String
+)
+
+/**
+ * Response для статистики
+ */
+data class BackupStatisticsResponse(
+    @SerializedName("api_status")
+    val apiStatus: Int,
+
+    @SerializedName("statistics")
+    val statistics: BackupStatistics,
+
+    @SerializedName("errors")
+    val errors: Map<String, String>? = null
+)

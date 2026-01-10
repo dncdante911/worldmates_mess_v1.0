@@ -215,6 +215,12 @@ interface WorldMatesApi {
         @Field("proxy_port") proxyPort: Int? = null
     ): UpdateCloudBackupSettingsResponse
 
+    // 📊 CLOUD BACKUP: Получение статистики облачного хранилища
+    @GET("/api/v2/endpoints/get-backup-statistics.php")
+    suspend fun getBackupStatistics(
+        @Query("access_token") accessToken: String
+    ): BackupStatisticsResponse
+
     // ==================== GROUP CHATS (Messenger Groups) ====================
     // Uses /api/v2/group_chat_v2.php - NEW custom API endpoint with 'type' parameter
 

@@ -221,6 +221,26 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String
     ): BackupStatisticsResponse
 
+    // 📤 CLOUD BACKUP: Експорт всіх даних користувача
+    @GET("/api/v2/endpoints/export-user-data.php")
+    suspend fun exportUserData(
+        @Query("access_token") accessToken: String
+    ): ExportDataResponse
+
+    // 📥 CLOUD BACKUP: Імпорт даних користувача з бекапу
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/import-user-data.php")
+    suspend fun importUserData(
+        @Query("access_token") accessToken: String,
+        @Field("backup_data") backupData: String
+    ): ImportDataResponse
+
+    // 📋 CLOUD BACKUP: Список бекапів на сервері
+    @GET("/api/v2/endpoints/list-backups.php")
+    suspend fun listBackups(
+        @Query("access_token") accessToken: String
+    ): ListBackupsResponse
+
     // ==================== GROUP CHATS (Messenger Groups) ====================
     // Uses /api/v2/group_chat_v2.php - NEW custom API endpoint with 'type' parameter
 

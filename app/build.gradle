@@ -161,6 +161,19 @@ dependencies {
     implementation 'com.google.maps.android:maps-compose:4.3.3'  // Maps Compose для Jetpack Compose
     implementation 'com.google.accompanist:accompanist-permissions:0.34.0'  // Runtime permissions
 
+    // ==================== CLOUD BACKUP PROVIDERS ====================
+    // Google Drive
+    implementation 'com.google.android.gms:play-services-auth:21.0.0'  // Google Sign-In
+    implementation 'com.google.api-client:google-api-client-android:2.2.0'  // Google API Client
+    implementation 'com.google.apis:google-api-services-drive:v3-rev20231212-2.0.0'  // Google Drive API
+
+    // MEGA
+    implementation 'nz.mega.sdk:sdk:4.23.1'  // MEGA SDK для Android
+
+    // Dropbox
+    implementation 'com.dropbox.core:dropbox-core-sdk:6.0.0'  // Dropbox Core SDK
+    implementation 'com.dropbox.core:dropbox-android-sdk:6.0.0'  // Dropbox Android SDK
+
     // ==================== TESTING ====================
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

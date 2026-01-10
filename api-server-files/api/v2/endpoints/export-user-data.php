@@ -60,10 +60,10 @@ try {
                time, seen, deleted_fs1, deleted_fs2,
                product_id, lat, lng, reply_id, story_id
         FROM Wo_Messages
-        WHERE from_id = :user_id OR to_id = :user_id
+        WHERE from_id = ? OR to_id = ?
         ORDER BY id ASC
     ");
-    $stmt->execute(['user_id' => $user_id]);
+    $stmt->execute([$user_id, $user_id]);
     $messages = $stmt->fetchAll();
     $export_data['messages'] = $messages;
     $export_data['manifest']['total_messages'] = count($messages);
@@ -83,23 +83,31 @@ try {
     $stmt = $db->prepare("
         SELECT id, user_id, group_name, group_title, avatar, cover, about, category
         FROM Wo_Groups
-        WHERE user_id = :user_id OR id IN (
-            SELECT group_id FROM Wo_GroupMembers WHERE user_id = :user_id
+        WHERE user_id = ? OR id IN (
+            SELECT group_id FROM Wo_Group_Members WHERE user_id = ?
         )
     ");
-    $stmt->execute(['user_id' => $user_id]);
+    $stmt->execute([$user_id, $user_id]);
     $export_data['groups'] = $stmt->fetchAll();
 
     // ==================== CHANNELS ====================
-    $stmt = $db->prepare("
-        SELECT id, user_id, channel_name, channel_title, avatar, cover, description
-        FROM Wo_Channels
-        WHERE user_id = :user_id OR id IN (
-            SELECT channel_id FROM Wo_ChannelSubscribers WHERE user_id = :user_id
-        )
-    ");
-    $stmt->execute(['user_id' => $user_id]);
-    $export_data['channels'] = $stmt->fetchAll();
+    // Channels table may not exist in all installations
+    $export_data['channels'] = [];
+    try {
+        $stmt = $db->prepare("
+            SELECT id, user_id, channel_name, channel_username as channel_title,
+                   avatar, cover, channel_description as description
+            FROM Wo_Channels
+            WHERE user_id = ? OR id IN (
+                SELECT channel_id FROM Wo_ChannelSubscribers WHERE user_id = ?
+            )
+        ");
+        $stmt->execute([$user_id, $user_id]);
+        $export_data['channels'] = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        // Table doesn't exist, return empty array
+        $export_data['channels'] = [];
+    }
 
     // ==================== SETTINGS ====================
     $stmt = $db->prepare("

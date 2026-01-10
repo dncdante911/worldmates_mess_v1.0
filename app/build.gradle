@@ -167,6 +167,8 @@ dependencies {
     implementation 'com.google.api-client:google-api-client-android:2.2.0'  // Google API Client
     implementation 'com.google.apis:google-api-services-drive:v3-rev20240123-2.0.0'  // Google Drive API
     implementation 'com.google.http-client:google-http-client-gson:1.44.1'  // HTTP Client
+    implementation 'com.google.http-client:google-http-client-android:1.44.1'  // Android HTTP
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'  // Coroutines для GMS
 
     // MEGA - використовуємо HTTP API замість SDK (SDK недоступний в Maven)
     // Реалізація через REST API в MegaBackupManager

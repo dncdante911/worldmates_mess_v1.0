@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.local.AppDatabase
 import com.worldmates.messenger.data.model.CloudBackupSettings
 import com.worldmates.messenger.data.model.SyncProgress
+import com.worldmates.messenger.data.model.BackupProgress
+import com.worldmates.messenger.data.backup.CloudBackupManager
+import com.worldmates.messenger.data.backup.BackupFileInfo
 import com.worldmates.messenger.data.repository.BackupRepository
 import com.worldmates.messenger.data.repository.CloudBackupSettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +30,7 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
     private val settingsRepository = CloudBackupSettingsRepository(application)
     private val database = AppDatabase.getInstance(application)
     private val messageDao = database.messageDao()
+    private val cloudBackupManager = CloudBackupManager(application)
 
     // ==================== STATE FLOWS ====================
 
@@ -41,6 +45,16 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _backupStatistics = MutableStateFlow<com.worldmates.messenger.data.model.BackupStatistics?>(null)
     val backupStatistics: StateFlow<com.worldmates.messenger.data.model.BackupStatistics?> = _backupStatistics.asStateFlow()
+
+    // 📦 NEW: Cloud Backup Manager States
+    private val _backupProgress = MutableStateFlow(BackupProgress())
+    val backupProgress: StateFlow<BackupProgress> = _backupProgress.asStateFlow()
+
+    private val _backupList = MutableStateFlow<List<BackupFileInfo>>(emptyList())
+    val backupList: StateFlow<List<BackupFileInfo>> = _backupList.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     init {
         loadSettings()
@@ -360,5 +374,141 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
         }
+    }
+
+    // ==================== 📦 CLOUD BACKUP MANAGER INTEGRATION ====================
+
+    /**
+     * Создать бэкап сейчас
+     */
+    fun createBackup(uploadToCloud: Boolean = false) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "📦 Starting backup creation...")
+                _errorMessage.value = null
+
+                // Подписываемся на прогресс
+                launch {
+                    cloudBackupManager.backupProgress.collect { progress ->
+                        _backupProgress.value = progress
+                    }
+                }
+
+                val provider = if (uploadToCloud) _settings.value?.backupProvider else null
+                val result = cloudBackupManager.createBackup(
+                    uploadToCloud = uploadToCloud,
+                    cloudProvider = provider
+                )
+
+                result.onSuccess { backupInfo ->
+                    Log.d(TAG, "✅ Backup created successfully: ${backupInfo.fileName}")
+
+                    // Обновить список бэкапов
+                    loadBackupList()
+
+                    // Обновить время последнего бэкапа
+                    _settings.value = _settings.value?.copy(
+                        lastBackupTime = System.currentTimeMillis()
+                    )
+                    saveSettings()
+
+                }.onFailure { error ->
+                    Log.e(TAG, "❌ Backup creation failed: ${error.message}", error)
+                    _errorMessage.value = "Ошибка создания бэкапа: ${error.message}"
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Backup creation exception: ${e.message}", e)
+                _errorMessage.value = "Ошибка: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Восстановить из бэкапа
+     */
+    fun restoreFromBackup(backupInfo: BackupFileInfo) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "📥 Starting backup restore...")
+                _errorMessage.value = null
+
+                // Подписываемся на прогресс
+                launch {
+                    cloudBackupManager.backupProgress.collect { progress ->
+                        _backupProgress.value = progress
+                    }
+                }
+
+                val result = cloudBackupManager.restoreFromBackup(backupInfo)
+
+                result.onSuccess { stats ->
+                    Log.d(TAG, "✅ Backup restored successfully: ${stats.messagesImported} messages")
+
+                    // Обновить статистику
+                    refreshStatistics()
+                    calculateCacheSize()
+
+                }.onFailure { error ->
+                    Log.e(TAG, "❌ Backup restore failed: ${error.message}", error)
+                    _errorMessage.value = "Ошибка восстановления: ${error.message}"
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Backup restore exception: ${e.message}", e)
+                _errorMessage.value = "Ошибка: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Загрузить список бэкапов
+     */
+    fun loadBackupList() {
+        viewModelScope.launch {
+            try {
+                val result = cloudBackupManager.listBackups()
+
+                result.onSuccess { backups ->
+                    _backupList.value = backups
+                    Log.d(TAG, "✅ Loaded ${backups.size} backups")
+                }.onFailure { error ->
+                    Log.e(TAG, "❌ Failed to load backups: ${error.message}", error)
+                    _errorMessage.value = "Ошибка загрузки списка бэкапов"
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Load backups exception: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Удалить бэкап
+     */
+    fun deleteBackup(backupInfo: BackupFileInfo) {
+        viewModelScope.launch {
+            try {
+                val result = cloudBackupManager.deleteBackup(backupInfo)
+
+                result.onSuccess {
+                    Log.d(TAG, "✅ Backup deleted: ${backupInfo.fileName}")
+                    loadBackupList()
+                }.onFailure { error ->
+                    Log.e(TAG, "❌ Failed to delete backup: ${error.message}", error)
+                    _errorMessage.value = "Ошибка удаления бэкапа"
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Delete backup exception: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Очистить сообщение об ошибке
+     */
+    fun clearError() {
+        _errorMessage.value = null
     }
 }

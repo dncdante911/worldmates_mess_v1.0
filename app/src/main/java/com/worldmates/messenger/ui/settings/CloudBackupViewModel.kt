@@ -8,8 +8,8 @@ import com.worldmates.messenger.data.local.AppDatabase
 import com.worldmates.messenger.data.model.CloudBackupSettings
 import com.worldmates.messenger.data.model.SyncProgress
 import com.worldmates.messenger.data.model.BackupProgress
+import com.worldmates.messenger.data.model.BackupFileInfo
 import com.worldmates.messenger.data.backup.CloudBackupManager
-import com.worldmates.messenger.data.backup.BackupFileInfo
 import com.worldmates.messenger.data.repository.BackupRepository
 import com.worldmates.messenger.data.repository.CloudBackupSettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -401,7 +401,7 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
                 )
 
                 result.onSuccess { backupInfo ->
-                    Log.d(TAG, "✅ Backup created successfully: ${backupInfo.fileName}")
+                    Log.d(TAG, "✅ Backup created successfully: ${backupInfo.filename}")
 
                     // Обновить список бэкапов
                     loadBackupList()
@@ -492,7 +492,7 @@ class CloudBackupViewModel(application: Application) : AndroidViewModel(applicat
                 val result = cloudBackupManager.deleteBackup(backupInfo)
 
                 result.onSuccess {
-                    Log.d(TAG, "✅ Backup deleted: ${backupInfo.fileName}")
+                    Log.d(TAG, "✅ Backup deleted: ${backupInfo.filename}")
                     loadBackupList()
                 }.onFailure { error ->
                     Log.e(TAG, "❌ Failed to delete backup: ${error.message}", error)

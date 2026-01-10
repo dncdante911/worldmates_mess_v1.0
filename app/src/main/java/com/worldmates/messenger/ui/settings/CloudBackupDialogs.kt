@@ -9,8 +9,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.worldmates.messenger.data.model.CloudBackupSettings
+import com.worldmates.messenger.data.model.BackupFileInfo
 
 /**
  * 📦 Диалог настройки автозагрузки медиа
@@ -358,10 +360,10 @@ fun CreateBackupDialog(
  */
 @Composable
 fun BackupListDialog(
-    backups: List<com.worldmates.messenger.data.backup.BackupFileInfo>,
+    backups: List<BackupFileInfo>,
     onDismiss: () -> Unit,
-    onRestore: (com.worldmates.messenger.data.backup.BackupFileInfo) -> Unit,
-    onDelete: (com.worldmates.messenger.data.backup.BackupFileInfo) -> Unit
+    onRestore: (BackupFileInfo) -> Unit,
+    onDelete: (BackupFileInfo) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -403,7 +405,7 @@ fun BackupListDialog(
 
 @Composable
 private fun BackupListItem(
-    backup: com.worldmates.messenger.data.backup.BackupFileInfo,
+    backup: BackupFileInfo,
     onRestore: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -413,7 +415,7 @@ private fun BackupListItem(
             .padding(vertical = 8.dp)
     ) {
         Text(
-            text = backup.fileName,
+            text = backup.filename,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
         )
@@ -421,7 +423,7 @@ private fun BackupListItem(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Размер: ${formatFileSize(backup.sizeBytes)} • ${formatBackupDate(backup.createdAt)}",
+            text = "Размер: ${formatFileSize(backup.size)} • ${formatBackupDate(backup.createdAt)}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -450,7 +452,7 @@ private fun BackupListItem(
  */
 @Composable
 fun RestoreBackupDialog(
-    backup: com.worldmates.messenger.data.backup.BackupFileInfo,
+    backup: BackupFileInfo,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
@@ -467,13 +469,13 @@ fun RestoreBackupDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    "Файл: ${backup.fileName}",
+                    "Файл: ${backup.filename}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Text(
-                    "Размер: ${formatFileSize(backup.sizeBytes)}",
+                    "Размер: ${formatFileSize(backup.size)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

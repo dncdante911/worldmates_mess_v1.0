@@ -192,6 +192,15 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
+     * Встановити поточну story
+     */
+    fun setCurrentStory(story: Story) {
+        repository.setCurrentStory(story)
+        // Завантажуємо коментарі для нової story
+        loadComments(story.id)
+    }
+
+    /**
      * Видалити story
      */
     fun deleteStory(storyId: Long) {

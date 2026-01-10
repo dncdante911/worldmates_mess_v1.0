@@ -5,12 +5,15 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -89,13 +92,14 @@ class StoryViewerActivity : AppCompatActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun StoryViewerScreen(
     viewModel: StoryViewModel,
     isChannelStory: Boolean,
     onClose: () -> Unit
 ) {
+    val allStories by viewModel.stories.collectAsState()
     val currentStory by viewModel.currentStory.collectAsState()
     val comments by viewModel.comments.collectAsState()
     val viewers by viewModel.viewers.collectAsState()
@@ -107,15 +111,42 @@ fun StoryViewerScreen(
     var showReactions by remember { mutableStateOf(false) }
     var isPaused by remember { mutableStateOf(false) }
 
+    // Получаем stories того же пользователя что и currentStory
+    val userStories = remember(allStories, currentStory) {
+        currentStory?.let { story ->
+            allStories.filter { it.userId == story.userId }
+        } ?: emptyList()
+    }
+
+    // Индекс текущей story
+    val initialPage = remember(userStories, currentStory) {
+        currentStory?.let { story ->
+            userStories.indexOfFirst { it.id == story.id }.coerceAtLeast(0)
+        } ?: 0
+    }
+
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { userStories.size }
+    )
+
+    // Обновляем currentStory при изменении страницы
+    LaunchedEffect(pagerState.currentPage) {
+        if (userStories.isNotEmpty() && pagerState.currentPage < userStories.size) {
+            viewModel.setCurrentStory(userStories[pagerState.currentPage])
+        }
+    }
+
     // Прогрес перегляду story
     var progress by remember { mutableStateOf(0f) }
     val scope = rememberCoroutineScope()
 
     // Автоматичний прогрес story
-    LaunchedEffect(currentStory, isPaused) {
-        if (currentStory != null && !isPaused) {
-            val mediaType = currentStory!!.mediaItems.firstOrNull()?.type
-            val videoDuration = currentStory!!.mediaItems.firstOrNull()?.duration ?: 0
+    LaunchedEffect(pagerState.currentPage, isPaused) {
+        if (userStories.isNotEmpty() && pagerState.currentPage < userStories.size) {
+            val story = userStories[pagerState.currentPage]
+            val mediaType = story.mediaItems.firstOrNull()?.type
+            val videoDuration = story.mediaItems.firstOrNull()?.duration ?: 0
 
             val duration = if (mediaType == "video") {
                 // Для видео: используем duration из медиа, но не меньше 10 секунд
@@ -140,144 +171,186 @@ fun StoryViewerScreen(
                 }
             }
 
-            // Для видео НЕ закрываем автоматически - пусть пользователь сам закроет
-            // Для фото можно закрывать
-            if (progress >= 0.99f && mediaType != "video") {
-                android.util.Log.d("StoryViewer", "Auto-closing photo story after completion")
-                onClose()
+            // Автопереход на следующую story или закрытие
+            if (progress >= 0.99f && !isPaused) {
+                if (pagerState.currentPage < userStories.size - 1) {
+                    // Переход на следующую story
+                    android.util.Log.d("StoryViewer", "Auto-advancing to next story")
+                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                } else {
+                    // Последняя story - закрываем
+                    android.util.Log.d("StoryViewer", "Last story completed, closing")
+                    onClose()
+                }
             }
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { offset ->
-                        // Тап зліва - попередня story, справа - наступна
-                        if (offset.x < size.width / 2) {
-                            // TODO: Previous story
-                        } else {
-                            onClose() // TODO: Next story
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize()
+    ) { page ->
+        val story = userStories.getOrNull(page)
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            // Тап зліва - попередня story, справа - наступна
+                            if (offset.x < size.width / 3) {
+                                // Previous story
+                                scope.launch {
+                                    if (pagerState.currentPage > 0) {
+                                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                    }
+                                }
+                            } else if (offset.x > size.width * 2 / 3) {
+                                // Next story
+                                scope.launch {
+                                    if (pagerState.currentPage < userStories.size - 1) {
+                                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                    } else {
+                                        onClose()
+                                    }
+                                }
+                            } else {
+                                // Center tap - pause/unpause
+                                isPaused = !isPaused
+                            }
+                        },
+                        onLongPress = {
+                            isPaused = !isPaused
+                        }
+                    )
+                }
+        ) {
+                android.util.Log.d("StoryViewer", "Displaying story: id=${story.id}, mediaItems count=${story.mediaItems.size}")
+
+                // Медіа контент
+                story.mediaItems.firstOrNull()?.let { media ->
+                    // Build full URL for media
+                    val mediaUrl = if (media.filename.startsWith("http")) {
+                        media.filename // Already full URL
+                    } else {
+                        "${Constants.MEDIA_BASE_URL}${media.filename}" // Add base URL
+                    }
+
+                    android.util.Log.d("StoryViewer", "Loading media: type=${media.type}, filename=${media.filename}")
+                    android.util.Log.d("StoryViewer", "Full URL: $mediaUrl")
+
+                    when (media.type) {
+                        "image" -> {
+                            // Show image with AsyncImage
+                            AsyncImage(
+                                model = mediaUrl,
+                                contentDescription = "Story image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                        "video" -> {
+                            // Show video with ExoPlayer
+                            VideoPlayer(
+                                videoUrl = mediaUrl,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        else -> {
+                            // Unknown media type
+                            Text(
+                                text = "Непідтримуваний тип медіа: ${media.type}",
+                                color = Color.White,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+                } ?: run {
+                    android.util.Log.e("StoryViewer", "No media items found for story id=${story.id}")
+                }
+
+                // Прогрес-бари для всех stories (как в Instagram)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 12.dp)
+                        .align(Alignment.TopCenter),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    userStories.forEachIndexed { index, _ ->
+                        LinearProgressIndicator(
+                            progress = {
+                                when {
+                                    index < pagerState.currentPage -> 1f // Завершенные
+                                    index == pagerState.currentPage -> progress // Текущая
+                                    else -> 0f // Еще не просмотренные
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(2.dp),
+                            color = Color.White,
+                            trackColor = Color.White.copy(alpha = 0.3f)
+                        )
+                    }
+                }
+
+                // Header з інфо про автора
+                StoryHeader(
+                    story = story,
+                    isChannelStory = isChannelStory,
+                    onClose = onClose,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 40.dp)
+                )
+
+                // Footer з діями
+                StoryFooter(
+                    story = story,
+                    onReactionClick = { showReactions = true },
+                    onCommentClick = {
+                        viewModel.loadComments(story.id)
+                        showComments = true
+                    },
+                    onShareClick = { /* TODO: Share */ },
+                    onViewsClick = {
+                        if (story.userId == UserSession.userId) {
+                            viewModel.loadStoryViews(story.id)
+                            showViewers = true
                         }
                     },
-                    onLongPress = {
-                        isPaused = !isPaused
-                    }
+                    isOwnStory = story.userId == UserSession.userId,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
                 )
             }
-    ) {
-        currentStory?.let { story ->
-            android.util.Log.d("StoryViewer", "Displaying story: id=${story.id}, mediaItems count=${story.mediaItems.size}")
 
-            // Медіа контент
-            story.mediaItems.firstOrNull()?.let { media ->
-                // Build full URL for media
-                val mediaUrl = if (media.filename.startsWith("http")) {
-                    media.filename // Already full URL
-                } else {
-                    "${Constants.MEDIA_BASE_URL}${media.filename}" // Add base URL
-                }
-
-                android.util.Log.d("StoryViewer", "Loading media: type=${media.type}, filename=${media.filename}")
-                android.util.Log.d("StoryViewer", "Full URL: $mediaUrl")
-
-                when (media.type) {
-                    "image" -> {
-                        // Show image with AsyncImage
-                        AsyncImage(
-                            model = mediaUrl,
-                            contentDescription = "Story image",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                    "video" -> {
-                        // Show video with ExoPlayer
-                        VideoPlayer(
-                            videoUrl = mediaUrl,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    else -> {
-                        // Unknown media type
-                        Text(
-                            text = "Непідтримуваний тип медіа: ${media.type}",
-                            color = Color.White,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-                }
-            } ?: run {
-                android.util.Log.e("StoryViewer", "No media items found for story id=${story.id}")
+            // Loading
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.White
+                )
             }
 
-            // Прогрес бар вгорі
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .align(Alignment.TopCenter),
-                color = Color.White,
-                trackColor = Color.White.copy(alpha = 0.3f)
-            )
-
-            // Header з інфо про автора
-            StoryHeader(
-                story = story,
-                isChannelStory = isChannelStory,
-                onClose = onClose,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp)
-            )
-
-            // Footer з діями
-            StoryFooter(
-                story = story,
-                onReactionClick = { showReactions = true },
-                onCommentClick = {
-                    viewModel.loadComments(story.id)
-                    showComments = true
-                },
-                onShareClick = { /* TODO: Share */ },
-                onViewsClick = {
-                    if (story.userId == UserSession.userId) {
-                        viewModel.loadStoryViews(story.id)
-                        showViewers = true
-                    }
-                },
-                isOwnStory = story.userId == UserSession.userId,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
-            )
-        }
-
-        // Loading
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center),
-                color = Color.White
-            )
-        }
-
-        // Error
-        error?.let {
-            Text(
-                text = it,
-                color = Color.Red,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(16.dp)
-            )
+            // Error
+            error?.let {
+                Text(
+                    text = it,
+                    color = Color.Red,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(16.dp)
+                )
+            }
         }
     }
 
-    // Bottom sheets
+    // Bottom sheets - они должны быть вне HorizontalPager
     if (showComments) {
         CommentsBottomSheet(
             comments = comments,

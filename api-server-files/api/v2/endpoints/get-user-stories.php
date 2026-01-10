@@ -128,14 +128,50 @@ if ($requested_user_id > 0) {
             while ($media = mysqli_fetch_assoc($media_result)) {
                 $media_items[] = array(
                     'id' => $media['id'],
+                    'story_id' => $story['id'],
                     'type' => $media['type'],
                     'filename' => $media['filename'],
-                    'expire' => $media['expire']
+                    'expire' => $media['expire'],
+                    'duration' => isset($media['duration']) ? (int)$media['duration'] : 0
                 );
             }
         }
 
         $story['mediaItems'] = $media_items;
+
+        // Load reactions from Wo_StoryReactions
+        $reaction_data = array(
+            'like' => 0,
+            'love' => 0,
+            'haha' => 0,
+            'wow' => 0,
+            'sad' => 0,
+            'angry' => 0,
+            'is_reacted' => false,
+            'type' => null
+        );
+
+        $reactions_stats = $db->where('story_id', $story['id'])
+                              ->groupBy('reaction')
+                              ->get('Wo_StoryReactions', null, 'reaction, COUNT(*) as count');
+
+        foreach ($reactions_stats as $stat) {
+            if (isset($reaction_data[$stat->reaction])) {
+                $reaction_data[$stat->reaction] = (int)$stat->count;
+            }
+        }
+
+        $user_reaction = $db->where('story_id', $story['id'])
+                           ->where('user_id', $wo['user']['user_id'])
+                           ->getOne('Wo_StoryReactions');
+
+        if ($user_reaction) {
+            $reaction_data['is_reacted'] = true;
+            $reaction_data['type'] = $user_reaction->reaction;
+        }
+
+        $story['reaction'] = $reaction_data;
+
         error_log("Story id={$story['id']}: loaded " . count($media_items) . " media items");
 
         // Add directly to data_array
@@ -177,14 +213,50 @@ if ($requested_user_id > 0) {
                     while ($media = mysqli_fetch_assoc($media_result)) {
                         $media_items[] = array(
                             'id' => $media['id'],
+                            'story_id' => $story['id'],
                             'type' => $media['type'],
                             'filename' => $media['filename'],
-                            'expire' => $media['expire']
+                            'expire' => $media['expire'],
+                            'duration' => isset($media['duration']) ? (int)$media['duration'] : 0
                         );
                     }
                 }
 
                 $story['mediaItems'] = $media_items;
+
+                // Load reactions from Wo_StoryReactions
+                $reaction_data = array(
+                    'like' => 0,
+                    'love' => 0,
+                    'haha' => 0,
+                    'wow' => 0,
+                    'sad' => 0,
+                    'angry' => 0,
+                    'is_reacted' => false,
+                    'type' => null
+                );
+
+                $reactions_stats = $db->where('story_id', $story['id'])
+                                      ->groupBy('reaction')
+                                      ->get('Wo_StoryReactions', null, 'reaction, COUNT(*) as count');
+
+                foreach ($reactions_stats as $stat) {
+                    if (isset($reaction_data[$stat->reaction])) {
+                        $reaction_data[$stat->reaction] = (int)$stat->count;
+                    }
+                }
+
+                $user_reaction = $db->where('story_id', $story['id'])
+                                   ->where('user_id', $wo['user']['user_id'])
+                                   ->getOne('Wo_StoryReactions');
+
+                if ($user_reaction) {
+                    $reaction_data['is_reacted'] = true;
+                    $reaction_data['type'] = $user_reaction->reaction;
+                }
+
+                $story['reaction'] = $reaction_data;
+
                 error_log("Story id={$story['id']}: loaded " . count($media_items) . " media items");
 
                 // Add directly to data_array

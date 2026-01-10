@@ -179,8 +179,7 @@ interface WorldMatesApi {
     ): UpdateMediaSettingsResponse
 
     // 📦 CLOUD BACKUP v2: Получение расширенных настроек облачного бэкапа
-    @FormUrlEncoded
-    @POST("/api/v2/endpoints/get_cloud_backup_settings.php")
+    @GET("/api/v2/endpoints/get_cloud_backup_settings.php")
     suspend fun getCloudBackupSettings(
         @Query("access_token") accessToken: String
     ): CloudBackupSettingsResponse
@@ -189,7 +188,7 @@ interface WorldMatesApi {
     @FormUrlEncoded
     @POST("/api/v2/endpoints/update_cloud_backup_settings.php")
     suspend fun updateCloudBackupSettings(
-        @Query("access_token") accessToken: String,
+        @Field("access_token") accessToken: String,
         @Field("mobile_photos") mobilePhotos: String? = null,
         @Field("mobile_videos") mobileVideos: String? = null,
         @Field("mobile_files") mobileFiles: String? = null,

@@ -284,3 +284,238 @@ fun BackupProviderDialog(
         }
     )
 }
+
+/**
+ * 📦 Диалог создания бэкапа
+ */
+@Composable
+fun CreateBackupDialog(
+    currentProvider: CloudBackupSettings.BackupProvider,
+    onDismiss: () -> Unit,
+    onCreate: (uploadToCloud: Boolean) -> Unit
+) {
+    var uploadToCloud by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Создать бэкап") },
+        text = {
+            Column {
+                Text(
+                    "Бэкап будет создан на вашем сервере.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                if (currentProvider != CloudBackupSettings.BackupProvider.LOCAL_SERVER) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = uploadToCloud,
+                            onCheckedChange = { uploadToCloud = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Загрузить в облако")
+                            Text(
+                                currentProvider.displayName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    "Бэкап включает все сообщения, медиафайлы и настройки.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onCreate(uploadToCloud)
+            }) {
+                Text("Создать")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
+}
+
+/**
+ * 📦 Диалог списка бэкапов
+ */
+@Composable
+fun BackupListDialog(
+    backups: List<com.worldmates.messenger.data.backup.BackupFileInfo>,
+    onDismiss: () -> Unit,
+    onRestore: (com.worldmates.messenger.data.backup.BackupFileInfo) -> Unit,
+    onDelete: (com.worldmates.messenger.data.backup.BackupFileInfo) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Список бэкапов") },
+        text = {
+            if (backups.isEmpty()) {
+                Text(
+                    "Нет доступных бэкапов",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                ) {
+                    items(backups.size) { index ->
+                        val backup = backups[index]
+                        BackupListItem(
+                            backup = backup,
+                            onRestore = { onRestore(backup) },
+                            onDelete = { onDelete(backup) }
+                        )
+                        if (index < backups.size - 1) {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрыть")
+            }
+        }
+    )
+}
+
+@Composable
+private fun BackupListItem(
+    backup: com.worldmates.messenger.data.backup.BackupFileInfo,
+    onRestore: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = backup.fileName,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "Размер: ${formatFileSize(backup.sizeBytes)} • ${formatBackupDate(backup.createdAt)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onDelete) {
+                Text("Удалить", color = MaterialTheme.colorScheme.error)
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Button(onClick = onRestore) {
+                Text("Восстановить")
+            }
+        }
+    }
+}
+
+/**
+ * 📦 Диалог подтверждения восстановления
+ */
+@Composable
+fun RestoreBackupDialog(
+    backup: com.worldmates.messenger.data.backup.BackupFileInfo,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Восстановить бэкап?") },
+        text = {
+            Column {
+                Text(
+                    "Вы уверены, что хотите восстановить бэкап?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    "Файл: ${backup.fileName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    "Размер: ${formatFileSize(backup.sizeBytes)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    "⚠️ Внимание: текущие данные не будут удалены, но дубликаты будут пропущены.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                onConfirm()
+                onDismiss()
+            }) {
+                Text("Восстановить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
+}
+
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+private fun formatFileSize(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
+        else -> "%.2f GB".format(bytes.toFloat() / (1024 * 1024 * 1024))
+    }
+}
+
+private fun formatBackupDate(timestamp: Long): String {
+    val date = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm", java.util.Locale.getDefault())
+        .format(java.util.Date(timestamp))
+    return date
+}

@@ -204,6 +204,8 @@ fun StoryViewerScreen(
     ) { page ->
         val story = userStories.getOrNull(page)
 
+        android.util.Log.d("StoryViewer", "HorizontalPager page=$page, story=${story?.id}, userStories size=${userStories.size}")
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -239,6 +241,12 @@ fun StoryViewerScreen(
                     )
                 }
         ) {
+            if (story != null) {
+                android.util.Log.d("StoryViewer", "✅ Rendering story: id=${story.id}, mediaItems count=${story.mediaItems.size}")
+            } else {
+                android.util.Log.e("StoryViewer", "❌ Story is NULL for page $page")
+            }
+
             story?.let {
                 android.util.Log.d("StoryViewer", "Displaying story: id=${story.id}, mediaItems count=${story.mediaItems.size}")
 

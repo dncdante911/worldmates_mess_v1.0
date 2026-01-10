@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.worldmates.messenger.data.model.CloudBackupSettings
 import com.worldmates.messenger.data.model.SyncProgress
+import com.worldmates.messenger.data.model.BackupFileInfo
 import kotlinx.coroutines.launch
 
 /**
@@ -48,7 +49,7 @@ fun CloudBackupSettingsScreen(
     var showBackupProviderDialog by remember { mutableStateOf(false) }
     var showCreateBackupDialog by remember { mutableStateOf(false) }
     var showBackupListDialog by remember { mutableStateOf(false) }
-    var showRestoreBackupDialog by remember { mutableStateOf<com.worldmates.messenger.data.backup.BackupFileInfo?>(null) }
+    var showRestoreBackupDialog by remember { mutableStateOf<BackupFileInfo?>(null) }
 
     // Загрузить список бэкапов при открытии экрана
     LaunchedEffect(Unit) {

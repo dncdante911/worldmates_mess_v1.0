@@ -365,8 +365,8 @@ class DropboxBackupManager(private val context: Context) {
 
             val used = spaceUsage.used
             val allocated = when (val allocation = spaceUsage.allocation) {
-                is SpaceAllocation.Individual -> allocation.allocated
-                is SpaceAllocation.Team -> allocation.allocated
+                is SpaceAllocation.Individual -> allocation.individualValue.allocated
+                is SpaceAllocation.Team -> allocation.teamValue.allocated
                 else -> 0L
             }
 

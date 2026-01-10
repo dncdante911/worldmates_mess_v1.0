@@ -3,21 +3,25 @@ package com.worldmates.messenger.data.backup
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import nz.mega.sdk.*
 import java.io.File
-import kotlin.coroutines.resume
 
 /**
  * 📦 MegaBackupManager - Управління бекапами в MEGA
  *
- * Функції:
- * - Авторизація в MEGA (email + password)
- * - Завантаження файлів на MEGA
- * - Скачування файлів з MEGA
- * - Список файлів бекапів
- * - Видалення файлів
+ * ⚠️ MEGA SDK недоступний в Maven Central
+ *
+ * Для використання MEGA:
+ * 1. Завантажте MEGA SDK AAR файл з https://github.com/meganz/sdk
+ * 2. Додайте AAR в app/libs/
+ * 3. У build.gradle додайте: implementation files('libs/mega-sdk.aar')
+ * 4. Розкоментуйте код нижче
+ *
+ * АБО використовуйте MEGA REST API:
+ * https://mega.nz/developers
+ *
+ * Поки що це заглушка - MEGA бекапи недоступні.
+ * Використовуйте Google Drive або Dropbox.
  */
 class MegaBackupManager(private val context: Context) {
 
@@ -33,402 +37,98 @@ class MegaBackupManager(private val context: Context) {
         private const val MEGA_APP_KEY = "YOUR_MEGA_APP_KEY"
     }
 
-    private var megaApi: MegaApiAndroid? = null
-    private var backupFolderNode: MegaNode? = null
     private var isInitialized = false
 
     // ==================== ІНІЦІАЛІЗАЦІЯ ====================
 
     /**
-     * Ініціалізувати MEGA SDK
+     * Ініціалізувати MEGA (заглушка)
      */
     fun initialize() {
-        try {
-            megaApi = MegaApiAndroid(
-                MEGA_APP_KEY,
-                context.filesDir.absolutePath,
-                object : MegaApiAndroid.MegaLogger {
-                    override fun log(time: String?, loglevel: Int, source: String?, message: String?) {
-                        when (loglevel) {
-                            MegaApiAndroid.LOG_LEVEL_ERROR -> Log.e(TAG, "MEGA: $message")
-                            MegaApiAndroid.LOG_LEVEL_WARNING -> Log.w(TAG, "MEGA: $message")
-                            MegaApiAndroid.LOG_LEVEL_INFO -> Log.i(TAG, "MEGA: $message")
-                            else -> Log.d(TAG, "MEGA: $message")
-                        }
-                    }
-                }
-            )
-            isInitialized = true
-            Log.d(TAG, "✅ MEGA SDK initialized")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to initialize MEGA SDK: ${e.message}", e)
-        }
+        Log.w(TAG, "⚠️ MEGA SDK not available - using stub implementation")
+        Log.w(TAG, "ℹ️ Please add MEGA SDK manually or use Google Drive/Dropbox")
+        isInitialized = true
     }
 
     // ==================== АВТОРИЗАЦІЯ ====================
 
     /**
-     * Увійти в MEGA акаунт
+     * Увійти в MEGA акаунт (заглушка)
      */
     suspend fun login(email: String, password: String): Boolean = withContext(Dispatchers.IO) {
-        if (!isInitialized || megaApi == null) {
-            Log.e(TAG, "❌ MEGA SDK not initialized")
-            return@withContext false
-        }
-
-        suspendCancellableCoroutine { continuation ->
-            Log.d(TAG, "🔐 Logging in to MEGA: $email")
-
-            megaApi?.login(email, password, object : MegaRequestListenerInterface {
-                override fun onRequestStart(api: MegaApiJava?, request: MegaRequest?) {
-                    Log.d(TAG, "Login request started")
-                }
-
-                override fun onRequestUpdate(api: MegaApiJava?, request: MegaRequest?) {}
-
-                override fun onRequestFinish(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {
-                    if (error?.errorCode == MegaError.API_OK) {
-                        Log.d(TAG, "✅ Login successful")
-
-                        // Fetch nodes після успішного логіну
-                        megaApi?.fetchNodes(object : MegaRequestListenerInterface {
-                            override fun onRequestStart(api: MegaApiJava?, request: MegaRequest?) {}
-                            override fun onRequestUpdate(api: MegaApiJava?, request: MegaRequest?) {}
-
-                            override fun onRequestFinish(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {
-                                if (error?.errorCode == MegaError.API_OK) {
-                                    Log.d(TAG, "✅ Nodes fetched successfully")
-                                    continuation.resume(true)
-                                } else {
-                                    Log.e(TAG, "❌ Failed to fetch nodes: ${error?.errorString}")
-                                    continuation.resume(false)
-                                }
-                            }
-
-                            override fun onRequestTemporaryError(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {}
-                        })
-                    } else {
-                        Log.e(TAG, "❌ Login failed: ${error?.errorString}")
-                        continuation.resume(false)
-                    }
-                }
-
-                override fun onRequestTemporaryError(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {
-                    Log.w(TAG, "⚠️ Login temporary error: ${error?.errorString}")
-                }
-            })
-
-            continuation.invokeOnCancellation {
-                Log.d(TAG, "Login cancelled")
-            }
-        }
+        Log.w(TAG, "⚠️ MEGA login not implemented - SDK not available")
+        false
     }
 
     /**
-     * Перевірити чи користувач авторизований
+     * Перевірити чи користувач авторизований (заглушка)
      */
     fun isLoggedIn(): Boolean {
-        val email = megaApi?.myEmail
-        return !email.isNullOrEmpty()
+        return false
     }
 
     /**
-     * Вийти з MEGA акаунту
+     * Вийти з MEGA акаунту (заглушка)
      */
     suspend fun logout(): Boolean = withContext(Dispatchers.IO) {
-        if (!isInitialized || megaApi == null) {
-            return@withContext false
-        }
-
-        suspendCancellableCoroutine { continuation ->
-            Log.d(TAG, "🚪 Logging out from MEGA")
-
-            megaApi?.logout(object : MegaRequestListenerInterface {
-                override fun onRequestStart(api: MegaApiJava?, request: MegaRequest?) {}
-                override fun onRequestUpdate(api: MegaApiJava?, request: MegaRequest?) {}
-
-                override fun onRequestFinish(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {
-                    if (error?.errorCode == MegaError.API_OK) {
-                        Log.d(TAG, "✅ Logout successful")
-                        backupFolderNode = null
-                        continuation.resume(true)
-                    } else {
-                        Log.e(TAG, "❌ Logout failed: ${error?.errorString}")
-                        continuation.resume(false)
-                    }
-                }
-
-                override fun onRequestTemporaryError(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {}
-            })
-        }
-    }
-
-    // ==================== УПРАВЛІННЯ ПАПКАМИ ====================
-
-    /**
-     * Отримати або створити папку для бекапів
-     */
-    private suspend fun getOrCreateBackupFolder(): MegaNode? = withContext(Dispatchers.IO) {
-        if (!isLoggedIn()) {
-            Log.e(TAG, "❌ Not logged in")
-            return@withContext null
-        }
-
-        try {
-            // Спробувати знайти існуючу папку
-            val rootNode = megaApi?.rootNode
-            if (rootNode == null) {
-                Log.e(TAG, "❌ Root node not found")
-                return@withContext null
-            }
-
-            val children = megaApi?.getChildren(rootNode)
-            val existingFolder = children?.find { it.name == BACKUP_FOLDER_NAME && it.isFolder }
-
-            if (existingFolder != null) {
-                Log.d(TAG, "📁 Found existing backup folder")
-                backupFolderNode = existingFolder
-                return@withContext existingFolder
-            }
-
-            // Створити нову папку
-            suspendCancellableCoroutine { continuation ->
-                Log.d(TAG, "📁 Creating new backup folder")
-
-                megaApi?.createFolder(BACKUP_FOLDER_NAME, rootNode, object : MegaRequestListenerInterface {
-                    override fun onRequestStart(api: MegaApiJava?, request: MegaRequest?) {}
-                    override fun onRequestUpdate(api: MegaApiJava?, request: MegaRequest?) {}
-
-                    override fun onRequestFinish(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {
-                        if (error?.errorCode == MegaError.API_OK) {
-                            val node = megaApi?.getNodeByHandle(request?.nodeHandle ?: 0)
-                            Log.d(TAG, "✅ Backup folder created")
-                            backupFolderNode = node
-                            continuation.resume(node)
-                        } else {
-                            Log.e(TAG, "❌ Failed to create folder: ${error?.errorString}")
-                            continuation.resume(null)
-                        }
-                    }
-
-                    override fun onRequestTemporaryError(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {}
-                })
-            }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to get/create backup folder: ${e.message}", e)
-            null
-        }
+        Log.d(TAG, "MEGA logout (stub)")
+        true
     }
 
     // ==================== ЗАВАНТАЖЕННЯ ФАЙЛІВ ====================
 
     /**
-     * Завантажити файл на MEGA
+     * Завантажити файл на MEGA (заглушка)
      */
     suspend fun uploadFile(localFile: File): Boolean = withContext(Dispatchers.IO) {
-        if (!isLoggedIn()) {
-            Log.e(TAG, "❌ Not logged in")
-            return@withContext false
-        }
-
-        try {
-            val folder = backupFolderNode ?: getOrCreateBackupFolder()
-            if (folder == null) {
-                Log.e(TAG, "❌ Backup folder not found")
-                return@withContext false
-            }
-
-            suspendCancellableCoroutine { continuation ->
-                Log.d(TAG, "📤 Uploading file: ${localFile.name} (${localFile.length()} bytes)")
-
-                megaApi?.startUpload(
-                    localFile.absolutePath,
-                    folder,
-                    object : MegaTransferListenerInterface {
-                        override fun onTransferStart(api: MegaApiJava?, transfer: MegaTransfer?) {
-                            Log.d(TAG, "Upload started: ${transfer?.fileName}")
-                        }
-
-                        override fun onTransferUpdate(api: MegaApiJava?, transfer: MegaTransfer?) {
-                            val progress = transfer?.transferredBytes?.toFloat()?.div(transfer.totalBytes) ?: 0f
-                            Log.d(TAG, "Upload progress: ${(progress * 100).toInt()}%")
-                        }
-
-                        override fun onTransferFinish(api: MegaApiJava?, transfer: MegaTransfer?, error: MegaError?) {
-                            if (error?.errorCode == MegaError.API_OK) {
-                                Log.d(TAG, "✅ File uploaded successfully")
-                                continuation.resume(true)
-                            } else {
-                                Log.e(TAG, "❌ Upload failed: ${error?.errorString}")
-                                continuation.resume(false)
-                            }
-                        }
-
-                        override fun onTransferTemporaryError(api: MegaApiJava?, transfer: MegaTransfer?, error: MegaError?) {
-                            Log.w(TAG, "⚠️ Upload temporary error: ${error?.errorString}")
-                        }
-
-                        override fun onTransferData(api: MegaApiJava?, transfer: MegaTransfer?, buffer: ByteArray?): Boolean {
-                            return true
-                        }
-                    }
-                )
-            }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Upload failed: ${e.message}", e)
-            false
-        }
+        Log.w(TAG, "⚠️ MEGA upload not implemented - SDK not available")
+        false
     }
 
     // ==================== СКАЧУВАННЯ ФАЙЛІВ ====================
 
     /**
-     * Скачати файл з MEGA
+     * Скачати файл з MEGA (заглушка)
      */
-    suspend fun downloadFile(node: MegaNode, destinationPath: String): Boolean = withContext(Dispatchers.IO) {
-        if (!isLoggedIn()) {
-            Log.e(TAG, "❌ Not logged in")
-            return@withContext false
-        }
-
-        suspendCancellableCoroutine { continuation ->
-            Log.d(TAG, "📥 Downloading file: ${node.name}")
-
-            megaApi?.startDownload(
-                node,
-                destinationPath,
-                object : MegaTransferListenerInterface {
-                    override fun onTransferStart(api: MegaApiJava?, transfer: MegaTransfer?) {
-                        Log.d(TAG, "Download started: ${transfer?.fileName}")
-                    }
-
-                    override fun onTransferUpdate(api: MegaApiJava?, transfer: MegaTransfer?) {
-                        val progress = transfer?.transferredBytes?.toFloat()?.div(transfer.totalBytes) ?: 0f
-                        Log.d(TAG, "Download progress: ${(progress * 100).toInt()}%")
-                    }
-
-                    override fun onTransferFinish(api: MegaApiJava?, transfer: MegaTransfer?, error: MegaError?) {
-                        if (error?.errorCode == MegaError.API_OK) {
-                            Log.d(TAG, "✅ File downloaded successfully")
-                            continuation.resume(true)
-                        } else {
-                            Log.e(TAG, "❌ Download failed: ${error?.errorString}")
-                            continuation.resume(false)
-                        }
-                    }
-
-                    override fun onTransferTemporaryError(api: MegaApiJava?, transfer: MegaTransfer?, error: MegaError?) {
-                        Log.w(TAG, "⚠️ Download temporary error: ${error?.errorString}")
-                    }
-
-                    override fun onTransferData(api: MegaApiJava?, transfer: MegaTransfer?, buffer: ByteArray?): Boolean {
-                        return true
-                    }
-                }
-            )
-        }
+    suspend fun downloadFile(fileHandle: Long, destinationPath: String): Boolean = withContext(Dispatchers.IO) {
+        Log.w(TAG, "⚠️ MEGA download not implemented - SDK not available")
+        false
     }
 
     // ==================== СПИСОК ФАЙЛІВ ====================
 
     /**
-     * Отримати список всіх бекапів на MEGA
+     * Отримати список всіх бекапів на MEGA (заглушка)
      */
     suspend fun listBackupFiles(): List<MegaBackupFile> = withContext(Dispatchers.IO) {
-        if (!isLoggedIn()) {
-            Log.w(TAG, "⚠️ Not logged in")
-            return@withContext emptyList()
-        }
-
-        try {
-            val folder = backupFolderNode ?: getOrCreateBackupFolder()
-            if (folder == null) {
-                return@withContext emptyList()
-            }
-
-            val children = megaApi?.getChildren(folder) ?: return@withContext emptyList()
-
-            val files = children
-                .filter { !it.isFolder }
-                .map { node ->
-                    MegaBackupFile(
-                        handle = node.handle,
-                        name = node.name,
-                        size = node.size,
-                        createdTime = node.creationTime * 1000L,
-                        modifiedTime = node.modificationTime * 1000L
-                    )
-                }
-                .sortedByDescending { it.createdTime }
-
-            Log.d(TAG, "✅ Found ${files.size} backup files")
-            files
-
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to list backup files: ${e.message}", e)
-            emptyList()
-        }
+        Log.w(TAG, "⚠️ MEGA list files not implemented - SDK not available")
+        emptyList()
     }
 
     // ==================== ВИДАЛЕННЯ ФАЙЛІВ ====================
 
     /**
-     * Видалити файл з MEGA
+     * Видалити файл з MEGA (заглушка)
      */
-    suspend fun deleteFile(node: MegaNode): Boolean = withContext(Dispatchers.IO) {
-        if (!isLoggedIn()) {
-            Log.e(TAG, "❌ Not logged in")
-            return@withContext false
-        }
-
-        suspendCancellableCoroutine { continuation ->
-            Log.d(TAG, "🗑️ Deleting file: ${node.name}")
-
-            megaApi?.remove(node, object : MegaRequestListenerInterface {
-                override fun onRequestStart(api: MegaApiJava?, request: MegaRequest?) {}
-                override fun onRequestUpdate(api: MegaApiJava?, request: MegaRequest?) {}
-
-                override fun onRequestFinish(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {
-                    if (error?.errorCode == MegaError.API_OK) {
-                        Log.d(TAG, "✅ File deleted successfully")
-                        continuation.resume(true)
-                    } else {
-                        Log.e(TAG, "❌ Delete failed: ${error?.errorString}")
-                        continuation.resume(false)
-                    }
-                }
-
-                override fun onRequestTemporaryError(api: MegaApiJava?, request: MegaRequest?, error: MegaError?) {}
-            })
-        }
+    suspend fun deleteFile(fileHandle: Long): Boolean = withContext(Dispatchers.IO) {
+        Log.w(TAG, "⚠️ MEGA delete not implemented - SDK not available")
+        false
     }
 
     // ==================== ОТРИМАТИ ІНФОРМАЦІЮ ====================
 
     /**
-     * Отримати email користувача
+     * Отримати email користувача (заглушка)
      */
     fun getUserEmail(): String? {
-        return megaApi?.myEmail
+        return null
     }
 
     /**
-     * Отримати storage quota
+     * Отримати storage quota (заглушка)
      */
     fun getStorageQuota(): MegaStorageQuota? {
-        if (!isLoggedIn()) {
-            return null
-        }
-
-        val accountDetails = megaApi?.myAccountDetails ?: return null
-
-        return MegaStorageQuota(
-            totalBytes = accountDetails.storageMax,
-            usedBytes = accountDetails.storageUsed,
-            availableBytes = accountDetails.storageMax - accountDetails.storageUsed
-        )
+        return null
     }
 
     // ==================== CLEANUP ====================
@@ -437,10 +137,8 @@ class MegaBackupManager(private val context: Context) {
      * Очистити ресурси
      */
     fun cleanup() {
-        megaApi = null
-        backupFolderNode = null
         isInitialized = false
-        Log.d(TAG, "🧹 Cleaned up MEGA manager")
+        Log.d(TAG, "🧹 Cleaned up MEGA manager (stub)")
     }
 }
 

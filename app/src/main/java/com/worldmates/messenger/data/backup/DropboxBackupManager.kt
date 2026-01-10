@@ -364,10 +364,14 @@ class DropboxBackupManager(private val context: Context) {
             val spaceUsage = dropboxClient!!.users().spaceUsage
 
             val used = spaceUsage.used
-            val allocated = when (val allocation = spaceUsage.allocation) {
-                is SpaceAllocation.Individual -> allocation.individualValue.allocated
-                is SpaceAllocation.Team -> allocation.teamValue.allocated
-                else -> 0L
+            val allocated = try {
+                when {
+                    spaceUsage.allocation.isIndividual -> spaceUsage.allocation.individualValue.allocated
+                    spaceUsage.allocation.isTeam -> spaceUsage.allocation.teamValue.allocated
+                    else -> 0L
+                }
+            } catch (e: Exception) {
+                0L
             }
 
             DropboxStorageQuota(

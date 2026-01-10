@@ -110,11 +110,9 @@ try {
     }
 
     // ==================== SETTINGS ====================
-    $stmt = $db->prepare("
-        SELECT * FROM Wo_UserSettings WHERE user_id = :user_id
-    ");
-    $stmt->execute(['user_id' => $user_id]);
-    $export_data['settings'] = $stmt->fetch();
+    // Settings are stored directly in Wo_Users table, not in separate table
+    // User settings already exported in 'user' section above
+    $export_data['settings'] = [];
 
     // ==================== BLOCKED USERS ====================
     $stmt = $db->prepare("

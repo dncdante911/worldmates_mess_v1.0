@@ -227,6 +227,7 @@ fun StoryViewerScreen(
                     )
                 }
         ) {
+            story?.let {
                 android.util.Log.d("StoryViewer", "Displaying story: id=${story.id}, mediaItems count=${story.mediaItems.size}")
 
                 // Медіа контент
@@ -327,7 +328,7 @@ fun StoryViewerScreen(
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 16.dp)
                 )
-            }
+            } // End story?.let
 
             // Loading
             if (isLoading) {

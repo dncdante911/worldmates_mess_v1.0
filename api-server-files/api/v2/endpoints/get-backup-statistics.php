@@ -39,43 +39,43 @@ try {
     // ==================== MESSAGE STATISTICS ====================
     $stmt = $db->prepare("
         SELECT COUNT(*) as total_messages,
-               SUM(CASE WHEN from_id = :user_id THEN 1 ELSE 0 END) as messages_sent,
-               SUM(CASE WHEN to_id = :user_id THEN 1 ELSE 0 END) as messages_received
+               SUM(CASE WHEN from_id = ? THEN 1 ELSE 0 END) as messages_sent,
+               SUM(CASE WHEN to_id = ? THEN 1 ELSE 0 END) as messages_received
         FROM Wo_Messages
-        WHERE from_id = :user_id OR to_id = :user_id
+        WHERE from_id = ? OR to_id = ?
     ");
-    $stmt->execute(['user_id' => $user_id]);
+    $stmt->execute([$user_id, $user_id, $user_id, $user_id]);
     $message_stats = $stmt->fetch();
 
     // ==================== MEDIA STATISTICS ====================
     $stmt = $db->prepare("
         SELECT COUNT(*) as media_files_count
         FROM Wo_Messages
-        WHERE (from_id = :user_id OR to_id = :user_id)
+        WHERE (from_id = ? OR to_id = ?)
           AND media IS NOT NULL AND media != ''
     ");
-    $stmt->execute(['user_id' => $user_id]);
+    $stmt->execute([$user_id, $user_id]);
     $media_stats = $stmt->fetch();
 
     // ==================== GROUP & CHANNEL COUNTS ====================
     $stmt = $db->prepare("
         SELECT COUNT(*) as groups_count
         FROM Wo_Groups
-        WHERE user_id = :user_id OR id IN (
-            SELECT group_id FROM Wo_GroupMembers WHERE user_id = :user_id
+        WHERE user_id = ? OR id IN (
+            SELECT group_id FROM Wo_GroupMembers WHERE user_id = ?
         )
     ");
-    $stmt->execute(['user_id' => $user_id]);
+    $stmt->execute([$user_id, $user_id]);
     $groups_count = $stmt->fetchColumn();
 
     $stmt = $db->prepare("
         SELECT COUNT(*) as channels_count
         FROM Wo_Channels
-        WHERE user_id = :user_id OR id IN (
-            SELECT channel_id FROM Wo_ChannelSubscribers WHERE user_id = :user_id
+        WHERE user_id = ? OR id IN (
+            SELECT channel_id FROM Wo_ChannelSubscribers WHERE user_id = ?
         )
     ");
-    $stmt->execute(['user_id' => $user_id]);
+    $stmt->execute([$user_id, $user_id]);
     $channels_count = $stmt->fetchColumn();
 
     // ==================== BACKUP STORAGE ====================

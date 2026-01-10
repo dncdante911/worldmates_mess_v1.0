@@ -56,8 +56,8 @@ try {
 
     // ==================== MESSAGES ====================
     $stmt = $db->prepare("
-        SELECT id, from_id, to_id, text, media, media_file_names,
-               time, seen, deleted_fs1, deleted_fs2,
+        SELECT id, from_id, to_id, text, media, mediaFileNames,
+               time, seen, deleted_one, deleted_two,
                product_id, lat, lng, reply_id, story_id
         FROM Wo_Messages
         WHERE from_id = ? OR to_id = ?

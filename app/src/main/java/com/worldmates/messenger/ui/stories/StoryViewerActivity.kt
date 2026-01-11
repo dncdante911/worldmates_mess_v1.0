@@ -636,7 +636,10 @@ fun CommentsBottomSheet(
                     .weight(1f)
                     .heightIn(max = 400.dp)
             ) {
-                items(comments) { comment ->
+                items(
+                    items = comments,
+                    key = { comment -> comment.id }
+                ) { comment ->
                     CommentItem(
                         comment = comment,
                         onDelete = { onDeleteComment(comment.id) }
@@ -766,7 +769,10 @@ fun ViewersBottomSheet(
             LazyColumn(
                 modifier = Modifier.heightIn(max = 500.dp)
             ) {
-                items(viewers) { viewer ->
+                items(
+                    items = viewers,
+                    key = { viewer -> viewer.userId }
+                ) { viewer ->
                     ViewerItem(viewer = viewer)
                 }
             }
@@ -869,8 +875,8 @@ fun VideoPlayer(
     val context = LocalContext.current
     var errorState by remember { mutableStateOf<String?>(null) }
 
-    // Create ExoPlayer instance with error handling - use Unit as key to prevent recreation
-    val exoPlayer = remember(Unit) {
+    // Create ExoPlayer instance with error handling - use videoUrl as key for proper lifecycle
+    val exoPlayer = remember(videoUrl) {
         try {
             android.util.Log.d("VideoPlayer", "🎬 Creating ExoPlayer for URL: $videoUrl")
 
@@ -933,10 +939,10 @@ fun VideoPlayer(
         }
     }
 
-    // Clean up player when composable is disposed - use Unit to dispose only once
-    DisposableEffect(Unit) {
+    // Clean up player when composable is disposed or videoUrl changes
+    DisposableEffect(videoUrl) {
         onDispose {
-            android.util.Log.d("VideoPlayer", "🗑️ Disposing ExoPlayer")
+            android.util.Log.d("VideoPlayer", "🗑️ Disposing ExoPlayer for $videoUrl")
             exoPlayer?.release()
         }
     }

@@ -32,6 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material3.ripple
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
@@ -360,13 +363,21 @@ fun StoryViewerScreen(
                 // Footer з діями
                 StoryFooter(
                     story = story,
-                    onReactionClick = { showReactions = true },
+                    onReactionClick = {
+                        android.util.Log.d("StoryViewer", "Reactions clicked for story: ${story.id}")
+                        showReactions = true
+                    },
                     onCommentClick = {
+                        android.util.Log.d("StoryViewer", "Comments clicked for story: ${story.id}")
                         viewModel.loadComments(story.id)
                         showComments = true
                     },
-                    onShareClick = { /* TODO: Share */ },
+                    onShareClick = {
+                        android.util.Log.d("StoryViewer", "Share clicked for story: ${story.id}")
+                        // TODO: Implement share functionality
+                    },
                     onViewsClick = {
+                        android.util.Log.d("StoryViewer", "Views clicked for story: ${story.id}, isOwn: ${story.userId == UserSession.userId}")
                         if (story.userId == UserSession.userId) {
                             viewModel.loadStoryViews(story.id)
                             showViewers = true
@@ -643,7 +654,10 @@ fun StoryActionButton(
     // WORLDMATES: карточний стиль з анімаціями та ефектами
     // TELEGRAM: мінімалістичний плоский стиль
     
-    var isPressed by remember { mutableStateOf(false) }
+    // FIXED: Використовуємо InteractionSource для відслідковування стану натискання
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
         animationSpec = spring(
@@ -665,17 +679,12 @@ fun StoryActionButton(
                 scaleY = scale
             }
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)  // Using default Material3 ripple
+            .clickable(
+                onClick = onClick,
+                interactionSource = interactionSource,
+                indication = androidx.compose.material3.ripple()
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        tryAwaitRelease()
-                        isPressed = false
-                    }
-                )
-            }
     ) {
         // Іконка з легким background та glow ефектом
         Box(

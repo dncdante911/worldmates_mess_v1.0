@@ -1286,6 +1286,11 @@ fun AdvancedCustomizationSection() {
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            // Швидкі пресети
+            QuickPresetsSection(customizationViewModel)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Стиль візуальних ефектів повідомлень
             Text(
                 text = "💬 Візуальний стиль повідомлень",
@@ -1730,6 +1735,179 @@ fun FontVariantCard(
                     contentDescription = "Вибрано",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 🎯 Швидкі пресети стилів
+ */
+data class StylePreset(
+    val name: String,
+    val emoji: String,
+    val description: String,
+    val bubbleStyle: MessageBubbleStyle,
+    val animationStyle: MessageAnimationStyle,
+    val fontVariant: FontVariant
+)
+
+val quickPresets = listOf(
+    StylePreset(
+        name = "Cyberpunk",
+        emoji = "🌃",
+        description = "Neon + Futuristic + Fira Code",
+        bubbleStyle = MessageBubbleStyle.NEON,
+        animationStyle = MessageAnimationStyle.FADE,
+        fontVariant = FontVariant.FIRA_CODE
+    ),
+    StylePreset(
+        name = "Retro Wave",
+        emoji = "📼",
+        description = "Retro + Wave + Special Elite",
+        bubbleStyle = MessageBubbleStyle.RETRO,
+        animationStyle = MessageAnimationStyle.WAVE,
+        fontVariant = FontVariant.SPECIAL_ELITE
+    ),
+    StylePreset(
+        name = "Minimal Zen",
+        emoji = "☯️",
+        description = "Minimal + Fade + Raleway",
+        bubbleStyle = MessageBubbleStyle.MINIMAL,
+        animationStyle = MessageAnimationStyle.FADE,
+        fontVariant = FontVariant.RALEWAY
+    ),
+    StylePreset(
+        name = "Comic Pop",
+        emoji = "💥",
+        description = "Comic + Bounce + Architects Daughter",
+        bubbleStyle = MessageBubbleStyle.COMIC,
+        animationStyle = MessageAnimationStyle.BOUNCE,
+        fontVariant = FontVariant.ARCHITECTS_DAUGHTER
+    ),
+    StylePreset(
+        name = "Glass Blur",
+        emoji = "🪟",
+        description = "Glass + Slide + Poppins",
+        bubbleStyle = MessageBubbleStyle.GLASS,
+        animationStyle = MessageAnimationStyle.SLIDE,
+        fontVariant = FontVariant.POPPINS
+    ),
+    StylePreset(
+        name = "Soft Neo",
+        emoji = "🎭",
+        description = "Neumorphism + Scale + Comfortaa",
+        bubbleStyle = MessageBubbleStyle.NEUMORPHISM,
+        animationStyle = MessageAnimationStyle.SCALE,
+        fontVariant = FontVariant.COMFORTAA
+    )
+)
+
+@Composable
+fun QuickPresetsSection(viewModel: CustomizationViewModel) {
+    Column {
+        Text(
+            text = "⚡ Швидкі пресети",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Text(
+            text = "Готові комбінації стилів для різних настроїв",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.height(240.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(quickPresets) { preset ->
+                PresetCard(
+                    preset = preset,
+                    onClick = {
+                        viewModel.setBubbleStyle(preset.bubbleStyle)
+                        viewModel.setAnimationStyle(preset.animationStyle)
+                        viewModel.setFontVariant(preset.fontVariant)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PresetCard(
+    preset: StylePreset,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Emoji в стилізованому колі
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = preset.emoji,
+                    fontSize = 24.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = preset.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = preset.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 10.sp,
+                    maxLines = 2,
+                    lineHeight = 12.sp,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                 )
             }
         }

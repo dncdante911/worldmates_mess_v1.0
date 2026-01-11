@@ -32,6 +32,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
@@ -660,15 +665,7 @@ fun StoryActionButton(
                 scaleY = scale
             }
             .clip(RoundedCornerShape(12.dp))
-            .clickable(
-                onClick = onClick,
-                indication = rememberRipple(
-                    bounded = true,
-                    radius = 32.dp,
-                    color = Color.White.copy(alpha = 0.3f)
-                ),
-                interactionSource = remember { MutableInteractionSource() }
-            )
+            .clickable(onClick = onClick)  // Using default Material3 ripple
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .pointerInput(Unit) {
                 detectTapGestures(

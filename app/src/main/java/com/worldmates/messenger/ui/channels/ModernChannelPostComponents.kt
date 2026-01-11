@@ -45,7 +45,7 @@ fun ChannelPostCard(
             .clickable(onClick = onPostClick),
         shape = RoundedCornerShape(0.dp), // Flat for feed
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
@@ -68,7 +68,14 @@ fun ChannelPostCard(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF667eea)),
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.secondary
+                                        )
+                                    )
+                                ),
                             contentScale = ContentScale.Crop
                         )
                     } else {
@@ -76,13 +83,20 @@ fun ChannelPostCard(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF667eea)),
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.secondary
+                                        )
+                                    )
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Default.Person,
                                 contentDescription = "Author",
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -95,12 +109,12 @@ fun ChannelPostCard(
                             text = post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF2C3E50)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = formatPostTime(post.createdTime),
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -111,7 +125,7 @@ fun ChannelPostCard(
                         Icon(
                             Icons.Default.MoreVert,
                             contentDescription = "More",
-                            tint = Color.Gray
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -124,20 +138,23 @@ fun ChannelPostCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFFFF3E0), RoundedCornerShape(8.dp))
+                        .background(
+                            MaterialTheme.colorScheme.tertiaryContainer,
+                            RoundedCornerShape(8.dp)
+                        )
                         .padding(8.dp)
                 ) {
                     Icon(
                         Icons.Default.PushPin,
                         contentDescription = "Pinned",
-                        tint = Color(0xFFFF9800),
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Закріплений пост",
                         fontSize = 12.sp,
-                        color = Color(0xFFFF9800),
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -149,7 +166,7 @@ fun ChannelPostCard(
             Text(
                 text = post.text,
                 fontSize = 15.sp,
-                color = Color(0xFF2C3E50),
+                color = MaterialTheme.colorScheme.onSurface,
                 lineHeight = 22.sp
             )
 
@@ -172,14 +189,14 @@ fun ChannelPostCard(
                     Icon(
                         Icons.Default.Visibility,
                         contentDescription = "Views",
-                        tint = Color(0xFF2196F3), // Активний синій колір
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = formatCount(post.viewsCount),
                         fontSize = 13.sp,
-                        color = Color(0xFF2196F3) // Активний синій колір
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -187,7 +204,7 @@ fun ChannelPostCard(
                     Text(
                         text = "Відредаговано",
                         fontSize = 12.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
                 }
@@ -208,10 +225,16 @@ fun ChannelPostCard(
                         Surface(
                             modifier = Modifier,
                             shape = RoundedCornerShape(16.dp),
-                            color = if (reaction.userReacted) Color(0xFFE3F2FD) else Color(0xFFF5F5F5),
+                            color = if (reaction.userReacted)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
                             border = BorderStroke(
                                 1.dp,
-                                if (reaction.userReacted) Color(0xFF2196F3) else Color(0xFFE0E0E0)
+                                if (reaction.userReacted)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                             )
                         ) {
                             Row(
@@ -227,7 +250,10 @@ fun ChannelPostCard(
                                     text = "${reaction.count}",
                                     fontSize = 13.sp,
                                     fontWeight = if (reaction.userReacted) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (reaction.userReacted) Color(0xFF2196F3) else Color(0xFF757575)
+                                    color = if (reaction.userReacted)
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                 )
 
                                 // Show avatars of first 3 users who reacted
@@ -242,7 +268,11 @@ fun ChannelPostCard(
                                                     modifier = Modifier
                                                         .size(20.dp)
                                                         .clip(CircleShape)
-                                                        .border(1.dp, Color.White, CircleShape),
+                                                        .border(
+                                                            1.dp,
+                                                            MaterialTheme.colorScheme.surface,
+                                                            CircleShape
+                                                        ),
                                                     contentScale = ContentScale.Crop
                                                 )
                                             }
@@ -257,7 +287,7 @@ fun ChannelPostCard(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Divider(color = Color(0xFFEEEEEE))
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -279,7 +309,7 @@ fun ChannelPostCard(
                 }
             }
 
-            Divider(color = Color(0xFFEEEEEE))
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
 
             // Action Buttons
             Row(
@@ -505,8 +535,14 @@ fun ReactionChip(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) Color(0xFFE3F2FD) else Color(0xFFF5F5F5),
-        border = if (isSelected) BorderStroke(1.dp, Color(0xFF2196F3)) else null
+        color = if (isSelected)
+            MaterialTheme.colorScheme.primaryContainer
+        else
+            MaterialTheme.colorScheme.surfaceVariant,
+        border = if (isSelected)
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+        else
+            null
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -521,7 +557,10 @@ fun ReactionChip(
                 text = count.toString(),
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (isSelected) Color(0xFF2196F3) else Color.Gray
+                color = if (isSelected)
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -551,17 +590,24 @@ fun CommentCard(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.Top
             ) {
-                // Author Avatar (TODO: завантажувати дані користувача з API)
+                // Author Avatar
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF667eea)),
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.secondary
+                                )
+                            )
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "U",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -579,12 +625,12 @@ fun CommentCard(
                             text = "User",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF2C3E50)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = formatPostTime(comment.time),
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
 
@@ -592,7 +638,7 @@ fun CommentCard(
                     Text(
                         text = comment.text,
                         fontSize = 14.sp,
-                        color = Color(0xFF2C3E50),
+                        color = MaterialTheme.colorScheme.onSurface,
                         lineHeight = 20.sp,
                         modifier = Modifier.padding(top = 4.dp)
                     )
@@ -606,13 +652,21 @@ fun CommentCard(
                             onClick = { onReactionClick("") },
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("Реакція", fontSize = 12.sp, color = Color.Gray)
+                            Text(
+                                "Реакція",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
                         }
                         TextButton(
                             onClick = onReplyClick,
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("Відповісти", fontSize = 12.sp, color = Color.Gray)
+                            Text(
+                                "Відповісти",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
                         }
                     }
                 }
@@ -623,7 +677,7 @@ fun CommentCard(
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = Color.Gray,
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -642,7 +696,10 @@ fun SmallReactionChip(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) Color(0xFFE3F2FD) else Color(0xFFF5F5F5)
+        color = if (isSelected)
+            MaterialTheme.colorScheme.primaryContainer
+        else
+            MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -653,7 +710,10 @@ fun SmallReactionChip(
             Text(
                 text = count.toString(),
                 fontSize = 11.sp,
-                color = if (isSelected) Color(0xFF2196F3) else Color.Gray
+                color = if (isSelected)
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -671,14 +731,14 @@ fun ActionButton(
         Icon(
             icon,
             contentDescription = null,
-            tint = Color.Gray,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = label,
             fontSize = 13.sp,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
 }
@@ -849,7 +909,7 @@ fun CommentsBottomSheet(
 }
 
 /**
- * Компонент для відображення одного коментаря
+ * Компонент для відображення одного коментаря з підтримкою тем
  */
 @Composable
 fun CommentItem(
@@ -872,7 +932,14 @@ fun CommentItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    ),
                 contentScale = ContentScale.Crop
             )
         } else {
@@ -880,13 +947,20 @@ fun CommentItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Person,
                     contentDescription = "User",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(20.dp)
                 )
             }

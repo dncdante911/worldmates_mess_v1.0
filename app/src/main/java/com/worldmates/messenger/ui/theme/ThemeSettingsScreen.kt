@@ -121,6 +121,26 @@ enum class PresetBackground(
         id = "peach",
         displayName = "Персик",
         gradientColors = listOf(Color(0xFFffecd2), Color(0xFFfcb69f))
+    ),
+    FIRE(
+        id = "fire",
+        displayName = "Вогонь",
+        gradientColors = listOf(Color(0xFFFF0000), Color(0xFFFF7F00), Color(0xFFFFFF00))
+    ),
+    AURORA(
+        id = "aurora",
+        displayName = "Полярне сяйво",
+        gradientColors = listOf(Color(0xFF00FFA3), Color(0xFF03E1FF), Color(0xFFDC1FFF))
+    ),
+    CHERRY(
+        id = "cherry",
+        displayName = "Вишня",
+        gradientColors = listOf(Color(0xFFEB3349), Color(0xFFF45C43))
+    ),
+    COSMIC(
+        id = "cosmic",
+        displayName = "Космос",
+        gradientColors = listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0))
     );
 
     companion object {
@@ -1268,17 +1288,17 @@ fun AdvancedCustomizationSection() {
 
             // Стиль візуальних ефектів повідомлень
             Text(
-                text = "Візуальний стиль повідомлень",
+                text = "💬 Візуальний стиль повідомлень",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.height(480.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.height(600.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(MessageBubbleStyle.values()) { style ->
                     MessageBubbleStyleCard(
@@ -1293,7 +1313,7 @@ fun AdvancedCustomizationSection() {
 
             // Стиль анімацій
             Text(
-                text = "Стиль анімацій",
+                text = "🎬 Стиль анімацій",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -1301,7 +1321,7 @@ fun AdvancedCustomizationSection() {
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                modifier = Modifier.height(280.dp),
+                modifier = Modifier.height(240.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -1318,17 +1338,17 @@ fun AdvancedCustomizationSection() {
 
             // Варіант шрифту
             Text(
-                text = "Шрифт",
+                text = "🔤 Шрифт повідомлень",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.height(360.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.height(720.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(FontVariant.values()) { variant ->
                     FontVariantCard(
@@ -1471,57 +1491,70 @@ fun MessageBubbleStyleCard(
     onClick: () -> Unit
 ) {
     val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1f,
+        targetValue = if (isSelected) 1.08f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            stiffness = Spring.StiffnessMedium
         ),
         label = "scale"
-    )
-
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-        animationSpec = tween(300),
-        label = "borderColor"
     )
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(135.dp)
             .scale(scale)
             .border(
-                width = if (isSelected) 3.dp else 0.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(16.dp)
+                width = if (isSelected) 2.5.dp else 0.5.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
             )
-            .clickable(
-                onClick = onClick,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ),
-        shape = RoundedCornerShape(16.dp),
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            else
+                MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 8.dp else 4.dp
+            defaultElevation = if (isSelected) 6.dp else 2.dp
         )
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = style.emoji,
-                fontSize = 32.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            // Preview bubble
+            Box(
+                modifier = style.getModifier(
+                    isOwn = true,
+                    primaryColor = MaterialTheme.colorScheme.primary,
+                    secondaryColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                    .size(width = 50.dp, height = 22.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = style.emoji,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = style.displayName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 4.dp)
+                fontSize = 11.sp,
+                maxLines = 1,
+                modifier = Modifier.padding(bottom = 2.dp)
             )
 
             Text(
@@ -1529,15 +1562,18 @@ fun MessageBubbleStyleCard(
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
+                fontSize = 9.sp,
+                maxLines = 2,
+                lineHeight = 11.sp
             )
 
             if (isSelected) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Icon(
-                    imageVector = Icons.Default.CheckCircle,
+                    imageVector = Icons.Default.Check,
                     contentDescription = "Вибрано",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
@@ -1624,57 +1660,57 @@ fun FontVariantCard(
     onClick: () -> Unit
 ) {
     val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1f,
+        targetValue = if (isSelected) 1.06f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            stiffness = Spring.StiffnessMedium
         ),
         label = "scale"
-    )
-
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-        animationSpec = tween(300),
-        label = "borderColor"
     )
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(110.dp)
             .scale(scale)
             .border(
-                width = if (isSelected) 3.dp else 0.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(16.dp)
+                width = if (isSelected) 2.5.dp else 0.5.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
             )
-            .clickable(
-                onClick = onClick,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ),
-        shape = RoundedCornerShape(16.dp),
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            else
+                MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 8.dp else 4.dp
+            defaultElevation = if (isSelected) 6.dp else 2.dp
         )
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = variant.emoji,
-                fontSize = 32.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
+                fontSize = 24.sp,
+                modifier = Modifier.padding(bottom = 3.dp)
             )
 
             Text(
                 text = variant.displayName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 4.dp)
+                fontSize = 10.sp,
+                maxLines = 1,
+                modifier = Modifier.padding(bottom = 2.dp)
             )
 
             Text(
@@ -1682,15 +1718,18 @@ fun FontVariantCard(
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
+                fontSize = 8.sp,
+                maxLines = 2,
+                lineHeight = 9.sp
             )
 
             if (isSelected) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Icon(
-                    imageVector = Icons.Default.CheckCircle,
+                    imageVector = Icons.Default.Check,
                     contentDescription = "Вибрано",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }

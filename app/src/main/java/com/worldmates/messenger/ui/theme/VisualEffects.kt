@@ -28,49 +28,73 @@ enum class MessageBubbleStyle(
     MODERN(
         displayName = "Сучасний",
         emoji = "✨",
-        description = "Чистий і мінімалістичний стиль"
+        description = "Елегантний Material Design"
     ),
 
     GLASS(
         displayName = "Скляний",
         emoji = "🪟",
-        description = "Прозорі bubble з ефектом скла"
+        description = "Glassmorphism з розмиттям"
     ),
 
     GRADIENT(
         displayName = "Градієнт",
         emoji = "🌈",
-        description = "Плавні переходи кольорів"
+        description = "Яскраві кольорові переходи"
     ),
 
     NEON(
         displayName = "Неон",
         emoji = "💡",
-        description = "Яскравий неоновий ефект"
+        description = "Світіння в стилі cyberpunk"
     ),
 
     SHADOW(
         displayName = "Тіні",
         emoji = "🌑",
-        description = "М'які тіні для глибини"
+        description = "Глибокі м'які тіні"
     ),
 
     FLAT(
         displayName = "Плоский",
         emoji = "📱",
-        description = "Класичний плоский дизайн"
+        description = "Flat Design без ефектів"
     ),
 
     ROUNDED(
         displayName = "Округлий",
         emoji = "⚪",
-        description = "Максимально округлі края"
+        description = "Bubble-style з великим радіусом"
     ),
 
     MINIMAL(
         displayName = "Мінімал",
         emoji = "⬜",
-        description = "Мінімалістичний стиль iOS"
+        description = "iOS стиль з мінімалізмом"
+    ),
+
+    RETRO(
+        displayName = "Ретро",
+        emoji = "📼",
+        description = "Вінтажний стиль 80-х"
+    ),
+
+    NEUMORPHISM(
+        displayName = "Неоморфізм",
+        emoji = "🎭",
+        description = "М'який 3D-ефект"
+    ),
+
+    COMIC(
+        displayName = "Комікс",
+        emoji = "💥",
+        description = "Стиль коміксів з обводкою"
+    ),
+
+    FUTURISTIC(
+        displayName = "Футуристичний",
+        emoji = "🚀",
+        description = "Sci-fi дизайн майбутнього"
     );
 
     companion object {
@@ -112,32 +136,92 @@ enum class FontVariant(
     DEFAULT(
         displayName = "За замовчуванням",
         emoji = "📝",
-        description = "Системний шрифт"
+        description = "Системний шрифт Android"
     ),
     ROBOTO(
         displayName = "Roboto",
         emoji = "🤖",
-        description = "Сучасний і чіткий"
+        description = "Material Design класика"
     ),
     OPEN_SANS(
         displayName = "Open Sans",
         emoji = "📖",
-        description = "Відкритий і читабельний"
+        description = "Гуманістичний і читабельний"
     ),
     LATO(
         displayName = "Lato",
         emoji = "✍️",
-        description = "Елегантний і легкий"
+        description = "Елегантний sans-serif"
     ),
     MONTSERRAT(
         displayName = "Montserrat",
         emoji = "🎨",
-        description = "Геометричний і стильний"
+        description = "Геометричний Urban стиль"
     ),
     POPPINS(
         displayName = "Poppins",
         emoji = "✨",
-        description = "Модерновий і округлий"
+        description = "Геометричний з округленими краями"
+    ),
+    COMFORTAA(
+        displayName = "Comfortaa",
+        emoji = "😊",
+        description = "М'який і дружній"
+    ),
+    PACIFICO(
+        displayName = "Pacifico",
+        emoji = "🌴",
+        description = "Серфінг-стиль рукописний"
+    ),
+    PLAYFAIR(
+        displayName = "Playfair Display",
+        emoji = "👑",
+        description = "Елегантний класичний serif"
+    ),
+    RALEWAY(
+        displayName = "Raleway",
+        emoji = "💎",
+        description = "Тонкий і витончений"
+    ),
+    UBUNTU(
+        displayName = "Ubuntu",
+        emoji = "🐧",
+        description = "Технологічний Linux стиль"
+    ),
+    FIRA_CODE(
+        displayName = "Fira Code",
+        emoji = "💻",
+        description = "Моноширинний для кодерів"
+    ),
+    SATISFY(
+        displayName = "Satisfy",
+        emoji = "🎭",
+        description = "Каліграфічний рукописний"
+    ),
+    SHADOWS_INTO_LIGHT(
+        displayName = "Shadows Into Light",
+        emoji = "✏️",
+        description = "Неформальний рукописний"
+    ),
+    CREEPSTER(
+        displayName = "Creepster",
+        emoji = "🎃",
+        description = "Готичний Horror стиль"
+    ),
+    SPECIAL_ELITE(
+        displayName = "Special Elite",
+        emoji = "⌨️",
+        description = "Друкарська машинка ретро"
+    ),
+    ARCHITECTS_DAUGHTER(
+        displayName = "Architects Daughter",
+        emoji = "📐",
+        description = "Архітектурний ескіз"
+    ),
+    CAVEAT(
+        displayName = "Caveat",
+        emoji = "🖊️",
+        description = "Швидкий рукописний стиль"
     );
 
     companion object {
@@ -181,7 +265,11 @@ fun MessageBubbleStyle.getShape(): Shape {
         MessageBubbleStyle.ROUNDED -> RoundedCornerShape(28.dp)
         MessageBubbleStyle.MODERN -> RoundedCornerShape(20.dp)
         MessageBubbleStyle.MINIMAL -> RoundedCornerShape(18.dp)
-        MessageBubbleStyle.FLAT -> RoundedCornerShape(12.dp)
+        MessageBubbleStyle.FLAT -> RoundedCornerShape(8.dp)
+        MessageBubbleStyle.RETRO -> RoundedCornerShape(4.dp)
+        MessageBubbleStyle.COMIC -> RoundedCornerShape(16.dp)
+        MessageBubbleStyle.FUTURISTIC -> RoundedCornerShape(topStart = 2.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 2.dp)
+        MessageBubbleStyle.NEUMORPHISM -> RoundedCornerShape(24.dp)
         else -> RoundedCornerShape(20.dp)
     }
 }
@@ -218,17 +306,65 @@ fun MessageBubbleStyle.getModifier(
             .clip(getShape())
             .neonEffect(
                 glowColor = if (isOwn) primaryColor else Color.Gray,
-                glowRadius = 4.dp
+                glowRadius = 8.dp
             )
             .background(baseColor)
 
         MessageBubbleStyle.SHADOW -> Modifier
             .shadow(
-                elevation = 4.dp,
+                elevation = 8.dp,
                 shape = getShape(),
-                spotColor = Color.Black.copy(alpha = 0.15f)
+                spotColor = Color.Black.copy(alpha = 0.25f)
             )
             .background(baseColor, shape = getShape())
+
+        MessageBubbleStyle.RETRO -> Modifier
+            .clip(getShape())
+            .background(
+                brush = Brush.linearGradient(
+                    colors = if (isOwn) {
+                        listOf(Color(0xFFFF6B9D), Color(0xFFC239B3))
+                    } else {
+                        listOf(Color(0xFF00B4DB), Color(0xFF0083B0))
+                    }
+                )
+            )
+            .border(2.dp, Color.Black.copy(alpha = 0.3f), getShape())
+
+        MessageBubbleStyle.NEUMORPHISM -> Modifier
+            .shadow(
+                elevation = 10.dp,
+                shape = getShape(),
+                spotColor = Color.White.copy(alpha = 0.8f),
+                ambientColor = Color.Black.copy(alpha = 0.1f)
+            )
+            .background(baseColor, shape = getShape())
+            .shadow(
+                elevation = -2.dp,
+                shape = getShape(),
+                spotColor = Color.Black.copy(alpha = 0.2f)
+            )
+
+        MessageBubbleStyle.COMIC -> Modifier
+            .clip(getShape())
+            .background(baseColor)
+            .border(3.dp, Color.Black, getShape())
+
+        MessageBubbleStyle.FUTURISTIC -> Modifier
+            .clip(getShape())
+            .background(
+                brush = Brush.linearGradient(
+                    colors = if (isOwn) {
+                        listOf(Color(0xFF00F5FF), Color(0xFF0099FF), Color(0xFF6600FF))
+                    } else {
+                        listOf(Color(0xFF1A1A2E), Color(0xFF16213E))
+                    }
+                )
+            )
+            .graphicsLayer {
+                shadowElevation = 4.dp.toPx()
+                shape = RoundedCornerShape(topStart = 2.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 2.dp)
+            }
 
         MessageBubbleStyle.FLAT, MessageBubbleStyle.MODERN,
         MessageBubbleStyle.ROUNDED, MessageBubbleStyle.MINIMAL -> Modifier

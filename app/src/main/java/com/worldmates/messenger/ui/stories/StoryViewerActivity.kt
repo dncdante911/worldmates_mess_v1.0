@@ -443,18 +443,21 @@ fun StoryHeader(
     uiStyle: UIStyle = UIStyle.WORLDMATES,
     modifier: Modifier = Modifier
 ) {
-    // WORLDMATES: карточний стиль з градієнтом
+    // WORLDMATES: карточний стиль з красивим градієнтом
     // TELEGRAM: мінімалістичний плоский стиль
     val backgroundBrush = when (uiStyle) {
         UIStyle.WORLDMATES -> Brush.verticalGradient(
             colors = listOf(
-                Color.Black.copy(alpha = 0.7f),
+                Color.Black.copy(alpha = 0.9f),
+                Color.Black.copy(alpha = 0.75f),
+                Color.Black.copy(alpha = 0.4f),
                 Color.Transparent
             )
         )
         UIStyle.TELEGRAM -> Brush.verticalGradient(
             colors = listOf(
                 Color.Black.copy(alpha = 0.5f),
+                Color.Black.copy(alpha = 0.3f),
                 Color.Transparent
             )
         )
@@ -527,18 +530,23 @@ fun StoryFooter(
     uiStyle: UIStyle = UIStyle.WORLDMATES,
     modifier: Modifier = Modifier
 ) {
-    // WORLDMATES: карточний стиль з градієнтом та анімаціями
+    // WORLDMATES: карточний стиль з красивим градієнтом
     // TELEGRAM: мінімалістичний плоский стиль
     val backgroundBrush = when (uiStyle) {
         UIStyle.WORLDMATES -> Brush.verticalGradient(
             colors = listOf(
                 Color.Transparent,
-                Color.Black.copy(alpha = 0.7f)
-            )
+                Color.Black.copy(alpha = 0.4f),
+                Color.Black.copy(alpha = 0.75f),
+                Color.Black.copy(alpha = 0.9f)
+            ),
+            startY = 0f,
+            endY = Float.POSITIVE_INFINITY
         )
         UIStyle.TELEGRAM -> Brush.verticalGradient(
             colors = listOf(
                 Color.Transparent,
+                Color.Black.copy(alpha = 0.3f),
                 Color.Black.copy(alpha = 0.5f)
             )
         )
@@ -586,7 +594,7 @@ fun StoryFooter(
                 uiStyle = uiStyle
             )
 
-            Spacer(modifier = Modifier.width(24.dp))  // Added spacer for consistent spacing
+            Spacer(modifier = Modifier.width(16.dp))  // Optimized spacing
 
             // Коментарі
             StoryActionButton(
@@ -596,7 +604,7 @@ fun StoryFooter(
                 uiStyle = uiStyle
             )
 
-            Spacer(modifier = Modifier.width(24.dp))  // Added spacer for consistent spacing
+            Spacer(modifier = Modifier.width(16.dp))  // Optimized spacing
 
             // Поширити
             StoryActionButton(
@@ -608,7 +616,7 @@ fun StoryFooter(
 
             // Перегляди (тільки для власних stories)
             if (isOwnStory) {
-                Spacer(modifier = Modifier.width(24.dp))  // Added spacer for consistent spacing
+                Spacer(modifier = Modifier.width(16.dp))  // Optimized spacing
                 StoryActionButton(
                     icon = Icons.Default.Visibility,
                     text = "${story.viewsCount}",
@@ -627,27 +635,99 @@ fun StoryActionButton(
     onClick: () -> Unit,
     uiStyle: UIStyle = UIStyle.WORLDMATES
 ) {
-    // WORLDMATES: карточний стиль з анімаціями
-    // TELEGRAM: мінімалістичний стиль
+    // WORLDMATES: карточний стиль з анімаціями та ефектами
+    // TELEGRAM: мінімалістичний плоский стиль
+    
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "button_scale"
+    )
+    
+    val iconSize = if (uiStyle == UIStyle.WORLDMATES) 26.dp else 24.dp
+    val fontSize = if (uiStyle == UIStyle.WORLDMATES) 13.sp else 12.sp
+    val fontWeight = if (uiStyle == UIStyle.WORLDMATES) FontWeight.SemiBold else FontWeight.Normal
+    
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(8.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(
+                onClick = onClick,
+                indication = rememberRipple(
+                    bounded = true,
+                    radius = 32.dp,
+                    color = Color.White.copy(alpha = 0.3f)
+                ),
+                interactionSource = remember { MutableInteractionSource() }
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    }
+                )
+            }
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(if (uiStyle == UIStyle.WORLDMATES) 28.dp else 24.dp)
-        )
+        // Іконка з легким background та glow ефектом
+        Box(
+            modifier = Modifier
+                .size(iconSize + 16.dp)
+                .then(
+                    if (uiStyle == UIStyle.WORLDMATES) {
+                        Modifier.background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.White.copy(alpha = 0.05f),
+                                    Color.Transparent
+                                )
+                            ),
+                            shape = CircleShape
+                        )
+                    } else {
+                        Modifier
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+        
         if (text.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = text,
                 color = Color.White,
-                fontSize = if (uiStyle == UIStyle.WORLDMATES) 13.sp else 12.sp,
-                fontWeight = if (uiStyle == UIStyle.WORLDMATES) FontWeight.Medium else FontWeight.Normal,
-                modifier = Modifier.padding(top = 4.dp)
+                fontSize = fontSize,
+                fontWeight = fontWeight,
+                style = if (uiStyle == UIStyle.WORLDMATES) {
+                    MaterialTheme.typography.labelMedium.copy(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.5f),
+                            offset = Offset(0f, 1f),
+                            blurRadius = 2f
+                        )
+                    )
+                } else {
+                    MaterialTheme.typography.labelMedium
+                }
             )
         }
     }

@@ -87,8 +87,10 @@ $error_code = 0;
 $error_message = '';
 
 // Process reaction
-$reactions_types = array_keys($wo['reactions_types']);
-if (!empty($_POST['id']) && is_numeric($_POST['id']) && $_POST['id'] > 0 && !empty($_POST['reaction']) && in_array($_POST['reaction'], $reactions_types)) {
+// Допустимі типи реакцій
+$valid_reactions = array('like', 'love', 'haha', 'wow', 'sad', 'angry');
+
+if (!empty($_POST['id']) && is_numeric($_POST['id']) && $_POST['id'] > 0 && !empty($_POST['reaction']) && in_array($_POST['reaction'], $valid_reactions)) {
 	$story_id = Wo_Secure($_POST['id']);
 	$reaction_type = Wo_Secure($_POST['reaction']);
 

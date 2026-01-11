@@ -267,6 +267,10 @@ class StoryRepository(private val context: Context) {
                 val filtered = response.stories.filter { !it.isExpired() }
                 Log.d(TAG, "getUserStories: Повертаємо ${filtered.size} активних stories")
 
+                // FIXED: Оновлюємо список stories для відображення всіх stories користувача
+                _stories.value = filtered
+                Log.d(TAG, "✅ _stories updated with ${filtered.size} stories")
+
                 // Set first story as current
                 _currentStory.value = filtered.firstOrNull()
                 if (_currentStory.value != null) {

@@ -47,6 +47,11 @@ fun PersonalStoriesRow(
     val ownStories = stories.filter { it.userId == currentUserId }
     val hasOwnStories = ownStories.isNotEmpty()
 
+    // Список stories згрупованих по користувачам (виключаємо власні stories)
+    val groupedStories = remember(stories, currentUserId) {
+        stories.filter { it.userId != currentUserId }.groupBy { it.userId }
+    }
+
     LazyRow(
         modifier = modifier
             .fillMaxWidth()
@@ -70,10 +75,6 @@ fun PersonalStoriesRow(
             )
         }
 
-        // Список stories згрупованих по користувачам (виключаємо власні stories)
-        val groupedStories = remember(stories, currentUserId) {
-            stories.filter { it.userId != currentUserId }.groupBy { it.userId }
-        }
         items(
             items = groupedStories.entries.toList(),
             key = { (userId, _) -> userId }
@@ -265,6 +266,10 @@ fun CompactStoriesRow(
 ) {
     val context = LocalContext.current
 
+    val groupedStories = remember(stories) {
+        stories.groupBy { it.userId }
+    }
+
     LazyRow(
         modifier = modifier
             .fillMaxWidth()
@@ -272,9 +277,6 @@ fun CompactStoriesRow(
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val groupedStories = remember(stories) {
-            stories.groupBy { it.userId }
-        }
         items(
             items = groupedStories.entries.toList(),
             key = { (userId, _) -> userId }

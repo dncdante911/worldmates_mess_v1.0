@@ -172,15 +172,22 @@ fun StoryViewerScreen(
             val mediaType = story.mediaItems.firstOrNull()?.type
             val videoDuration = story.mediaItems.firstOrNull()?.duration ?: 0
 
+            // Перевіряємо premium статус
+            val isPremiumUser = com.worldmates.messenger.data.UserSessionManager.isPremium()
+
+            // Максимальна тривалість для відео та фото
+            val maxVideoDuration = if (isPremiumUser) 60000L else 30000L  // 60/30 секунд
+            val photoDuration = if (isPremiumUser) 40000L else 20000L     // 40/20 секунд
+
             val duration = if (mediaType == "video") {
-                // Для видео: используем duration из медиа, но не меньше 10 секунд
+                // Для видео: використовуємо duration з медіа, але обмежуємо максимумом
                 val durationMs = videoDuration.toLong() * 1000L
-                maxOf(durationMs, 10000L)
+                minOf(maxOf(durationMs, 10000L), maxVideoDuration)
             } else {
-                20000L // 20 секунд для фото
+                photoDuration // Тривалість для фото
             }
 
-            android.util.Log.d("StoryViewer", "Progress duration: ${duration}ms for type=$mediaType")
+            android.util.Log.d("StoryViewer", "Progress duration: ${duration}ms for type=$mediaType (premium=$isPremiumUser)")
 
             val steps = 100
             val stepDelay = duration / steps

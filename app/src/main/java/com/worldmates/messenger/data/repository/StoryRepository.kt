@@ -193,8 +193,13 @@ class StoryRepository(private val context: Context) {
                     Log.d(TAG, "Story[$index]: id=${story.id}, userId=${story.userId}, images=${story.images?.size}, videos=${story.videos?.size}")
                 }
 
-                _stories.value = response.stories.filter { !it.isExpired() }
-                Log.d(TAG, "После фильтрации: ${_stories.value.size} активних stories")
+                // Фільтруємо неактивні та дублікати
+                val uniqueActiveStories = response.stories
+                    .filter { !it.isExpired() }
+                    .distinctBy { it.id }
+
+                _stories.value = uniqueActiveStories
+                Log.d(TAG, "Після фільтрації та видалення дублікатів: ${_stories.value.size} унікальних активних stories")
                 Result.success(_stories.value)
             } else {
                 Log.e(TAG, "API error: ${response.errorMessage ?: "Unknown error"}")

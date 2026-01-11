@@ -42,10 +42,16 @@ fun ChannelPostCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
             .clickable(onClick = onPostClick),
-        shape = RoundedCornerShape(0.dp), // Flat for feed
+        shape = RoundedCornerShape(20.dp), // Современные rounded corners
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp,
+            hoveredElevation = 6.dp
         )
     ) {
         Column(
@@ -53,121 +59,180 @@ fun ChannelPostCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Post Header
+            // Post Header - Современный стильный дизайн
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Аватар автора
-                    if (!post.authorAvatar.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = post.authorAvatar,
-                            contentDescription = "Author Avatar",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.primary,
-                                            MaterialTheme.colorScheme.secondary
-                                        )
-                                    )
-                                ),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.primary,
-                                            MaterialTheme.colorScheme.secondary
-                                        )
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = "Author",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(20.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Аватар автора с красивой тенью и border
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                    ) {
+                        if (!post.authorAvatar.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = post.authorAvatar,
+                                contentDescription = "Author Avatar",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .border(
+                                        width = 2.dp,
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary,
+                                                MaterialTheme.colorScheme.tertiary
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    ),
+                                contentScale = ContentScale.Crop
                             )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .border(
+                                        width = 2.dp,
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary,
+                                                MaterialTheme.colorScheme.tertiary
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    )
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primaryContainer,
+                                                MaterialTheme.colorScheme.primary
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = "Author",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
                         Text(
                             text = post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            letterSpacing = 0.15.sp
                         )
-                        Text(
-                            text = formatPostTime(post.createdTime),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = formatPostTime(post.createdTime),
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                fontWeight = FontWeight.Medium
+                            )
+                            if (post.isEdited) {
+                                Text(
+                                    text = "•",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                )
+                                Text(
+                                    text = "edited",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
                     }
                 }
 
-                // More options
+                // More options - стильная кнопка
                 if (canEdit) {
-                    IconButton(onClick = onMoreClick) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "More",
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    Surface(
+                        onClick = onMoreClick,
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Pinned indicator - стильный badge
+            if (post.isPinned) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.PushPin,
+                                    contentDescription = "Pinned",
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Закріплений пост",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 0.2.sp
                         )
                     }
                 }
             }
 
-            // Pinned indicator
-            if (post.isPinned) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            MaterialTheme.colorScheme.tertiaryContainer,
-                            RoundedCornerShape(8.dp)
-                        )
-                        .padding(8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.PushPin,
-                        contentDescription = "Pinned",
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Закріплений пост",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Post Text
+            // Post Text - улучшенная типографика
             Text(
                 text = post.text,
                 fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onSurface,
-                lineHeight = 22.sp
+                lineHeight = 24.sp,
+                letterSpacing = 0.15.sp,
+                style = MaterialTheme.typography.bodyLarge
             )
 
             // Media Gallery
@@ -176,100 +241,99 @@ fun ChannelPostCard(
                 PostMediaGallery(media = post.media!!)
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Post Stats
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Post Stats - стильный badge
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Views
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
                     Icon(
                         Icons.Default.Visibility,
                         contentDescription = "Views",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = formatCount(post.viewsCount),
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = formatCount(post.viewsCount),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                if (post.isEdited) {
-                    Text(
-                        text = "Відредаговано",
+                        text = "переглядів",
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Display existing reactions with user info
+            // Display existing reactions - стильные pill badges
             if (!post.reactions.isNullOrEmpty()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     post.reactions.forEach { reaction ->
                         Surface(
-                            modifier = Modifier,
-                            shape = RoundedCornerShape(16.dp),
+                            onClick = { onReactionClick(reaction.emoji) },
+                            shape = RoundedCornerShape(20.dp),
                             color = if (reaction.userReacted)
                                 MaterialTheme.colorScheme.primaryContainer
                             else
                                 MaterialTheme.colorScheme.surfaceVariant,
                             border = BorderStroke(
-                                1.dp,
-                                if (reaction.userReacted)
+                                width = if (reaction.userReacted) 2.dp else 1.dp,
+                                color = if (reaction.userReacted)
                                     MaterialTheme.colorScheme.primary
                                 else
-                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                            )
+                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            ),
+                            shadowElevation = if (reaction.userReacted) 2.dp else 0.dp
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = reaction.emoji,
-                                    fontSize = 16.sp
+                                    fontSize = 18.sp
                                 )
                                 Text(
                                     text = "${reaction.count}",
-                                    fontSize = 13.sp,
-                                    fontWeight = if (reaction.userReacted) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (reaction.userReacted) FontWeight.Bold else FontWeight.SemiBold,
                                     color = if (reaction.userReacted)
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                     else
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                 )
 
-                                // Show avatars of first 3 users who reacted
+                                // Show avatars of first 2 users who reacted
                                 if (!reaction.recentUsers.isNullOrEmpty()) {
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-                                        reaction.recentUsers.take(3).forEach { user ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+                                        reaction.recentUsers.take(2).forEach { user ->
                                             if (!user.avatar.isNullOrEmpty()) {
                                                 AsyncImage(
                                                     model = user.avatar,
                                                     contentDescription = user.username,
                                                     modifier = Modifier
-                                                        .size(20.dp)
+                                                        .size(18.dp)
                                                         .clip(CircleShape)
                                                         .border(
-                                                            1.dp,
+                                                            1.5.dp,
                                                             MaterialTheme.colorScheme.surface,
                                                             CircleShape
                                                         ),
@@ -284,49 +348,115 @@ fun ChannelPostCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
-            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+            Divider(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                thickness = 1.dp
+            )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Quick Reactions
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                listOf("👍", "❤️", "🔥", "😂", "😮", "😢").forEach { emoji ->
-                    Text(
-                        text = emoji,
-                        fontSize = 24.sp,
-                        modifier = Modifier
-                            .clickable { onReactionClick(emoji) }
-                            .padding(8.dp)
-                    )
-                }
-            }
-
-            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
-
-            // Action Buttons
+            // Quick Reactions - стильные кнопки
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ActionButton(
-                    icon = Icons.Default.Comment,
-                    label = if (post.commentsCount > 0) formatCount(post.commentsCount) else "Коментарі",
-                    onClick = onCommentsClick
-                )
+                listOf("👍", "❤️", "🔥", "😂", "😮", "😢").forEach { emoji ->
+                    Surface(
+                        onClick = { onReactionClick(emoji) },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = emoji,
+                                fontSize = 22.sp
+                            )
+                        }
+                    }
+                }
+            }
 
-                ActionButton(
-                    icon = Icons.Default.Share,
-                    label = "Поділитись",
-                    onClick = onShareClick
-                )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Divider(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                thickness = 1.dp
+            )
+
+            // Action Buttons - стильные современные кнопки
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Comments button
+                Surface(
+                    onClick = onCommentsClick,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Comment,
+                            contentDescription = "Comments",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        if (post.commentsCount > 0) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = formatCount(post.commentsCount),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Коментарі",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+
+                // Share button
+                Surface(
+                    onClick = onShareClick,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Поділитись",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
             }
         }
     }

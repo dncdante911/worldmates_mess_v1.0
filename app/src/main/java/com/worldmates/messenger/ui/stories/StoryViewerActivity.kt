@@ -49,6 +49,8 @@ import com.worldmates.messenger.data.model.Story
 import com.worldmates.messenger.data.model.StoryComment
 import com.worldmates.messenger.network.StoryReactionType
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
+import com.worldmates.messenger.ui.preferences.UIStyle
+import com.worldmates.messenger.ui.preferences.rememberUIStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -56,6 +58,7 @@ import java.util.*
 
 /**
  * Activity для перегляду Stories (як особистих, так і канальних)
+ * Підтримує два стилі UI: WORLDMATES (карточний з градієнтами) та TELEGRAM (мінімалістичний)
  */
 class StoryViewerActivity : AppCompatActivity() {
 
@@ -99,6 +102,7 @@ fun StoryViewerScreen(
     isChannelStory: Boolean,
     onClose: () -> Unit
 ) {
+    val uiStyle = rememberUIStyle()
     val allStories by viewModel.stories.collectAsState()
     val currentStory by viewModel.currentStory.collectAsState()
     val comments by viewModel.comments.collectAsState()
@@ -342,6 +346,7 @@ fun StoryViewerScreen(
                     story = story,
                     isChannelStory = isChannelStory,
                     onClose = onClose,
+                    uiStyle = uiStyle,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 40.dp)
@@ -363,6 +368,7 @@ fun StoryViewerScreen(
                         }
                     },
                     isOwnStory = story.userId == UserSession.userId,
+                    uiStyle = uiStyle,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 16.dp)
@@ -402,14 +408,16 @@ fun StoryViewerScreen(
             },
             onDeleteComment = { commentId ->
                 viewModel.deleteComment(commentId)
-            }
+            },
+            uiStyle = uiStyle
         )
     }
 
     if (showViewers) {
         ViewersBottomSheet(
             viewers = viewers,
-            onDismiss = { showViewers = false }
+            onDismiss = { showViewers = false },
+            uiStyle = uiStyle
         )
     }
 
@@ -421,7 +429,8 @@ fun StoryViewerScreen(
                     viewModel.reactToStory(it.id, reactionType)
                 }
                 showReactions = false
-            }
+            },
+            uiStyle = uiStyle
         )
     }
 }
@@ -431,19 +440,30 @@ fun StoryHeader(
     story: Story,
     isChannelStory: Boolean,
     onClose: () -> Unit,
+    uiStyle: UIStyle = UIStyle.WORLDMATES,
     modifier: Modifier = Modifier
 ) {
+    // WORLDMATES: карточний стиль з градієнтом
+    // TELEGRAM: мінімалістичний плоский стиль
+    val backgroundBrush = when (uiStyle) {
+        UIStyle.WORLDMATES -> Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.7f),
+                Color.Transparent
+            )
+        )
+        UIStyle.TELEGRAM -> Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.5f),
+                Color.Transparent
+            )
+        )
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.6f),
-                        Color.Transparent
-                    )
-                )
-            )
+            .background(backgroundBrush)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -504,19 +524,30 @@ fun StoryFooter(
     onShareClick: () -> Unit,
     onViewsClick: () -> Unit,
     isOwnStory: Boolean,
+    uiStyle: UIStyle = UIStyle.WORLDMATES,
     modifier: Modifier = Modifier
 ) {
+    // WORLDMATES: карточний стиль з градієнтом та анімаціями
+    // TELEGRAM: мінімалістичний плоский стиль
+    val backgroundBrush = when (uiStyle) {
+        UIStyle.WORLDMATES -> Brush.verticalGradient(
+            colors = listOf(
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.7f)
+            )
+        )
+        UIStyle.TELEGRAM -> Brush.verticalGradient(
+            colors = listOf(
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.5f)
+            )
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color.Black.copy(alpha = 0.6f)
-                    )
-                )
-            )
+            .background(backgroundBrush)
             .padding(16.dp)
     ) {
         // Опис story
@@ -541,39 +572,48 @@ fun StoryFooter(
             }
         }
 
-        // Дії
+        // Дії - FIXED: вирівнювання кнопок
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Start,  // Changed from SpaceBetween to Start
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Реакції
             StoryActionButton(
                 icon = Icons.Default.Favorite,
                 text = "${story.reactions.total}",
-                onClick = onReactionClick
+                onClick = onReactionClick,
+                uiStyle = uiStyle
             )
+
+            Spacer(modifier = Modifier.width(24.dp))  // Added spacer for consistent spacing
 
             // Коментарі
             StoryActionButton(
                 icon = Icons.Default.Chat,
                 text = "${story.commentsCount}",
-                onClick = onCommentClick
+                onClick = onCommentClick,
+                uiStyle = uiStyle
             )
+
+            Spacer(modifier = Modifier.width(24.dp))  // Added spacer for consistent spacing
 
             // Поширити
             StoryActionButton(
                 icon = Icons.Default.Share,
                 text = "",
-                onClick = onShareClick
+                onClick = onShareClick,
+                uiStyle = uiStyle
             )
 
             // Перегляди (тільки для власних stories)
             if (isOwnStory) {
+                Spacer(modifier = Modifier.width(24.dp))  // Added spacer for consistent spacing
                 StoryActionButton(
                     icon = Icons.Default.Visibility,
                     text = "${story.viewsCount}",
-                    onClick = onViewsClick
+                    onClick = onViewsClick,
+                    uiStyle = uiStyle
                 )
             }
         }
@@ -584,8 +624,11 @@ fun StoryFooter(
 fun StoryActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    uiStyle: UIStyle = UIStyle.WORLDMATES
 ) {
+    // WORLDMATES: карточний стиль з анімаціями
+    // TELEGRAM: мінімалістичний стиль
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -596,13 +639,14 @@ fun StoryActionButton(
             imageVector = icon,
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(if (uiStyle == UIStyle.WORLDMATES) 28.dp else 24.dp)
         )
         if (text.isNotEmpty()) {
             Text(
                 text = text,
                 color = Color.White,
-                fontSize = 12.sp,
+                fontSize = if (uiStyle == UIStyle.WORLDMATES) 13.sp else 12.sp,
+                fontWeight = if (uiStyle == UIStyle.WORLDMATES) FontWeight.Medium else FontWeight.Normal,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -615,15 +659,23 @@ fun CommentsBottomSheet(
     comments: List<StoryComment>,
     onDismiss: () -> Unit,
     onAddComment: (String) -> Unit,
-    onDeleteComment: (Long) -> Unit
+    onDeleteComment: (Long) -> Unit,
+    uiStyle: UIStyle = UIStyle.WORLDMATES
 ) {
     val sheetState = rememberModalBottomSheetState()
     var commentText by remember { mutableStateOf("") }
 
+    // WORLDMATES: карточний стиль
+    // TELEGRAM: мінімалістичний стиль
+    val containerColor = when (uiStyle) {
+        UIStyle.WORLDMATES -> MaterialTheme.colorScheme.surface
+        UIStyle.TELEGRAM -> MaterialTheme.colorScheme.background
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = containerColor
     ) {
         Column(
             modifier = Modifier
@@ -649,7 +701,8 @@ fun CommentsBottomSheet(
                 ) { comment ->
                     CommentItem(
                         comment = comment,
-                        onDelete = { onDeleteComment(comment.id) }
+                        onDelete = { onDeleteComment(comment.id) },
+                        uiStyle = uiStyle
                     )
                 }
             }
@@ -668,6 +721,8 @@ fun CommentsBottomSheet(
                     placeholder = { Text("Додати коментар...") },
                     maxLines = 3
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 IconButton(
                     onClick = {
@@ -696,7 +751,8 @@ fun CommentsBottomSheet(
 @Composable
 fun CommentItem(
     comment: StoryComment,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    uiStyle: UIStyle = UIStyle.WORLDMATES
 ) {
     Row(
         modifier = Modifier
@@ -752,14 +808,20 @@ fun CommentItem(
 @Composable
 fun ViewersBottomSheet(
     viewers: List<com.worldmates.messenger.data.model.StoryViewer>,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    uiStyle: UIStyle = UIStyle.WORLDMATES
 ) {
     val sheetState = rememberModalBottomSheetState()
+
+    val containerColor = when (uiStyle) {
+        UIStyle.WORLDMATES -> MaterialTheme.colorScheme.surface
+        UIStyle.TELEGRAM -> MaterialTheme.colorScheme.background
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = containerColor
     ) {
         Column(
             modifier = Modifier
@@ -780,7 +842,7 @@ fun ViewersBottomSheet(
                     items = viewers,
                     key = { viewer -> viewer.userId }
                 ) { viewer ->
-                    ViewerItem(viewer = viewer)
+                    ViewerItem(viewer = viewer, uiStyle = uiStyle)
                 }
             }
         }
@@ -788,7 +850,10 @@ fun ViewersBottomSheet(
 }
 
 @Composable
-fun ViewerItem(viewer: com.worldmates.messenger.data.model.StoryViewer) {
+fun ViewerItem(
+    viewer: com.worldmates.messenger.data.model.StoryViewer,
+    uiStyle: UIStyle = UIStyle.WORLDMATES
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -825,14 +890,20 @@ fun ViewerItem(viewer: com.worldmates.messenger.data.model.StoryViewer) {
 @Composable
 fun ReactionsBottomSheet(
     onDismiss: () -> Unit,
-    onReactionSelect: (StoryReactionType) -> Unit
+    onReactionSelect: (StoryReactionType) -> Unit,
+    uiStyle: UIStyle = UIStyle.WORLDMATES
 ) {
     val sheetState = rememberModalBottomSheetState()
+
+    val containerColor = when (uiStyle) {
+        UIStyle.WORLDMATES -> MaterialTheme.colorScheme.surface
+        UIStyle.TELEGRAM -> MaterialTheme.colorScheme.background
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = containerColor
     ) {
         Column(
             modifier = Modifier
@@ -860,11 +931,11 @@ fun ReactionsBottomSheet(
                 ).forEach { (emoji, type) ->
                     Text(
                         text = emoji,
-                        fontSize = 40.sp,
+                        fontSize = if (uiStyle == UIStyle.WORLDMATES) 44.sp else 40.sp,
                         modifier = Modifier
                             .clip(CircleShape)
                             .clickable { onReactionSelect(type) }
-                            .padding(12.dp)
+                            .padding(if (uiStyle == UIStyle.WORLDMATES) 14.dp else 12.dp)
                     )
                 }
             }

@@ -102,6 +102,52 @@ enum class MessageAnimationStyle(
 }
 
 /**
+ * Варіанти шрифтів
+ */
+enum class FontVariant(
+    val displayName: String,
+    val emoji: String,
+    val description: String
+) {
+    DEFAULT(
+        displayName = "За замовчуванням",
+        emoji = "📝",
+        description = "Системний шрифт"
+    ),
+    ROBOTO(
+        displayName = "Roboto",
+        emoji = "🤖",
+        description = "Сучасний і чіткий"
+    ),
+    OPEN_SANS(
+        displayName = "Open Sans",
+        emoji = "📖",
+        description = "Відкритий і читабельний"
+    ),
+    LATO(
+        displayName = "Lato",
+        emoji = "✍️",
+        description = "Елегантний і легкий"
+    ),
+    MONTSERRAT(
+        displayName = "Montserrat",
+        emoji = "🎨",
+        description = "Геометричний і стильний"
+    ),
+    POPPINS(
+        displayName = "Poppins",
+        emoji = "✨",
+        description = "Модерновий і округлий"
+    );
+
+    companion object {
+        fun fromOrdinal(ordinal: Int): FontVariant {
+            return values().getOrNull(ordinal) ?: DEFAULT
+        }
+    }
+}
+
+/**
  * Модифікатор для застосування glass-ефекту
  */
 fun Modifier.glassEffect(

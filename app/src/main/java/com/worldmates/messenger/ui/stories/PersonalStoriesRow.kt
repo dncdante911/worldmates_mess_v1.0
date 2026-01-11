@@ -71,8 +71,13 @@ fun PersonalStoriesRow(
         }
 
         // Список stories згрупованих по користувачам (виключаємо власні stories)
-        val groupedStories = stories.filter { it.userId != currentUserId }.groupBy { it.userId }
-        items(groupedStories.entries.toList()) { (userId, userStories) ->
+        val groupedStories = remember(stories, currentUserId) {
+            stories.filter { it.userId != currentUserId }.groupBy { it.userId }
+        }
+        items(
+            items = groupedStories.entries.toList(),
+            key = { (userId, _) -> userId }
+        ) { (userId, userStories) ->
             val firstStory = userStories.first()
             val hasUnviewed = userStories.any { !it.seen }
 
@@ -267,8 +272,13 @@ fun CompactStoriesRow(
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val groupedStories = stories.groupBy { it.userId }
-        items(groupedStories.entries.toList()) { (userId, userStories) ->
+        val groupedStories = remember(stories) {
+            stories.groupBy { it.userId }
+        }
+        items(
+            items = groupedStories.entries.toList(),
+            key = { (userId, _) -> userId }
+        ) { (userId, userStories) ->
             val firstStory = userStories.first()
             val hasUnviewed = userStories.any { !it.seen }
 

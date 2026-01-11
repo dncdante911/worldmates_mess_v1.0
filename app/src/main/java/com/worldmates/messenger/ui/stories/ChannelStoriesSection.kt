@@ -84,7 +84,10 @@ fun ChannelStoriesSection(
             contentPadding = PaddingValues(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(channelStories) { (channel, stories) ->
+            items(
+                items = channelStories,
+                key = { (channel, _) -> channel.id }
+            ) { (channel, stories) ->
                 ChannelStoryCard(
                     channel = channel,
                     stories = stories,
@@ -265,7 +268,10 @@ fun CompactChannelStoriesRow(
             contentPadding = PaddingValues(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(channelStories) { (channel, stories) ->
+            items(
+                items = channelStories,
+                key = { (channel, _) -> channel.id }
+            ) { (channel, stories) ->
                 CompactChannelStoryItem(
                     channel = channel,
                     storiesCount = stories.size,

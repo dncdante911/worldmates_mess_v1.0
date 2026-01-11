@@ -1637,6 +1637,9 @@ class MessagesViewModel(application: Application) :
         // Зупиняємо моніторинг якості
         qualityMonitorJob?.cancel()
 
+        // Зупиняємо автозбереження чернетки
+        draftAutoSaveJob?.cancel()
+
         // Очищуємо MediaLoader
         mediaLoader.cleanup()
 

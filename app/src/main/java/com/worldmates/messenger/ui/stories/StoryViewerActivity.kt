@@ -113,9 +113,21 @@ fun StoryViewerScreen(
 
     // Получаем stories того же пользователя что и currentStory
     val userStories = remember(allStories, currentStory) {
-        currentStory?.let { story ->
+        android.util.Log.d("StoryViewer", "📊 allStories count: ${allStories.size}")
+        allStories.forEachIndexed { index, story ->
+            android.util.Log.d("StoryViewer", "  allStories[$index]: id=${story.id}, userId=${story.userId}")
+        }
+
+        val filtered = currentStory?.let { story ->
             allStories.filter { it.userId == story.userId }
         } ?: emptyList()
+
+        android.util.Log.d("StoryViewer", "📋 userStories count: ${filtered.size}")
+        filtered.forEachIndexed { index, story ->
+            android.util.Log.d("StoryViewer", "  userStories[$index]: id=${story.id}, userId=${story.userId}")
+        }
+
+        filtered
     }
 
     // Индекс текущей story

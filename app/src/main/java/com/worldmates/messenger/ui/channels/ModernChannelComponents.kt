@@ -24,7 +24,7 @@ import com.worldmates.messenger.data.model.Channel
 // ==================== TELEGRAM-STYLE CHANNEL ITEM ====================
 
 /**
- * Класичний мінімалістичний стиль для каналів
+ * Класичний мінімалістичний стиль для каналів з підтримкою тем
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -52,19 +52,26 @@ fun TelegramChannelItem(
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Placeholder
+            // Placeholder з gradient
             Box(
                 modifier = Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF667eea)),
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = channel.name.take(1).uppercase(),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -92,7 +99,7 @@ fun TelegramChannelItem(
                     Icon(
                         Icons.Default.Verified,
                         contentDescription = "Verified",
-                        tint = Color(0xFF2196F3),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -132,12 +139,18 @@ fun TelegramChannelItem(
 
         // Індикатор статусу
         if (channel.isAdmin) {
-            Text(
-                text = "Адмін",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF2196F3)
-            )
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Text(
+                    text = "Адмін",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         } else if (channel.isPrivate) {
             Icon(
                 Icons.Default.Lock,
@@ -169,7 +182,7 @@ fun ChannelCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 2.dp
@@ -200,7 +213,7 @@ fun ChannelCard(
                         text = channel.name,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2C3E50),
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -209,7 +222,7 @@ fun ChannelCard(
                         Icon(
                             Icons.Default.Verified,
                             contentDescription = "Verified",
-                            tint = Color(0xFF2196F3),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -220,7 +233,7 @@ fun ChannelCard(
                     Text(
                         text = channel.description!!,
                         fontSize = 13.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -237,14 +250,14 @@ fun ChannelCard(
                         Icon(
                             Icons.Default.PeopleAlt,
                             contentDescription = null,
-                            tint = Color.Gray,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = formatCount(channel.subscribersCount),
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
 
@@ -254,14 +267,14 @@ fun ChannelCard(
                             Icon(
                                 Icons.Default.Article,
                                 contentDescription = null,
-                                tint = Color.Gray,
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = formatCount(channel.postsCount),
                                 fontSize = 12.sp,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
                     }
@@ -272,7 +285,7 @@ fun ChannelCard(
                             Icon(
                                 Icons.Default.Lock,
                                 contentDescription = "Private",
-                                tint = Color(0xFFFF9800),
+                                tint = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.size(14.dp)
                             )
                         }
@@ -314,7 +327,7 @@ fun ChannelAvatar(
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Placeholder with gradient
+            // Placeholder with theme gradient
             Box(
                 modifier = Modifier
                     .size(size)
@@ -322,8 +335,8 @@ fun ChannelAvatar(
                     .background(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                Color(0xFF667eea),
-                                Color(0xFF764ba2)
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
                             )
                         )
                     ),
@@ -333,7 +346,7 @@ fun ChannelAvatar(
                     text = channelName.take(2).uppercase(),
                     fontSize = (size.value / 2.5).sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -346,13 +359,13 @@ fun ChannelAvatar(
                     .offset(x = 4.dp, y = 4.dp)
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Verified,
                     contentDescription = "Verified",
-                    tint = Color(0xFF2196F3),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -375,8 +388,14 @@ fun SubscribeButton(
         modifier = modifier.height(44.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSubscribed) Color(0xFFE0E0E0) else Color(0xFF667eea),
-            contentColor = if (isSubscribed) Color(0xFF666666) else Color.White
+            containerColor = if (isSubscribed)
+                MaterialTheme.colorScheme.surfaceVariant
+            else
+                MaterialTheme.colorScheme.primary,
+            contentColor = if (isSubscribed)
+                MaterialTheme.colorScheme.onSurfaceVariant
+            else
+                MaterialTheme.colorScheme.onPrimary
         )
     ) {
         Icon(
@@ -403,14 +422,20 @@ fun SubscribeButtonCompact(
         onClick = onToggle,
         enabled = enabled,
         shape = RoundedCornerShape(10.dp),
-        color = if (isSubscribed) Color(0xFFE8F5E9) else Color(0xFFE3F2FD),
+        color = if (isSubscribed)
+            MaterialTheme.colorScheme.primaryContainer
+        else
+            MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier.size(36.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 if (isSubscribed) Icons.Default.Check else Icons.Default.Add,
                 contentDescription = null,
-                tint = if (isSubscribed) Color(0xFF4CAF50) else Color(0xFF2196F3),
+                tint = if (isSubscribed)
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                else
+                    MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -424,7 +449,7 @@ fun AdminBadge(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        color = Color(0xFFFFEBEE)
+        color = MaterialTheme.colorScheme.errorContainer
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -434,7 +459,7 @@ fun AdminBadge(modifier: Modifier = Modifier) {
             Icon(
                 Icons.Default.Shield,
                 contentDescription = "Admin",
-                tint = Color(0xFFE53935),
+                tint = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -442,7 +467,7 @@ fun AdminBadge(modifier: Modifier = Modifier) {
                 text = "Адмін",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFE53935)
+                color = MaterialTheme.colorScheme.onErrorContainer
             )
         }
     }
@@ -461,7 +486,7 @@ fun ChannelHeader(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         // Top bar with back and settings
         Row(
@@ -475,7 +500,7 @@ fun ChannelHeader(
                 Icon(
                     Icons.Default.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color(0xFF2C3E50)
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -484,7 +509,7 @@ fun ChannelHeader(
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = "Settings",
-                        tint = Color(0xFF2C3E50)
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -511,14 +536,14 @@ fun ChannelHeader(
                     text = channel.name,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2C3E50)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 if (channel.isVerified) {
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
                         Icons.Default.Verified,
                         contentDescription = "Verified",
-                        tint = Color(0xFF2196F3),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -529,7 +554,7 @@ fun ChannelHeader(
                 Text(
                     text = "@${channel.username}",
                     fontSize = 14.sp,
-                    color = Color(0xFF667eea),
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -539,7 +564,7 @@ fun ChannelHeader(
                 Text(
                     text = channel.description!!,
                     fontSize = 14.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
@@ -566,7 +591,10 @@ fun ChannelHeader(
             }
         }
 
-        Divider(color = Color(0xFFE0E0E0), thickness = 1.dp)
+        Divider(
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+            thickness = 1.dp
+        )
     }
 }
 
@@ -590,7 +618,7 @@ fun ChannelStat(
         Icon(
             icon,
             contentDescription = null,
-            tint = Color(0xFF667eea),
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -598,12 +626,12 @@ fun ChannelStat(
             text = value,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF2C3E50)
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = label,
             fontSize = 12.sp,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
 }
@@ -619,7 +647,7 @@ fun ChannelInfoCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF5F7FA)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
@@ -631,7 +659,7 @@ fun ChannelInfoCard(
                 text = "Про канал",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF2C3E50)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -659,8 +687,6 @@ fun ChannelInfoCard(
                 label = "Тип",
                 value = if (channel.isPrivate) "Приватний" else "Публічний"
             )
-
-            // Посилання можна додати пізніше
         }
     }
 }
@@ -670,7 +696,7 @@ fun InfoRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,
-    valueColor: Color = Color(0xFF2C3E50)
+    valueColor: Color = Color.Unspecified
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -679,7 +705,7 @@ fun InfoRow(
         Icon(
             icon,
             contentDescription = null,
-            tint = Color(0xFF667eea),
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -687,12 +713,12 @@ fun InfoRow(
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
             Text(
                 text = value,
                 fontSize = 14.sp,
-                color = valueColor,
+                color = if (valueColor != Color.Unspecified) valueColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -702,7 +728,7 @@ fun InfoRow(
 // ==================== SEARCH BAR ====================
 
 /**
- * Пошукова панель для каналів
+ * Пошукова панель для каналів з підтримкою тем
  */
 @Composable
 fun ChannelSearchBar(
@@ -721,7 +747,7 @@ fun ChannelSearchBar(
         placeholder = {
             Text(
                 text = "Пошук каналів...",
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 fontSize = 15.sp
             )
         },
@@ -729,7 +755,7 @@ fun ChannelSearchBar(
             Icon(
                 Icons.Default.Search,
                 contentDescription = "Пошук",
-                tint = Color(0xFF667eea)
+                tint = MaterialTheme.colorScheme.primary
             )
         },
         trailingIcon = {
@@ -740,7 +766,7 @@ fun ChannelSearchBar(
                     Icon(
                         Icons.Default.Clear,
                         contentDescription = "Очистити",
-                        tint = Color.Gray
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -748,10 +774,10 @@ fun ChannelSearchBar(
         singleLine = true,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF667eea),
-            unfocusedBorderColor = Color.LightGray,
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface
         )
     )
 }

@@ -163,8 +163,8 @@ fun ChannelDetailsScreen(
             if (channel?.isAdmin == true) {
                 FloatingActionButton(
                     onClick = { showCreatePostDialog = true },
-                    containerColor = Color(0xFF667eea),
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Icon(
                         Icons.Default.Add,
@@ -179,7 +179,7 @@ fun ChannelDetailsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF5F7FA))
+                .background(MaterialTheme.colorScheme.background)
         ) {
             if (channel == null) {
                 // Канал не знайдено
@@ -192,7 +192,7 @@ fun ChannelDetailsScreen(
                         text = "Канал не знайдено",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = onBackPressed) {
@@ -227,7 +227,7 @@ fun ChannelDetailsScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Color.White)
+                                    .background(MaterialTheme.colorScheme.surface)
                                     .padding(16.dp)
                             ) {
                                 SubscribeButton(
@@ -266,14 +266,14 @@ fun ChannelDetailsScreen(
                     item {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.surface
                         ) {
                             Column {
                                 Text(
                                     text = "Пости • ${posts.size}",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.Gray,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                     modifier = Modifier.padding(16.dp)
                                 )
                             }
@@ -296,7 +296,7 @@ fun ChannelDetailsScreen(
                                     Text(
                                         text = "Поки що немає постів",
                                         fontSize = 16.sp,
-                                        color = Color.Gray,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                         fontWeight = FontWeight.Medium
                                     )
                                     if (channel.isAdmin) {
@@ -304,7 +304,7 @@ fun ChannelDetailsScreen(
                                         Text(
                                             text = "Створіть перший пост!",
                                             fontSize = 14.sp,
-                                            color = Color.Gray.copy(alpha = 0.7f)
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                         )
                                     }
                                 }
@@ -385,7 +385,7 @@ fun ChannelDetailsScreen(
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(32.dp),
-                                    color = Color(0xFF667eea)
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -877,7 +877,7 @@ fun CreatePostDialog(
                 Text(
                     text = "💡 Підтримуються зображення, відео та GIF",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
         },
@@ -893,7 +893,7 @@ fun CreatePostDialog(
                 },
                 enabled = text.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF667eea)
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text("Опублікувати")
@@ -927,7 +927,7 @@ fun SubscribersDialog(
             if (subscribers.isEmpty()) {
                 Text(
                     text = "Немає підписників",
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             } else {
                 LazyColumn(
@@ -958,14 +958,21 @@ fun SubscribersDialog(
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFF667eea)),
+                                        .background(
+                                            brush = Brush.linearGradient(
+                                                colors = listOf(
+                                                    MaterialTheme.colorScheme.primary,
+                                                    MaterialTheme.colorScheme.secondary
+                                                )
+                                            )
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = (subscriber.username?.take(1) ?: "U").uppercase(),
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
                             }
@@ -978,7 +985,7 @@ fun SubscribersDialog(
                                     text = subscriber.name ?: subscriber.username ?: "User #${subscriber.id ?: subscriber.userId ?: "?"}",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF2C3E50)
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -992,18 +999,22 @@ fun SubscribersDialog(
                                                 else -> subscriber.role!!
                                             },
                                             fontSize = 12.sp,
-                                            color = Color(0xFF2196F3),
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Medium
                                         )
                                     }
                                     if (subscriber.isMuted) {
                                         if (subscriber.role != null) {
-                                            Text(text = "•", fontSize = 12.sp, color = Color.Gray)
+                                            Text(
+                                                text = "•",
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                            )
                                         }
                                         Text(
                                             text = "Вимкнено сповіщення",
                                             fontSize = 12.sp,
-                                            color = Color.Gray
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                         )
                                     }
                                 }
@@ -1013,7 +1024,7 @@ fun SubscribersDialog(
                         if (subscriber != subscribers.last()) {
                             Divider(
                                 modifier = Modifier.padding(start = 52.dp),
-                                color = Color(0xFFEEEEEE)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                             )
                         }
                     }

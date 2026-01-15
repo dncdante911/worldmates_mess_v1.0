@@ -484,6 +484,7 @@ fun ChannelHeader(
     onSettingsClick: (() -> Unit)? = null,
     onAvatarClick: (() -> Unit)? = null,
     onSubscribersClick: (() -> Unit)? = null,
+    onAddMembersClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -524,21 +525,46 @@ fun ChannelHeader(
                 }
             }
 
-            if (onSettingsClick != null && channel.isAdmin) {
-                Surface(
-                    onClick = onSettingsClick,
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                    shadowElevation = 2.dp,
-                    modifier = Modifier.size(42.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(22.dp)
-                        )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Кнопка додавання учасників (тільки для адмінів)
+                if (onAddMembersClick != null && channel.isAdmin) {
+                    Surface(
+                        onClick = onAddMembersClick,
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                        shadowElevation = 2.dp,
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.PersonAdd,
+                                contentDescription = "Додати учасників",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Кнопка налаштувань (тільки для адмінів)
+                if (onSettingsClick != null && channel.isAdmin) {
+                    Surface(
+                        onClick = onSettingsClick,
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        shadowElevation = 2.dp,
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
             }

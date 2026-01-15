@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.*
-<<<<<<< HEAD
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -928,6 +927,9 @@ fun CommentsBottomSheet(
     modifier: Modifier = Modifier
 ) {
     var commentText by remember { mutableStateOf("") }
+    var showEmojiPicker by remember { mutableStateOf(false) }
+    var showGifPicker by remember { mutableStateOf(false) }
+    var showStrapiPicker by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1002,43 +1004,136 @@ fun CommentsBottomSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Add comment field
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(bottom = 16.dp)
             ) {
-                TextField(
-                    value = commentText,
-                    onValueChange = { commentText = it },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp),
-                    placeholder = { Text("Додати коментар...") },
-                    maxLines = 3,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
-                )
-
-                IconButton(
-                    onClick = {
-                        if (commentText.isNotBlank()) {
-                            onAddComment(commentText)
-                            commentText = ""
-                        }
-                    },
-                    enabled = commentText.isNotBlank()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Send,
-                        contentDescription = "Надіслати",
-                        tint = if (commentText.isNotBlank())
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                    TextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp),
+                        placeholder = { Text("Додати коментар...") },
+                        maxLines = 3,
+                        shape = RoundedCornerShape(24.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        )
+                    )
+
+                    // Strapi Stickers button
+                    IconButton(
+                        onClick = {
+                            showStrapiPicker = !showStrapiPicker
+                            if (showStrapiPicker) {
+                                showEmojiPicker = false
+                                showGifPicker = false
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.InsertEmoticon,
+                            contentDescription = "Стікери",
+                            tint = if (showStrapiPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Emoji button
+                    IconButton(
+                        onClick = {
+                            showEmojiPicker = !showEmojiPicker
+                            if (showEmojiPicker) {
+                                showGifPicker = false
+                                showStrapiPicker = false
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEmotions,
+                            contentDescription = "Емоджі",
+                            tint = if (showEmojiPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // GIF button
+                    IconButton(
+                        onClick = {
+                            showGifPicker = !showGifPicker
+                            if (showGifPicker) {
+                                showEmojiPicker = false
+                                showStrapiPicker = false
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Gif,
+                            contentDescription = "GIF",
+                            tint = if (showGifPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Send button
+                    IconButton(
+                        onClick = {
+                            if (commentText.isNotBlank()) {
+                                onAddComment(commentText)
+                                commentText = ""
+                            }
+                        },
+                        enabled = commentText.isNotBlank()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Надіслати",
+                            tint = if (commentText.isNotBlank())
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Emoji Picker
+                if (showEmojiPicker) {
+                    com.worldmates.messenger.ui.components.EmojiPicker(
+                        onEmojiSelected = { emoji ->
+                            commentText += emoji
+                        },
+                        onDismiss = { showEmojiPicker = false }
+                    )
+                }
+
+                // GIF Picker
+                if (showGifPicker) {
+                    com.worldmates.messenger.ui.components.GifPicker(
+                        onGifSelected = { gifUrl ->
+                            // Додаємо GIF як текст з посиланням або markdown
+                            commentText += "\n[GIF]($gifUrl)"
+                            showGifPicker = false
+                        },
+                        onDismiss = { showGifPicker = false }
+                    )
+                }
+
+                // Strapi Stickers/GIF Picker
+                if (showStrapiPicker) {
+                    com.worldmates.messenger.ui.strapi.StrapiContentPicker(
+                        onItemSelected = { contentUrl ->
+                            // Додаємо стікер або GIF з Strapi
+                            commentText += "\n[Стікер]($contentUrl)"
+                            showStrapiPicker = false
+                        },
+                        onDismiss = { showStrapiPicker = false }
                     )
                 }
             }

@@ -27,11 +27,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.Brush
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import androidx.lifecycle.ViewModelProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -936,8 +943,40 @@ fun CreatePostDialog(
     onDismiss: () -> Unit,
     onCreate: (text: String, mediaUrl: String?) -> Unit
 ) {
+    val context = LocalContext.current
     var text by remember { mutableStateOf("") }
     var mediaUrl by remember { mutableStateOf("") }
+    var selectedMediaUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var isUploadingMedia by remember { mutableStateOf(false) }
+    var uploadedMediaUrl by remember { mutableStateOf<String?>(null) }
+
+    // Лаунчер для вибору зображення з галереї
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: android.net.Uri? ->
+        selectedMediaUri = uri
+    }
+
+    // Лаунчер для зйомки фото
+    val cameraUri = remember {
+        android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.TITLE, "post_image_${System.currentTimeMillis()}")
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }.let {
+            context.contentResolver.insert(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                it
+            )
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraUri != null) {
+            selectedMediaUri = cameraUri
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -949,9 +988,12 @@ fun CreatePostDialog(
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Текст поста
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
@@ -959,18 +1001,111 @@ fun CreatePostDialog(
                     placeholder = { Text("Введіть текст поста...") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
-                    maxLines = 10
+                        .height(160.dp),
+                    maxLines = 8
                 )
 
+                // Preview вибраного медіа
+                if (selectedMediaUri != null) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AsyncImage(
+                                model = selectedMediaUri,
+                                contentDescription = "Selected Media",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            // Кнопка видалення
+                            IconButton(
+                                onClick = {
+                                    selectedMediaUri = null
+                                    uploadedMediaUrl = null
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .background(
+                                        Color.Black.copy(alpha = 0.6f),
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Remove",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Кнопки вибору медіа
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            imagePicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isUploadingMedia
+                    ) {
+                        Icon(
+                            Icons.Default.Image,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Галерея")
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            cameraUri?.let { cameraLauncher.launch(it) }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isUploadingMedia
+                    ) {
+                        Icon(
+                            Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Камера")
+                    }
+                }
+
+                // Або URL
                 OutlinedTextField(
                     value = mediaUrl,
                     onValueChange = { mediaUrl = it },
-                    label = { Text("URL медіа (опціонально)") },
+                    label = { Text("Або вставте URL") },
                     placeholder = { Text("https://example.com/image.jpg") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = selectedMediaUri == null && !isUploadingMedia
                 )
+
+                if (isUploadingMedia) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Завантаження медіа...", fontSize = 12.sp)
+                    }
+                }
 
                 Text(
                     text = "💡 Підтримуються зображення, відео та GIF",
@@ -983,13 +1118,33 @@ fun CreatePostDialog(
             Button(
                 onClick = {
                     if (text.isNotBlank()) {
-                        onCreate(
-                            text.trim(),
-                            mediaUrl.trim().takeIf { it.isNotBlank() }
-                        )
+                        // Якщо вибрано локальне медіа, спочатку завантажуємо його
+                        if (selectedMediaUri != null && uploadedMediaUrl == null) {
+                            isUploadingMedia = true
+                            uploadMediaFile(
+                                context = context,
+                                uri = selectedMediaUri!!,
+                                onSuccess = { url ->
+                                    isUploadingMedia = false
+                                    uploadedMediaUrl = url
+                                    // Створюємо пост з завантаженим медіа
+                                    onCreate(text.trim(), url)
+                                },
+                                onError = { error ->
+                                    isUploadingMedia = false
+                                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        } else {
+                            // Використовуємо URL (якщо є) або вже завантажене медіа
+                            onCreate(
+                                text.trim(),
+                                uploadedMediaUrl ?: mediaUrl.trim().takeIf { it.isNotBlank() }
+                            )
+                        }
                     }
                 },
-                enabled = text.isNotBlank(),
+                enabled = text.isNotBlank() && !isUploadingMedia,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
@@ -998,11 +1153,80 @@ fun CreatePostDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isUploadingMedia
+            ) {
                 Text("Скасувати")
             }
         }
     )
+}
+
+/**
+ * Допоміжна функція для завантаження медіа файлу
+ */
+private fun uploadMediaFile(
+    context: android.content.Context,
+    uri: android.net.Uri,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit
+) {
+    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        try {
+            val contentResolver = context.contentResolver
+            val inputStream = contentResolver.openInputStream(uri) ?: run {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    onError("Не вдалося відкрити файл")
+                }
+                return@launch
+            }
+
+            val bytes = inputStream.readBytes()
+            inputStream.close()
+
+            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+            val mediaType = when {
+                mimeType.startsWith("image/") -> "image"
+                mimeType.startsWith("video/") -> "video"
+                else -> "file"
+            }
+
+            val requestFile = okhttp3.RequestBody.create(
+                mimeType.toMediaTypeOrNull(),
+                bytes
+            )
+
+            val filePart = okhttp3.MultipartBody.Part.createFormData(
+                "file",
+                "media_${System.currentTimeMillis()}.${mimeType.split("/").last()}",
+                requestFile
+            )
+
+            val mediaTypePart = okhttp3.RequestBody.create(
+                "text/plain".toMediaTypeOrNull(),
+                mediaType
+            )
+
+            val response = com.worldmates.messenger.network.RetrofitClient.apiService.uploadMedia(
+                accessToken = com.worldmates.messenger.data.UserSession.accessToken!!,
+                mediaType = mediaTypePart,
+                file = filePart
+            )
+
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (response.apiStatus == 200 && response.url != null) {
+                    onSuccess(response.url)
+                } else {
+                    onError(response.errorMessage ?: "Помилка завантаження")
+                }
+            }
+        } catch (e: Exception) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                onError("Помилка: ${e.localizedMessage}")
+            }
+        }
+    }
 }
 
 /**

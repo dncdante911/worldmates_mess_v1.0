@@ -1,3 +1,4 @@
+
 package com.worldmates.messenger.ui.channels
 
 import android.util.Log
@@ -581,9 +582,7 @@ class ChannelsViewModel : ViewModel() {
             }
         }
     }
-    /**
-     * 📸 Завантажити новий аватар каналу
-     */
+
     /**
      * 📸 Завантажити новий аватар каналу
      */

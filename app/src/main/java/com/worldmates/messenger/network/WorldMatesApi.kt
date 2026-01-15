@@ -1307,3 +1307,4 @@ data class SubscribeChannelResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("message") val message: String?,
     @SerializedName("channel") val channel: com.worldmates.messenger.data.model.Channel? = null
+)

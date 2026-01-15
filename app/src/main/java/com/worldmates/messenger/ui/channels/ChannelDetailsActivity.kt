@@ -128,6 +128,7 @@ fun ChannelDetailsScreen(
     var showCreatePostDialog by remember { mutableStateOf(false) }
     var showChangeAvatarDialog by remember { mutableStateOf(false) }
     var showSubscribersDialog by remember { mutableStateOf(false) }
+    var showAddMembersDialog by remember { mutableStateOf(false) }
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showPostOptions by remember { mutableStateOf(false) }
     var showEditPostDialog by remember { mutableStateOf(false) }
@@ -303,6 +304,9 @@ fun ChannelDetailsScreen(
                                     detailsViewModel.loadSubscribers(channelId)
                                     showSubscribersDialog = true
                                 },
+                                onAddMembersClick = if (channel.isAdmin) {
+                                    { showAddMembersDialog = true }
+                                } else null,
                                 onAvatarClick = if (channel.isAdmin) {
                                     { showChangeAvatarDialog = true }
                                 } else null
@@ -534,6 +538,15 @@ fun ChannelDetailsScreen(
             SubscribersDialog(
                 subscribers = subscribers,
                 onDismiss = { showSubscribersDialog = false }
+            )
+        }
+
+        // Діалог додавання учасників
+        if (showAddMembersDialog && channel?.isAdmin == true) {
+            AddMembersDialog(
+                channelId = channelId,
+                channelsViewModel = channelsViewModel,
+                onDismiss = { showAddMembersDialog = false }
             )
         }
 
@@ -1348,6 +1361,217 @@ fun SubscribersDialog(
                                 modifier = Modifier.padding(start = 52.dp),
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                             )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрити")
+            }
+        }
+    )
+}
+
+/**
+ * Діалог для додавання учасників в канал
+ */
+@Composable
+fun AddMembersDialog(
+    channelId: Long,
+    channelsViewModel: ChannelsViewModel,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<com.worldmates.messenger.network.SearchUser>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+
+    // Виконуємо пошук з debounce
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = emptyList()
+            return@LaunchedEffect
+        }
+
+        kotlinx.coroutines.delay(500) // debounce
+        isSearching = true
+        channelsViewModel.searchUsers(
+            query = searchQuery,
+            onSuccess = { users ->
+                searchResults = users
+                isSearching = false
+            },
+            onError = { error ->
+                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                isSearching = false
+            }
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        title = {
+            Text(
+                "Додати учасників",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp, max = 400.dp)
+            ) {
+                // Поле пошуку
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    placeholder = { Text("Пошук користувачів...") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    )
+                )
+
+                // Результати пошуку
+                if (isSearching) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    }
+                } else if (searchResults.isEmpty() && searchQuery.isNotBlank()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Користувачів не знайдено",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(searchResults) { user ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // Аватар користувача
+                                        if (user.avatarUrl.isNotEmpty()) {
+                                            AsyncImage(
+                                                model = com.worldmates.messenger.util.toFullMediaUrl(user.avatarUrl),
+                                                contentDescription = "Avatar",
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        Brush.radialGradient(
+                                                            colors = listOf(
+                                                                MaterialTheme.colorScheme.primary,
+                                                                MaterialTheme.colorScheme.tertiary
+                                                            )
+                                                        )
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = (user.name?.firstOrNull() ?: user.username.firstOrNull() ?: 'U')
+                                                        .uppercaseChar().toString(),
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column {
+                                            Text(
+                                                text = user.name ?: user.username,
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 15.sp
+                                            )
+                                            Text(
+                                                text = "@${user.username}",
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                            )
+                                        }
+                                    }
+
+                                    // Кнопка додавання
+                                    FilledTonalButton(
+                                        onClick = {
+                                            channelsViewModel.subscribeChannel(
+                                                channelId = channelId,
+                                                onSuccess = {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Користувача додано до каналу",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                },
+                                                onError = { error ->
+                                                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
+                                        },
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Додати")
+                                    }
+                                }
+                            }
                         }
                     }
                 }

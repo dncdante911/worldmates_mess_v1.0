@@ -1053,15 +1053,6 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): ChannelSubscribersResponse
 
-    @Multipart
-    @POST("/api/v2/channels.php")
-    suspend fun uploadChannelAvatar(
-        @Query("access_token") accessToken: String,
-        @Query("type") type: String = "upload_avatar",
-        @Part("id") channelId: RequestBody,
-        @Part avatar: MultipartBody.Part
-    ): CreateChannelResponse
-
     // 🔲 Generate Channel QR Code
     @FormUrlEncoded
     @POST("/api/v2/endpoints/generate_channel_qr.php")
@@ -2363,15 +2354,6 @@ interface WorldMatesApi {
         @Field("limit") limit: Int = 100,
         @Field("offset") offset: Int = 0
     ): ChannelSubscribersResponse
-
-    @Multipart
-    @POST("/api/v2/channels.php")
-    suspend fun uploadChannelAvatar(
-        @Query("access_token") accessToken: String,
-        @Query("type") type: String = "upload_avatar",
-        @Part("id") channelId: RequestBody,
-        @Part avatar: MultipartBody.Part
-    ): CreateChannelResponse
 
     // 🔲 Generate Channel QR Code
     @FormUrlEncoded

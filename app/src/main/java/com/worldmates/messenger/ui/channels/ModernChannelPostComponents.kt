@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.*
+<<<<<<< HEAD
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -96,6 +97,11 @@ fun ChannelPostCard(
                                 contentScale = ContentScale.Crop
                             )
                         } else {
+                            // Placeholder з першою літерою імені автора
+                            val authorInitial = (post.authorName?.firstOrNull()
+                                ?: post.authorUsername?.firstOrNull()
+                                ?: 'U').uppercaseChar().toString()
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -120,11 +126,11 @@ fun ChannelPostCard(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = "Author",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(24.dp)
+                                Text(
+                                    text = authorInitial,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
                         }

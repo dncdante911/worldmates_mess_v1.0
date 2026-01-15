@@ -74,21 +74,12 @@ class ChannelDetailsActivity : AppCompatActivity() {
 
         setContent {
             WorldMatesThemedApp {
-                val themeState = rememberThemeState()
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Фоновое изображение из настроек тем
-                    BackgroundImage(
-                        backgroundImageUri = themeState.backgroundImageUri,
-                        presetBackgroundId = themeState.presetBackgroundId
-                    )
-                    
-                    ChannelDetailsScreen(
-                        channelId = channelId,
-                        channelsViewModel = channelsViewModel,
-                        detailsViewModel = detailsViewModel,
-                        onBackPressed = { finish() }
-                    )
-                }
+                ChannelDetailsScreen(
+                    channelId = channelId,
+                    channelsViewModel = channelsViewModel,
+                    detailsViewModel = detailsViewModel,
+                    onBackPressed = { finish() }
+                )
             }
         }
     }
@@ -160,6 +151,7 @@ fun ChannelDetailsScreen(
             refreshing = false
         }
     )
+
     // URI для вибраного зображення аватара
     var selectedAvatarUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
@@ -246,262 +238,253 @@ fun ChannelDetailsScreen(
         Scaffold(
             containerColor = Color.Transparent, // Прозорий фон щоб був видно BackgroundImage
             floatingActionButton = {
-    Scaffold(
-        containerColor = Color.Transparent,  // Прозорий фон, щоб було видно BackgroundImage
-        floatingActionButton = {
-            // FAB для створення поста (тільки для адмінів)
-            if (channel?.isAdmin == true) {
-                FloatingActionButton(
-                    onClick = { showCreatePostDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Створити пост",
-                        modifier = Modifier.size(28.dp)
-                    )
+                // FAB для створення поста (тільки для адмінів)
+                if (channel?.isAdmin == true) {
+                    FloatingActionButton(
+                        onClick = { showCreatePostDialog = true },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Створити пост",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
-        }
         ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    // Убрали .background чтобы был виден BackgroundImage
             ) {
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (channel == null) {
-                // Канал не знайдено
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Канал не знайдено",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = onBackPressed) {
-                        Text("Повернутися")
-                    }
-                }
-            } else {
-                // Відображаємо канал
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pullRefresh(pullRefreshState)
-                ) {
-                    // Шапка каналу
-                    item {
-                        ChannelHeader(
-                            channel = channel,
-                            onBackClick = onBackPressed,
-                            onSettingsClick = if (channel.isAdmin) {
-                                { showChannelMenuDialog = true }
-                            } else null,
-                            onSubscribersClick = {
-                                detailsViewModel.loadSubscribers(channelId)
-                                showSubscribersDialog = true
-                            },
-                            onAvatarClick = if (channel.isAdmin) {
-                                { showChangeAvatarDialog = true }
-                            } else null
+                if (channel == null) {
+                    // Канал не знайдено
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Канал не знайдено",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onBackPressed) {
+                            Text("Повернутися")
+                        }
                     }
-
-                    // Кнопка підписки (якщо не адмін)
-                    if (!channel.isAdmin) {
+                } else {
+                    // Відображаємо канал
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pullRefresh(pullRefreshState)
+                    ) {
+                        // Шапка каналу
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .padding(16.dp)
+                            ChannelHeader(
+                                channel = channel,
+                                onBackClick = onBackPressed,
+                                onSettingsClick = if (channel.isAdmin) {
+                                    { showChannelMenuDialog = true }
+                                } else null,
+                                onSubscribersClick = {
+                                    detailsViewModel.loadSubscribers(channelId)
+                                    showSubscribersDialog = true
+                                },
+                                onAvatarClick = if (channel.isAdmin) {
+                                    { showChangeAvatarDialog = true }
+                                } else null
+                            )
+                        }
+
+                        // Кнопка підписки (якщо не адмін)
+                        if (!channel.isAdmin) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .padding(16.dp)
+                                ) {
+                                    SubscribeButton(
+                                        isSubscribed = channel.isSubscribed,
+                                        onToggle = {
+                                            if (channel.isSubscribed) {
+                                                channelsViewModel.unsubscribeChannel(
+                                                    channelId = channelId,
+                                                    onSuccess = {
+                                                        Toast.makeText(context, "Ви відписалися від каналу", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onError = { error ->
+                                                        Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            } else {
+                                                channelsViewModel.subscribeChannel(
+                                                    channelId = channelId,
+                                                    onSuccess = {
+                                                        Toast.makeText(context, "Ви підписалися на канал!", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onError = { error ->
+                                                        Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+
+                        // Заголовок секції постів
+                        item {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.surface
                             ) {
-                                SubscribeButton(
-                                    isSubscribed = channel.isSubscribed,
-                                    onToggle = {
-                                        if (channel.isSubscribed) {
-                                            channelsViewModel.unsubscribeChannel(
-                                                channelId = channelId,
-                                                onSuccess = {
-                                                    Toast.makeText(context, "Ви відписалися від каналу", Toast.LENGTH_SHORT).show()
-                                                },
-                                                onError = { error ->
-                                                    Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
-                                                }
-                                            )
-                                        } else {
-                                            channelsViewModel.subscribeChannel(
-                                                channelId = channelId,
-                                                onSuccess = {
-                                                    Toast.makeText(context, "Ви підписалися на канал!", Toast.LENGTH_SHORT).show()
-                                                },
-                                                onError = { error ->
-                                                    Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
-                                                }
-                                            )
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                Column {
+                                    Text(
+                                        text = "Пости • ${posts.size}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        modifier = Modifier.padding(16.dp)
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                    }
 
-                    // Заголовок секції постів
-                    item {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.surface
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Пости • ${posts.size}",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                    modifier = Modifier.padding(16.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
-                    // Список постів
-                    if (posts.isEmpty() && !isLoadingPosts) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(64.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                        // Список постів
+                        if (posts.isEmpty() && !isLoadingPosts) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(64.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = "Поки що немає постів",
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    if (channel.isAdmin) {
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
                                         Text(
-                                            text = "Створіть перший пост!",
-                                            fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                            text = "Поки що немає постів",
+                                            fontSize = 16.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                            fontWeight = FontWeight.Medium
                                         )
+                                        if (channel.isAdmin) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = "Створіть перший пост!",
+                                                fontSize = 14.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        items(
-                            items = posts.sortedByDescending { it.createdTime },
-                            key = { it.id }
-                        ) { post ->
-                            ChannelPostCard(
-                                post = post,
-                                onPostClick = {
-                                    selectedPostForDetail = post
-                                    detailsViewModel.loadComments(post.id)
-                                    detailsViewModel.registerPostView(
-                                        postId = post.id,
-                                        onSuccess = { /* Просмотр зареєстровано */ },
-                                        onError = { /* Помилка реєстрації, але не показуємо користувачу */ }
-                                    )
-                                    showPostDetailDialog = true
-                                },
-                                onReactionClick = { emoji ->
-                                    detailsViewModel.addPostReaction(
-                                        postId = post.id,
-                                        emoji = emoji,
-                                        onSuccess = {
-                                            Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
-                                        },
-                                        onError = { error ->
-                                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                        } else {
+                            items(
+                                items = posts.sortedByDescending { it.createdTime },
+                                key = { it.id }
+                            ) { post ->
+                                ChannelPostCard(
+                                    post = post,
+                                    onPostClick = {
+                                        selectedPostForDetail = post
+                                        detailsViewModel.loadComments(post.id)
+                                        detailsViewModel.registerPostView(
+                                            postId = post.id,
+                                            onSuccess = { /* Просмотр зареєстровано */ },
+                                            onError = { /* Помилка реєстрації, але не показуємо користувачу */ }
+                                        )
+                                        showPostDetailDialog = true
+                                    },
+                                    onReactionClick = { emoji ->
+                                        detailsViewModel.addPostReaction(
+                                            postId = post.id,
+                                            emoji = emoji,
+                                            onSuccess = {
+                                                Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            onError = { error ->
+                                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                            }
+                                        )
+                                    },
+                                    onCommentsClick = {
+                                        detailsViewModel.loadComments(post.id)
+                                        showCommentsSheet = true
+                                    },
+                                    onShareClick = {
+                                        // Використовуємо Android Share Intent для поширення поста
+                                        val shareText = buildString {
+                                            append(post.text)
+                                            append("\n\n")
+                                            append("Від: ${post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}"}")
+                                            append("\n")
+                                            append("Канал: ${channel?.name ?: "WorldMates Channel"}")
                                         }
-                                    )
-                                },
-                                onCommentsClick = {
-                                    detailsViewModel.loadComments(post.id)
-                                    showCommentsSheet = true
-                                },
-                                onShareClick = {
-                                    // Використовуємо Android Share Intent для поширення поста
-                                    val shareText = buildString {
-                                        append(post.text)
-                                        append("\n\n")
-                                        append("Від: ${post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}"}")
-                                        append("\n")
-                                        append("Канал: ${channel?.name ?: "WorldMates Channel"}")
-                                    }
 
-                                    val sendIntent = android.content.Intent().apply {
-                                        action = android.content.Intent.ACTION_SEND
-                                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                                        type = "text/plain"
-                                    }
+                                        val sendIntent = android.content.Intent().apply {
+                                            action = android.content.Intent.ACTION_SEND
+                                            putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                            type = "text/plain"
+                                        }
 
-                                    val shareIntent = android.content.Intent.createChooser(sendIntent, "Поділитися постом")
-                                    context.startActivity(shareIntent)
-                                },
-                                onMoreClick = {
-                                    selectedPostForOptions = post
-                                    showPostOptions = true
-                                },
-                                canEdit = channel.isAdmin,
-                                modifier = Modifier
-                                    .padding(horizontal = 0.dp, vertical = 0.dp)
-                                    .animateItem()
-                            )
-                        }
-                    }
-
-                    // Індикатор завантаження
-                    if (isLoadingPosts && posts.isNotEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(32.dp),
-                                    color = MaterialTheme.colorScheme.primary
+                                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Поділитися постом")
+                                        context.startActivity(shareIntent)
+                                    },
+                                    onMoreClick = {
+                                        selectedPostForOptions = post
+                                        showPostOptions = true
+                                    },
+                                    canEdit = channel.isAdmin,
+                                    modifier = Modifier
+                                        .padding(horizontal = 0.dp, vertical = 0.dp)
+                                        .animateItem()
                                 )
                             }
                         }
+
+                        // Індикатор завантаження
+                        if (isLoadingPosts && posts.isNotEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(32.dp),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+                        // Нижній відступ
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
+                        }
                     }
 
-                    // Нижній відступ
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
+                    // Pull-to-refresh індикатор
+                    PullRefreshIndicator(
+                        refreshing = refreshing,
+                        state = pullRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
-
-                // Pull-to-refresh індикатор
-                PullRefreshIndicator(
-                    refreshing = refreshing,
-                    state = pullRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
             }
         }
 
@@ -925,20 +908,21 @@ fun ChannelDetailsScreen(
                 }
             )
         }
-   // Діалог зміни аватара каналу
-    if (showChangeAvatarDialog) {
-        ChannelAvatarDialog(
-            onDismiss = { showChangeAvatarDialog = false },
-            onCameraClick = {
-                cameraUri?.let { cameraLauncher.launch(it) }
-            },
-            onGalleryClick = {
-                galleryLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            }
-        )
-    }
+
+        // Діалог зміни аватара каналу
+        if (showChangeAvatarDialog) {
+            ChannelAvatarDialog(
+                onDismiss = { showChangeAvatarDialog = false },
+                onCameraClick = {
+                    cameraUri?.let { cameraLauncher.launch(it) }
+                },
+                onGalleryClick = {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
+            )
+        }
     }
 }
 

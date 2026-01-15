@@ -32,8 +32,10 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Channel
 import com.worldmates.messenger.data.model.ChannelPost
+import com.worldmates.messenger.ui.theme.BackgroundImage
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
+import com.worldmates.messenger.ui.theme.rememberThemeState
 
 /**
  * Активність для перегляду деталей каналу та його постів
@@ -157,7 +159,18 @@ fun ChannelDetailsScreen(
         }
     }
 
-    Scaffold(
+    // Отримуємо стан теми для фону
+    val themeState = rememberThemeState()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Застосовуємо фон з налаштувань тем
+        BackgroundImage(
+            backgroundImageUri = themeState.backgroundImageUri,
+            presetBackgroundId = themeState.presetBackgroundId
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent, // Прозорий фон щоб був видно BackgroundImage
         floatingActionButton = {
             // FAB для створення поста (тільки для адмінів)
             if (channel?.isAdmin == true) {
@@ -825,7 +838,8 @@ fun ChannelDetailsScreen(
                 }
             )
         }
-    }
+    } // End Scaffold
+    } // End Box with BackgroundImage
 }
 
 /**

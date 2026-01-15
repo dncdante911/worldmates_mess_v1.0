@@ -8,6 +8,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -51,6 +55,7 @@ import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.ui.theme.BackgroundImage
 import com.worldmates.messenger.ui.theme.rememberThemeState
+import com.worldmates.messenger.util.toFullMediaUrl
 
 /**
  * Активність для перегляду деталей каналу та його постів
@@ -902,8 +907,7 @@ fun ChannelDetailsScreen(
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_LONG).show()
                         }
                     )
-                },
-                channelsViewModel = channelsViewModel // Передаємо ViewModel для upload avatar
+                }
             )
         }
 
@@ -1185,11 +1189,11 @@ private fun uploadMediaFile(
     onSuccess: (String) -> Unit,
     onError: (String) -> Unit
 ) {
-    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+    CoroutineScope(Dispatchers.IO).launch {
         try {
             val contentResolver = context.contentResolver
             val inputStream = contentResolver.openInputStream(uri) ?: run {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
                     onError("Не вдалося відкрити файл")
                 }
                 return@launch
@@ -1227,7 +1231,7 @@ private fun uploadMediaFile(
                 file = filePart
             )
 
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
                 if (response.apiStatus == 200 && response.url != null) {
                     onSuccess(response.url)
                 } else {
@@ -1235,7 +1239,7 @@ private fun uploadMediaFile(
                 }
             }
         } catch (e: Exception) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
                 onError("Помилка: ${e.localizedMessage}")
             }
         }
@@ -1494,7 +1498,7 @@ fun AddMembersDialog(
                                         // Аватар користувача
                                         if (user.avatarUrl.isNotEmpty()) {
                                             AsyncImage(
-                                                model = com.worldmates.messenger.util.toFullMediaUrl(user.avatarUrl),
+                                                model = user.avatarUrl.toFullMediaUrl(),
                                                 contentDescription = "Avatar",
                                                 modifier = Modifier
                                                     .size(40.dp)

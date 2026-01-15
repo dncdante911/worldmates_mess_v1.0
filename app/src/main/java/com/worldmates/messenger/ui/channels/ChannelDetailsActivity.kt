@@ -233,6 +233,19 @@ fun ChannelDetailsScreen(
         }
     }
 
+    // Отримуємо стан теми для фону
+    val themeState = rememberThemeState()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Застосовуємо фон з налаштувань тем
+        BackgroundImage(
+            backgroundImageUri = themeState.backgroundImageUri,
+            presetBackgroundId = themeState.presetBackgroundId
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent, // Прозорий фон щоб був видно BackgroundImage
+            floatingActionButton = {
     Scaffold(
         containerColor = Color.Transparent,  // Прозорий фон, щоб було видно BackgroundImage
         floatingActionButton = {
@@ -251,6 +264,13 @@ fun ChannelDetailsScreen(
                 }
             }
         }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    // Убрали .background чтобы был виден BackgroundImage
+            ) {
     ) { paddingValues ->
         Box(
             modifier = Modifier

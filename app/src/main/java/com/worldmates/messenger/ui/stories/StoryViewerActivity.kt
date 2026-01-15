@@ -45,6 +45,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
+<<<<<<< HEAD
+import androidx.media3.common.util.UnstableApi
+=======
+>>>>>>> ee7949e8573d24ecdb81dbde3aeede26ef7efb2f
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -653,11 +657,19 @@ fun StoryActionButton(
 ) {
     // WORLDMATES: карточний стиль з анімаціями та ефектами
     // TELEGRAM: мінімалістичний плоский стиль
+<<<<<<< HEAD
+
+    // FIXED: Використовуємо InteractionSource для відслідковування стану натискання
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+=======
     
     // FIXED: Використовуємо InteractionSource для відслідковування стану натискання
     val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     
+>>>>>>> ee7949e8573d24ecdb81dbde3aeede26ef7efb2f
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
         animationSpec = spring(
@@ -666,11 +678,19 @@ fun StoryActionButton(
         ),
         label = "button_scale"
     )
+<<<<<<< HEAD
+
+    val iconSize = if (uiStyle == UIStyle.WORLDMATES) 26.dp else 24.dp
+    val fontSize = if (uiStyle == UIStyle.WORLDMATES) 13.sp else 12.sp
+    val fontWeight = if (uiStyle == UIStyle.WORLDMATES) FontWeight.SemiBold else FontWeight.Normal
+
+=======
     
     val iconSize = if (uiStyle == UIStyle.WORLDMATES) 26.dp else 24.dp
     val fontSize = if (uiStyle == UIStyle.WORLDMATES) 13.sp else 12.sp
     val fontWeight = if (uiStyle == UIStyle.WORLDMATES) FontWeight.SemiBold else FontWeight.Normal
     
+>>>>>>> ee7949e8573d24ecdb81dbde3aeede26ef7efb2f
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -715,7 +735,11 @@ fun StoryActionButton(
                 modifier = Modifier.size(iconSize)
             )
         }
+<<<<<<< HEAD
+
+=======
         
+>>>>>>> ee7949e8573d24ecdb81dbde3aeede26ef7efb2f
         if (text.isNotEmpty()) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -1031,6 +1055,10 @@ fun ReactionsBottomSheet(
     }
 }
 
+<<<<<<< HEAD
+@androidx.annotation.OptIn(UnstableApi::class)
+=======
+>>>>>>> ee7949e8573d24ecdb81dbde3aeede26ef7efb2f
 @Composable
 fun VideoPlayer(
     videoUrl: String,
@@ -1172,4 +1200,8 @@ private fun formatStoryTime(timestamp: Long): String {
         diff < 86400 -> "${diff / 3600} год тому"
         else -> SimpleDateFormat("dd MMM", Locale("uk")).format(Date(timestamp * 1000))
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> ee7949e8573d24ecdb81dbde3aeede26ef7efb2f

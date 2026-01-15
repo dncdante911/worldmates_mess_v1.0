@@ -672,7 +672,7 @@ class ChannelsViewModel : ViewModel() {
                 )
 
                 val filePart = okhttp3.MultipartBody.Part.createFormData(
-                    "file", // Убедитесь, что сервер ожидает именно "file"
+                    "avatar", // PHP сервер очікує саме "avatar"
                     "avatar.jpg",
                     requestFile
                 )
@@ -682,13 +682,18 @@ class ChannelsViewModel : ViewModel() {
                     channelId.toString()
                 )
 
+                val accessTokenBody = okhttp3.RequestBody.create(
+                    "text/plain".toMediaTypeOrNull(),
+                    token
+                )
+
                 Log.d("ChannelsViewModel", "📸 Uploading avatar for channel $channelId")
 
-                // ИСПРАВЛЕНО: Используем RetrofitClient.apiService
+                // Викликаємо API з правильними параметрами
                 val response = RetrofitClient.apiService.uploadChannelAvatar(
-                    accessToken = token,
+                    accessToken = accessTokenBody,
                     channelId = channelIdBody,
-                    file = filePart
+                    avatar = filePart
                 )
 
                 // ВАЖНО: В CreateChannelResponse обычно поле называется apiStatus (Int)

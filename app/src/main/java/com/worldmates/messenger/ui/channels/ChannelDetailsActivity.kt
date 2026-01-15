@@ -899,7 +899,8 @@ fun ChannelDetailsScreen(
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_LONG).show()
                         }
                     )
-                }
+                },
+                channelsViewModel = channelsViewModel // Передаємо ViewModel для upload avatar
             )
         }
 

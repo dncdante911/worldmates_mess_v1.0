@@ -1243,5 +1243,78 @@ class ChannelsViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * 📤 Завантажити аватар каналу
+     */
+    fun uploadChannelAvatar(
+        channelId: Long,
+        imageUri: android.net.Uri,
+        context: android.content.Context,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                // Підготовка файлу для завантаження
+                val contentResolver = context.contentResolver
+                val inputStream = contentResolver.openInputStream(imageUri)
+
+                if (inputStream == null) {
+                    onError("Не вдалося відкрити файл")
+                    return@launch
+                }
+
+                val bytes = inputStream.readBytes()
+                inputStream.close()
+
+                // Створюємо RequestBody з байтів
+                val requestFile = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("image/*"),
+                    bytes
+                )
+
+                // Створюємо MultipartBody.Part
+                val imagePart = okhttp3.MultipartBody.Part.createFormData(
+                    "avatar",
+                    "avatar.jpg",
+                    requestFile
+                )
+
+                // Створюємо channelId RequestBody
+                val channelIdBody = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("text/plain"),
+                    channelId.toString()
+                )
+
+                // Викликаємо API
+                val response = RetrofitClient.apiService.uploadChannelAvatar(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelIdBody,
+                    avatar = imagePart
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо канал після завантаження
+                    refreshChannel(channelId)
+                    onSuccess()
+                    Log.d("ChannelsViewModel", "✅ Avatar uploaded successfully")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося завантажити аватар"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to upload avatar: ${response.errorMessage}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка завантаження: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error uploading avatar", e)
+            }
+        }
+    }
 }
 >>>>>>> ee7949e8573d24ecdb81dbde3aeede26ef7efb2f

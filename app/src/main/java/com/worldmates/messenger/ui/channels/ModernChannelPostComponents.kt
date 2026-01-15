@@ -2193,6 +2193,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.*
 import java.text.SimpleDateFormat
@@ -3685,12 +3688,23 @@ fun AddAdminDialog(
 fun EditChannelInfoDialog(
     channel: Channel,
     onDismiss: () -> Unit,
-    onSave: (name: String, description: String, username: String) -> Unit
+    onSave: (name: String, description: String, username: String) -> Unit,
+    channelsViewModel: ChannelsViewModel? = null // Додаємо опціональний ViewModel для upload avatar
 ) {
+    val context = LocalContext.current
     var channelName by remember { mutableStateOf(channel.name) }
     var channelDescription by remember { mutableStateOf(channel.description ?: "") }
     var channelUsername by remember { mutableStateOf(channel.username ?: "") }
     var usernameError by remember { mutableStateOf<String?>(null) }
+    var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var isUploadingAvatar by remember { mutableStateOf(false) }
+
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { selectedImageUri = it }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -3708,6 +3722,151 @@ fun EditChannelInfoDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // ==================== AVATAR SECTION ====================
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Текущий или выбранный аватар
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.tertiary
+                                    )
+                                )
+                            )
+                            .border(
+                                width = 3.dp,
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
+                                ),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when {
+                            // Приоритет 1: Выбранное новое изображение
+                            selectedImageUri != null -> {
+                                AsyncImage(
+                                    model = selectedImageUri,
+                                    contentDescription = "Selected Avatar",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            // Приоритет 2: Текущий аватар канала
+                            !channel.avatar.isNullOrEmpty() -> {
+                                AsyncImage(
+                                    model = channel.avatar,
+                                    contentDescription = "Channel Avatar",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            // Приоритет 3: Placeholder
+                            else -> {
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    contentDescription = "Channel Avatar",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(80.dp)
+                                )
+                            }
+                        }
+
+                        // Overlay с индикатором загрузки
+                        if (isUploadingAvatar) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.6f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Кнопки управления аватаром
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Кнопка выбора изображения
+                        OutlinedButton(
+                            onClick = { imagePickerLauncher.launch("image/*") },
+                            enabled = !isUploadingAvatar,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.PhotoCamera,
+                                contentDescription = "Select Photo",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Вибрати фото")
+                        }
+
+                        // Кнопка загрузки (показывается только если выбрано новое изображение)
+                        if (selectedImageUri != null && channelsViewModel != null) {
+                            Button(
+                                onClick = {
+                                    isUploadingAvatar = true
+                                    channelsViewModel.uploadChannelAvatar(
+                                        channelId = channel.id,
+                                        imageUri = selectedImageUri!!,
+                                        context = context,
+                                        onSuccess = {
+                                            isUploadingAvatar = false
+                                            selectedImageUri = null
+                                        },
+                                        onError = { error ->
+                                            isUploadingAvatar = false
+                                            // TODO: показать ошибку пользователю
+                                        }
+                                    )
+                                },
+                                enabled = !isUploadingAvatar,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    Icons.Default.Upload,
+                                    contentDescription = "Upload",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Завантажити")
+                            }
+                        }
+                    }
+
+                    if (selectedImageUri != null) {
+                        Text(
+                            text = "Натисніть 'Завантажити' щоб оновити аватар",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
                 // Назва каналу
                 OutlinedTextField(
                     value = channelName,

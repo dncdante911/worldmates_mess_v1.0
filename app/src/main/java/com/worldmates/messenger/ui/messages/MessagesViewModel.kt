@@ -1046,7 +1046,7 @@ class MessagesViewModel(application: Application) :
                 message.groupId == groupId
             } else {
                 (message.fromId == recipientId && message.toId == UserSession.userId) ||
-                (message.fromId == UserSession.userId && message.toId == recipientId)
+                        (message.fromId == UserSession.userId && message.toId == recipientId)
             }
 
             if (isRelevant) {

@@ -27,14 +27,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.Brush
 import androidx.lifecycle.ViewModelProvider
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Channel
 import com.worldmates.messenger.data.model.ChannelPost
-import com.worldmates.messenger.ui.theme.BackgroundImage
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
+import com.worldmates.messenger.ui.theme.BackgroundImage
 import com.worldmates.messenger.ui.theme.rememberThemeState
 
 /**
@@ -66,12 +74,21 @@ class ChannelDetailsActivity : AppCompatActivity() {
 
         setContent {
             WorldMatesThemedApp {
-                ChannelDetailsScreen(
-                    channelId = channelId,
-                    channelsViewModel = channelsViewModel,
-                    detailsViewModel = detailsViewModel,
-                    onBackPressed = { finish() }
-                )
+                val themeState = rememberThemeState()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Фоновое изображение из настроек тем
+                    BackgroundImage(
+                        backgroundImageUri = themeState.backgroundImageUri,
+                        presetBackgroundId = themeState.presetBackgroundId
+                    )
+                    
+                    ChannelDetailsScreen(
+                        channelId = channelId,
+                        channelsViewModel = channelsViewModel,
+                        detailsViewModel = detailsViewModel,
+                        onBackPressed = { finish() }
+                    )
+                }
             }
         }
     }
@@ -111,6 +128,7 @@ fun ChannelDetailsScreen(
 
     // UI States
     var showCreatePostDialog by remember { mutableStateOf(false) }
+    var showChangeAvatarDialog by remember { mutableStateOf(false) }
     var showSubscribersDialog by remember { mutableStateOf(false) }
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showPostOptions by remember { mutableStateOf(false) }
@@ -142,6 +160,62 @@ fun ChannelDetailsScreen(
             refreshing = false
         }
     )
+    // URI для вибраного зображення аватара
+    var selectedAvatarUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+    // Лаунчер для вибору з галереї
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: android.net.Uri? ->
+        uri?.let {
+            selectedAvatarUri = it
+            channelsViewModel.uploadChannelAvatar(
+                channelId = channelId,
+                imageUri = it,
+                context = context,
+                onSuccess = {
+                    Toast.makeText(context, "Аватар успішно оновлено", Toast.LENGTH_SHORT).show()
+                    showChangeAvatarDialog = false
+                },
+                onError = { error ->
+                    Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
+
+    // URI для фото з камери
+    val cameraUri = remember {
+        android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.TITLE, "channel_avatar_${System.currentTimeMillis()}")
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }.let {
+            context.contentResolver.insert(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                it
+            )
+        }
+    }
+
+    // Лаунчер для камери
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraUri != null) {
+            channelsViewModel.uploadChannelAvatar(
+                channelId = channelId,
+                imageUri = cameraUri,
+                context = context,
+                onSuccess = {
+                    Toast.makeText(context, "Аватар успішно оновлено", Toast.LENGTH_SHORT).show()
+                    showChangeAvatarDialog = false
+                },
+                onError = { error ->
+                    Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
 
     // Показуємо помилки через Toast
     LaunchedEffect(error) {
@@ -172,6 +246,9 @@ fun ChannelDetailsScreen(
         Scaffold(
             containerColor = Color.Transparent, // Прозорий фон щоб був видно BackgroundImage
             floatingActionButton = {
+    Scaffold(
+        containerColor = Color.Transparent,  // Прозорий фон, щоб було видно BackgroundImage
+        floatingActionButton = {
             // FAB для створення поста (тільки для адмінів)
             if (channel?.isAdmin == true) {
                 FloatingActionButton(
@@ -194,6 +271,12 @@ fun ChannelDetailsScreen(
                     .padding(paddingValues)
                     // Убрали .background чтобы был виден BackgroundImage
             ) {
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             if (channel == null) {
                 // Канал не знайдено
                 Column(
@@ -230,7 +313,10 @@ fun ChannelDetailsScreen(
                             onSubscribersClick = {
                                 detailsViewModel.loadSubscribers(channelId)
                                 showSubscribersDialog = true
-                            }
+                            },
+                            onAvatarClick = if (channel.isAdmin) {
+                                { showChangeAvatarDialog = true }
+                            } else null
                         )
                     }
 
@@ -382,7 +468,7 @@ fun ChannelDetailsScreen(
                                 canEdit = channel.isAdmin,
                                 modifier = Modifier
                                     .padding(horizontal = 0.dp, vertical = 0.dp)
-                                    .animateItemPlacement()
+                                    .animateItem()
                             )
                         }
                     }
@@ -838,8 +924,21 @@ fun ChannelDetailsScreen(
                 }
             )
         }
-    } // End Scaffold
-    } // End Box with BackgroundImage
+   // Діалог зміни аватара каналу
+    if (showChangeAvatarDialog) {
+        ChannelAvatarDialog(
+            onDismiss = { showChangeAvatarDialog = false },
+            onCameraClick = {
+                cameraUri?.let { cameraLauncher.launch(it) }
+            },
+            onGalleryClick = {
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
+        )
+    }
+    }
 }
 
 /**

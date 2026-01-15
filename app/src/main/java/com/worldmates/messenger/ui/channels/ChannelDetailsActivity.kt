@@ -171,7 +171,7 @@ fun ChannelDetailsScreen(
 
         Scaffold(
             containerColor = Color.Transparent, // Прозорий фон щоб був видно BackgroundImage
-        floatingActionButton = {
+            floatingActionButton = {
             // FAB для створення поста (тільки для адмінів)
             if (channel?.isAdmin == true) {
                 FloatingActionButton(
@@ -187,13 +187,13 @@ fun ChannelDetailsScreen(
                 }
             }
         }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    // Убрали .background чтобы был виден BackgroundImage
+            ) {
             if (channel == null) {
                 // Канал не знайдено
                 Column(

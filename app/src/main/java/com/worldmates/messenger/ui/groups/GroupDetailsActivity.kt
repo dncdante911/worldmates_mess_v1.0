@@ -35,6 +35,9 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Group
 import com.worldmates.messenger.data.model.GroupMember
+import com.worldmates.messenger.ui.groups.components.ChangeAvatarDialog
+import com.worldmates.messenger.ui.groups.components.GroupQrDialog
+import com.worldmates.messenger.ui.groups.components.JoinGroupByQrDialog
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import java.text.SimpleDateFormat
@@ -99,17 +102,67 @@ fun GroupDetailsScreen(
     var selectedMember by remember { mutableStateOf<GroupMember?>(null) }
     var showMemberOptionsMenu by remember { mutableStateOf(false) }
     var showAvatarChangeDialog by remember { mutableStateOf(false) }
+    var showGroupQrDialog by remember { mutableStateOf(false) }
+    var groupQrCode by remember { mutableStateOf<String?>(null) }
+    var groupJoinUrl by remember { mutableStateOf<String?>(null) }
 
-    // Лаунчер для вибору зображення аватара
+    // Лаунчер для вибору зображення аватара з галереї
     val avatarPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // Завантажуємо аватарку на сервер
-            viewModel.uploadGroupAvatar(groupId, it, context)
+            try {
+                // Конвертуємо Uri в File
+                val inputStream = context.contentResolver.openInputStream(it)
+                val file = java.io.File(context.cacheDir, "group_avatar_${System.currentTimeMillis()}.jpg")
+                inputStream?.use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                // Завантажуємо аватар на сервер
+                viewModel.uploadGroupAvatar(
+                    groupId = groupId,
+                    imageFile = file,
+                    onSuccess = { avatarUrl ->
+                        android.widget.Toast.makeText(
+                            context,
+                            "Аватар успішно завантажено!",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        // Видаляємо тимчасовий файл
+                        file.delete()
+                    },
+                    onError = { error ->
+                        android.widget.Toast.makeText(
+                            context,
+                            error,
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        file.delete()
+                    }
+                )
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(
+                    context,
+                    "Помилка обробки зображення: ${e.message}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    // Лаунчер для камери
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            // Фото збережено, завантажуємо на сервер
+            // TODO: Implement camera upload
             android.widget.Toast.makeText(
                 context,
-                "Завантаження аватара...",
+                "Камера поки не підтримується",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
@@ -195,7 +248,25 @@ fun GroupDetailsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     AdminControlsSection(
                         onEditClick = { showEditDialog = true },
-                        onAddMembersClick = { showAddMemberDialog = true }
+                        onAddMembersClick = { showAddMemberDialog = true },
+                        onQrCodeClick = {
+                            // Генеруємо QR код
+                            viewModel.generateGroupQr(
+                                groupId = groupId,
+                                onSuccess = { qrCode, joinUrl ->
+                                    groupQrCode = qrCode
+                                    groupJoinUrl = joinUrl
+                                    showGroupQrDialog = true
+                                },
+                                onError = { error ->
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        error,
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            )
+                        }
                     )
                 }
             }
@@ -357,52 +428,38 @@ fun GroupDetailsScreen(
 
         // Діалог для зміни аватара
         if (showAvatarChangeDialog) {
-            AlertDialog(
-                onDismissRequest = { showAvatarChangeDialog = false },
-                icon = {
-                    Icon(
-                        Icons.Default.Image,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+            ChangeAvatarDialog(
+                onDismiss = { showAvatarChangeDialog = false },
+                onCameraClick = {
+                    showAvatarChangeDialog = false
+                    // TODO: Implement camera upload
+                    android.widget.Toast.makeText(
+                        context,
+                        "Камера поки не підтримується",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
                 },
-                title = {
-                    Text(
-                        "Змінити аватар групи",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    Text(
-                        "Оберіть нове зображення для аватара групи. Рекомендований розмір: 512x512 пікселів.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            avatarPickerLauncher.launch("image/*")
-                            showAvatarChangeDialog = false
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Image,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Вибрати зображення", fontWeight = FontWeight.SemiBold)
+                onGalleryClick = {
+                    showAvatarChangeDialog = false
+                    avatarPickerLauncher.launch("image/*")
+                }
+            )
+        }
+
+        // Діалог QR коду групи
+        if (showGroupQrDialog && groupQrCode != null && groupJoinUrl != null) {
+            GroupQrDialog(
+                groupName = group.name,
+                qrCode = groupQrCode!!,
+                joinUrl = groupJoinUrl!!,
+                onDismiss = { showGroupQrDialog = false },
+                onShare = { url ->
+                    // Поділитися посиланням
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "Приєднуйтесь до групи \"${group.name}\":\n$url")
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showAvatarChangeDialog = false }) {
-                        Text("Скасувати")
-                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Поділитися посиланням"))
                 }
             )
         }
@@ -539,7 +596,8 @@ fun ActionButton(
 @Composable
 fun AdminControlsSection(
     onEditClick: () -> Unit,
-    onAddMembersClick: () -> Unit
+    onAddMembersClick: () -> Unit,
+    onQrCodeClick: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -556,6 +614,12 @@ fun AdminControlsSection(
                 icon = Icons.Default.PersonAdd,
                 title = "Додати учасників",
                 onClick = onAddMembersClick
+            )
+            Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(start = 56.dp))
+            SettingsItem(
+                icon = Icons.Default.QrCode,
+                title = "QR код групи",
+                onClick = onQrCodeClick
             )
         }
     }

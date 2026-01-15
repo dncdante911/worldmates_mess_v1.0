@@ -11,6 +11,8 @@ import com.worldmates.messenger.data.model.MessageReaction
 import com.worldmates.messenger.data.model.ReactionGroup
 import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.network.MediaUploader
+import com.worldmates.messenger.network.MediaLoadingManager
+import com.worldmates.messenger.network.NetworkQualityMonitor
 import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.SocketManager
 import com.worldmates.messenger.utils.DecryptionUtility
@@ -65,6 +67,28 @@ class MessagesViewModel(application: Application) :
     private val _forwardGroups = MutableStateFlow<List<ForwardRecipient>>(emptyList())
     val forwardGroups: StateFlow<List<ForwardRecipient>> = _forwardGroups
 
+    // ==================== GROUPS ====================
+    private val _currentGroup = MutableStateFlow<com.worldmates.messenger.data.model.Group?>(null)
+    val currentGroup: StateFlow<com.worldmates.messenger.data.model.Group?> = _currentGroup
+    // ==================== END GROUPS ====================
+
+    // ==================== SEARCH ====================
+    private val _searchResults = MutableStateFlow<List<Message>>(emptyList())
+    val searchResults: StateFlow<List<Message>> = _searchResults
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    private val _searchTotalCount = MutableStateFlow(0)
+    val searchTotalCount: StateFlow<Int> = _searchTotalCount
+
+    private val _currentSearchIndex = MutableStateFlow(0)
+    val currentSearchIndex: StateFlow<Int> = _currentSearchIndex
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching
+    // ==================== END SEARCH ====================
+
     // ==================== DRAFTS ====================
     private val draftRepository = DraftRepository.getInstance(context)
 
@@ -76,6 +100,20 @@ class MessagesViewModel(application: Application) :
 
     private var draftAutoSaveJob: Job? = null
     // ==================== END DRAFTS ====================
+
+    // ==================== ADAPTIVE TRANSPORT ====================
+    private val _connectionQuality = MutableStateFlow(
+        NetworkQualityMonitor.ConnectionQuality.GOOD
+    )
+    val connectionQuality: StateFlow<NetworkQualityMonitor.ConnectionQuality> = _connectionQuality
+
+    // MediaLoadingManager для прогресивного завантаження медіа
+    private val mediaLoader by lazy {
+        MediaLoadingManager(context)
+    }
+
+    private var qualityMonitorJob: Job? = null
+    // ==================== END ADAPTIVE TRANSPORT ====================
 
     private var recipientId: Long = 0
     private var groupId: Long = 0
@@ -96,10 +134,32 @@ class MessagesViewModel(application: Application) :
     fun initializeGroup(groupId: Long) {
         this.groupId = groupId
         this.recipientId = 0
+        fetchGroupDetails(groupId) // 📌 Отримуємо деталі групи включаючи закріплене повідомлення
         fetchGroupMessages()
         setupSocket()
         loadDraft() // Загружаем черновик
         Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
+    }
+
+    /**
+     * 📌 Отримати деталі групи (включаючи закріплене повідомлення)
+     */
+    private fun fetchGroupDetails(groupId: Long) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.getGroupDetails(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200 && response.group != null) {
+                    _currentGroup.value = response.group
+                    Log.d(TAG, "📌 Group details loaded: ${response.group.name}, pinned: ${response.group.pinnedMessage != null}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error fetching group details", e)
+            }
+        }
     }
 
     /**
@@ -880,17 +940,47 @@ class MessagesViewModel(application: Application) :
 
     /**
      * Налаштовує Socket.IO для получения сообщений в реальном времени
+     * + Адаптивний моніторинг якості з'єднання
      */
     private fun setupSocket() {
-        Log.d("MessagesViewModel", "🔌 setupSocket() викликано")
+        Log.d(TAG, "🔌 setupSocket() викликано")
         try {
-            socketManager = SocketManager(this)
-            Log.d("MessagesViewModel", "✅ SocketManager створено")
+            // Створюємо SocketManager з context для NetworkQualityMonitor
+            socketManager = SocketManager(this, context)
+            Log.d(TAG, "✅ SocketManager створено з адаптивним моніторингом")
+
             socketManager?.connect()
-            Log.d("MessagesViewModel", "✅ Socket.IO connect() викликано")
+            Log.d(TAG, "✅ Socket.IO connect() викликано")
+
+            // Запускаємо моніторинг якості з'єднання для UI
+            startQualityMonitoring()
         } catch (e: Exception) {
-            Log.e("MessagesViewModel", "❌ Помилка Socket.IO", e)
+            Log.e(TAG, "❌ Помилка Socket.IO", e)
             e.printStackTrace()
+        }
+    }
+
+    /**
+     * Моніторинг якості з'єднання для оновлення UI
+     */
+    private fun startQualityMonitoring() {
+        qualityMonitorJob?.cancel()
+        qualityMonitorJob = viewModelScope.launch {
+            while (true) {
+                try {
+                    val quality = socketManager?.getConnectionQuality()
+                        ?: NetworkQualityMonitor.ConnectionQuality.OFFLINE
+
+                    if (_connectionQuality.value != quality) {
+                        _connectionQuality.value = quality
+                        Log.d(TAG, "📊 Connection quality changed: $quality")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error monitoring quality", e)
+                }
+
+                delay(5000) // Перевіряємо кожні 5 секунд
+            }
         }
     }
 
@@ -899,7 +989,7 @@ class MessagesViewModel(application: Application) :
             Log.d("MessagesViewModel", "📨 Отримано Socket.IO повідомлення: $messageJson")
 
             val timestamp = messageJson.getLong("time")
-            val encryptedText = messageJson.getString("text")
+            val encryptedText = messageJson.optString("text", null)
             val mediaUrl = messageJson.optString("media", null)
 
             // Поддержка AES-GCM (v2) - новые поля
@@ -956,7 +1046,7 @@ class MessagesViewModel(application: Application) :
                 message.groupId == groupId
             } else {
                 (message.fromId == recipientId && message.toId == UserSession.userId) ||
-                (message.fromId == UserSession.userId && message.toId == recipientId)
+                        (message.fromId == UserSession.userId && message.toId == recipientId)
             }
 
             if (isRelevant) {
@@ -1196,9 +1286,363 @@ class MessagesViewModel(application: Application) :
         }
     }
 
+    /**
+     * 📌 Закріпити повідомлення в групі
+     */
+    fun pinGroupMessage(
+        messageId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.pinGroupMessage(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    messageId = messageId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "📌 Message $messageId pinned in group $groupId")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося закріпити повідомлення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to pin message: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error pinning message", e)
+            }
+        }
+    }
+
+    /**
+     * 📌 Відкріпити повідомлення в групі
+     */
+    fun unpinGroupMessage(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unpinGroupMessage(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "📌 Message unpinned in group $groupId")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося відкріпити повідомлення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to unpin message: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error unpinning message", e)
+            }
+        }
+    }
+
+    /**
+     * 🔕 Вимкнути сповіщення для групи
+     */
+    fun muteGroup(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.muteGroup(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "🔕 Group $groupId muted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося вимкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to mute group: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error muting group", e)
+            }
+        }
+    }
+
+    /**
+     * 🔔 Увімкнути сповіщення для групи
+     */
+    fun unmuteGroup(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            onError("Не авторизовано або це не група")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unmuteGroup(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо дані групи
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d(TAG, "🔔 Group $groupId unmuted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося увімкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to unmute group: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error unmuting group", e)
+            }
+        }
+    }
+
+    /**
+     * 🔍 Поиск сообщений в группе
+     */
+    fun searchGroupMessages(query: String) {
+        if (UserSession.accessToken == null || groupId == 0L) {
+            Log.e(TAG, "Cannot search: not authorized or not in group")
+            return
+        }
+
+        if (query.length < 2) {
+            // Очищаем результаты поиска
+            _searchResults.value = emptyList()
+            _searchQuery.value = ""
+            _searchTotalCount.value = 0
+            _currentSearchIndex.value = 0
+            return
+        }
+
+        _isSearching.value = true
+        _searchQuery.value = query
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.searchGroupMessages(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    query = query,
+                    limit = 100
+                )
+
+                if (response.apiStatus == 200) {
+                    val messages = response.messages ?: emptyList()
+                    _searchResults.value = messages
+                    _searchTotalCount.value = response.totalCount
+                    _currentSearchIndex.value = if (messages.isNotEmpty()) 0 else -1
+                    Log.d(TAG, "🔍 Search completed: found ${response.totalCount} results for '$query'")
+                } else {
+                    Log.e(TAG, "❌ Search failed: ${response.message}")
+                    _searchResults.value = emptyList()
+                    _searchTotalCount.value = 0
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error searching messages", e)
+                _searchResults.value = emptyList()
+                _searchTotalCount.value = 0
+            } finally {
+                _isSearching.value = false
+            }
+        }
+    }
+
+    /**
+     * 🔍 Перейти к следующему результату поиска
+     */
+    fun nextSearchResult() {
+        val results = _searchResults.value
+        if (results.isEmpty()) return
+
+        val currentIndex = _currentSearchIndex.value
+        val nextIndex = (currentIndex + 1) % results.size
+        _currentSearchIndex.value = nextIndex
+        Log.d(TAG, "🔍 Next result: ${nextIndex + 1} of ${results.size}")
+    }
+
+    /**
+     * 🔍 Перейти к предыдущему результату поиска
+     */
+    fun previousSearchResult() {
+        val results = _searchResults.value
+        if (results.isEmpty()) return
+
+        val currentIndex = _currentSearchIndex.value
+        val prevIndex = if (currentIndex > 0) currentIndex - 1 else results.size - 1
+        _currentSearchIndex.value = prevIndex
+        Log.d(TAG, "🔍 Previous result: ${prevIndex + 1} of ${results.size}")
+    }
+
+    /**
+     * 🔍 Очистить результаты поиска
+     */
+    fun clearSearch() {
+        _searchResults.value = emptyList()
+        _searchQuery.value = ""
+        _searchTotalCount.value = 0
+        _currentSearchIndex.value = 0
+        _isSearching.value = false
+        Log.d(TAG, "🔍 Search cleared")
+    }
+
+    // ==================== MEDIA LOADING ====================
+
+    /**
+     * 📥 Завантажити превью (thumbnail) для медіа-повідомлення
+     * Викликається автоматично при скролі до повідомлення з медіа
+     */
+    fun loadMessageThumbnail(message: Message) {
+        if (message.mediaUrl.isNullOrEmpty()) {
+            Log.d(TAG, "⚠️ Message ${message.id} has no media URL")
+            return
+        }
+
+        // Перевіряємо чи можна завантажувати медіа
+        if (!socketManager?.canAutoLoadMedia()!!) {
+            Log.d(TAG, "⚠️ Auto-loading disabled due to connection quality")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val progressFlow = mediaLoader.loadThumbnail(
+                    messageId = message.id,
+                    thumbnailUrl = message.mediaUrl,
+                    priority = 5
+                )
+
+                progressFlow.collect { state ->
+                    when (state.state) {
+                        MediaLoadingManager.LoadingState.THUMB_LOADED -> {
+                            Log.d(TAG, "✅ Thumbnail loaded for message ${message.id}")
+                            // UI автоматично оновиться через StateFlow
+                        }
+                        MediaLoadingManager.LoadingState.ERROR -> {
+                            Log.e(TAG, "❌ Failed to load thumbnail: ${state.error}")
+                        }
+                        else -> {
+                            // Loading...
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading thumbnail", e)
+            }
+        }
+    }
+
+    /**
+     * 📥 Завантажити повне медіа (при кліку користувача)
+     */
+    fun loadFullMedia(message: Message) {
+        if (message.mediaUrl.isNullOrEmpty()) {
+            Log.d(TAG, "⚠️ Message ${message.id} has no media URL")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val progressFlow = mediaLoader.loadFullMedia(
+                    messageId = message.id,
+                    mediaUrl = message.mediaUrl,
+                    priority = 10 // Вищий пріоритет для повного медіа
+                )
+
+                progressFlow.collect { state ->
+                    when (state.state) {
+                        MediaLoadingManager.LoadingState.LOADING_FULL -> {
+                            Log.d(TAG, "📥 Loading full media: ${state.progress}%")
+                        }
+                        MediaLoadingManager.LoadingState.FULL_LOADED -> {
+                            Log.d(TAG, "✅ Full media loaded for message ${message.id}")
+                            // UI автоматично оновиться
+                        }
+                        MediaLoadingManager.LoadingState.ERROR -> {
+                            Log.e(TAG, "❌ Failed to load full media: ${state.error}")
+                            _error.value = "Не вдалося завантажити медіа"
+                        }
+                        else -> {}
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading full media", e)
+                _error.value = "Помилка завантаження: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Чи можна завантажувати медіа автоматично?
+     * Залежить від якості з'єднання
+     */
+    fun shouldAutoLoadMedia(): Boolean {
+        return socketManager?.canAutoLoadMedia() ?: true
+    }
+
+    /**
+     * Отримати опис якості з'єднання для відображення в UI
+     */
+    fun getQualityDescription(): String {
+        return socketManager?.getQualityDescription() ?: "🔴 Немає з'єднання"
+    }
+
+    // ==================== END MEDIA LOADING ====================
+
     override fun onCleared() {
         super.onCleared()
+
+        // Зупиняємо Socket.IO
         socketManager?.disconnect()
-        Log.d("MessagesViewModel", "ViewModel очищена")
+
+        // Зупиняємо моніторинг якості
+        qualityMonitorJob?.cancel()
+
+        // Зупиняємо автозбереження чернетки
+        draftAutoSaveJob?.cancel()
+
+        // Очищуємо MediaLoader
+        mediaLoader.cleanup()
+
+        Log.d(TAG, "🧹 ViewModel очищена")
     }
 }

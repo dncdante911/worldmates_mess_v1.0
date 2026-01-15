@@ -112,6 +112,134 @@ interface WorldMatesApi {
         @Field("before_message_id") beforeMessageId: Long = 0
     ): MessageListResponse
 
+    // 📦 CLOUD BACKUP: Получение сообщений с расширенными параметрами
+    @FormUrlEncoded
+    @POST(Constants.GET_MESSAGES_ENDPOINT)
+    suspend fun getMessagesWithOptions(
+        @Query("access_token") accessToken: String,
+        @Field("recipient_id") recipientId: Long,
+        @Field("limit") limit: Int = 30,
+        @Field("before_message_id") beforeMessageId: Long = 0,
+        @Field("full_history") fullHistory: String = "false", // "true" для загрузки всей истории
+        @Field("count_only") countOnly: String = "false" // "true" для получения только количества
+    ): MessageListResponse
+
+    // 📦 CLOUD BACKUP: Подсчет количества сообщений
+    @FormUrlEncoded
+    @POST(Constants.GET_MESSAGES_ENDPOINT)
+    suspend fun getMessageCount(
+        @Query("access_token") accessToken: String,
+        @Field("recipient_id") recipientId: Long,
+        @Field("count_only") countOnly: String = "true"
+    ): MessageCountResponse
+
+    // 📡 ADAPTIVE TRANSPORT: Легкое получение сообщений (text-only)
+    @FormUrlEncoded
+    @POST(Constants.GET_MESSAGES_ENDPOINT)
+    suspend fun getMessagesLightweight(
+        @Query("access_token") accessToken: String,
+        @Field("recipient_id") recipientId: Long,
+        @Field("limit") limit: Int = 30,
+        @Field("after_message_id") afterMessageId: Long = 0, // Получить сообщения ПОСЛЕ этого ID
+        @Field("load_mode") loadMode: String = "text_only" // "text_only", "with_thumbnails", "full"
+    ): MessageListResponse
+
+    // 📡 ADAPTIVE TRANSPORT: Получить превью медиа (thumbnail)
+    @GET
+    suspend fun getMediaThumbnail(
+        @Url thumbnailUrl: String
+    ): okhttp3.ResponseBody
+
+    // 📡 ADAPTIVE TRANSPORT: Получить полное медиа
+    @GET
+    suspend fun getFullMedia(
+        @Url mediaUrl: String
+    ): okhttp3.ResponseBody
+
+    // 📦 CLOUD BACKUP: Получение настроек автозагрузки медиа
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/get_media_settings.php")
+    suspend fun getMediaSettings(
+        @Query("access_token") accessToken: String
+    ): MediaSettingsResponse
+
+    // 📦 CLOUD BACKUP: Обновление настроек автозагрузки медиа
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/update_media_settings.php")
+    suspend fun updateMediaSettings(
+        @Query("access_token") accessToken: String,
+        @Field("auto_download_photos") autoDownloadPhotos: String? = null,
+        @Field("auto_download_videos") autoDownloadVideos: String? = null,
+        @Field("auto_download_audio") autoDownloadAudio: String? = null,
+        @Field("auto_download_documents") autoDownloadDocuments: String? = null,
+        @Field("compress_photos") compressPhotos: String? = null,
+        @Field("compress_videos") compressVideos: String? = null,
+        @Field("backup_enabled") backupEnabled: String? = null,
+        @Field("mark_backup_complete") markBackupComplete: String? = null
+    ): UpdateMediaSettingsResponse
+
+    // 📦 CLOUD BACKUP v2: Получение расширенных настроек облачного бэкапа
+    @GET("/api/v2/endpoints/get_cloud_backup_settings.php")
+    suspend fun getCloudBackupSettings(
+        @Query("access_token") accessToken: String
+    ): CloudBackupSettingsResponse
+
+    // 📦 CLOUD BACKUP v2: Обновление расширенных настроек облачного бэкапа
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/update_cloud_backup_settings.php")
+    suspend fun updateCloudBackupSettings(
+        @Field("access_token") accessToken: String,
+        @Field("mobile_photos") mobilePhotos: String? = null,
+        @Field("mobile_videos") mobileVideos: String? = null,
+        @Field("mobile_files") mobileFiles: String? = null,
+        @Field("mobile_videos_limit") mobileVideosLimit: Int? = null,
+        @Field("mobile_files_limit") mobileFilesLimit: Int? = null,
+        @Field("wifi_photos") wifiPhotos: String? = null,
+        @Field("wifi_videos") wifiVideos: String? = null,
+        @Field("wifi_files") wifiFiles: String? = null,
+        @Field("wifi_videos_limit") wifiVideosLimit: Int? = null,
+        @Field("wifi_files_limit") wifiFilesLimit: Int? = null,
+        @Field("roaming_photos") roamingPhotos: String? = null,
+        @Field("save_to_gallery_private_chats") saveToGalleryPrivateChats: String? = null,
+        @Field("save_to_gallery_groups") saveToGalleryGroups: String? = null,
+        @Field("save_to_gallery_channels") saveToGalleryChannels: String? = null,
+        @Field("streaming_enabled") streamingEnabled: String? = null,
+        @Field("cache_size_limit") cacheSizeLimit: Long? = null,
+        @Field("backup_enabled") backupEnabled: String? = null,
+        @Field("backup_provider") backupProvider: String? = null,
+        @Field("backup_frequency") backupFrequency: String? = null,
+        @Field("mark_backup_complete") markBackupComplete: String? = null,
+        @Field("proxy_enabled") proxyEnabled: String? = null,
+        @Field("proxy_host") proxyHost: String? = null,
+        @Field("proxy_port") proxyPort: Int? = null
+    ): UpdateCloudBackupSettingsResponse
+
+    // 📊 CLOUD BACKUP: Получение статистики облачного хранилища
+    @GET("/api/v2/endpoints/get-backup-statistics.php")
+    suspend fun getBackupStatistics(
+        @Query("access_token") accessToken: String
+    ): BackupStatisticsResponse
+
+    // 📤 CLOUD BACKUP: Експорт всіх даних користувача
+    @GET("/api/v2/endpoints/export-user-data.php")
+    suspend fun exportUserData(
+        @Query("access_token") accessToken: String
+    ): ExportDataResponse
+
+    // 📥 CLOUD BACKUP: Імпорт даних користувача з бекапу
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/import-user-data.php")
+    suspend fun importUserData(
+        @Query("access_token") accessToken: String,
+        @Field("backup_data") backupData: String
+    ): ImportDataResponse
+
+    // 📋 CLOUD BACKUP: Список бекапів на сервері
+    @GET("/api/v2/endpoints/list-backups.php")
+    suspend fun listBackups(
+        @Query("access_token") accessToken: String
+    ): ListBackupsResponse
+
     // ==================== GROUP CHATS (Messenger Groups) ====================
     // Uses /api/v2/group_chat_v2.php - NEW custom API endpoint with 'type' parameter
 
@@ -233,6 +361,73 @@ interface WorldMatesApi {
         @Part("id") groupId: RequestBody,
         @Part avatar: MultipartBody.Part
     ): CreateGroupResponse
+
+    // 📌 Pin/Unpin Group Messages
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/pin_group_message.php")
+    suspend fun pinGroupMessage(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long,
+        @Field("message_id") messageId: Long
+    ): GenericResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unpin_group_message.php")
+    suspend fun unpinGroupMessage(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
+    // 🔕 Mute/Unmute Group Notifications
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/mute_group.php")
+    suspend fun muteGroup(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unmute_group.php")
+    suspend fun unmuteGroup(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
+    // 🔍 Search Group Messages
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/search_group_messages.php")
+    suspend fun searchGroupMessages(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long,
+        @Field("query") query: String,
+        @Field("limit") limit: Int = 50,
+        @Field("offset") offset: Int = 0
+    ): SearchMessagesResponse
+
+    // 📸 Upload Group Avatar
+    @Multipart
+    @POST("/api/v2/endpoints/upload_group_avatar.php")
+    suspend fun uploadGroupAvatar(
+        @Part("access_token") accessToken: RequestBody,
+        @Part("group_id") groupId: RequestBody,
+        @Part avatar: MultipartBody.Part
+    ): UploadAvatarResponse
+
+    // 🔲 Generate Group QR Code
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/generate_group_qr.php")
+    suspend fun generateGroupQr(
+        @Field("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenerateQrResponse
+
+    // 🔲 Join Group by QR Code
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/join_group_by_qr.php")
+    suspend fun joinGroupByQr(
+        @Field("access_token") accessToken: String,
+        @Field("qr_code") qrCode: String
+    ): JoinGroupResponse
 
     // ==================== MESSAGES ====================
 
@@ -420,6 +615,14 @@ interface WorldMatesApi {
         @Part("group_id") groupId: RequestBody,
         @Part file: MultipartBody.Part
     ): MediaUploadResponse
+    // 📸 Upload Channel Avatar
+    @Multipart
+    @POST("?type=upload_channel_avatar")
+    suspend fun uploadChannelAvatar(
+        @Query("access_token") accessToken: String,
+        @Part("channel_id") channelId: RequestBody,
+        @Part file: MultipartBody.Part
+    ): MediaUploadResponse
 
     @Multipart
     @POST("?type=upload_user_avatar")
@@ -564,6 +767,48 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): GroupListResponse
 
+    // ==================== USER BLOCKING ====================
+
+    /**
+     * Заблокировать пользователя
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/block-user.php")
+    suspend fun blockUser(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long,
+        @Field("block_action") blockAction: String = "block"
+    ): BlockActionResponse
+
+    /**
+     * Разблокировать пользователя
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unblock-user.php")
+    suspend fun unblockUser(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long
+    ): BlockActionResponse
+
+    /**
+     * Получить список заблокированных пользователей
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/get-blocked-users.php")
+    suspend fun getBlockedUsers(
+        @Query("access_token") accessToken: String
+    ): GetBlockedUsersResponse
+
+    /**
+     * Проверить статус блокировки с пользователем
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/check-is-blocked.php")
+    suspend fun checkIsBlocked(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long
+    ): CheckBlockStatusResponse
+
     // ==================== CHANNELS ====================
     // Uses /api/v2/channels.php - Channel-specific API endpoint
 
@@ -661,7 +906,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun updateChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("action") action: String = "update_post",
+        @Field("type") type: String = "update_post",
         @Field("post_id") postId: Long,
         @Field("text") text: String,
         @Field("media_urls") mediaUrls: String? = null
@@ -671,7 +916,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun deleteChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("action") action: String = "delete_post",
+        @Field("type") type: String = "delete_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 
@@ -679,7 +924,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun pinChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("action") action: String = "pin_post",
+        @Field("type") type: String = "pin_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 
@@ -687,7 +932,7 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun unpinChannelPost(
         @Query("access_token") accessToken: String,
-        @Field("action") action: String = "unpin_post",
+        @Field("type") type: String = "unpin_post",
         @Field("post_id") postId: Long
     ): CreatePostResponse
 
@@ -727,7 +972,7 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "add_post_reaction",
         @Field("post_id") postId: Long,
-        @Field("emoji") emoji: String
+        @Field("reaction") emoji: String
     ): CreatePostResponse
 
     @FormUrlEncoded
@@ -736,7 +981,7 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "remove_post_reaction",
         @Field("post_id") postId: Long,
-        @Field("emoji") emoji: String
+        @Field("reaction") emoji: String
     ): CreatePostResponse
 
     @FormUrlEncoded
@@ -745,7 +990,16 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "add_comment_reaction",
         @Field("comment_id") commentId: Long,
-        @Field("emoji") emoji: String
+        @Field("reaction") reaction: String
+    ): CreatePostResponse
+
+    // Register post view
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun registerPostView(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "register_post_view",
+        @Field("post_id") postId: Long
     ): CreatePostResponse
 
     // Channel Admin Management
@@ -753,17 +1007,18 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun addChannelAdmin(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "add_admin",
+        @Field("type") type: String = "add_channel_admin",
         @Field("channel_id") channelId: Long,
-        @Field("user_id") userId: Long,
-        @Field("role") role: String = "moderator" // "admin", "moderator"
+        @Field("user_id") userId: Long? = null,
+        @Field("user_search") userSearch: String? = null,
+        @Field("role") role: String = "admin" // "admin", "moderator"
     ): CreateChannelResponse
 
     @FormUrlEncoded
     @POST("/api/v2/channels.php")
     suspend fun removeChannelAdmin(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "remove_admin",
+        @Field("type") type: String = "remove_channel_admin",
         @Field("channel_id") channelId: Long,
         @Field("user_id") userId: Long
     ): CreateChannelResponse
@@ -782,16 +1037,16 @@ interface WorldMatesApi {
     @POST("/api/v2/channels.php")
     suspend fun getChannelStatistics(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "get_statistics",
+        @Field("type") type: String = "get_channel_statistics",
         @Field("channel_id") channelId: Long
-    ): ChannelDetailResponse
+    ): ChannelStatisticsResponse
 
     // Channel Subscribers
     @FormUrlEncoded
     @POST("/api/v2/channels.php")
     suspend fun getChannelSubscribers(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "get_subscribers",
+        @Field("type") type: String = "get_channel_subscribers",
         @Field("channel_id") channelId: Long,
         @Field("limit") limit: Int = 100,
         @Field("offset") offset: Int = 0
@@ -805,6 +1060,38 @@ interface WorldMatesApi {
         @Part("id") channelId: RequestBody,
         @Part avatar: MultipartBody.Part
     ): CreateChannelResponse
+
+    // 🔲 Generate Channel QR Code
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/generate_channel_qr.php")
+    suspend fun generateChannelQr(
+        @Field("access_token") accessToken: String,
+        @Field("channel_id") channelId: Long
+    ): GenerateQrResponse
+
+    // 🔲 Subscribe to Channel by QR Code
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/subscribe_channel_by_qr.php")
+    suspend fun subscribeChannelByQr(
+        @Field("access_token") accessToken: String,
+        @Field("qr_code") qrCode: String
+    ): SubscribeChannelResponse
+
+    // 📡 Mute Channel Notifications
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/mute_channel.php")
+    suspend fun muteChannel(
+        @Field("access_token") accessToken: String,
+        @Field("channel_id") channelId: Long
+    ): GenericResponse
+
+    // 📡 Unmute Channel Notifications
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/unmute_channel.php")
+    suspend fun unmuteChannel(
+        @Field("access_token") accessToken: String,
+        @Field("channel_id") channelId: Long
+    ): GenericResponse
 }
 
 // ==================== RESPONSE MODELS ====================
@@ -971,4 +1258,62 @@ data class VerificationResponse(
     @SerializedName("message") val message: String?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
+)
+
+/**
+ * Generic response for simple operations (pin/unpin messages, etc.)
+ */
+data class GenericResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?
+)
+
+/**
+ * Response for search group messages
+ */
+data class SearchMessagesResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("messages") val messages: List<Message>? = null,
+    @SerializedName("total_count") val totalCount: Int = 0,
+    @SerializedName("query") val query: String? = null,
+    @SerializedName("message") val message: String?
+)
+
+/**
+ * Response for upload group avatar
+ */
+data class UploadAvatarResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("avatar_url") val avatarUrl: String? = null
+)
+
+/**
+ * 🔲 Response for QR code generation
+ */
+data class GenerateQrResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("qr_code") val qrCode: String? = null,
+    @SerializedName("join_url") val joinUrl: String? = null,
+    @SerializedName("group_id") val groupId: Long? = null,
+    @SerializedName("group_name") val groupName: String? = null
+)
+
+/**
+ * 🔲 Response for joining group by QR
+ */
+data class JoinGroupResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("group") val group: Group? = null
+)
+
+/**
+ * 📡 Response for subscribing to channel by QR
+ */
+data class SubscribeChannelResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String?,
+    @SerializedName("channel") val channel: com.worldmates.messenger.data.model.Channel? = null
 )

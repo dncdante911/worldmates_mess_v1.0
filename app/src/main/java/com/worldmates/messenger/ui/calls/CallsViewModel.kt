@@ -38,7 +38,7 @@ data class IceCandidateData(
 class CallsViewModel(application: Application) : AndroidViewModel(application), SocketManager.SocketListener {
 
     private val webRTCManager = WebRTCManager(application)
-    private val socketManager = SocketManager(this)
+    private val socketManager = SocketManager(this, application)
     private val gson = Gson()
 
     // LiveData для UI

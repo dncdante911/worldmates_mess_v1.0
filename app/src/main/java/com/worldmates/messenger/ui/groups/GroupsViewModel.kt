@@ -461,6 +461,272 @@ class GroupsViewModel : ViewModel() {
         _error.value = null
     }
 
+    // ==================== 📌 PINNED MESSAGES ====================
+
+    /**
+     * 📌 Закрепить сообщение в группе
+     */
+    fun pinMessage(
+        groupId: Long,
+        messageId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.pinGroupMessage(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    messageId = messageId
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    // Обновляем данные группы чтобы получить закрепленное сообщение
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "📌 Message $messageId pinned in group $groupId")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося закріпити повідомлення"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to pin message: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error pinning message", e)
+            }
+        }
+    }
+
+    /**
+     * 📌 Открепить сообщение в группе
+     */
+    fun unpinMessage(
+        groupId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unpinGroupMessage(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    // Обновляем данные группы
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "📌 Message unpinned in group $groupId")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося відкріпити повідомлення"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to unpin message: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error unpinning message", e)
+            }
+        }
+    }
+
+    /**
+     * Обновить детали группы (для получения pinnedMessage)
+     */
+    private fun fetchGroupDetails(groupId: Long) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.getGroupDetails(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200 && response.group != null) {
+                    _selectedGroup.value = response.group
+                    // Также обновляем в списке групп
+                    _groupList.value = _groupList.value.map {
+                        if (it.id == groupId) response.group!! else it
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("GroupsViewModel", "❌ Error fetching group details", e)
+            }
+        }
+    }
+
+    /**
+     * 📸 Загрузить аватар группы
+     */
+    fun uploadGroupAvatar(
+        groupId: Long,
+        imageFile: java.io.File,
+        onSuccess: (String) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                // Создаем RequestBody для файла
+                val requestFile = okhttp3.RequestBody.create(
+                    "image/*".toMediaType(),
+                    imageFile
+                )
+                val body = okhttp3.MultipartBody.Part.createFormData(
+                    "avatar",
+                    imageFile.name,
+                    requestFile
+                )
+
+                // Создаем RequestBody для других параметров
+                val accessTokenBody = okhttp3.RequestBody.create(
+                    "text/plain".toMediaType(),
+                    UserSession.accessToken!!
+                )
+                val groupIdBody = okhttp3.RequestBody.create(
+                    "text/plain".toMediaType(),
+                    groupId.toString()
+                )
+
+                val response = RetrofitClient.apiService.uploadGroupAvatar(
+                    accessToken = accessTokenBody,
+                    groupId = groupIdBody,
+                    avatar = body
+                )
+
+                if (response.apiStatus == 200 && response.avatarUrl != null) {
+                    _error.value = null
+                    // Обновляем детали группы
+                    fetchGroupDetails(groupId)
+                    onSuccess(response.avatarUrl)
+                    Log.d("GroupsViewModel", "📸 Group $groupId avatar uploaded: ${response.avatarUrl}")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося завантажити аватар"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to upload avatar: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error uploading avatar", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * 🔲 Генерація QR коду для групи
+     */
+    fun generateGroupQr(
+        groupId: Long,
+        onSuccess: (String, String) -> Unit = { _, _ -> }, // qrCode, joinUrl
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.generateGroupQr(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200 && response.qrCode != null && response.joinUrl != null) {
+                    _error.value = null
+                    onSuccess(response.qrCode, response.joinUrl)
+                    Log.d("GroupsViewModel", "🔲 Group $groupId QR generated: ${response.qrCode}")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося згенерувати QR код"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to generate QR: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error generating QR", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * 🔲 Приєднання до групи за QR кодом
+     */
+    fun joinGroupByQr(
+        qrCode: String,
+        onSuccess: (Group) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.joinGroupByQr(
+                    accessToken = UserSession.accessToken!!,
+                    qrCode = qrCode
+                )
+
+                if (response.apiStatus == 200 && response.group != null) {
+                    _error.value = null
+                    // Оновлюємо список груп
+                    fetchGroups()
+                    onSuccess(response.group)
+                    Log.d("GroupsViewModel", "🔲 Joined group ${response.group.id} via QR: $qrCode")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося приєднатися до групи"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ Failed to join by QR: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error joining by QR", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         Log.d("GroupsViewModel", "ViewModel очищена")

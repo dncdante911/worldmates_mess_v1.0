@@ -3,6 +3,7 @@ package com.worldmates.messenger.data
 object Constants {
     // ==================== API ENDPOINTS ====================
     const val BASE_URL = "https://worldmates.club/api/v2/"
+    const val MEDIA_BASE_URL = "https://worldmates.club/" // For media files (images, videos, etc.)
     const val SOCKET_URL = "https://worldmates.club:449/"
 
     // ==================== SECURITY ====================

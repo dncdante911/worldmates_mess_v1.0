@@ -38,12 +38,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17  // JDK 17 (стабільна версія)
-        targetCompatibility JavaVersion.VERSION_17  // JDK 17 (стабільна версія)
+        sourceCompatibility JavaVersion.VERSION_23  // JDK 17 (стабільна версія)
+        targetCompatibility JavaVersion.VERSION_23  // JDK 17 (стабільна версія)
     }
 
     kotlinOptions {
-        jvmTarget = '17'  // JDK 17 (стабільна версія)
+        jvmTarget = '23'  // JDK 17 (стабільна версія)
     }
 
     buildFeatures {
@@ -58,6 +58,15 @@ android {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
             excludes += 'META-INF/proguard/androidx-*.pro'
+            // 🔧 FIX: Исключаем дублирующиеся META-INF файлы из Apache HTTP компонентов
+            excludes += 'META-INF/DEPENDENCIES'
+            excludes += 'META-INF/LICENSE'
+            excludes += 'META-INF/LICENSE.txt'
+            excludes += 'META-INF/license.txt'
+            excludes += 'META-INF/NOTICE'
+            excludes += 'META-INF/NOTICE.txt'
+            excludes += 'META-INF/notice.txt'
+            excludes += 'META-INF/ASL2.0'
         }
     }
 }
@@ -104,6 +113,7 @@ dependencies {
     implementation 'androidx.media3:media3-exoplayer:1.2.0'
     implementation 'androidx.media3:media3-ui:1.2.0'
     implementation 'androidx.media3:media3-common:1.2.0'
+    implementation 'androidx.media3:media3-datasource-okhttp:1.2.0' // HTTP/HTTPS video streaming
 
     // ==================== COROUTINES ====================
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
@@ -121,6 +131,9 @@ dependencies {
     // Room Database (для черновиков)
     implementation 'androidx.room:room-runtime:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'
+    implementation 'androidx.compose.foundation:foundation:1.10.0'
+    implementation 'androidx.compose.ui:ui-graphics:1.10.0'
+    implementation 'androidx.compose.ui:ui-geometry:1.10.0'
     ksp 'androidx.room:room-compiler:2.6.1'
 
     // ==================== ENCRYPTION ====================
@@ -159,6 +172,21 @@ dependencies {
     implementation 'com.google.android.gms:play-services-location:21.1.0'  // Location Services
     implementation 'com.google.maps.android:maps-compose:4.3.3'  // Maps Compose для Jetpack Compose
     implementation 'com.google.accompanist:accompanist-permissions:0.34.0'  // Runtime permissions
+
+    // ==================== CLOUD BACKUP PROVIDERS ====================
+    // Google Drive
+    implementation 'com.google.android.gms:play-services-auth:21.0.0'  // Google Sign-In
+    implementation 'com.google.api-client:google-api-client-android:2.2.0'  // Google API Client
+    implementation 'com.google.apis:google-api-services-drive:v3-rev20240123-2.0.0'  // Google Drive API
+    implementation 'com.google.http-client:google-http-client-gson:1.44.1'  // HTTP Client
+    implementation 'com.google.http-client:google-http-client-android:1.44.1'  // Android HTTP
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'  // Coroutines для GMS
+
+    // MEGA - використовуємо HTTP API замість SDK (SDK недоступний в Maven)
+    // Реалізація через REST API в MegaBackupManager
+
+    // Dropbox
+    implementation 'com.dropbox.core:dropbox-core-sdk:5.4.5'  // Dropbox Core SDK
 
     // ==================== TESTING ====================
     testImplementation 'junit:junit:4.13.2'

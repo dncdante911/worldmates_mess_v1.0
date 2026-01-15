@@ -1,4 +1,6 @@
 package com.worldmates.messenger.ui.channels
+import androidx.compose.material.icons.filled.CameraAlt
+import com.worldmates.messenger.util.toFullMediaUrl
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -21,12 +23,159 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Channel
 
+// ==================== TELEGRAM-STYLE CHANNEL ITEM ====================
+
+/**
+ * Класичний мінімалістичний стиль для каналів з підтримкою тем
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TelegramChannelItem(
+    channel: Channel,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Аватар (маленький, круглий)
+        if (channel.avatarUrl.isNotBlank()) {
+            AsyncImage(
+                model = channel.avatarUrl.toFullMediaUrl(),
+                contentDescription = channel.name,
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Placeholder з gradient
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = channel.name.take(1).uppercase(),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Інформація про канал
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = channel.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                if (channel.isVerified) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.Default.Verified,
+                        contentDescription = "Verified",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            // Опис або статистика
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${formatCount(channel.subscribersCount)} підписників",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (channel.postsCount > 0) {
+                    Text(
+                        text = "•",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    )
+                    Text(
+                        text = "${formatCount(channel.postsCount)} постів",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Індикатор статусу
+        if (channel.isAdmin) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Text(
+                    text = "Адмін",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        } else if (channel.isPrivate) {
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = "Private",
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+
+    Divider(
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+        modifier = Modifier.padding(start = 76.dp)
+    )
+}
+
 // ==================== CHANNEL CARD ====================
 
 @Composable
 fun ChannelCard(
     channel: Channel,
     onClick: () -> Unit,
+    onSubscribeToggle: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -35,7 +184,7 @@ fun ChannelCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 2.dp
@@ -66,7 +215,7 @@ fun ChannelCard(
                         text = channel.name,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2C3E50),
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -75,7 +224,7 @@ fun ChannelCard(
                         Icon(
                             Icons.Default.Verified,
                             contentDescription = "Verified",
-                            tint = Color(0xFF2196F3),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -86,7 +235,7 @@ fun ChannelCard(
                     Text(
                         text = channel.description!!,
                         fontSize = 13.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -103,14 +252,14 @@ fun ChannelCard(
                         Icon(
                             Icons.Default.PeopleAlt,
                             contentDescription = null,
-                            tint = Color.Gray,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = formatCount(channel.subscribersCount),
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
 
@@ -120,14 +269,14 @@ fun ChannelCard(
                             Icon(
                                 Icons.Default.Article,
                                 contentDescription = null,
-                                tint = Color.Gray,
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = formatCount(channel.postsCount),
                                 fontSize = 12.sp,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
                     }
@@ -138,7 +287,7 @@ fun ChannelCard(
                             Icon(
                                 Icons.Default.Lock,
                                 contentDescription = "Private",
-                                tint = Color(0xFFFF9800),
+                                tint = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.size(14.dp)
                             )
                         }
@@ -149,10 +298,10 @@ fun ChannelCard(
             // Subscribe button or admin badge
             if (channel.isAdmin) {
                 AdminBadge()
-            } else {
+            } else if (onSubscribeToggle != null) {
                 SubscribeButtonCompact(
                     isSubscribed = channel.isSubscribed,
-                    onToggle = { /* Handled in parent */ }
+                    onToggle = { onSubscribeToggle(channel.isSubscribed) }
                 )
             }
         }
@@ -172,7 +321,7 @@ fun ChannelAvatar(
     Box(modifier = modifier) {
         if (avatarUrl.isNotBlank()) {
             AsyncImage(
-                model = avatarUrl,
+                model = avatarUrl.toFullMediaUrl(),
                 contentDescription = channelName,
                 modifier = Modifier
                     .size(size)
@@ -180,7 +329,7 @@ fun ChannelAvatar(
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Placeholder with gradient
+            // Placeholder with theme gradient
             Box(
                 modifier = Modifier
                     .size(size)
@@ -188,8 +337,8 @@ fun ChannelAvatar(
                     .background(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                Color(0xFF667eea),
-                                Color(0xFF764ba2)
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
                             )
                         )
                     ),
@@ -199,7 +348,7 @@ fun ChannelAvatar(
                     text = channelName.take(2).uppercase(),
                     fontSize = (size.value / 2.5).sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -212,13 +361,13 @@ fun ChannelAvatar(
                     .offset(x = 4.dp, y = 4.dp)
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Verified,
                     contentDescription = "Verified",
-                    tint = Color(0xFF2196F3),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -241,8 +390,14 @@ fun SubscribeButton(
         modifier = modifier.height(44.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSubscribed) Color(0xFFE0E0E0) else Color(0xFF667eea),
-            contentColor = if (isSubscribed) Color(0xFF666666) else Color.White
+            containerColor = if (isSubscribed)
+                MaterialTheme.colorScheme.surfaceVariant
+            else
+                MaterialTheme.colorScheme.primary,
+            contentColor = if (isSubscribed)
+                MaterialTheme.colorScheme.onSurfaceVariant
+            else
+                MaterialTheme.colorScheme.onPrimary
         )
     ) {
         Icon(
@@ -269,14 +424,20 @@ fun SubscribeButtonCompact(
         onClick = onToggle,
         enabled = enabled,
         shape = RoundedCornerShape(10.dp),
-        color = if (isSubscribed) Color(0xFFE8F5E9) else Color(0xFFE3F2FD),
+        color = if (isSubscribed)
+            MaterialTheme.colorScheme.primaryContainer
+        else
+            MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier.size(36.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 if (isSubscribed) Icons.Default.Check else Icons.Default.Add,
                 contentDescription = null,
-                tint = if (isSubscribed) Color(0xFF4CAF50) else Color(0xFF2196F3),
+                tint = if (isSubscribed)
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                else
+                    MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -290,7 +451,7 @@ fun AdminBadge(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        color = Color(0xFFFFEBEE)
+        color = MaterialTheme.colorScheme.errorContainer
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -300,7 +461,7 @@ fun AdminBadge(modifier: Modifier = Modifier) {
             Icon(
                 Icons.Default.Shield,
                 contentDescription = "Admin",
-                tint = Color(0xFFE53935),
+                tint = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -308,7 +469,7 @@ fun AdminBadge(modifier: Modifier = Modifier) {
                 text = "Адмін",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFE53935)
+                color = MaterialTheme.colorScheme.onErrorContainer
             )
         }
     }
@@ -321,82 +482,164 @@ fun ChannelHeader(
     channel: Channel,
     onBackClick: () -> Unit,
     onSettingsClick: (() -> Unit)? = null,
+    onAvatarClick: (() -> Unit)? = null,
+    onSubscribersClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        MaterialTheme.colorScheme.surface
+                    )
+                )
+            )
     ) {
-        // Top bar with back and settings
+        // Top bar with back and settings - стильные кнопки
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color(0xFF2C3E50)
-                )
-            }
-
-            if (onSettingsClick != null && channel.isAdmin) {
-                IconButton(onClick = onSettingsClick) {
+            Surface(
+                onClick = onBackClick,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                shadowElevation = 2.dp,
+                modifier = Modifier.size(42.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = Color(0xFF2C3E50)
-                    )
-                }
-            }
-        }
-
-        // Channel info
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            ChannelAvatar(
-                avatarUrl = channel.avatarUrl,
-                channelName = channel.name,
-                size = 80.dp,
-                isVerified = channel.isVerified
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = channel.name,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2C3E50)
-                )
-                if (channel.isVerified) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        Icons.Default.Verified,
-                        contentDescription = "Verified",
-                        tint = Color(0xFF2196F3),
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp)
                     )
                 }
             }
 
-            if (channel.username != null) {
-                Spacer(modifier = Modifier.height(4.dp))
+            if (onSettingsClick != null && channel.isAdmin) {
+                Surface(
+                    onClick = onSettingsClick,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.size(42.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Channel info - улучшенный дизайн
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Аватар с градиентным ring
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary
+                                )
+                            )
+                        )
+                        .padding(3.dp)
+                ) {
+                    ChannelAvatar(
+                        avatarUrl = channel.avatarUrl,
+                        channelName = channel.name,
+                        size = 90.dp,
+                        isVerified = false,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                // Кнопка редагування аватара (тільки для адмінів)
+                if (onAvatarClick != null) {
+                    IconButton(
+                        onClick = onAvatarClick,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(32.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Змінити аватар",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "@${channel.username}",
-                    fontSize = 14.sp,
-                    color = Color(0xFF667eea),
-                    fontWeight = FontWeight.Medium
+                    text = channel.name,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    letterSpacing = 0.2.sp
                 )
+                if (channel.isVerified) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Verified,
+                                contentDescription = "Verified",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (channel.username != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                ) {
+                    Text(
+                        text = "@${channel.username}",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
             }
 
             if (channel.description != null) {
@@ -404,33 +647,107 @@ fun ChannelHeader(
                 Text(
                     text = channel.description!!,
                     fontSize = 14.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Stats row
+            // Stats row - стильные карточки
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ChannelStat(
-                    icon = Icons.Default.PeopleAlt,
-                    value = formatCount(channel.subscribersCount),
-                    label = "Підписників"
-                )
-                ChannelStat(
-                    icon = Icons.Default.Article,
-                    value = formatCount(channel.postsCount),
-                    label = "Постів"
-                )
+                Surface(
+                    onClick = onSubscribersClick ?: {},
+                    enabled = onSubscribersClick != null,
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.PeopleAlt,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = formatCount(channel.subscribersCount),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            text = "Підписників",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Article,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = formatCount(channel.postsCount),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            text = "Постів",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
 
-        Divider(color = Color(0xFFE0E0E0), thickness = 1.dp)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Divider(
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+            thickness = 0.5.dp
+        )
     }
 }
 
@@ -438,15 +755,23 @@ fun ChannelHeader(
 fun ChannelStat(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
-    label: String
+    label: String,
+    onClick: (() -> Unit)? = null
 ) {
+    val modifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else {
+        Modifier
+    }
+
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.padding(8.dp)
     ) {
         Icon(
             icon,
             contentDescription = null,
-            tint = Color(0xFF667eea),
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -454,12 +779,12 @@ fun ChannelStat(
             text = value,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF2C3E50)
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = label,
             fontSize = 12.sp,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
 }
@@ -475,7 +800,7 @@ fun ChannelInfoCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF5F7FA)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
@@ -487,7 +812,7 @@ fun ChannelInfoCard(
                 text = "Про канал",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF2C3E50)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -515,8 +840,6 @@ fun ChannelInfoCard(
                 label = "Тип",
                 value = if (channel.isPrivate) "Приватний" else "Публічний"
             )
-
-            // Посилання можна додати пізніше
         }
     }
 }
@@ -526,7 +849,7 @@ fun InfoRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,
-    valueColor: Color = Color(0xFF2C3E50)
+    valueColor: Color = Color.Unspecified
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -535,7 +858,7 @@ fun InfoRow(
         Icon(
             icon,
             contentDescription = null,
-            tint = Color(0xFF667eea),
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -543,16 +866,73 @@ fun InfoRow(
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
             Text(
                 text = value,
                 fontSize = 14.sp,
-                color = valueColor,
+                color = if (valueColor != Color.Unspecified) valueColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
         }
     }
+}
+
+// ==================== SEARCH BAR ====================
+
+/**
+ * Пошукова панель для каналів з підтримкою тем
+ */
+@Composable
+fun ChannelSearchBar(
+    searchQuery: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = onQueryChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = {
+            Text(
+                text = "Пошук каналів...",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                fontSize = 15.sp
+            )
+        },
+        leadingIcon = {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = "Пошук",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        trailingIcon = {
+            if (searchQuery.isNotEmpty()) {
+                IconButton(onClick = {
+                    onClear()
+                }) {
+                    Icon(
+                        Icons.Default.Clear,
+                        contentDescription = "Очистити",
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
 }
 
 // ==================== UTILITY FUNCTIONS ====================

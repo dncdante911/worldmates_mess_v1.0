@@ -9,9 +9,11 @@ import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.data.model.Channel
 import com.worldmates.messenger.data.model.CreateChannelRequest
 import com.worldmates.messenger.network.RetrofitClient
+import com.worldmates.messenger.network.WorldMatesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
 class ChannelsViewModel : ViewModel() {
 
@@ -423,4 +425,236 @@ class ChannelsViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * 🔲 Генерація QR коду для каналу
+     */
+    fun generateChannelQr(
+        channelId: Long,
+        onSuccess: (String, String) -> Unit = { _, _ -> }, // qrCode, joinUrl
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.generateChannelQr(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId
+                )
+
+                if (response.apiStatus == 200 && response.qrCode != null && response.joinUrl != null) {
+                    onSuccess(response.qrCode, response.joinUrl)
+                    Log.d("ChannelsViewModel", "📡 Channel $channelId QR generated: ${response.qrCode}")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося згенерувати QR код"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to generate QR: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error generating QR", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * 🔲 Підписка на канал за QR кодом
+     */
+    fun subscribeChannelByQr(
+        qrCode: String,
+        onSuccess: (com.worldmates.messenger.data.model.Channel) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.subscribeChannelByQr(
+                    accessToken = UserSession.accessToken!!,
+                    qrCode = qrCode
+                )
+
+                if (response.apiStatus == 200 && response.channel != null) {
+                    // Оновлюємо список підписаних каналів
+                    fetchSubscribedChannels()
+                    onSuccess(response.channel)
+                    Log.d("ChannelsViewModel", "📡 Subscribed to channel ${response.channel.id} via QR: $qrCode")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося підписатися на канал"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to subscribe by QR: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error subscribing by QR", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * 📡 Вимкнути сповіщення для каналу
+     */
+    fun muteChannel(
+        channelId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.muteChannel(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо деталі каналу
+                    refreshChannel(channelId)
+                    onSuccess()
+                    Log.d("ChannelsViewModel", "📡 Channel $channelId muted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося вимкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to mute: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error muting channel", e)
+            }
+        }
+    }
+
+    /**
+     * 📡 Увімкнути сповіщення для каналу
+     */
+    fun unmuteChannel(
+        channelId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.unmuteChannel(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо деталі каналу
+                    refreshChannel(channelId)
+                    onSuccess()
+                    Log.d("ChannelsViewModel", "📡 Channel $channelId unmuted")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося увімкнути сповіщення"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to unmute: ${response.message}")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error unmuting channel", e)
+            }
+        }
+    }
+    /**
+     * 📸 Завантажити новий аватар каналу
+     */
+    /**
+     * 📸 Завантажити новий аватар каналу
+     */
+    fun uploadChannelAvatar(
+        channelId: Long,
+        imageUri: android.net.Uri,
+        context: android.content.Context,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                // ИСПРАВЛЕНО: Обращаемся к полю напрямую (UserSession.accessToken)
+                val token = UserSession.accessToken ?: run {
+                    onError("Необхідна авторизація")
+                    return@launch
+                }
+
+                val contentResolver = context.contentResolver
+                val inputStream = contentResolver.openInputStream(imageUri) ?: run {
+                    onError("Не вдалося відкрити файл")
+                    return@launch
+                }
+
+                val bytes = inputStream.readBytes()
+                inputStream.close()
+
+                val requestFile = okhttp3.RequestBody.create(
+                    "image/*".toMediaTypeOrNull(),
+                    bytes
+                )
+
+                val filePart = okhttp3.MultipartBody.Part.createFormData(
+                    "file", // Убедитесь, что сервер ожидает именно "file"
+                    "avatar.jpg",
+                    requestFile
+                )
+
+                val channelIdBody = okhttp3.RequestBody.create(
+                    "text/plain".toMediaTypeOrNull(),
+                    channelId.toString()
+                )
+
+                Log.d("ChannelsViewModel", "📸 Uploading avatar for channel $channelId")
+
+                // ИСПРАВЛЕНО: Используем RetrofitClient.apiService
+                val response = RetrofitClient.apiService.uploadChannelAvatar(
+                    accessToken = token,
+                    channelId = channelIdBody,
+                    file = filePart
+                )
+
+                // ВАЖНО: В CreateChannelResponse обычно поле называется apiStatus (Int)
+                if (response.apiStatus == 200) {
+                    refreshChannel(channelId)
+                    onSuccess()
+                    Log.d("ChannelsViewModel", "✅ Channel avatar uploaded successfully")
+                } else {
+                    // Используем errorMessage или message в зависимости от того, что есть в CreateChannelResponse
+                    val errorMsg = response.errorMessage ?: "Не вдалося завантажити аватар"
+                    onError(errorMsg)
+                    Log.e("ChannelsViewModel", "❌ Failed to upload avatar: $errorMsg")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка завантаження: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("ChannelsViewModel", "❌ Error uploading avatar", e)
+            }
+        }
+    }
+
 }

@@ -1,18 +1,40 @@
 package com.worldmates.messenger.network
 
+import android.content.Context
 import android.util.Log
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
 import io.socket.client.IO
 import io.socket.client.Socket
 import org.json.JSONObject
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collectLatest
 
 /**
- * Менеджер для Socket.IO, обрабатывающий подключение к Node.js чат-серверу.
+ * 🔄 Адаптивний менеджер для Socket.IO з автоматичною оптимізацією
+ *
+ * Особливості:
+ * - Моніторинг якості з'єднання в real-time
+ * - Адаптивна затримка reconnect (швидше при хорошому з'єднанні)
+ * - Компресія payload при поганому з'єднанні
+ * - Автоматичне відключення непотрібних features на слабкому з'єднанні
  */
-class SocketManager(private val listener: SocketListener) {
+class SocketManager(
+    private val listener: SocketListener,
+    private val context: Context? = null
+) {
+
+    companion object {
+        private const val TAG = "SocketManager"
+    }
 
     private var socket: Socket? = null
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    // 📡 Моніторинг якості з'єднання
+    private var networkMonitor: NetworkQualityMonitor? = null
+    private var currentQuality: NetworkQualityMonitor.ConnectionQuality =
+        NetworkQualityMonitor.ConnectionQuality.GOOD
 
     interface SocketListener {
         fun onNewMessage(messageJson: JSONObject)
@@ -22,35 +44,66 @@ class SocketManager(private val listener: SocketListener) {
     }
 
     fun connect() {
-        Log.d("SocketManager", "🔌 connect() викликано")
+        Log.d(TAG, "🔌 connect() викликано")
 
         if (UserSession.accessToken == null) {
-            Log.e("SocketManager", "❌ Access token is NULL! Cannot connect to Socket.IO")
+            Log.e(TAG, "❌ Access token is NULL! Cannot connect to Socket.IO")
             listener.onSocketError("No access token")
             return
         }
 
         if (socket?.connected() == true) {
-            Log.d("SocketManager", "⚠️ Socket вже підключений, пропускаємо")
+            Log.d(TAG, "⚠️ Socket вже підключений, пропускаємо")
             return
         }
 
-        Log.d("SocketManager", "✅ Access token: ${UserSession.accessToken?.take(10)}...")
-        Log.d("SocketManager", "✅ User ID: ${UserSession.userId}")
-        Log.d("SocketManager", "✅ Socket URL: ${Constants.SOCKET_URL}")
+        // Ініціалізуємо моніторинг якості з'єднання
+        if (context != null && networkMonitor == null) {
+            networkMonitor = NetworkQualityMonitor(context)
+            startQualityMonitoring()
+        }
+
+        Log.d(TAG, "✅ Access token: ${UserSession.accessToken?.take(10)}...")
+        Log.d(TAG, "✅ User ID: ${UserSession.userId}")
+        Log.d(TAG, "✅ Socket URL: ${Constants.SOCKET_URL}")
 
         try {
-            // Опции для Socket.IO с улучшенными настройками переподключения
+            // 📡 Адаптивні опції Socket.IO в залежності від якості з'єднання
             val opts = IO.Options()
-            opts.forceNew = false // Не создавать новое соединение, если уже есть
-            opts.reconnection = true // Автоматическое переподключение
-            opts.reconnectionAttempts = Int.MAX_VALUE // Бесконечные попытки переподключения
-            opts.reconnectionDelay = 1000 // Начальная задержка 1 сек
-            opts.reconnectionDelayMax = 5000 // Максимальная задержка 5 сек
-            opts.timeout = 20000 // Тайм-аут подключения 20 сек
+            opts.forceNew = false
+            opts.reconnection = true
+            opts.reconnectionAttempts = Int.MAX_VALUE
 
-            // КРИТИЧНО: Форсируем WebSocket вместо XHR polling для стабильности
-            opts.transports = arrayOf("websocket", "polling")
+            // 🔄 Адаптивна затримка reconnect
+            when (currentQuality) {
+                NetworkQualityMonitor.ConnectionQuality.EXCELLENT -> {
+                    opts.reconnectionDelay = 500  // Швидке перепідключення
+                    opts.reconnectionDelayMax = 2000
+                    opts.timeout = 10000
+                }
+                NetworkQualityMonitor.ConnectionQuality.GOOD -> {
+                    opts.reconnectionDelay = 1000 // Нормальне
+                    opts.reconnectionDelayMax = 5000
+                    opts.timeout = 15000
+                }
+                NetworkQualityMonitor.ConnectionQuality.POOR -> {
+                    opts.reconnectionDelay = 2000 // Повільне
+                    opts.reconnectionDelayMax = 10000
+                    opts.timeout = 30000
+                }
+                NetworkQualityMonitor.ConnectionQuality.OFFLINE -> {
+                    opts.reconnectionDelay = 5000 // Дуже повільне
+                    opts.reconnectionDelayMax = 20000
+                    opts.timeout = 60000
+                }
+            }
+
+            // Пріоритет WebSocket, але fallback на polling при поганому з'єднанні
+            opts.transports = if (currentQuality == NetworkQualityMonitor.ConnectionQuality.POOR) {
+                arrayOf("polling", "websocket") // Polling спочатку при поганому з'єднанні
+            } else {
+                arrayOf("websocket", "polling") // WebSocket спочатку при хорошому
+            }
 
             opts.query = "access_token=${UserSession.accessToken}&user_id=${UserSession.userId}"
 
@@ -320,8 +373,81 @@ class SocketManager(private val listener: SocketListener) {
     }
 
     fun disconnect() {
+        Log.d(TAG, "🔌 Disconnecting Socket.IO and cleaning up")
         socket?.disconnect()
+        networkMonitor?.stopMonitoring()
+        scope.cancel()
     }
+
+    // ==================== АДАПТИВНА ЧАСТИНА ====================
+
+    /**
+     * Запустити моніторинг якості з'єднання
+     */
+    private fun startQualityMonitoring() {
+        scope.launch {
+            networkMonitor?.connectionState?.collectLatest { state ->
+                currentQuality = state.quality
+
+                Log.i(TAG, "📊 Connection quality changed: ${state.quality}")
+                Log.i(TAG, "   ├─ Latency: ${state.latencyMs}ms")
+                Log.i(TAG, "   ├─ Bandwidth: ${state.bandwidthKbps} Kbps")
+                Log.i(TAG, "   ├─ Metered: ${state.isMetered}")
+                Log.i(TAG, "   └─ Media mode: ${state.mediaLoadMode}")
+
+                // При значній зміні якості - переконнектимось з новими параметрами
+                if (socket?.connected() == true) {
+                    when (state.quality) {
+                        NetworkQualityMonitor.ConnectionQuality.POOR -> {
+                            Log.w(TAG, "⚠️ Poor connection detected. Optimizing Socket.IO...")
+                            // При поганому з'єднанні можна зменшити частоту ping/pong
+                        }
+                        NetworkQualityMonitor.ConnectionQuality.EXCELLENT -> {
+                            Log.i(TAG, "✅ Excellent connection. Full features enabled.")
+                        }
+                        else -> {}
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Отримати поточну якість з'єднання
+     */
+    fun getConnectionQuality(): NetworkQualityMonitor.ConnectionQuality {
+        return currentQuality
+    }
+
+    /**
+     * Чи можна відправляти typing indicators?
+     * При поганому з'єднанні - краще не відправляти (економія)
+     */
+    fun canSendTypingIndicators(): Boolean {
+        return currentQuality != NetworkQualityMonitor.ConnectionQuality.POOR &&
+               currentQuality != NetworkQualityMonitor.ConnectionQuality.OFFLINE
+    }
+
+    /**
+     * Чи можна завантажувати медіа автоматично?
+     */
+    fun canAutoLoadMedia(): Boolean {
+        return networkMonitor?.canLoadMedia() ?: true
+    }
+
+    /**
+     * Отримати опис якості з'єднання для UI
+     */
+    fun getQualityDescription(): String {
+        return when (currentQuality) {
+            NetworkQualityMonitor.ConnectionQuality.EXCELLENT -> "🟢 Відмінне з'єднання"
+            NetworkQualityMonitor.ConnectionQuality.GOOD -> "🟡 Добре з'єднання"
+            NetworkQualityMonitor.ConnectionQuality.POOR -> "🟠 Погане з'єднання"
+            NetworkQualityMonitor.ConnectionQuality.OFFLINE -> "🔴 Немає з'єднання"
+        }
+    }
+
+    // ==================== КІНЕЦЬ АДАПТИВНОЇ ЧАСТИНИ ====================
 
     /**
      * Универсальный метод для отправки произвольных событий через Socket.IO
@@ -330,16 +456,22 @@ class SocketManager(private val listener: SocketListener) {
     fun emit(event: String, data: Any) {
         if (socket?.connected() == true) {
             socket?.emit(event, data)
-            Log.d("SocketManager", "Emitted event: $event")
+            Log.d(TAG, "Emitted event: $event")
         } else {
-            Log.w("SocketManager", "Cannot emit event '$event': Socket not connected")
+            Log.w(TAG, "Cannot emit event '$event': Socket not connected")
         }
     }
 
     /**
-     * Отправляет индикатор "печатает"
+     * Відправляє індикатор "печатає" (тільки при хорошому з'єднанні)
      */
     fun sendTyping(recipientId: Long, isTyping: Boolean) {
+        // При поганому з'єднанні не відправляємо typing indicators (економія)
+        if (!canSendTypingIndicators()) {
+            Log.d(TAG, "⚠️ Skipping typing indicator due to poor connection")
+            return
+        }
+
         if (socket?.connected() == true && UserSession.accessToken != null) {
             val typingPayload = JSONObject().apply {
                 put("access_token", UserSession.accessToken)
@@ -411,6 +543,208 @@ class SocketManager(private val listener: SocketListener) {
             Log.e("SocketManager", "Error parsing online users HTML", e)
         }
     }
+
+    // ==================== КАНАЛИ - SOCKET.IO ====================
+
+    /**
+     * Підписатися на оновлення каналу
+     */
+    fun subscribeToChannel(channelId: Long) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("channelId", channelId)
+                put("userId", UserSession.userId)
+            }
+            socket?.emit("channel:subscribe", data)
+            Log.d(TAG, "📢 Subscribed to channel $channelId")
+        }
+    }
+
+    /**
+     * Відписатися від оновлень каналу
+     */
+    fun unsubscribeFromChannel(channelId: Long) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("channelId", channelId)
+                put("userId", UserSession.userId)
+            }
+            socket?.emit("channel:unsubscribe", data)
+            Log.d(TAG, "📢 Unsubscribed from channel $channelId")
+        }
+    }
+
+    /**
+     * Слухати нові пости в каналі
+     */
+    fun onChannelPostCreated(callback: (JSONObject) -> Unit) {
+        socket?.on("channel:post_created") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "📝 New channel post received")
+            }
+        }
+    }
+
+    /**
+     * Слухати оновлення постів
+     */
+    fun onChannelPostUpdated(callback: (JSONObject) -> Unit) {
+        socket?.on("channel:post_updated") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "✏️ Channel post updated")
+            }
+        }
+    }
+
+    /**
+     * Слухати видалення постів
+     */
+    fun onChannelPostDeleted(callback: (JSONObject) -> Unit) {
+        socket?.on("channel:post_deleted") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "🗑️ Channel post deleted")
+            }
+        }
+    }
+
+    /**
+     * Слухати нові коментарі
+     */
+    fun onChannelCommentAdded(callback: (JSONObject) -> Unit) {
+        socket?.on("channel:comment_added") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "💬 New channel comment")
+            }
+        }
+    }
+
+    /**
+     * Відправити typing в каналі (коментарі)
+     */
+    fun sendChannelTyping(channelId: Long, postId: Long, isTyping: Boolean) {
+        if (!canSendTypingIndicators()) return
+
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("channelId", channelId)
+                put("postId", postId)
+                put("userId", UserSession.userId)
+                put("isTyping", isTyping)
+            }
+            socket?.emit("channel:typing", data)
+        }
+    }
+
+    // ==================== STORIES - SOCKET.IO ====================
+
+    /**
+     * Підписатися на stories друзів
+     */
+    fun subscribeToStories(friendIds: List<Long>) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("userId", UserSession.userId)
+                put("friendIds", org.json.JSONArray(friendIds))
+            }
+            socket?.emit("story:subscribe", data)
+            Log.d(TAG, "📸 Subscribed to ${friendIds.size} friends' stories")
+        }
+    }
+
+    /**
+     * Відписатися від stories
+     */
+    fun unsubscribeFromStories(friendIds: List<Long>) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("userId", UserSession.userId)
+                put("friendIds", org.json.JSONArray(friendIds))
+            }
+            socket?.emit("story:unsubscribe", data)
+            Log.d(TAG, "📸 Unsubscribed from stories")
+        }
+    }
+
+    /**
+     * Слухати нові stories
+     */
+    fun onStoryCreated(callback: (JSONObject) -> Unit) {
+        socket?.on("story:created") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "📸 New story created")
+            }
+        }
+    }
+
+    /**
+     * Слухати видалення stories
+     */
+    fun onStoryDeleted(callback: (JSONObject) -> Unit) {
+        socket?.on("story:deleted") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "🗑️ Story deleted")
+            }
+        }
+    }
+
+    /**
+     * Повідомити про перегляд story
+     */
+    fun sendStoryView(storyId: Long, storyOwnerId: Long) {
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("storyId", storyId)
+                put("userId", UserSession.userId)
+                put("storyOwnerId", storyOwnerId)
+            }
+            socket?.emit("story:view", data)
+            Log.d(TAG, "👁️ Story view sent")
+        }
+    }
+
+    /**
+     * Слухати нові коментарі до stories
+     */
+    fun onStoryCommentAdded(callback: (JSONObject) -> Unit) {
+        socket?.on("story:comment_added") { args ->
+            if (args.isNotEmpty() && args[0] is JSONObject) {
+                val data = args[0] as JSONObject
+                callback(data)
+                Log.d(TAG, "💬 New story comment")
+            }
+        }
+    }
+
+    /**
+     * Відправити typing в story (коментарі)
+     */
+    fun sendStoryTyping(storyId: Long, storyOwnerId: Long, isTyping: Boolean) {
+        if (!canSendTypingIndicators()) return
+
+        if (socket?.connected() == true && UserSession.userId != null) {
+            val data = JSONObject().apply {
+                put("storyId", storyId)
+                put("userId", UserSession.userId)
+                put("storyOwnerId", storyOwnerId)
+                put("isTyping", isTyping)
+            }
+            socket?.emit("story:typing", data)
+        }
+    }
+
+    // ==================== КІНЕЦЬ КАНАЛІВ ТА STORIES ====================
 
     /**
      * Расширенный интерфейс для дополнительных событий

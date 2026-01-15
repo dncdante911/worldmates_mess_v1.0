@@ -33,6 +33,7 @@ import java.util.*
 @Composable
 fun TelegramChatItem(
     chat: Chat,
+    nickname: String? = null,
     onClick: () -> Unit,
     onLongPress: () -> Unit = {}
 ) {
@@ -63,9 +64,9 @@ fun TelegramChatItem(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            // Ім'я користувача
+            // Ім'я користувача (псевдонім якщо є, інакше оригінальне)
             Text(
-                text = chat.username ?: "Unknown",
+                text = nickname ?: chat.username ?: "Unknown",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = if (chat.unreadCount > 0) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 16.sp
@@ -75,12 +76,23 @@ fun TelegramChatItem(
                 overflow = TextOverflow.Ellipsis
             )
 
+            // Якщо є псевдонім, показуємо оригінальне ім'я нижче маленьким текстом
+            if (nickname != null && chat.username != null) {
+                Text(
+                    text = "@${chat.username}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
             Spacer(modifier = Modifier.height(3.dp))
 
             // Останнє повідомлення
             if (chat.lastMessage != null) {
                 Text(
-                    text = chat.lastMessage.decryptedText ?: chat.lastMessage.encryptedText,
+                    text = chat.lastMessage.decryptedText ?: chat.lastMessage.encryptedText ?: "",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 14.sp,
                         fontWeight = if (chat.unreadCount > 0) FontWeight.Medium else FontWeight.Normal

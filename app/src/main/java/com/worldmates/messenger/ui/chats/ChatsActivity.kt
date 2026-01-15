@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.Factory
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Chat
 import com.worldmates.messenger.data.ContactNicknameRepository
@@ -51,6 +53,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -74,6 +77,18 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var viewModel: ChatsViewModel
     private lateinit var groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel
     private lateinit var channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel
+    private lateinit var storyViewModel: com.worldmates.messenger.ui.stories.StoryViewModel
+
+    // Factory для створення ChatsViewModel з параметром context
+    private class ChatsViewModelFactory(private val context: android.content.Context) : Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(ChatsViewModel::class.java)) {
+                return ChatsViewModel(context) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,9 +99,10 @@ class ChatsActivity : AppCompatActivity() {
         // Ініціалізуємо UI Style Preferences
         com.worldmates.messenger.ui.preferences.UIStylePreferences.init(this)
 
-        viewModel = ViewModelProvider(this).get(ChatsViewModel::class.java)
+        viewModel = ViewModelProvider(this, ChatsViewModelFactory(applicationContext)).get(ChatsViewModel::class.java)
         groupsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.groups.GroupsViewModel::class.java)
         channelsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.channels.ChannelsViewModel::class.java)
+        storyViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.stories.StoryViewModel::class.java)
 
         setContent {
             WorldMatesThemedApp {
@@ -105,6 +121,7 @@ class ChatsActivity : AppCompatActivity() {
                     viewModel = viewModel,
                     groupsViewModel = groupsViewModel,
                     channelsViewModel = channelsViewModel,
+                    storyViewModel = storyViewModel,
                     onChatClick = { chat ->
                         navigateToMessages(chat)
                     },
@@ -131,6 +148,7 @@ class ChatsActivity : AppCompatActivity() {
         viewModel.fetchChats()
         groupsViewModel.fetchGroups()
         channelsViewModel.fetchSubscribedChannels()
+        storyViewModel.loadStories()
     }
 
     private fun navigateToMessages(chat: Chat) {
@@ -613,7 +631,8 @@ fun SettingsDrawerContent(
     onNavigateToFullSettings: () -> Unit,
     onClose: () -> Unit,
     onShowContactPicker: () -> Unit = {},
-    onShowDrafts: () -> Unit = {}
+    onShowDrafts: () -> Unit = {},
+    onCreateStoryClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -701,6 +720,17 @@ fun SettingsDrawerContent(
                     onClick = {
                         onClose()
                         Toast.makeText(context, "Створити групу", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            item {
+                DrawerMenuItem(
+                    icon = Icons.Default.CameraAlt,
+                    title = "Створити Story",
+                    onClick = {
+                        onClose()
+                        onCreateStoryClick()
                     }
                 )
             }

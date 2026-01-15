@@ -1,6 +1,7 @@
 package com.worldmates.messenger.ui.theme
 
 import android.net.Uri
+import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -121,6 +122,26 @@ enum class PresetBackground(
         id = "peach",
         displayName = "Персик",
         gradientColors = listOf(Color(0xFFffecd2), Color(0xFFfcb69f))
+    ),
+    FIRE(
+        id = "fire",
+        displayName = "Вогонь",
+        gradientColors = listOf(Color(0xFFFF0000), Color(0xFFFF7F00), Color(0xFFFFFF00))
+    ),
+    AURORA(
+        id = "aurora",
+        displayName = "Полярне сяйво",
+        gradientColors = listOf(Color(0xFF00FFA3), Color(0xFF03E1FF), Color(0xFFDC1FFF))
+    ),
+    CHERRY(
+        id = "cherry",
+        displayName = "Вишня",
+        gradientColors = listOf(Color(0xFFEB3349), Color(0xFFF45C43))
+    ),
+    COSMIC(
+        id = "cosmic",
+        displayName = "Космос",
+        gradientColors = listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0))
     );
 
     companion object {
@@ -141,18 +162,29 @@ fun ThemeSettingsScreen(
 ) {
     val themeViewModel = rememberThemeViewModel()
     val themeState = rememberThemeState()
+    val context = LocalContext.current
 
     // Лаунчер для вибору зображення
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            android.util.Log.d("ThemeSettings", "User selected background image: $it")
-            themeViewModel.setBackgroundImageUri(it.toString())
-            android.util.Log.d("ThemeSettings", "setBackgroundImageUri called with: ${it.toString()}")
+            try {
+                // Получаем постоянное разрешение на URI
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                android.util.Log.d("ThemeSettings", "Persistable permission granted for: $it")
+                themeViewModel.setBackgroundImageUri(it.toString())
+                android.util.Log.d("ThemeSettings", "Background image saved: ${it.toString()}")
+            } catch (e: Exception) {
+                android.util.Log.e("ThemeSettings", "Failed to take persistable permission", e)
+                // Все равно пробуем сохранить URI
+                themeViewModel.setBackgroundImageUri(it.toString())
+            }
         }
     }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -228,6 +260,11 @@ fun ThemeSettingsScreen(
             // Секція вибору швидкої реакції
             item {
                 QuickReactionSection()
+            }
+
+            // Секція додаткових ефектів та кастомізації
+            item {
+                AdvancedCustomizationSection()
             }
 
             // Сетка вариантов тем
@@ -825,7 +862,7 @@ fun PresetBackgroundCard(
 fun UIStyleSection() {
     val context = LocalContext.current
     val currentStyle = com.worldmates.messenger.ui.preferences.rememberUIStyle()
-    
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -844,14 +881,14 @@ fun UIStyleSection() {
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
+
             Text(
                 text = "Оберіть стиль відображення чатів та груп",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            
+
             // WorldMates стиль
             Row(
                 modifier = Modifier
@@ -881,9 +918,9 @@ fun UIStyleSection() {
                         )
                     }
                 )
-                
+
                 Spacer(modifier = Modifier.width(12.dp))
-                
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "WorldMates",
@@ -897,9 +934,9 @@ fun UIStyleSection() {
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Telegram стиль
             Row(
                 modifier = Modifier
@@ -929,17 +966,17 @@ fun UIStyleSection() {
                         )
                     }
                 )
-                
+
                 Spacer(modifier = Modifier.width(12.dp))
-                
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Telegram",
+                        text = "Класичний",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "Мінімалістичний список у стилі Telegram",
+                        text = "Мінімалістичний класичний стиль",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1219,6 +1256,672 @@ fun EmojiReactionCard(
                 text = emoji,
                 fontSize = 24.sp
             )
+        }
+    }
+}
+
+/**
+ * ✨ Секція додаткових ефектів та кастомізації
+ */
+@Composable
+fun AdvancedCustomizationSection() {
+    val context = LocalContext.current
+    val customizationViewModel = remember {
+        CustomizationManager.getViewModel(context)
+    }
+    val customizationState by customizationViewModel.customizationState.collectAsState()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Заголовок секції
+            Text(
+                text = "✨ Додаткові ефекти",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                text = "Налаштуйте візуальні ефекти та анімації",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Швидкі пресети
+            QuickPresetsSection(customizationViewModel)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Стиль візуальних ефектів повідомлень
+            Text(
+                text = "💬 Візуальний стиль повідомлень",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.height(600.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(MessageBubbleStyle.values()) { style ->
+                    MessageBubbleStyleCard(
+                        style = style,
+                        isSelected = style == customizationState.bubbleStyle,
+                        onClick = { customizationViewModel.setBubbleStyle(style) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Стиль анімацій
+            Text(
+                text = "🎬 Стиль анімацій",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.height(240.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(MessageAnimationStyle.values()) { style ->
+                    AnimationStyleCard(
+                        style = style,
+                        isSelected = style == customizationState.animationStyle,
+                        onClick = { customizationViewModel.setAnimationStyle(style) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Варіант шрифту
+            Text(
+                text = "🔤 Шрифт повідомлень",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.height(720.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(FontVariant.values()) { variant ->
+                    FontVariantCard(
+                        variant = variant,
+                        isSelected = variant == customizationState.fontVariant,
+                        onClick = { customizationViewModel.setFontVariant(variant) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Перемикачі ефектів
+            Text(
+                text = "Налаштування ефектів",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            // Particle Effects
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Ефекти частинок",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Додаткові візуальні ефекти",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Switch(
+                    checked = customizationState.enableParticleEffects,
+                    onCheckedChange = { customizationViewModel.toggleParticleEffects() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+
+            // Message Animations
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Анімації повідомлень",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Плавна поява повідомлень",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Switch(
+                    checked = customizationState.enableMessageAnimations,
+                    onCheckedChange = { customizationViewModel.toggleMessageAnimations() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+
+            // Smooth Scrolling
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Плавне прокручування",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "М'яке прокручування списків",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Switch(
+                    checked = customizationState.enableSmoothScrolling,
+                    onCheckedChange = { customizationViewModel.toggleSmoothScrolling() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Кнопка скидання
+            OutlinedButton(
+                onClick = { customizationViewModel.resetToDefaults() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    text = "Скинути налаштування",
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Карточка стилю візуальних ефектів повідомлень
+ */
+@Composable
+fun MessageBubbleStyleCard(
+    style: MessageBubbleStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.08f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(135.dp)
+            .scale(scale)
+            .border(
+                width = if (isSelected) 2.5.dp else 0.5.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            else
+                MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 6.dp else 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Preview bubble
+            Box(
+                modifier = style.getModifier(
+                    isOwn = true,
+                    primaryColor = MaterialTheme.colorScheme.primary,
+                    secondaryColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                    .size(width = 50.dp, height = 22.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = style.emoji,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = style.displayName,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                fontSize = 11.sp,
+                maxLines = 1,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
+
+            Text(
+                text = style.description,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 9.sp,
+                maxLines = 2,
+                lineHeight = 11.sp
+            )
+
+            if (isSelected) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Вибрано",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Карточка стилю анімацій
+ */
+@Composable
+fun AnimationStyleCard(
+    style: MessageAnimationStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.1f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        animationSpec = tween(300),
+        label = "borderColor"
+    )
+
+    Card(
+        modifier = Modifier
+            .size(90.dp)
+            .scale(scale)
+            .border(
+                width = if (isSelected) 2.dp else 0.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = style.emoji,
+                fontSize = 24.sp,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+
+            Text(
+                text = style.displayName,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                fontSize = 10.sp
+            )
+        }
+    }
+}
+
+/**
+ * Карточка варіанту шрифту
+ */
+@Composable
+fun FontVariantCard(
+    variant: FontVariant,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.06f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(110.dp)
+            .scale(scale)
+            .border(
+                width = if (isSelected) 2.5.dp else 0.5.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            else
+                MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 6.dp else 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = variant.emoji,
+                fontSize = 24.sp,
+                modifier = Modifier.padding(bottom = 3.dp)
+            )
+
+            Text(
+                text = variant.displayName,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                fontSize = 10.sp,
+                maxLines = 1,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
+
+            Text(
+                text = variant.description,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 8.sp,
+                maxLines = 2,
+                lineHeight = 9.sp
+            )
+
+            if (isSelected) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Вибрано",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 🎯 Швидкі пресети стилів
+ */
+data class StylePreset(
+    val name: String,
+    val emoji: String,
+    val description: String,
+    val bubbleStyle: MessageBubbleStyle,
+    val animationStyle: MessageAnimationStyle,
+    val fontVariant: FontVariant
+)
+
+val quickPresets = listOf(
+    StylePreset(
+        name = "Cyberpunk",
+        emoji = "🌃",
+        description = "Neon + Futuristic + Fira Code",
+        bubbleStyle = MessageBubbleStyle.NEON,
+        animationStyle = MessageAnimationStyle.FADE,
+        fontVariant = FontVariant.FIRA_CODE
+    ),
+    StylePreset(
+        name = "Retro Wave",
+        emoji = "📼",
+        description = "Retro + Wave + Special Elite",
+        bubbleStyle = MessageBubbleStyle.RETRO,
+        animationStyle = MessageAnimationStyle.WAVE,
+        fontVariant = FontVariant.SPECIAL_ELITE
+    ),
+    StylePreset(
+        name = "Minimal Zen",
+        emoji = "☯️",
+        description = "Minimal + Fade + Raleway",
+        bubbleStyle = MessageBubbleStyle.MINIMAL,
+        animationStyle = MessageAnimationStyle.FADE,
+        fontVariant = FontVariant.RALEWAY
+    ),
+    StylePreset(
+        name = "Comic Pop",
+        emoji = "💥",
+        description = "Comic + Bounce + Architects Daughter",
+        bubbleStyle = MessageBubbleStyle.COMIC,
+        animationStyle = MessageAnimationStyle.BOUNCE,
+        fontVariant = FontVariant.ARCHITECTS_DAUGHTER
+    ),
+    StylePreset(
+        name = "Glass Blur",
+        emoji = "🪟",
+        description = "Glass + Slide + Poppins",
+        bubbleStyle = MessageBubbleStyle.GLASS,
+        animationStyle = MessageAnimationStyle.SLIDE,
+        fontVariant = FontVariant.POPPINS
+    ),
+    StylePreset(
+        name = "Soft Neo",
+        emoji = "🎭",
+        description = "Neumorphism + Scale + Comfortaa",
+        bubbleStyle = MessageBubbleStyle.NEUMORPHISM,
+        animationStyle = MessageAnimationStyle.SCALE,
+        fontVariant = FontVariant.COMFORTAA
+    )
+)
+
+@Composable
+fun QuickPresetsSection(viewModel: CustomizationViewModel) {
+    Column {
+        Text(
+            text = "⚡ Швидкі пресети",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Text(
+            text = "Готові комбінації стилів для різних настроїв",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.height(240.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(quickPresets) { preset ->
+                PresetCard(
+                    preset = preset,
+                    onClick = {
+                        viewModel.setBubbleStyle(preset.bubbleStyle)
+                        viewModel.setAnimationStyle(preset.animationStyle)
+                        viewModel.setFontVariant(preset.fontVariant)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PresetCard(
+    preset: StylePreset,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Emoji в стилізованому колі
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = preset.emoji,
+                    fontSize = 24.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = preset.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = preset.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 10.sp,
+                    maxLines = 2,
+                    lineHeight = 12.sp,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }

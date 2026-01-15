@@ -54,10 +54,10 @@ data class Message(
     @SerializedName("from_id") val fromId: Long,
     @SerializedName("to_id") val toId: Long,
     @SerializedName("group_id") val groupId: Long? = null,
-    @SerializedName("text") val encryptedText: String,
+    @SerializedName("text") val encryptedText: String?,
     @SerializedName("time") val timeStamp: Long,
     @SerializedName("media") val mediaUrl: String? = null,
-    @SerializedName("type") val type: String, // "text", "image", "video", "audio", "voice", "file", "call"
+    @SerializedName("type") val type: String? = "text", // "text", "image", "video", "audio", "voice", "file", "call"
     @SerializedName("media_type") val mediaType: String? = null,
     @SerializedName("media_duration") val mediaDuration: Long? = null,
     @SerializedName("media_size") val mediaSize: Long? = null,
@@ -94,10 +94,12 @@ data class Group(
     @SerializedName("is_admin") val isAdmin: Boolean = false,
     @SerializedName("is_moderator") val isModerator: Boolean = false,
     @SerializedName("is_member") val isMember: Boolean = true,
+    @SerializedName("is_muted") val isMuted: Boolean = false, // 🔕 Вимкнено сповіщення для користувача
     @SerializedName("created_time") val createdTime: Long,
     @SerializedName("updated_time") val updatedTime: Long? = null,
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
+    @SerializedName("pinned_message") val pinnedMessage: Message? = null, // 📌 Закріплене повідомлення
     @SerializedName("settings") val settings: GroupSettings? = null
 )
 

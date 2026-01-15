@@ -32,6 +32,9 @@ data class Channel(
 data class ChannelPost(
     @SerializedName("id") val id: Long,
     @SerializedName("author_id") val authorId: Long,
+    @SerializedName("author_username") val authorUsername: String? = null,
+    @SerializedName("author_name") val authorName: String? = null,
+    @SerializedName("author_avatar") val authorAvatar: String? = null,
     @SerializedName("text") val text: String,
     @SerializedName("media") val media: List<PostMedia>? = null,
     @SerializedName("created_time") val createdTime: Long,
@@ -39,7 +42,8 @@ data class ChannelPost(
     @SerializedName("is_pinned") val isPinned: Boolean = false,
     @SerializedName("views_count") val viewsCount: Int = 0,
     @SerializedName("reactions_count") val reactionsCount: Int = 0,
-    @SerializedName("comments_count") val commentsCount: Int = 0
+    @SerializedName("comments_count") val commentsCount: Int = 0,
+    @SerializedName("reactions") val reactions: List<PostReaction>? = null
 )
 
 /**
@@ -57,6 +61,9 @@ data class PostMedia(
 data class ChannelComment(
     @SerializedName("id") val id: Long,
     @SerializedName("user_id") val userId: Long,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("user_name") val userName: String? = null,
+    @SerializedName("user_avatar") val userAvatar: String? = null,
     @SerializedName("text") val text: String,
     @SerializedName("time") val time: Long,
     @SerializedName("edited_time") val editedTime: Long? = null,
@@ -142,28 +149,36 @@ data class ChannelSettings(
  * Статистика каналу
  */
 data class ChannelStatistics(
-    @SerializedName("total_views") val totalViews: Long = 0,
-    @SerializedName("average_views_per_post") val averageViewsPerPost: Int = 0,
-    @SerializedName("subscribers_growth_7d") val subscribersGrowth7d: Int = 0,
-    @SerializedName("subscribers_growth_30d") val subscribersGrowth30d: Int = 0,
-    @SerializedName("total_reactions") val totalReactions: Long = 0,
-    @SerializedName("total_comments") val totalComments: Long = 0,
-    @SerializedName("total_shares") val totalShares: Long = 0,
-    @SerializedName("engagement_rate") val engagementRate: Float = 0f, // Відсоток залученості
-    @SerializedName("top_posts") val topPosts: List<Long>? = null, // ID топ-постів
-    @SerializedName("last_updated") val lastUpdated: Long? = null
+    @SerializedName("subscribers_count") val subscribersCount: Int = 0,
+    @SerializedName("posts_count") val postsCount: Int = 0,
+    @SerializedName("posts_last_week") val postsLastWeek: Int = 0,
+    @SerializedName("active_subscribers_24h") val activeSubscribers24h: Int = 0,
+    @SerializedName("top_posts") val topPosts: List<TopPostStatistic>? = null
+)
+
+/**
+ * Статистика топ-поста
+ */
+data class TopPostStatistic(
+    @SerializedName("id") val id: Long,
+    @SerializedName("text") val text: String,
+    @SerializedName("views") val views: Int
 )
 
 /**
  * Підписник каналу
  */
 data class ChannelSubscriber(
-    @SerializedName("user_id") val userId: Long,
-    @SerializedName("username") val username: String,
-    @SerializedName("avatar") val avatarUrl: String,
-    @SerializedName("subscribed_time") val subscribedTime: Long,
+    @SerializedName("id") val id: Long? = null,
+    @SerializedName("user_id") val userId: Long? = null,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("avatar") val avatarUrl: String? = null,
+    @SerializedName("subscribed_time") val subscribedTime: Long? = null,
     @SerializedName("is_muted") val isMuted: Boolean = false,
-    @SerializedName("is_banned") val isBanned: Boolean = false
+    @SerializedName("is_banned") val isBanned: Boolean = false,
+    @SerializedName("role") val role: String? = null,
+    @SerializedName("last_seen") val lastSeen: String? = null
 )
 
 // ==================== API REQUEST MODELS ====================
@@ -277,6 +292,13 @@ data class ChannelSubscribersResponse(
     @SerializedName("total_count") val totalCount: Int? = null,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
+)
+
+data class ChannelStatisticsResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("statistics") val statistics: ChannelStatistics?,
+    @SerializedName("error_code") val errorCode: Int? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
 )
 
 // ==================== EXTENSION FUNCTIONS ====================

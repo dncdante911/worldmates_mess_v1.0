@@ -642,4 +642,259 @@ class ChannelDetailsViewModel : ViewModel() {
         _selectedPost.value = null
         _comments.value = emptyList()
     }
+
+    /**
+     * Додає реакцію на коментар
+     */
+    fun addCommentReaction(
+        commentId: Long,
+        emoji: String,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.addCommentReaction(
+                    accessToken = UserSession.accessToken!!,
+                    commentId = commentId,
+                    reaction = emoji
+                )
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо кількість реакцій на коментарі
+                    _comments.value = _comments.value.map { comment ->
+                        if (comment.id == commentId) {
+                            comment.copy(reactionsCount = comment.reactionsCount + 1)
+                        } else {
+                            comment
+                        }
+                    }
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Реакцію на коментар додано")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка додавання реакції"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка додавання реакції на коментар", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Додає адміністратора каналу
+     */
+    fun addChannelAdmin(
+        channelId: Long,
+        userSearch: String,
+        role: String = "admin",
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.addChannelAdmin(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    userId = null,
+                    userSearch = userSearch,
+                    role = role
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Адміністратора додано: $userSearch")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка додавання адміністратора"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка додавання адміністратора", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Видаляє адміністратора каналу
+     */
+    fun removeChannelAdmin(
+        channelId: Long,
+        userId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.removeChannelAdmin(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    userId = userId
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Адміністратора видалено")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка видалення адміністратора"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка видалення адміністратора", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Оновлює інформацію про канал (назва, опис, username)
+     */
+    fun updateChannel(
+        channelId: Long,
+        name: String? = null,
+        description: String? = null,
+        username: String? = null,
+        onSuccess: (Channel) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.updateChannel(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    name = name,
+                    description = description,
+                    username = username
+                )
+
+                if (response.apiStatus == 200 && response.channel != null) {
+                    _channel.value = response.channel
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Канал оновлено: ${response.channel.name}")
+                    onSuccess(response.channel)
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка оновлення каналу"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка оновлення каналу", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Оновлює налаштування каналу
+     */
+    fun updateChannelSettings(
+        channelId: Long,
+        settings: ChannelSettings,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                // Конвертуємо налаштування в JSON
+                val settingsJson = Gson().toJson(settings)
+
+                val response = RetrofitClient.apiService.updateChannelSettings(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    settingsJson = settingsJson
+                )
+
+                if (response.apiStatus == 200) {
+                    _error.value = null
+                    Log.d("ChannelDetailsVM", "Налаштування оновлено")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка оновлення налаштувань"
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                _error.value = errorMsg
+                Log.e("ChannelDetailsVM", "Помилка оновлення налаштувань", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Зареєструвати перегляд поста
+     */
+    fun registerPostView(
+        postId: Long,
+        onSuccess: (Int) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.registerPostView(
+                    accessToken = UserSession.accessToken!!,
+                    postId = postId
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d("ChannelDetailsVM", "Перегляд зареєстровано для поста $postId")
+                    onSuccess(0) // TODO: можна повертати views_count з response
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка реєстрації перегляду"
+                    Log.w("ChannelDetailsVM", "Помилка реєстрації перегляду: $errorMsg")
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                Log.e("ChannelDetailsVM", "Помилка реєстрації перегляду", e)
+                onError(errorMsg)
+            }
+        }
+    }
 }

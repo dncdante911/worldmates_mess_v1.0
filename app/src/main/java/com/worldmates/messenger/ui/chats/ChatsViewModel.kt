@@ -1,5 +1,6 @@
 package com.worldmates.messenger.ui.chats
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
+class ChatsViewModel(private val context: Context) : ViewModel(), SocketManager.SocketListener {
 
     private val _chatList = MutableStateFlow<List<Chat>>(emptyList())
     val chatList: StateFlow<List<Chat>> = _chatList
@@ -86,16 +87,24 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
                             Log.d("ChatsViewModel", "✅ Особистий чат: ${chat.username}, last_msg: ${chat.lastMessage?.encryptedText}")
 
                             val lastMessage = chat.lastMessage?.let { msg ->
+                                // Перевіряємо чи є текст повідомлення
+                                val encryptedText = msg.encryptedText ?: ""
+
                                 // Дешифруємо з підтримкою AES-GCM (v2)
-                                val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                                    text = msg.encryptedText,
-                                    timestamp = msg.timeStamp,
-                                    iv = msg.iv,
-                                    tag = msg.tag,
-                                    cipherVersion = msg.cipherVersion
-                                )
+                                val decryptedText = if (encryptedText.isNotEmpty()) {
+                                    DecryptionUtility.decryptMessageOrOriginal(
+                                        text = encryptedText,
+                                        timestamp = msg.timeStamp,
+                                        iv = msg.iv,
+                                        tag = msg.tag,
+                                        cipherVersion = msg.cipherVersion
+                                    )
+                                } else {
+                                    "" // Порожнє повідомлення (можливо медіа без тексту)
+                                }
+
                                 Log.d("ChatsViewModel", "🔐 Дешифрування для ${chat.username}:")
-                                Log.d("ChatsViewModel", "   Зашифровано: ${msg.encryptedText}")
+                                Log.d("ChatsViewModel", "   Зашифровано: $encryptedText")
                                 Log.d("ChatsViewModel", "   Timestamp: ${msg.timeStamp}")
                                 Log.d("ChatsViewModel", "   Cipher version: ${msg.cipherVersion ?: "ECB (v1)"}")
                                 Log.d("ChatsViewModel", "   Has IV/TAG: ${msg.iv != null}/${msg.tag != null}")
@@ -103,7 +112,10 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
 
                                 // Конвертуємо URL медіа в зрозумілі мітки
                                 val displayText = convertMediaUrlToLabel(decryptedText)
-                                msg.copy(decryptedText = displayText)
+                                msg.copy(
+                                    encryptedText = msg.encryptedText,
+                                    decryptedText = displayText
+                                )
                             }
                             chat.copy(lastMessage = lastMessage)
                         }
@@ -155,7 +167,7 @@ class ChatsViewModel : ViewModel(), SocketManager.SocketListener {
      */
     private fun setupSocket() {
         try {
-            socketManager = SocketManager(this)
+            socketManager = SocketManager(this, context)
             socketManager?.connect()
             Log.d("ChatsViewModel", "Socket.IO налаштований")
         } catch (e: Exception) {

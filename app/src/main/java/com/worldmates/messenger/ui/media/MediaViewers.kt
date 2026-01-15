@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.isActive
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -563,7 +564,7 @@ fun InlineVideoPlayer(
     var currentPosition by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
 
-    val exoPlayer = remember {
+    val exoPlayer = remember(videoUrl) {
         ExoPlayer.Builder(context).build().apply {
             val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
             setMediaItem(mediaItem)
@@ -580,7 +581,7 @@ fun InlineVideoPlayer(
 
     // Оновлення позиції
     LaunchedEffect(exoPlayer) {
-        while (true) {
+        while (isActive) {
             currentPosition = exoPlayer.currentPosition
             duration = exoPlayer.duration.coerceAtLeast(0)
             kotlinx.coroutines.delay(100)
@@ -769,7 +770,7 @@ fun FullscreenVideoPlayer(
     var currentPosition by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
 
-    val exoPlayer = remember {
+    val exoPlayer = remember(videoUrl) {
         ExoPlayer.Builder(context).build().apply {
             val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
             setMediaItem(mediaItem)
@@ -788,7 +789,7 @@ fun FullscreenVideoPlayer(
 
     // Оновлення позиції та тривалості
     LaunchedEffect(exoPlayer) {
-        while (true) {
+        while (isActive) {
             currentPosition = exoPlayer.currentPosition
             duration = exoPlayer.duration.coerceAtLeast(0)
             kotlinx.coroutines.delay(100)
@@ -1155,7 +1156,7 @@ fun SimpleAudioPlayer(
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(true) }
 
-    val exoPlayer = remember {
+    val exoPlayer = remember(audioUrl) {
         ExoPlayer.Builder(context).build().apply {
             val mediaItem = MediaItem.fromUri(Uri.parse(audioUrl))
             setMediaItem(mediaItem)

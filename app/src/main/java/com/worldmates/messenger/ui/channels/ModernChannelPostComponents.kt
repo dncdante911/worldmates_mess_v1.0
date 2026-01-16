@@ -1178,7 +1178,7 @@ fun CommentContent(text: String) {
 
                 when {
                     // Telegram stickers (.tgs - Lottie animations)
-                    url.matches(""".*\.tgs$""".toRegex(ignoreCase = true)) -> {
+                    url.matches(""".*\.tgs$""".toRegex(RegexOption.IGNORE_CASE)) -> {
                         com.airbnb.lottie.compose.LottieAnimation(
                             composition = com.airbnb.lottie.compose.rememberLottieComposition(
                                 com.airbnb.lottie.compose.LottieCompositionSpec.Url(url)
@@ -1189,7 +1189,7 @@ fun CommentContent(text: String) {
                         )
                     }
                     // Звичайні зображення (GIF, PNG, JPG, WEBP, SVG)
-                    url.matches(""".*\.(gif|jpg|jpeg|png|webp|svg)$""".toRegex(ignoreCase = true)) -> {
+                    url.matches(""".*\.(gif|jpg|jpeg|png|webp|svg)$""".toRegex(RegexOption.IGNORE_CASE)) -> {
                         AsyncImage(
                             model = url,
                             contentDescription = label,
@@ -1201,7 +1201,7 @@ fun CommentContent(text: String) {
                         )
                     }
                     // WebM відео (Telegram premium stickers)
-                    url.matches(""".*\.webm$""".toRegex(ignoreCase = true)) -> {
+                    url.matches(""".*\.webm$""".toRegex(RegexOption.IGNORE_CASE)) -> {
                         // TODO: Додати підтримку WebM через ExoPlayer якщо потрібно
                         Text(
                             text = "🎬 $label (WebM)",

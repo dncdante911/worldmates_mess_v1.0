@@ -108,6 +108,12 @@ dependencies {
     // ==================== IMAGE LOADING ====================
     implementation 'io.coil-kt:coil-compose:2.7.0'  // Последняя версия
     implementation 'io.coil-kt:coil-gif:2.7.0'  // GIF support for animated stickers
+    implementation 'io.coil-kt:coil-svg:2.7.0'  // SVG support
+
+    // ==================== LOTTIE ANIMATIONS ====================
+    // Для Telegram стікерів (.tgs) та анімованих емодзі
+    implementation 'com.airbnb.android:lottie:6.4.0'
+    implementation 'com.airbnb.android:lottie-compose:6.4.0'
 
     // ==================== MEDIA PLAYBACK ====================
     // ExoPlayer for video and audio playback

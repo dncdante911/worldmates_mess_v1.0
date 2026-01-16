@@ -3,11 +3,23 @@
 // | @author Deen Doughouz (DoughouzForest)
 // | @author_url 1: http://www.wowonder.com
 // | @author_url 2: http://codecanyon.net/user/doughouzforest
-// | @author_email: wowondersocial@gmail.com   
+// | @author_email: wowondersocial@gmail.com
 // +------------------------------------------------------------------------+
 // | WoWonder - The Ultimate Social Networking Platform
 // | Copyright (c) 2016 WoWonder. All rights reserved.
 // +------------------------------------------------------------------------+
+
+// Підключення необхідних файлів
+if (!defined('T_USERS')) {
+    require_once(__DIR__ . '/../../assets/init.php');
+}
+if (!function_exists('Wo_RegisterUser')) {
+    require_once(__DIR__ . '/../../assets/includes/functions_one.php');
+}
+if (!isset($api_version)) {
+    $api_version = '1.3.1';
+}
+
 $json_error_data   = array();
 $json_success_data = array();
 if (empty($_GET['type']) || !isset($_GET['type'])) {

@@ -1555,14 +1555,10 @@ function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
             'types' => 'jpg,png,jpeg,gif,webp'
         );
 
-        // Підключаємо функції якщо потрібно
+        // Перевіряємо чи функція Wo_ShareFile доступна
         if (!function_exists('Wo_ShareFile')) {
-            if (file_exists(__DIR__ . '/../../assets/includes/functions_one.php')) {
-                require_once(__DIR__ . '/../../assets/includes/functions_one.php');
-            } else {
-                logChannelMessage("functions_one.php not found", 'ERROR');
-                return ['api_status' => 500, 'error_message' => 'Server configuration error'];
-            }
+            logChannelMessage("Wo_ShareFile function not loaded", 'ERROR');
+            return ['api_status' => 500, 'error_message' => 'Server configuration error: upload function not available'];
         }
 
         // Використовуємо функцію WoWonder для завантаження

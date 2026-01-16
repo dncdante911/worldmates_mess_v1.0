@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "657181382689",
+    "project_id": "wowonder-combined",
+    "storage_bucket": "wowonder-combined.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:657181382689:android:1948daf16b90aa13ef6b60",
+        "android_client_info": {
+          "package_name": "com.wowonder.combined"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "657181382689-dmgsplal3qj2ac5g5h5rvc3mf1pvu4lb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wowonder.combined",
+            "certificate_hash": "bed29cc31bf973486086c93f179f645d69c3666d"
+          }
+        },
+        {
+          "client_id": "657181382689-ubjs94kivnge4isi0im9s1iq382ujsvq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBujLFo5UPoa2_gM4OCUDPS3TpaDhpUb7M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "657181382689-ubjs94kivnge4isi0im9s1iq382ujsvq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      },
+      "admob_app_id": "ca-app-pub-5135691635931982~1552760489"
+    }
+  ],
+  "configuration_version": "1"
+}

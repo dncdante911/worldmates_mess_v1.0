@@ -45,7 +45,8 @@ if (strpos($content_type, 'application/json') !== false) {
 }
 
 // Access token для автентифікації
-$access_token = $data['access_token'] ?? $_GET['access_token'] ?? null;
+// Для multipart/form-data access_token може бути в $_POST
+$access_token = $data['access_token'] ?? $_GET['access_token'] ?? $_POST['access_token'] ?? null;
 
 if (!$access_token) {
     echo json_encode(['api_status' => 400, 'error_message' => 'Access token is required']);
@@ -287,7 +288,8 @@ try {
             break;
 
         case 'upload_channel_avatar':
-            $channel_id = $data['channel_id'] ?? null;
+            // Для multipart/form-data channel_id може бути в $_POST
+            $channel_id = $data['channel_id'] ?? $_POST['channel_id'] ?? null;
             if (!$channel_id) {
                 echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
                 exit;
@@ -1520,6 +1522,8 @@ function getChannelStatistics($db, $user_id, $channel_id) {
  * Завантажити аватар каналу
  */
 function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
+    global $sqlConnect, $wo;
+
     // Перевіряємо права
     $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
     $stmt->execute([$channel_id, $user_id]);
@@ -1529,8 +1533,43 @@ function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
         return ['api_status' => 403, 'error_message' => 'You do not have permission to change avatar'];
     }
 
-    // TODO: Реалізувати завантаження файлу
-    return ['api_status' => 501, 'error_message' => 'Avatar upload not implemented yet'];
+    // Перевіряємо чи є файл
+    if (empty($files['avatar']) || !isset($files['avatar']['tmp_name'])) {
+        return ['api_status' => 400, 'error_message' => 'Avatar file is required'];
+    }
+
+    // Підготовка файлу для завантаження
+    $file_info = array(
+        'file' => $files['avatar']['tmp_name'],
+        'name' => $files['avatar']['name'],
+        'size' => $files['avatar']['size'],
+        'type' => $files['avatar']['type'],
+        'types' => 'jpg,png,jpeg,gif,webp'
+    );
+
+    // Використовуємо функцію WoWonder для завантаження
+    require_once(__DIR__ . '/../../assets/includes/functions_one.php');
+    $upload = Wo_ShareFile($file_info);
+
+    if (empty($upload) || empty($upload['filename'])) {
+        return ['api_status' => 500, 'error_message' => 'Failed to upload avatar'];
+    }
+
+    $avatar_url = $upload['filename'];
+
+    // Оновлюємо аватар в БД
+    $stmt = $db->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE id = ?");
+    if (!$stmt->execute([$avatar_url, $channel_id])) {
+        return ['api_status' => 500, 'error_message' => 'Failed to update avatar in database'];
+    }
+
+    logChannelMessage("User $user_id uploaded avatar for channel $channel_id: $avatar_url", 'INFO');
+
+    return [
+        'api_status' => 200,
+        'message' => 'Avatar uploaded successfully',
+        'avatar_url' => $avatar_url
+    ];
 }
 
 ?>

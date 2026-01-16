@@ -47,6 +47,13 @@ if (!file_exists($config_path)) {
 }
 require_once($config_path);
 
+// CRITICAL: Change working directory to site root
+// WoWonder functions expect to be executed from root (they use require_once "config.php")
+$site_root = $_SERVER['DOCUMENT_ROOT'];
+if (getcwd() !== $site_root) {
+    chdir($site_root);
+}
+
 // Verify database credentials are set
 if (!isset($sql_db_host) || !isset($sql_db_user) || !isset($sql_db_pass) || !isset($sql_db_name)) {
     http_response_code(500);
@@ -80,50 +87,48 @@ if (!isset($wo)) {
 $wo['sqlConnect'] = $sqlConnect;
 $wo['site_url'] = $site_url ?? 'https://worldmates.club';
 
-// Load MySQL-Maria Database class
-$mysql_maria_path = __DIR__ . '/../../assets/libraries/DB/vendor/joshcam/mysqli-database-class/MySQL-Maria.php';
+// Load MySQL-Maria Database class (from site root after chdir)
+$mysql_maria_path = 'assets/libraries/DB/vendor/joshcam/mysqli-database-class/MySQL-Maria.php';
 if (file_exists($mysql_maria_path)) {
     require_once($mysql_maria_path);
 }
 
-// Load database tables constants
-$tabels_path = __DIR__ . '/../../assets/includes/tabels.php';
+// Load database tables constants (from site root)
+$tabels_path = 'assets/includes/tabels.php';
 if (!file_exists($tabels_path)) {
     http_response_code(500);
     die(json_encode([
         'api_status' => 500,
         'api_text' => 'failed',
-        'errors' => ['error_text' => 'tabels.php not found']
+        'errors' => ['error_text' => 'tabels.php not found at ' . getcwd() . '/' . $tabels_path]
     ]));
 }
 require_once($tabels_path);
 
-// Load required functions
-$functions_path = __DIR__ . '/../../assets/includes/';
+// Load required functions (from site root)
 $required_functions = [
-    'cache.php',
-    'functions_general.php',
-    'functions_one.php',
-    'functions_two.php',
-    'functions_three.php'
+    'assets/includes/cache.php',
+    'assets/includes/functions_general.php',
+    'assets/includes/functions_one.php',
+    'assets/includes/functions_two.php',
+    'assets/includes/functions_three.php'
 ];
 
-foreach ($required_functions as $func_file) {
-    $func_path = $functions_path . $func_file;
+foreach ($required_functions as $func_path) {
     if (!file_exists($func_path)) {
-        error_log("Required file not found: $func_path");
+        error_log("Required file not found: $func_path in " . getcwd());
         http_response_code(500);
         die(json_encode([
             'api_status' => 500,
             'api_text' => 'failed',
-            'errors' => ['error_text' => 'System files missing: ' . $func_file]
+            'errors' => ['error_text' => 'System files missing: ' . basename($func_path)]
         ]));
     }
     require_once($func_path);
 }
 
-// Load phone-specific functions
-$phone_functions_path = __DIR__ . '/core/functions.php';
+// Load phone-specific functions (use absolute path since we changed directory)
+$phone_functions_path = $site_root . '/api/phone/core/functions.php';
 if (file_exists($phone_functions_path)) {
     require_once($phone_functions_path);
 }

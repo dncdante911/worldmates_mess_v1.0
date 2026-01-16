@@ -136,27 +136,60 @@ class RegisterViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.registerWithVerification(
+                // Генеруємо унікальний session ID
+                val sessionId = generateSessionId()
+
+                val response = RetrofitClient.apiService.register(
                     username = username,
+                    email = email,
+                    phoneNumber = null,
                     password = password,
                     confirmPassword = confirmPassword,
-                    verificationType = "email",
-                    email = email,
-                    phoneNumber = null
+                    sessionId = sessionId
                 )
 
-                if (response.apiStatus == 200) {
-                    _registerState.value = RegisterState.VerificationRequired(
-                        userId = response.userId ?: 0,
-                        username = response.username ?: username,
-                        verificationType = "email",
-                        contactInfo = email
-                    )
-                    Log.d("RegisterViewModel", "Реєстрація успішна, потрібна верифікація")
-                } else {
-                    val errorMsg = response.errors ?: response.message ?: "Помилка реєстрації"
-                    _registerState.value = RegisterState.Error(errorMsg)
-                    Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                Log.d("RegisterViewModel", "=== EMAIL REGISTRATION ===")
+                Log.d("RegisterViewModel", "apiStatus: ${response.apiStatus}")
+                Log.d("RegisterViewModel", "successType: ${response.successType}")
+                Log.d("RegisterViewModel", "accessToken: ${response.accessToken}")
+                Log.d("RegisterViewModel", "userId: ${response.userId}")
+
+                when {
+                    response.apiStatus == 200 && response.accessToken != null && response.userId != null -> {
+                        // Успішна регистрация (може бути як auto-login так і verification)
+                        // Зберігаємо сесію в обох випадках
+                        UserSession.saveSession(
+                            response.accessToken,
+                            response.userId,
+                            response.username,
+                            response.avatar
+                        )
+
+                        if (response.successType == "verification") {
+                            // Email верифікація потрібна, але сесія вже збережена
+                            _registerState.value = RegisterState.VerificationRequired(
+                                userId = response.userId,
+                                username = response.username ?: username,
+                                verificationType = "email",
+                                contactInfo = email
+                            )
+                            Log.d("RegisterViewModel", "Email верифікація потрібна, але сесію збережено")
+                        } else {
+                            // Автоматичний логін
+                            _registerState.value = RegisterState.Success
+                            Log.d("RegisterViewModel", "Успішно зареєстровано з auto-login")
+                        }
+                    }
+                    response.apiStatus == 400 -> {
+                        val errorMsg = response.errorMessage ?: "Помилка реєстрації"
+                        _registerState.value = RegisterState.Error(errorMsg)
+                        Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                    }
+                    else -> {
+                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
+                        _registerState.value = RegisterState.Error(errorMsg)
+                        Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                    }
                 }
             } catch (e: java.net.ConnectException) {
                 val errorMsg = "Помилка з'єднання. Перевірте мережу"
@@ -202,27 +235,47 @@ class RegisterViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.registerWithVerification(
+                // Генеруємо унікальний session ID
+                val sessionId = generateSessionId()
+
+                val response = RetrofitClient.apiService.register(
                     username = username,
+                    email = null,
+                    phoneNumber = phoneNumber,
                     password = password,
                     confirmPassword = confirmPassword,
-                    verificationType = "phone",
-                    email = null,
-                    phoneNumber = phoneNumber
+                    sessionId = sessionId
                 )
 
-                if (response.apiStatus == 200) {
-                    _registerState.value = RegisterState.VerificationRequired(
-                        userId = response.userId ?: 0,
-                        username = response.username ?: username,
-                        verificationType = "phone",
-                        contactInfo = phoneNumber
-                    )
-                    Log.d("RegisterViewModel", "Реєстрація успішна, потрібна верифікація")
-                } else {
-                    val errorMsg = response.errors ?: response.message ?: "Помилка реєстрації"
-                    _registerState.value = RegisterState.Error(errorMsg)
-                    Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                Log.d("RegisterViewModel", "=== PHONE REGISTRATION ===")
+                Log.d("RegisterViewModel", "apiStatus: ${response.apiStatus}")
+                Log.d("RegisterViewModel", "successType: ${response.successType}")
+                Log.d("RegisterViewModel", "accessToken: ${response.accessToken}")
+                Log.d("RegisterViewModel", "userId: ${response.userId}")
+
+                when {
+                    response.apiStatus == 200 && response.accessToken != null && response.userId != null -> {
+                        // Успішна регистрация
+                        // Phone registration should auto-activate (no verification needed)
+                        UserSession.saveSession(
+                            response.accessToken,
+                            response.userId,
+                            response.username,
+                            response.avatar
+                        )
+                        _registerState.value = RegisterState.Success
+                        Log.d("RegisterViewModel", "Успішно зареєстровано через телефон! User ID: ${response.userId}")
+                    }
+                    response.apiStatus == 400 -> {
+                        val errorMsg = response.errorMessage ?: "Помилка реєстрації"
+                        _registerState.value = RegisterState.Error(errorMsg)
+                        Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                    }
+                    else -> {
+                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
+                        _registerState.value = RegisterState.Error(errorMsg)
+                        Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                    }
                 }
             } catch (e: java.net.ConnectException) {
                 val errorMsg = "Помилка з'єднання. Перевірте мережу"

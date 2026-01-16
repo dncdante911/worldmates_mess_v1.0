@@ -24,7 +24,8 @@ interface WorldMatesApi {
     @POST("../phone/register_user.php?type=user_registration")
     suspend fun register(
         @Field("username") username: String,
-        @Field("email") email: String,
+        @Field("email") email: String? = null,
+        @Field("phone_number") phoneNumber: String? = null,
         @Field("password") password: String,
         @Field("confirm_password") confirmPassword: String,
         @Field("s") sessionId: String, // КРИТИЧНО: обов'язковий параметр для WoWonder API

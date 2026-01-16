@@ -49,16 +49,15 @@ interface WorldMatesApi {
     ): RegisterVerificationResponse
 
     @FormUrlEncoded
-    @POST("/xhr/index.php?f=send_verification_code")
+    @POST("/api/v2/?type=send_verification_code")
     suspend fun sendVerificationCode(
         @Field("verification_type") verificationType: String,
         @Field("contact_info") contactInfo: String,
-        @Field("username") username: String? = null,
-        @Field("user_id") userId: Long? = null
+        @Field("username") username: String
     ): SendCodeResponse
 
     @FormUrlEncoded
-    @POST("/xhr/index.php?f=verify_code")
+    @POST("/api/v2/?type=verify_code")
     suspend fun verifyCode(
         @Field("verification_type") verificationType: String,
         @Field("contact_info") contactInfo: String,
@@ -68,13 +67,12 @@ interface WorldMatesApi {
     ): VerifyCodeResponse
 
     @FormUrlEncoded
-    @POST("/xhr/index.php?f=resend_verification_code")
+    @POST("/api/v2/?type=send_verification_code")
     suspend fun resendVerificationCode(
         @Field("verification_type") verificationType: String,
         @Field("contact_info") contactInfo: String,
-        @Field("username") username: String? = null,
-        @Field("user_id") userId: Long? = null
-    ): ResendCodeResponse
+        @Field("username") username: String
+    ): SendCodeResponse
 
     @FormUrlEncoded
     @POST("/api/v2/sync_session.php")

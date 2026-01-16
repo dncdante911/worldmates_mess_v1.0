@@ -1213,18 +1213,29 @@ data class RegisterVerificationResponse(
 )
 
 /**
+ * Error object for API responses
+ */
+data class ApiErrorObject(
+    @SerializedName("error_id") val errorId: Int? = null,
+    @SerializedName("error_text") val errorText: String? = null
+)
+
+/**
  * Response for sending verification code
  */
 data class SendCodeResponse(
     @SerializedName("status") val status: Int? = null,
     @SerializedName("api_status") val apiStatus: Int? = null,
-    @SerializedName("message") val message: String?,
+    @SerializedName("message") val message: String? = null,
     @SerializedName("code_length") val codeLength: Int? = null,
     @SerializedName("expires_in") val expiresIn: Int? = null,
-    @SerializedName("errors") val errors: String? = null
+    @SerializedName("errors") val errorsObject: ApiErrorObject? = null
 ) {
     val actualStatus: Int
         get() = apiStatus ?: status ?: 400
+
+    val errors: String?
+        get() = errorsObject?.errorText
 }
 
 /**
@@ -1232,12 +1243,15 @@ data class SendCodeResponse(
  */
 data class VerifyCodeResponse(
     @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("message") val message: String?,
+    @SerializedName("message") val message: String? = null,
     @SerializedName("user_id") val userId: Long? = null,
     @SerializedName("access_token") val accessToken: String? = null,
     @SerializedName("timezone") val timezone: String? = null,
-    @SerializedName("errors") val errors: String? = null
-)
+    @SerializedName("errors") val errorsObject: ApiErrorObject? = null
+) {
+    val errors: String?
+        get() = errorsObject?.errorText
+}
 
 /**
  * Response for resending verification code

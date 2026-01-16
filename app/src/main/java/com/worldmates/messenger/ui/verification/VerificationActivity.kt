@@ -105,8 +105,11 @@ class VerificationActivity : AppCompatActivity() {
             }
         }
 
-        // Автоматично відправляємо код при відкритті екрану
-        viewModel.sendVerificationCode(verificationType, contactInfo, username)
+        // TODO: Автоматична відправка коду тимчасово вимкнена
+        // Проблеми: 1) "Not authorized" - потрібен access_token
+        //           2) JsonSyntaxException - errors як об'єкт
+        //           3) BringIntoViewRequester crash
+        // viewModel.sendVerificationCode(verificationType, contactInfo, username)
     }
 
     private fun navigateToChats() {

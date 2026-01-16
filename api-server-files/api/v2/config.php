@@ -77,6 +77,19 @@ if (!isset($wo)) {
 $wo['sqlConnect'] = $sqlConnect;
 $wo['site_url'] = $site_url; // From root config.php
 
+// CRITICAL: Set $wo['loggedin'] for API requests
+// WoWonder functions like Wo_ShareFile() check this (line 5714 in functions_one.php)
+// For API endpoints, we consider user "logged in" if they have valid access_token
+// The validateAccessToken() function will be called before any protected endpoints
+$wo['loggedin'] = true;
+
+// Set minimal user data for API context (will be updated per request)
+$wo['user'] = [
+    'user_id' => 0,
+    'username' => 'api_user',
+    'active' => '1'
+];
+
 // ============================================
 // Initialize MysqlMaria object (CRITICAL for Wo_Secure())
 // ============================================

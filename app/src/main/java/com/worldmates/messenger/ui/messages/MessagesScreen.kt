@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -99,7 +100,8 @@ fun MessagesScreen(
     recipientName: String,
     recipientAvatar: String,
     isGroup: Boolean,
-    onBackPressed: () -> Unit
+    onBackPressed: () -> Unit,
+    onRequestAudioPermission: () -> Boolean = { true }  // Default для preview
 ) {
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -901,8 +903,11 @@ fun MessagesScreen(
                     recordingDuration = recordingDuration,
                     voiceRecorder = voiceRecorder,
                     onStartVoiceRecord = {
-                        scope.launch {
-                            voiceRecorder.startRecording()
+                        // Перевіряємо permission перед записом
+                        if (onRequestAudioPermission()) {
+                            scope.launch {
+                                voiceRecorder.startRecording()
+                            }
                         }
                     },
                     onCancelVoiceRecord = {
@@ -2255,19 +2260,114 @@ fun MessageInputBar(
                         }
 
                         InputMode.VOICE -> {
-                            // Велика кнопка для запису
-                            IconButton(
-                                onClick = onStartVoiceRecord,
+                            // Велика кнопка для запису зі swipe gesture (як в Telegram)
+                            var isRecordingLocked by remember { mutableStateOf(false) }
+
+                            Box(
                                 modifier = Modifier
                                     .size(56.dp)
                                     .background(colorScheme.primary, CircleShape)
+                                    .pointerInput(Unit) {
+                                        var startY = 0f
+                                        detectDragGestures(
+                                            onDragStart = { offset ->
+                                                startY = offset.y
+                                                // Починаємо запис при натисканні
+                                                if (onRequestAudioPermission()) {
+                                                    scope.launch {
+                                                        voiceRecorder.startRecording()
+                                                    }
+                                                }
+                                            },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                val currentOffsetY = change.position.y - startY
+
+                                                // Swipe вгору для lock (> 100px вгору)
+                                                if (currentOffsetY < -100f && !isRecordingLocked) {
+                                                    isRecordingLocked = true
+                                                    // Вібрація
+                                                    try {
+                                                        @Suppress("DEPRECATION")
+                                                        val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                                            vibrator?.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                                                        } else {
+                                                            @Suppress("DEPRECATION")
+                                                            vibrator?.vibrate(50)
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        // Ignore vibration errors
+                                                    }
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                if (!isRecordingLocked) {
+                                                    // Якщо не locked - зупиняємо запис і надсилаємо
+                                                    scope.launch {
+                                                        val stopped = voiceRecorder.stopRecording()
+                                                        if (stopped && voiceRecorder.recordingState.value is VoiceRecorder.RecordingState.Completed) {
+                                                            val filePath = (voiceRecorder.recordingState.value as VoiceRecorder.RecordingState.Completed).filePath
+                                                            viewModel.uploadAndSendMedia(java.io.File(filePath), "voice")
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            onDragCancel = {
+                                                // Скасування
+                                                if (!isRecordingLocked) {
+                                                    scope.launch {
+                                                        voiceRecorder.cancelRecording()
+                                                    }
+                                                }
+                                                isRecordingLocked = false
+                                            }
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Mic,
+                                    imageVector = if (isRecordingLocked) Icons.Default.Lock else Icons.Default.Mic,
                                     contentDescription = "Записати",
                                     tint = Color.White,
                                     modifier = Modifier.size(32.dp)
                                 )
+
+                                // Підказка при записі
+                                if (recordingState is VoiceRecorder.RecordingState.Recording && !isRecordingLocked) {
+                                    Text(
+                                        text = "⬆️ Свайп вгору",
+                                        fontSize = 10.sp,
+                                        color = Color.White,
+                                        modifier = Modifier
+                                            .align(Alignment.TopCenter)
+                                            .offset(y = (-60).dp)
+                                    )
+                                }
+                            }
+
+                            // Кнопка Stop коли locked
+                            if (isRecordingLocked && recordingState is VoiceRecorder.RecordingState.Recording) {
+                                IconButton(
+                                    onClick = {
+                                        scope.launch {
+                                            val stopped = voiceRecorder.stopRecording()
+                                            if (stopped && voiceRecorder.recordingState.value is VoiceRecorder.RecordingState.Completed) {
+                                                val filePath = (voiceRecorder.recordingState.value as VoiceRecorder.RecordingState.Completed).filePath
+                                                viewModel.uploadAndSendMedia(java.io.File(filePath), "voice")
+                                            }
+                                            isRecordingLocked = false
+                                        }
+                                    },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Stop,
+                                        contentDescription = "Зупинити",
+                                        tint = colorScheme.error,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                             }
                         }
 

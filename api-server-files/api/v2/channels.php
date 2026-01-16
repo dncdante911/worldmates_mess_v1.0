@@ -266,6 +266,19 @@ try {
             echo json_encode(removeChannelAdmin($db, $user_id, $data));
             break;
 
+        case 'add_channel_member':
+            // Додавання учасника до каналу (тільки для адмінів)
+            $channel_id = $data['channel_id'] ?? null;
+            $target_user_id = $data['user_id'] ?? null;
+
+            if (!$channel_id || !$target_user_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id and user_id are required']);
+                exit;
+            }
+
+            echo json_encode(addChannelMember($db, $user_id, $channel_id, $target_user_id));
+            break;
+
         // ============================================
         // Налаштування та статистика
         // ============================================
@@ -1379,6 +1392,63 @@ function addChannelAdmin($db, $user_id, $data) {
     }
 
     return ['api_status' => 200, 'message' => 'Admin added successfully'];
+}
+
+/**
+ * Додати учасника до каналу (для адмінів/модераторів)
+ */
+function addChannelMember($db, $admin_user_id, $channel_id, $target_user_id) {
+    // Перевіряємо чи існує канал
+    $stmt = $db->prepare("SELECT group_id, is_private FROM Wo_GroupChat WHERE group_id = ? AND type = 'channel'");
+    $stmt->execute([$channel_id]);
+    $channel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$channel) {
+        return ['api_status' => 404, 'error_message' => 'Channel not found'];
+    }
+
+    // Перевіряємо права поточного користувача (admin, moderator, або owner)
+    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $admin_user_id]);
+    $admin_role = $stmt->fetchColumn();
+
+    if (!in_array($admin_role, ['owner', 'admin', 'moderator'])) {
+        return ['api_status' => 403, 'error_message' => 'Only channel admins can add members'];
+    }
+
+    // Перевіряємо чи користувач існує
+    $stmt = $db->prepare("SELECT user_id, username FROM Wo_Users WHERE user_id = ?");
+    $stmt->execute([$target_user_id]);
+    $target_user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$target_user) {
+        return ['api_status' => 404, 'error_message' => 'User not found'];
+    }
+
+    // Перевіряємо чи вже є учасником
+    $stmt = $db->prepare("SELECT id FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $target_user_id]);
+    if ($stmt->fetch()) {
+        return ['api_status' => 400, 'error_message' => 'User is already a member of this channel'];
+    }
+
+    // Додаємо користувача як member
+    $stmt = $db->prepare("
+        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, active, last_seen)
+        VALUES (?, ?, 'member', '1', ?)
+    ");
+    $stmt->execute([$target_user_id, $channel_id, time()]);
+
+    logChannelMessage("Admin $admin_user_id added user $target_user_id to channel $channel_id", 'INFO');
+
+    return [
+        'api_status' => 200,
+        'message' => 'Member added successfully',
+        'user' => [
+            'user_id' => $target_user['user_id'],
+            'username' => $target_user['username']
+        ]
+    ];
 }
 
 /**

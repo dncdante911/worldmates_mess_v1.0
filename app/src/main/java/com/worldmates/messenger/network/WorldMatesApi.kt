@@ -880,6 +880,15 @@ interface WorldMatesApi {
         @Field("channel_id") channelId: Long
     ): CreateChannelResponse
 
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun addChannelMember(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "add_channel_member",
+        @Field("channel_id") channelId: Long,
+        @Field("user_id") userId: Long
+    ): CreateChannelResponse
+
     // Channel Posts
     @FormUrlEncoded
     @POST("/api/v2/channels.php")

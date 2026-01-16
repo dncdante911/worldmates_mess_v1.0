@@ -1556,12 +1556,50 @@ function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
             'admin' => 0  // Required by Wo_IsAdmin()
         ];
 
+        // Визначаємо реальний MIME type файлу (Android може надсилати generic "image/*")
+        $real_mime_type = $files['avatar']['type'];
+
+        // Якщо MIME type generic (image/*, application/*) або некоректний, визначаємо його з файлу
+        if (strpos($real_mime_type, '*') !== false || empty($real_mime_type)) {
+            if (function_exists('mime_content_type')) {
+                $detected_mime = mime_content_type($files['avatar']['tmp_name']);
+                if ($detected_mime) {
+                    $real_mime_type = $detected_mime;
+                    logChannelMessage("Detected MIME type from file: $detected_mime", 'DEBUG');
+                }
+            } elseif (function_exists('finfo_open')) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $detected_mime = finfo_file($finfo, $files['avatar']['tmp_name']);
+                finfo_close($finfo);
+                if ($detected_mime) {
+                    $real_mime_type = $detected_mime;
+                    logChannelMessage("Detected MIME type from finfo: $detected_mime", 'DEBUG');
+                }
+            } else {
+                // Fallback: визначаємо по розширенню файлу
+                $extension = strtolower(pathinfo($files['avatar']['name'], PATHINFO_EXTENSION));
+                $mime_map = [
+                    'jpg' => 'image/jpeg',
+                    'jpeg' => 'image/jpeg',
+                    'png' => 'image/png',
+                    'gif' => 'image/gif',
+                    'webp' => 'image/webp'
+                ];
+                if (isset($mime_map[$extension])) {
+                    $real_mime_type = $mime_map[$extension];
+                    logChannelMessage("Detected MIME type from extension: $real_mime_type", 'DEBUG');
+                }
+            }
+        }
+
+        logChannelMessage("Original MIME: {$files['avatar']['type']}, Real MIME: $real_mime_type", 'DEBUG');
+
         // Підготовка файлу для завантаження
         $file_info = array(
             'file' => $files['avatar']['tmp_name'],
             'name' => $files['avatar']['name'],
             'size' => $files['avatar']['size'],
-            'type' => $files['avatar']['type'],
+            'type' => $real_mime_type,  // Використовуємо реальний MIME type
             'types' => 'jpg,png,jpeg,gif,webp'
         );
 

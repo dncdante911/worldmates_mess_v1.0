@@ -107,6 +107,7 @@ dependencies {
 
     // ==================== IMAGE LOADING ====================
     implementation 'io.coil-kt:coil-compose:2.7.0'  // Последняя версия
+    implementation 'io.coil-kt:coil-gif:2.7.0'  // GIF support for animated stickers
 
     // ==================== MEDIA PLAYBACK ====================
     // ExoPlayer for video and audio playback

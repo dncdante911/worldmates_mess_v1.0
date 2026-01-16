@@ -88,9 +88,16 @@ $wo['sqlConnect'] = $sqlConnect;
 $wo['site_url'] = $site_url ?? 'https://worldmates.club';
 
 // Load MySQL-Maria Database class (from site root after chdir)
+// CRITICAL: Create $mysqlMaria object for Wo_Secure() and other functions
 $mysql_maria_path = 'assets/libraries/DB/vendor/joshcam/mysqli-database-class/MySQL-Maria.php';
 if (file_exists($mysql_maria_path)) {
     require_once($mysql_maria_path);
+    // Create MysqlMaria object (required by Wo_Secure on line 819)
+    if (!isset($mysqlMaria)) {
+        $mysqlMaria = new Mysql;
+    }
+} else {
+    error_log("MySQL-Maria.php not found at: $mysql_maria_path in " . getcwd());
 }
 
 // Load database tables constants (from site root)

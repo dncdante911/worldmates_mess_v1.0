@@ -14,7 +14,8 @@ $groups = array();
 $channels = array();
 
 $options['limit'] = (!empty($_POST['limit'])) ? (int) $_POST['limit'] : 35;
-$options['query'] = (!empty($_POST['search_key'])) ? Wo_Secure($_POST['search_key']) : '';
+// Підтримка обох параметрів: search_key (старий) та query (новий Android)
+$options['query'] = (!empty($_POST['query'])) ? Wo_Secure($_POST['query']) : ((!empty($_POST['search_key'])) ? Wo_Secure($_POST['search_key']) : '');
 $options['gender'] = (!empty($_POST['gender'])) ? Wo_Secure($_POST['gender']) : '';
 $options['status'] = (!empty($_POST['status'])) ?  Wo_Secure($_POST['status']) : '';
 $options['image'] = (!empty($_POST['image'])) ?  Wo_Secure($_POST['image']) : '';

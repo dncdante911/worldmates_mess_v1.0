@@ -1550,14 +1550,17 @@ fun AddMembersDialog(
                                     // Кнопка додавання
                                     FilledTonalButton(
                                         onClick = {
-                                            channelsViewModel.subscribeChannel(
+                                            channelsViewModel.addChannelMember(
                                                 channelId = channelId,
+                                                userId = user.userId,
                                                 onSuccess = {
                                                     Toast.makeText(
                                                         context,
-                                                        "Користувача додано до каналу",
+                                                        "Користувача ${user.username} додано до каналу",
                                                         Toast.LENGTH_SHORT
                                                     ).show()
+                                                    // Видаляємо користувача зі списку результатів пошуку
+                                                    searchResults = searchResults.filter { it.userId != user.userId }
                                                 },
                                                 onError = { error ->
                                                     Toast.makeText(context, error, Toast.LENGTH_SHORT).show()

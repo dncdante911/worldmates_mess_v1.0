@@ -337,6 +337,44 @@ class ChannelsViewModel : ViewModel() {
     }
 
     /**
+     * Додати учасника до каналу (тільки для адмінів)
+     */
+    fun addChannelMember(
+        channelId: Long,
+        userId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.addChannelMember(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    userId = userId
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d("ChannelsViewModel", "Учасника додано до каналу: ${response.message}")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка додавання учасника"
+                    Log.e("ChannelsViewModel", errorMsg)
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                Log.e("ChannelsViewModel", "Помилка додавання учасника до каналу", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
      * Пошук користувачів для додавання в канал
      */
     fun searchUsers(

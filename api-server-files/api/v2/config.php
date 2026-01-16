@@ -41,6 +41,66 @@ try {
 }
 
 // ============================================
+// MySQLi підключення (для WoWonder функцій типу Wo_ShareFile)
+// ============================================
+$sqlConnect = @mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if (!$sqlConnect || mysqli_connect_error()) {
+    error_log("MySQLi connection failed: " . mysqli_connect_error());
+    http_response_code(500);
+    echo json_encode([
+        'api_status' => 500,
+        'error_message' => 'Database connection failed'
+    ]);
+    exit;
+}
+mysqli_set_charset($sqlConnect, 'utf8mb4');
+mysqli_query($sqlConnect, "SET NAMES utf8mb4");
+
+// Initialize $wo global array for WoWonder compatibility
+if (!isset($wo)) {
+    $wo = [];
+}
+$wo['sqlConnect'] = $sqlConnect;
+$wo['site_url'] = 'https://worldmates.club';
+
+// ============================================
+// Load WoWonder functions for avatar upload and other features
+// ============================================
+$assets_path = __DIR__ . '/../../assets/includes/';
+
+// Load database tables constants (T_USERS, T_POSTS, etc.)
+if (file_exists($assets_path . 'tabels.php')) {
+    require_once($assets_path . 'tabels.php');
+}
+
+// Load required WoWonder functions
+$required_functions = [
+    'cache.php',           // Cache functions
+    'functions_general.php', // Wo_Secure, Wo_GetConfig, etc.
+    'functions_one.php',   // Wo_ShareFile, Wo_RegisterUser, etc.
+];
+
+foreach ($required_functions as $func_file) {
+    $func_path = $assets_path . $func_file;
+    if (file_exists($func_path)) {
+        require_once($func_path);
+    } else {
+        error_log("Warning: $func_file not found at $func_path");
+    }
+}
+
+// Load site configuration from database if possible
+if (function_exists('Wo_GetConfig')) {
+    try {
+        $config = Wo_GetConfig();
+        $wo['config'] = $config;
+    } catch (Exception $e) {
+        error_log("Warning: Failed to load Wo_GetConfig: " . $e->getMessage());
+        $wo['config'] = [];
+    }
+}
+
+// ============================================
 // AUTHENTICATION FUNCTIONS (для channels.php)
 // ============================================
 

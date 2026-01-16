@@ -1652,7 +1652,8 @@ function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
         logChannelMessage("File uploaded successfully: $avatar_url", 'INFO');
 
         // Оновлюємо аватар в БД
-        $stmt = $db->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE id = ?");
+        // NOTE: Wo_GroupChat uses 'group_id' as PRIMARY KEY, not 'id'
+        $stmt = $db->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE group_id = ?");
         if (!$stmt->execute([$avatar_url, $channel_id])) {
             logChannelMessage("Database update failed", 'ERROR');
             return ['api_status' => 500, 'error_message' => 'Failed to update avatar in database'];

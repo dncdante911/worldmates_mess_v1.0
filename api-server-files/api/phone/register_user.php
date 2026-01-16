@@ -152,25 +152,25 @@ if ($type == 'user_registration') {
         $register = Wo_RegisterUser($re_data);
         if ($register === true) {
             if ($activate == 1) {
+                // Успішна реєстрація з автоматичною активацією
+                $s = $_POST['s'];
+                $s_md5 = md5($_POST['s']);
+                $time = time();
+                $user_id = Wo_UserIdFromUsername($username);
+                $add_session = mysqli_query($sqlConnect, "INSERT INTO " . T_APP_SESSIONS . " (`user_id`, `session_id`, `platform`, `time`) VALUES ('{$user_id}', '{$s_md5}', 'phone', '{$time}')");
+
                 $json_success_data  = array(
                 	'api_status' => '200',
                     'api_text' => 'success',
                     'api_version' => $api_version,
                     'message' => 'Successfully joined, Please wait..',
                     'success_type' => 'registered',
-                    'session_id' => 0,
+                    'session_id' => $s_md5,
                     'cookie' => Wo_CreateLoginSession(Wo_UserIdForLogin($username)),
-                    'user_id' => 0
+                    'user_id' => $user_id,
+                    'access_token' => $s_md5,  // КРИТИЧНО: Android очікує access_token
+                    'username' => $username
                 );
-                $s = $_POST['s'];
-                $s_md5 = md5($_POST['s']);
-                $time = time();
-                $user_id = Wo_UserIdFromUsername($username);
-                $add_session = mysqli_query($sqlConnect, "INSERT INTO " . T_APP_SESSIONS . " (`user_id`, `session_id`, `platform`, `time`) VALUES ('{$user_id}', '{$s_md5}', 'phone', '{$time}')");
-                if ($add_session) {
-            	    $json_success_data['session_id'] = $s_md5;
-            	    $json_success_data['user_id'] = $user_id;
-                }
             } else {
                 // Email верифікація потрібна
                 $user_id = Wo_UserIdFromUsername($username);

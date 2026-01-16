@@ -1546,6 +1546,14 @@ function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
 
         logChannelMessage("File received: " . $files['avatar']['name'] . ", size: " . $files['avatar']['size'], 'DEBUG');
 
+        // CRITICAL: Set $wo['user'] with actual user data for Wo_ShareFile()
+        // Wo_ShareFile() checks $wo['user']['user_id'] and other fields
+        $wo['user'] = [
+            'user_id' => $user_id,
+            'username' => 'channel_admin',
+            'active' => '1'
+        ];
+
         // Підготовка файлу для завантаження
         $file_info = array(
             'file' => $files['avatar']['tmp_name'],
@@ -1561,8 +1569,12 @@ function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
             return ['api_status' => 500, 'error_message' => 'Server configuration error: upload function not available'];
         }
 
+        logChannelMessage("Calling Wo_ShareFile() with user_id=$user_id", 'DEBUG');
+
         // Використовуємо функцію WoWonder для завантаження
         $upload = Wo_ShareFile($file_info);
+
+        logChannelMessage("Wo_ShareFile() returned: " . json_encode($upload), 'DEBUG');
 
         if (empty($upload) || empty($upload['filename'])) {
             logChannelMessage("Wo_ShareFile failed: " . json_encode($upload), 'ERROR');

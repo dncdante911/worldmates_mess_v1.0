@@ -50,7 +50,7 @@ class RegisterViewModel : ViewModel() {
                 // Перевірка статусу відповіді
                 when {
                     response.apiStatus == 200 && response.accessToken != null && response.userId != null -> {
-                        // Успішна регистрация
+                        // Успішна регистрация з автоматичним логіном
                         UserSession.saveSession(
                             response.accessToken,
                             response.userId,
@@ -60,6 +60,16 @@ class RegisterViewModel : ViewModel() {
                         _registerState.value = RegisterState.Success
                         Log.d("RegisterViewModel", "Успішно зареєстровано! User ID: ${response.userId}")
                     }
+                    response.apiStatus == 200 && response.successType == "verification" -> {
+                        // Успішна реєстрація з email верифікацією
+                        _registerState.value = RegisterState.VerificationRequired(
+                            userId = 0,
+                            username = username,
+                            verificationType = "email",
+                            contactInfo = email
+                        )
+                        Log.d("RegisterViewModel", "Реєстрація успішна! Потрібна верифікація email: $email")
+                    }
                     response.apiStatus == 400 -> {
                         // Помилка від сервера
                         val errorMsg = response.errorMessage ?: "Помилка реєстрації"
@@ -67,7 +77,7 @@ class RegisterViewModel : ViewModel() {
                         Log.e("RegisterViewModel", "Помилка реєстрації: $errorMsg")
                     }
                     else -> {
-                        val errorMsg = response.errorMessage ?: "Невідома помилка"
+                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
                         _registerState.value = RegisterState.Error(errorMsg)
                         Log.e("RegisterViewModel", "Помилка: ${response.apiStatus} - $errorMsg")
                     }

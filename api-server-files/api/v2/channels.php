@@ -93,6 +93,11 @@ try {
             echo json_encode(getChannels($db, $user_id, $data));
             break;
 
+        case 'search':
+            // Пошук каналів за назвою/описом
+            echo json_encode(searchChannels($db, $user_id, $data));
+            break;
+
         case 'get_channel_details':
             $channel_id = $data['channel_id'] ?? null;
             if (!$channel_id) {
@@ -395,6 +400,16 @@ function getChannels($db, $user_id, $data) {
         'channels' => $channels,
         'total' => count($channels)
     ];
+}
+
+/**
+ * Пошук каналів за назвою/описом
+ * Обгортка над getChannels() для сумісності з Android
+ */
+function searchChannels($db, $user_id, $data) {
+    // Просто викликаємо getChannels() з параметром query
+    // getChannels() вже має логіку пошуку (lines 354-360)
+    return getChannels($db, $user_id, $data);
 }
 
 /**

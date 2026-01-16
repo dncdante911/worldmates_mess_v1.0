@@ -941,6 +941,8 @@ fun MessagesScreen(
                     onToggleLocationPicker = { showLocationPicker = !showLocationPicker },
                     showContactPicker = showContactPicker,
                     onToggleContactPicker = { showContactPicker = !showContactPicker },
+                    showStrapiPicker = showStrapiPicker,
+                    onToggleStrapiPicker = { showStrapiPicker = !showStrapiPicker },
                     onRequestAudioPermission = onRequestAudioPermission,
                     viewModel = viewModel
                 )
@@ -1901,8 +1903,10 @@ fun MessageInputBar(
     onToggleLocationPicker: () -> Unit,
     showContactPicker: Boolean,
     onToggleContactPicker: () -> Unit,
-    onRequestAudioPermission: () -> Boolean = { true },  // Додано
-    viewModel: MessagesViewModel? = null  // Додано для voice recording
+    showStrapiPicker: Boolean,  // Додано
+    onToggleStrapiPicker: () -> Unit,  // Додано
+    onRequestAudioPermission: () -> Boolean = { true },
+    viewModel: MessagesViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -2045,7 +2049,7 @@ fun MessageInputBar(
                             scope.launch {
                                 kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
                                 if (!showStrapiPicker) {
-                                    showStrapiPicker = true // Відкриваємо Strapi picker
+                                    onToggleStrapiPicker() // Відкриваємо Strapi picker
                                 }
                             }
                         }

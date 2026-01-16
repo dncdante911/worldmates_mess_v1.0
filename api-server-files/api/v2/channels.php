@@ -1548,10 +1548,12 @@ function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
 
         // CRITICAL: Set $wo['user'] with actual user data for Wo_ShareFile()
         // Wo_ShareFile() checks $wo['user']['user_id'] and other fields
+        // Wo_IsAdmin() (called by Wo_ShareFile on line 5477) checks $wo['user']['admin'] (line 5729)
         $wo['user'] = [
             'user_id' => $user_id,
             'username' => 'channel_admin',
-            'active' => '1'
+            'active' => '1',
+            'admin' => 0  // Required by Wo_IsAdmin()
         ];
 
         // Підготовка файлу для завантаження

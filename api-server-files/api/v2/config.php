@@ -87,7 +87,8 @@ $wo['loggedin'] = true;
 $wo['user'] = [
     'user_id' => 0,
     'username' => 'api_user',
-    'active' => '1'
+    'active' => '1',
+    'admin' => 0  // Required by Wo_IsAdmin() which is called by Wo_ShareFile()
 ];
 
 // ============================================

@@ -78,6 +78,25 @@ $wo['sqlConnect'] = $sqlConnect;
 $wo['site_url'] = $site_url; // From root config.php
 
 // ============================================
+// Initialize MysqlMaria object (CRITICAL for Wo_Secure())
+// ============================================
+// WoWonder functions use global $mysqlMaria object
+// Wo_Secure() calls $mysqlMaria->setSQLType($sqlConnect) on line 819
+if (!isset($mysqlMaria)) {
+    // Load MysqlDb class first
+    $mysqldb_path = __DIR__ . '/../../assets/libraries/DB/vendor/joshcam/mysqli-database-class/MySQL-Maria.php';
+    if (file_exists($mysqldb_path)) {
+        require_once($mysqldb_path);
+        $mysqlMaria = new Mysql;
+    } else {
+        error_log("MySQL-Maria.php not found at: $mysqldb_path");
+        // Create minimal stub to prevent fatal errors
+        $mysqlMaria = new stdClass();
+        $mysqlMaria->setSQLType = function($conn) {};
+    }
+}
+
+// ============================================
 // Load WoWonder functions for avatar upload and other features
 // ============================================
 $assets_path = __DIR__ . '/../../assets/includes/';

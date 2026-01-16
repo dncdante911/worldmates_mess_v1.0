@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1142,6 +1143,78 @@ fun CommentsBottomSheet(
 }
 
 /**
+ * Компонент для відображення контенту коментаря (текст, стікери, GIF)
+ */
+@Composable
+fun CommentContent(text: String) {
+    // Парсимо markdown формат [Текст](URL)
+    val markdownRegex = """\[(.*?)\]\((.*?)\)""".toRegex()
+    val matches = markdownRegex.findAll(text).toList()
+
+    if (matches.isEmpty()) {
+        // Звичайний текст без markdown
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            var lastIndex = 0
+            matches.forEach { match ->
+                // Текст перед markdown
+                if (match.range.first > lastIndex) {
+                    val beforeText = text.substring(lastIndex, match.range.first)
+                    if (beforeText.isNotBlank()) {
+                        Text(
+                            text = beforeText,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                // Відображаємо стікер/GIF
+                val label = match.groupValues[1]
+                val url = match.groupValues[2]
+
+                // Перевіряємо чи це зображення
+                if (url.matches(""".*\.(gif|jpg|jpeg|png|webp)$""".toRegex())) {
+                    AsyncImage(
+                        model = url,
+                        contentDescription = label,
+                        modifier = Modifier
+                            .heightIn(max = 200.dp)
+                            .widthIn(max = 200.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    // Якщо не зображення, показуємо як текст-посилання
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline
+                    )
+                }
+
+                lastIndex = match.range.last + 1
+            }
+
+            // Текст після останнього markdown
+            if (lastIndex < text.length) {
+                val afterText = text.substring(lastIndex)
+                if (afterText.isNotBlank()) {
+                    Text(
+                        text = afterText,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
  * Компонент для відображення одного коментаря з підтримкою тем
  */
 @Composable
@@ -1222,11 +1295,8 @@ fun CommentItem(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Comment text
-            Text(
-                text = comment.text,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            // Comment text with sticker/GIF support
+            CommentContent(text = comment.text)
 
             Spacer(modifier = Modifier.height(6.dp))
 

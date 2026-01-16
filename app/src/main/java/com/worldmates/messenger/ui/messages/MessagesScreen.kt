@@ -939,7 +939,9 @@ fun MessagesScreen(
                     showLocationPicker = showLocationPicker,
                     onToggleLocationPicker = { showLocationPicker = !showLocationPicker },
                     showContactPicker = showContactPicker,
-                    onToggleContactPicker = { showContactPicker = !showContactPicker }
+                    onToggleContactPicker = { showContactPicker = !showContactPicker },
+                    onRequestAudioPermission = onRequestAudioPermission,
+                    viewModel = viewModel
                 )
 
                 // 💾 Draft saving indicator
@@ -1885,10 +1887,13 @@ fun MessageInputBar(
     showLocationPicker: Boolean,
     onToggleLocationPicker: () -> Unit,
     showContactPicker: Boolean,
-    onToggleContactPicker: () -> Unit
+    onToggleContactPicker: () -> Unit,
+    onRequestAudioPermission: () -> Boolean = { true },  // Додано
+    viewModel: MessagesViewModel? = null  // Додано для voice recording
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current  // Додано для вібрації
 
     Column(
         modifier = Modifier
@@ -2017,6 +2022,75 @@ fun MessageInputBar(
                                     onToggleContactPicker() // Відкриваємо Contact picker
                                 }
                             }
+                        }
+                    )
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // 🛍️ Магазин (Strapi CMS)
+                Text(
+                    text = "Магазин",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MediaOptionButton(
+                        icon = Icons.Default.ShoppingCart,
+                        label = "Стікери",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            // TODO: Відкрити Strapi магазин стікерів
+                            android.widget.Toast.makeText(
+                                context,
+                                "🛍️ Магазин стікерів (Strapi CMS) - в розробці",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.Mood,
+                        label = "Емодзі",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            // TODO: Відкрити Strapi магазин емодзі
+                            android.widget.Toast.makeText(
+                                context,
+                                "🛍️ Магазин емодзі (Strapi CMS) - в розробці",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.Palette,
+                        label = "Теми",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            // TODO: Відкрити Strapi магазин тем інтерфейсу
+                            android.widget.Toast.makeText(
+                                context,
+                                "🛍️ Магазин тем (Strapi CMS) - в розробці",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                    MediaOptionButton(
+                        icon = Icons.Default.Extension,
+                        label = "Плагіни",
+                        onClick = {
+                            onShowMediaOptions() // Закриваємо меню
+                            // TODO: Відкрити Strapi магазин плагінів
+                            android.widget.Toast.makeText(
+                                context,
+                                "🛍️ Магазин плагінів (Strapi CMS) - в розробці",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
                         }
                     )
                 }
@@ -2308,7 +2382,7 @@ fun MessageInputBar(
                                                         val stopped = voiceRecorder.stopRecording()
                                                         if (stopped && voiceRecorder.recordingState.value is VoiceRecorder.RecordingState.Completed) {
                                                             val filePath = (voiceRecorder.recordingState.value as VoiceRecorder.RecordingState.Completed).filePath
-                                                            viewModel.uploadAndSendMedia(java.io.File(filePath), "voice")
+                                                            viewModel?.uploadAndSendMedia(java.io.File(filePath), "voice")
                                                         }
                                                     }
                                                 }

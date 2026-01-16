@@ -138,12 +138,7 @@ fun RegisterScreen(
     val registerState by viewModel.registerState.collectAsState()
     val isLoading = registerState is RegisterState.Loading
 
-    // Для отслеживания успешной регистрации
-    LaunchedEffect(registerState) {
-        if (registerState is RegisterState.Success) {
-            onRegisterSuccess(email, phoneNumber, username, password)
-        }
-    }
+    // Убрано дублирование - состояние обрабатывается в lifecycleScope.launch
 
     // Анимация фона
     val infiniteTransition = rememberInfiniteTransition()
@@ -221,13 +216,13 @@ fun RegisterScreen(
                         // Email регистрация
                         if (username.isNotEmpty() && email.isNotEmpty() &&
                             password.isNotEmpty() && password == confirmPassword) {
-                            viewModel.register(username, email, password, confirmPassword)
+                            viewModel.registerWithEmail(username, email, password, confirmPassword)
                         }
                     } else {
                         // Phone регистрация
                         if (username.isNotEmpty() && phoneNumber.isNotEmpty() &&
                             password.isNotEmpty() && password == confirmPassword) {
-                            viewModel.register(username, phoneNumber, password, confirmPassword)
+                            viewModel.registerWithPhone(username, phoneNumber, password, confirmPassword)
                         }
                     }
                 },

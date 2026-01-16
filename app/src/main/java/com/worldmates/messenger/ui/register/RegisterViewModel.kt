@@ -47,6 +47,16 @@ class RegisterViewModel : ViewModel() {
                     deviceType = "phone"
                 )
 
+                // ДЕТАЛЬНЕ ЛОГУВАННЯ для діагностики
+                Log.d("RegisterViewModel", "=== RESPONSE DEBUG ===")
+                Log.d("RegisterViewModel", "apiStatus: ${response.apiStatus}")
+                Log.d("RegisterViewModel", "accessToken: ${response.accessToken}")
+                Log.d("RegisterViewModel", "userId: ${response.userId}")
+                Log.d("RegisterViewModel", "successType: ${response.successType}")
+                Log.d("RegisterViewModel", "message: ${response.message}")
+                Log.d("RegisterViewModel", "errorMessage: ${response.errorMessage}")
+                Log.d("RegisterViewModel", "======================")
+
                 // Перевірка статусу відповіді
                 when {
                     response.apiStatus == 200 && response.accessToken != null && response.userId != null -> {

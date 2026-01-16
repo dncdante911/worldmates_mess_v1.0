@@ -32,6 +32,10 @@ $routes = [
     'get_chats' => 'endpoints/get_chats.php',
     'get_user_messages' => 'endpoints/get_messages.php',
 
+    // Verification
+    'send_verification_code' => 'endpoints/send_verification_code.php',
+    'verify_code' => 'endpoints/verify_code.php',
+
     // Messaging
     'send_message' => 'endpoints/send-message.php',
     'delete_message' => 'endpoints/delete_message.php',

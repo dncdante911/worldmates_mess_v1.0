@@ -105,8 +105,8 @@ class VerificationActivity : AppCompatActivity() {
             }
         }
 
-        // TODO: Автоматична відправка коду вимкнена поки endpoint не готовий
-        // viewModel.sendVerificationCode(verificationType, contactInfo, username)
+        // Автоматично відправляємо код при відкритті екрану
+        viewModel.sendVerificationCode(verificationType, contactInfo, username)
     }
 
     private fun navigateToChats() {

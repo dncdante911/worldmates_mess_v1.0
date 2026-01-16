@@ -30,15 +30,20 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Load database configuration
-$config_path = __DIR__ . '/../../config.php';
+// Load database configuration from site root
+// Path: /config.php (кореневий файл WoWonder)
+$config_path = $_SERVER['DOCUMENT_ROOT'] . '/config.php';
 if (!file_exists($config_path)) {
-    http_response_code(500);
-    die(json_encode([
-        'api_status' => 500,
-        'api_text' => 'failed',
-        'errors' => ['error_text' => 'Server configuration error: config.php not found at ' . $config_path]
-    ]));
+    // Fallback: try relative path
+    $config_path = __DIR__ . '/../../../config.php';
+    if (!file_exists($config_path)) {
+        http_response_code(500);
+        die(json_encode([
+            'api_status' => 500,
+            'api_text' => 'failed',
+            'errors' => ['error_text' => 'Server configuration error: config.php not found']
+        ]));
+    }
 }
 require_once($config_path);
 

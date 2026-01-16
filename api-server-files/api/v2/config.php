@@ -2,13 +2,27 @@
 /**
  * Конфігурація підключення до бази даних
  * для group_chat_v2.php та channels.php API
+ *
+ * Завантажує кореневий config.php та додає PDO підключення
  */
 
-// Налаштування бази даних
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'socialhub');
-define('DB_USER', 'social');
-define('DB_PASS', '3344Frzaq0607DmC157');
+// Load root config.php (contains $sql_db_host, $sql_db_user, $sql_db_pass, $sql_db_name, $site_url)
+$root_config = $_SERVER['DOCUMENT_ROOT'] . '/config.php';
+if (!file_exists($root_config)) {
+    // Fallback: try relative path
+    $root_config = __DIR__ . '/../../config.php';
+    if (!file_exists($root_config)) {
+        http_response_code(500);
+        die(json_encode(['api_status' => 500, 'error_message' => 'config.php not found']));
+    }
+}
+require_once($root_config);
+
+// Use variables from root config.php
+define('DB_HOST', $sql_db_host);
+define('DB_NAME', $sql_db_name);
+define('DB_USER', $sql_db_user);
+define('DB_PASS', $sql_db_pass);
 define('DB_CHARSET', 'utf8mb4');
 
 // Налаштування PDO
@@ -61,7 +75,7 @@ if (!isset($wo)) {
     $wo = [];
 }
 $wo['sqlConnect'] = $sqlConnect;
-$wo['site_url'] = 'https://worldmates.club';
+$wo['site_url'] = $site_url; // From root config.php
 
 // ============================================
 // Load WoWonder functions for avatar upload and other features

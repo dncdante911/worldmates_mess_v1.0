@@ -359,7 +359,7 @@ class ChannelsViewModel : ViewModel() {
                 )
 
                 if (response.apiStatus == 200) {
-                    Log.d("ChannelsViewModel", "Учасника додано до каналу: ${response.message}")
+                    Log.d("ChannelsViewModel", "Учасника додано до каналу успішно")
                     onSuccess()
                 } else {
                     val errorMsg = response.errorMessage ?: "Помилка додавання учасника"

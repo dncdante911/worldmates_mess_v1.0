@@ -9,13 +9,35 @@
 // | Copyright (c) 2016 WoWonder. All rights reserved.
 // +------------------------------------------------------------------------+
 
-// Підключення необхідних файлів
-if (!defined('T_USERS')) {
-    require_once(__DIR__ . '/../../assets/init.php');
+// ВАЖЛИВО: Підключаємо init.php для завантаження всіх WoWonder функцій та змінних
+// init.php ініціалізує: $wo, $sqlConnect, $config, всі Wo_* функції, константи T_*
+$initPath = __DIR__ . '/../../assets/init.php';
+if (file_exists($initPath)) {
+    require_once($initPath);
+} else {
+    // Fallback для випадку, коли структура каталогів інша
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . '/assets/init.php')) {
+        require_once($_SERVER['DOCUMENT_ROOT'] . '/assets/init.php');
+    } else {
+        http_response_code(500);
+        die(json_encode([
+            'api_status' => 500,
+            'api_text' => 'failed',
+            'errors' => ['error_text' => 'Server configuration error: init.php not found']
+        ]));
+    }
 }
-if (!function_exists('Wo_RegisterUser')) {
-    require_once(__DIR__ . '/../../assets/includes/functions_one.php');
+
+// Перевіряємо, чи init.php успішно завантажив необхідні функції
+if (!function_exists('Wo_Secure') || !function_exists('Wo_RegisterUser')) {
+    http_response_code(500);
+    die(json_encode([
+        'api_status' => 500,
+        'api_text' => 'failed',
+        'errors' => ['error_text' => 'Server initialization failed: WoWonder functions not loaded']
+    ]));
 }
+
 if (!isset($api_version)) {
     $api_version = '1.3.1';
 }

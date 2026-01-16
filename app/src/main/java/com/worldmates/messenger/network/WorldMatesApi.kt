@@ -27,6 +27,7 @@ interface WorldMatesApi {
         @Field("email") email: String,
         @Field("password") password: String,
         @Field("confirm_password") confirmPassword: String,
+        @Field("s") sessionId: String, // КРИТИЧНО: обов'язковий параметр для WoWonder API
         @Field("device_type") deviceType: String = "phone",
         @Field("gender") gender: String = "male",
         @Field("android_m_device_id") deviceId: String? = null

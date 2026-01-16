@@ -34,12 +34,16 @@ class RegisterViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Генеруємо унікальний session ID для WoWonder API
+                val sessionId = generateSessionId()
+
                 // Виклик API для регистрации
                 val response = RetrofitClient.apiService.register(
                     username = username,
                     email = email,
                     password = password,
                     confirmPassword = confirmPassword,
+                    sessionId = sessionId,
                     deviceType = "phone"
                 )
 
@@ -218,6 +222,21 @@ class RegisterViewModel : ViewModel() {
 
     fun resetState() {
         _registerState.value = RegisterState.Idle
+    }
+
+    /**
+     * Генерує унікальний session ID для WoWonder API
+     * Формат схожий на те, що генерує сервер: SHA1 + MD5 + random
+     */
+    private fun generateSessionId(): String {
+        val timestamp = System.currentTimeMillis()
+        val random = (100000000..999999999).random()
+        val baseString = "$timestamp-$random-${System.nanoTime()}"
+
+        // Генеруємо хеш схожий на WoWonder формат
+        return java.security.MessageDigest.getInstance("SHA-256")
+            .digest(baseString.toByteArray())
+            .joinToString("") { "%02x".format(it) }
     }
 }
 

@@ -1172,29 +1172,52 @@ fun CommentContent(text: String) {
                     }
                 }
 
-                // Відображаємо стікер/GIF
+                // Відображаємо стікер/GIF/Lottie анімацію
                 val label = match.groupValues[1]
                 val url = match.groupValues[2]
 
-                // Перевіряємо чи це зображення
-                if (url.matches(""".*\.(gif|jpg|jpeg|png|webp)$""".toRegex())) {
-                    AsyncImage(
-                        model = url,
-                        contentDescription = label,
-                        modifier = Modifier
-                            .heightIn(max = 200.dp)
-                            .widthIn(max = 200.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    // Якщо не зображення, показуємо як текст-посилання
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline
-                    )
+                when {
+                    // Telegram stickers (.tgs - Lottie animations)
+                    url.matches(""".*\.tgs$""".toRegex(ignoreCase = true)) -> {
+                        com.airbnb.lottie.compose.LottieAnimation(
+                            composition = com.airbnb.lottie.compose.rememberLottieComposition(
+                                com.airbnb.lottie.compose.LottieCompositionSpec.Url(url)
+                            ).value,
+                            iterations = com.airbnb.lottie.compose.LottieConstants.IterateForever,
+                            modifier = Modifier
+                                .size(150.dp)
+                        )
+                    }
+                    // Звичайні зображення (GIF, PNG, JPG, WEBP, SVG)
+                    url.matches(""".*\.(gif|jpg|jpeg|png|webp|svg)$""".toRegex(ignoreCase = true)) -> {
+                        AsyncImage(
+                            model = url,
+                            contentDescription = label,
+                            modifier = Modifier
+                                .heightIn(max = 200.dp)
+                                .widthIn(max = 200.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    // WebM відео (Telegram premium stickers)
+                    url.matches(""".*\.webm$""".toRegex(ignoreCase = true)) -> {
+                        // TODO: Додати підтримку WebM через ExoPlayer якщо потрібно
+                        Text(
+                            text = "🎬 $label (WebM)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    else -> {
+                        // Якщо не медіа, показуємо як текст-посилання
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            textDecoration = TextDecoration.Underline
+                        )
+                    }
                 }
 
                 lastIndex = match.range.last + 1

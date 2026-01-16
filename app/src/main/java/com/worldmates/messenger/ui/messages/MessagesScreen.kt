@@ -79,6 +79,16 @@ import com.worldmates.messenger.ui.groups.components.PinnedMessageBanner
 // 🔍 Імпорт компонента пошуку
 import com.worldmates.messenger.ui.messages.components.GroupSearchBar
 
+// 🎯 Enum для режимів введення (як в Telegram/Viber)
+enum class InputMode {
+    TEXT,       // Звичайне текстове повідомлення
+    VOICE,      // Голосове повідомлення
+    VIDEO,      // Відео-повідомлення (майбутнє)
+    EMOJI,      // Емодзі пікер
+    STICKER,    // Стікери
+    GIF         // GIF пікер
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessagesScreen(
@@ -128,6 +138,10 @@ fun MessagesScreen(
     var showGifPicker by remember { mutableStateOf(false) }  // 🎬 GIF Picker
     var showLocationPicker by remember { mutableStateOf(false) }  // 📍 Location Picker
     var showContactPicker by remember { mutableStateOf(false) }  // 📇 Contact Picker
+
+    // 🎯 Режим введення (Swipeable як в Telegram/Viber)
+    var currentInputMode by remember { mutableStateOf(InputMode.TEXT) }
+
     var isCurrentlyTyping by remember { mutableStateOf(false) }
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -829,6 +843,33 @@ fun MessagesScreen(
             // Message Input (ховається в режимі вибору)
             if (!isSelectionMode) {
                 MessageInputBar(
+                    currentInputMode = currentInputMode,
+                    onInputModeChange = { newMode ->
+                        currentInputMode = newMode
+                        // Автоматично відкриваємо відповідні пікери
+                        when (newMode) {
+                            InputMode.EMOJI -> {
+                                showEmojiPicker = true
+                                showStickerPicker = false
+                                showGifPicker = false
+                            }
+                            InputMode.STICKER -> {
+                                showEmojiPicker = false
+                                showStickerPicker = true
+                                showGifPicker = false
+                            }
+                            InputMode.GIF -> {
+                                showEmojiPicker = false
+                                showStickerPicker = false
+                                showGifPicker = true
+                            }
+                            else -> {
+                                showEmojiPicker = false
+                                showStickerPicker = false
+                                showGifPicker = false
+                            }
+                        }
+                    },
                     messageText = messageText,
                     onMessageChange = {
                         messageText = it
@@ -1812,6 +1853,8 @@ fun VoiceMessagePlayer(
 
 @Composable
 fun MessageInputBar(
+    currentInputMode: InputMode,
+    onInputModeChange: (InputMode) -> Unit,
     messageText: String,
     onMessageChange: (String) -> Unit,
     onSendClick: () -> Unit,
@@ -1987,84 +2030,283 @@ fun MessageInputBar(
             )
         }
 
-        // Message Input - Telegram Style (компактний та повний)
+        // Message Input - Telegram/Viber Style з swipeable tabs
         if (recordingState !is VoiceRecorder.RecordingState.Recording &&
             recordingState !is VoiceRecorder.RecordingState.Paused) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                // Кнопка "+"  - показує всі опції
-                IconButton(
-                    onClick = onShowMediaOptions,
-                    modifier = Modifier.size(40.dp)
+
+            Column {
+                // 🎯 Swipeable tabs для швидкого перемикання режимів
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(
-                        imageVector = if (showMediaOptions) Icons.Default.Close else Icons.Default.Add,
-                        contentDescription = "Опції",
-                        tint = if (showMediaOptions) colorScheme.primary else colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
+                    // Text mode
+                    InputModeTab(
+                        icon = Icons.Default.Chat,
+                        label = "Текст",
+                        isSelected = currentInputMode == InputMode.TEXT,
+                        onClick = { onInputModeChange(InputMode.TEXT) }
+                    )
+
+                    // Voice mode
+                    InputModeTab(
+                        icon = Icons.Default.Mic,
+                        label = "Голос",
+                        isSelected = currentInputMode == InputMode.VOICE,
+                        onClick = { onInputModeChange(InputMode.VOICE) }
+                    )
+
+                    // Video mode (майбутнє)
+                    InputModeTab(
+                        icon = Icons.Default.Videocam,
+                        label = "Відео",
+                        isSelected = currentInputMode == InputMode.VIDEO,
+                        onClick = { onInputModeChange(InputMode.VIDEO) }
+                    )
+
+                    // Emoji mode
+                    InputModeTab(
+                        icon = Icons.Default.EmojiEmotions,
+                        label = "Емодзі",
+                        isSelected = currentInputMode == InputMode.EMOJI,
+                        onClick = { onInputModeChange(InputMode.EMOJI) }
+                    )
+
+                    // Sticker mode
+                    InputModeTab(
+                        icon = Icons.Default.StickyNote2,
+                        label = "Стікери",
+                        isSelected = currentInputMode == InputMode.STICKER,
+                        onClick = { onInputModeChange(InputMode.STICKER) }
+                    )
+
+                    // GIF mode
+                    InputModeTab(
+                        icon = Icons.Default.Gif,
+                        label = "GIF",
+                        isSelected = currentInputMode == InputMode.GIF,
+                        onClick = { onInputModeChange(InputMode.GIF) }
                     )
                 }
 
-                // Поле введення - компактне та повне
-                TextField(
-                    value = messageText,
-                    onValueChange = onMessageChange,
+                // Main input row
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 40.dp, max = 120.dp)
-                        .background(colorScheme.surfaceVariant, RoundedCornerShape(20.dp)),
-                    placeholder = {
-                        Text(
-                            "Повідомлення",
-                            color = colorScheme.onSurfaceVariant,
-                            fontSize = 16.sp
-                        )
-                    },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = colorScheme.onSurface,
-                        unfocusedTextColor = colorScheme.onSurface
-                    ),
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    maxLines = 4
-                )
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // Кнопка відправки або голосового запису
-                if (messageText.isNotBlank()) {
-                    // Кнопка відправки
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    // Кнопка "+" - показує опції (файли, локація, контакт)
                     IconButton(
-                        onClick = onSendClick,
-                        enabled = !isLoading,
+                        onClick = onShowMediaOptions,
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = "Відправити",
-                            tint = colorScheme.primary,
+                            imageVector = if (showMediaOptions) Icons.Default.Close else Icons.Default.Add,
+                            contentDescription = "Опції",
+                            tint = if (showMediaOptions) colorScheme.primary else colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                } else {
-                    // Кнопка голосового запису
-                    IconButton(
-                        onClick = onStartVoiceRecord,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = "Голосове повідомлення",
-                            tint = colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
+
+                    // Різний контент залежно від режиму
+                    when (currentInputMode) {
+                        InputMode.TEXT -> {
+                            // Звичайне поле введення
+                            TextField(
+                                value = messageText,
+                                onValueChange = onMessageChange,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 40.dp, max = 120.dp)
+                                    .background(colorScheme.surfaceVariant, RoundedCornerShape(20.dp)),
+                                placeholder = {
+                                    Text(
+                                        "Повідомлення",
+                                        color = colorScheme.onSurfaceVariant,
+                                        fontSize = 16.sp
+                                    )
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    focusedTextColor = colorScheme.onSurface,
+                                    unfocusedTextColor = colorScheme.onSurface
+                                ),
+                                textStyle = MaterialTheme.typography.bodyLarge,
+                                maxLines = 4
+                            )
+                        }
+
+                        InputMode.VOICE -> {
+                            // Підказка для голосового повідомлення
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
+                                    .background(colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Mic,
+                                        contentDescription = null,
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Натисни і утримуй для запису →",
+                                        color = colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        InputMode.VIDEO -> {
+                            // Підказка для відео (майбутнє)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
+                                    .background(colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Відео-повідомлення (скоро)",
+                                    color = colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        InputMode.EMOJI, InputMode.STICKER, InputMode.GIF -> {
+                            // Показуємо текстове поле для коментаря
+                            TextField(
+                                value = messageText,
+                                onValueChange = onMessageChange,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 40.dp, max = 120.dp)
+                                    .background(colorScheme.surfaceVariant, RoundedCornerShape(20.dp)),
+                                placeholder = {
+                                    Text(
+                                        "Додати коментар...",
+                                        color = colorScheme.onSurfaceVariant,
+                                        fontSize = 16.sp
+                                    )
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    focusedTextColor = colorScheme.onSurface,
+                                    unfocusedTextColor = colorScheme.onSurface
+                                ),
+                                textStyle = MaterialTheme.typography.bodyLarge,
+                                maxLines = 4
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    // Права кнопка залежить від режиму
+                    when (currentInputMode) {
+                        InputMode.TEXT -> {
+                            if (messageText.isNotBlank()) {
+                                // Кнопка відправки
+                                IconButton(
+                                    onClick = onSendClick,
+                                    enabled = !isLoading,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Send,
+                                        contentDescription = "Відправити",
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            } else {
+                                // Кнопка голосового запису (для швидкого доступу)
+                                IconButton(
+                                    onClick = onStartVoiceRecord,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Mic,
+                                        contentDescription = "Голосове повідомлення",
+                                        tint = colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        InputMode.VOICE -> {
+                            // Велика кнопка для запису
+                            IconButton(
+                                onClick = onStartVoiceRecord,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .background(colorScheme.primary, CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Mic,
+                                    contentDescription = "Записати",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+
+                        InputMode.VIDEO -> {
+                            // Кнопка відео (майбутнє)
+                            IconButton(
+                                onClick = { /* TODO */ },
+                                modifier = Modifier.size(40.dp),
+                                enabled = false
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Videocam,
+                                    contentDescription = "Відео",
+                                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        InputMode.EMOJI, InputMode.STICKER, InputMode.GIF -> {
+                            // Відкрито пікер - кнопка Send якщо є текст
+                            if (messageText.isNotBlank()) {
+                                IconButton(
+                                    onClick = onSendClick,
+                                    enabled = !isLoading,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Send,
+                                        contentDescription = "Відправити",
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            } else {
+                                // Просто placeholder
+                                Spacer(modifier = Modifier.size(40.dp))
+                            }
+                        }
                     }
                 }
             }
@@ -2109,6 +2351,47 @@ fun VoiceRecordingBar(
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0084FF))
         ) {
             Text("Надіслати", color = Color.White)
+        }
+    }
+}
+
+// 🎯 Tab для перемикання режимів введення (Telegram/Viber style)
+@Composable
+fun InputModeTab(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .height(36.dp)
+            .padding(horizontal = 2.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = if (isSelected) colorScheme.primary else colorScheme.surfaceVariant,
+        contentColor = if (isSelected) Color.White else colorScheme.onSurfaceVariant,
+        tonalElevation = if (isSelected) 2.dp else 0.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(18.dp)
+            )
+            if (isSelected) {
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }

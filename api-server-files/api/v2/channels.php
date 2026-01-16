@@ -1571,7 +1571,34 @@ function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
             return ['api_status' => 500, 'error_message' => 'Server configuration error: upload function not available'];
         }
 
-        logChannelMessage("Calling Wo_ShareFile() with user_id=$user_id", 'DEBUG');
+        // ============================================
+        // DEBUGGING: Log all parameters for Wo_ShareFile()
+        // ============================================
+        logChannelMessage("=== Wo_ShareFile() Debug Info ===", 'DEBUG');
+        logChannelMessage("User ID: $user_id", 'DEBUG');
+        logChannelMessage("File info: " . json_encode($file_info), 'DEBUG');
+        logChannelMessage("\$wo['user']: " . json_encode($wo['user']), 'DEBUG');
+        logChannelMessage("\$wo['loggedin']: " . ($wo['loggedin'] ? 'true' : 'false'), 'DEBUG');
+
+        // Log critical config values that Wo_ShareFile() checks
+        if (isset($wo['config'])) {
+            logChannelMessage("Config loaded: YES", 'DEBUG');
+            logChannelMessage("fileSharing: " . ($wo['config']['fileSharing'] ?? 'NOT SET'), 'DEBUG');
+            logChannelMessage("maxUpload: " . ($wo['config']['maxUpload'] ?? 'NOT SET'), 'DEBUG');
+            logChannelMessage("allowedExtenstion: " . ($wo['config']['allowedExtenstion'] ?? 'NOT SET'), 'DEBUG');
+            logChannelMessage("mime_types: " . ($wo['config']['mime_types'] ?? 'NOT SET'), 'DEBUG');
+        } else {
+            logChannelMessage("Config loaded: NO - \$wo['config'] is not set!", 'ERROR');
+        }
+
+        // Check file exists and is readable
+        if (!file_exists($file_info['file'])) {
+            logChannelMessage("ERROR: Temp file does not exist: " . $file_info['file'], 'ERROR');
+        } else {
+            logChannelMessage("Temp file exists: " . $file_info['file'], 'DEBUG');
+            logChannelMessage("Temp file size: " . filesize($file_info['file']) . " bytes", 'DEBUG');
+        }
+        logChannelMessage("=== End Debug Info ===", 'DEBUG');
 
         // Використовуємо функцію WoWonder для завантаження
         $upload = Wo_ShareFile($file_info);

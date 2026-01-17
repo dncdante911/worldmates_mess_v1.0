@@ -59,7 +59,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     init {
         socketManager.connect()
         setupWebRTCListeners()
-        registerForCalls()  // ✅ Зареєструватись для дзвінків
+        // registerForCalls() перенесено в onSocketConnected() для правильного таймінгу
     }
 
     /**
@@ -388,6 +388,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     override fun onSocketConnected() {
         Log.i("CallsViewModel", "Socket connected for calls")
         socketConnected.postValue(true)
+
+        // ✅ Зареєструватись для дзвінків ПІСЛЯ підключення
+        registerForCalls()
 
         // ✅ Виконати відкладений дзвінок якщо є
         pendingCallInitiation?.let {

@@ -47,6 +47,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     val callEnded = MutableLiveData<Boolean>()
     val callError = MutableLiveData<String>()
     val remoteStreamAdded = MutableLiveData<MediaStream>()
+    val localStreamAdded = MutableLiveData<MediaStream>()
     val connectionState = MutableLiveData<String>()
 
     private var currentCallData: CallData? = null
@@ -113,6 +114,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 val videoEnabled = (callType == "video")
                 webRTCManager.createLocalMediaStream(audioEnabled, videoEnabled)
 
+                // Опубліковати локальний стрім
+                getLocalStream()?.let { localStreamAdded.postValue(it) }
+
                 // 3. Создать offer
                 webRTCManager.createOffer(
                     onSuccess = { offer ->
@@ -162,6 +166,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
             try {
                 webRTCManager.createPeerConnection()
                 webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = (callType == "video"))
+
+                // Опубліковати локальний стрім
+                getLocalStream()?.let { localStreamAdded.postValue(it) }
 
                 webRTCManager.createOffer(
                     onSuccess = { offer ->
@@ -213,6 +220,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 // 2. Создать локальный стрим
                 val videoEnabled = (callData.callType == "video")
                 webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = videoEnabled)
+
+                // Опубліковати локальний стрім
+                getLocalStream()?.let { localStreamAdded.postValue(it) }
 
                 // 3. Установить remote description (offer от другого юзера)
                 callData.sdpOffer?.let { offerSdp ->
@@ -370,6 +380,20 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     fun toggleVideo(enabled: Boolean) {
         webRTCManager.setVideoEnabled(enabled)
+    }
+
+    /**
+     * 📷 Перемикання між фронтальною та задньою камерою
+     */
+    fun switchCamera() {
+        webRTCManager.switchCamera()
+    }
+
+    /**
+     * 🎥 Отримати локальний медіа стрім
+     */
+    fun getLocalStream(): MediaStream? {
+        return webRTCManager.getLocalMediaStream()
     }
 
     override fun onCleared() {

@@ -17,6 +17,8 @@ class WebRTCManager(private val context: Context) {
     private var localMediaStream: MediaStream? = null
     private var localAudioTrack: AudioTrack? = null
     private var localVideoTrack: VideoTrack? = null
+    private var videoCapturer: CameraVideoCapturer? = null
+    private var videoSource: VideoSource? = null
 
     private val iceServers = listOf(
         // Google STUN (БЕСПЛАТНО)
@@ -153,10 +155,21 @@ class WebRTCManager(private val context: Context) {
 
             // Создать видео трек (если нужно)
             if (videoEnabled) {
-                val videoSource = peerConnectionFactory.createVideoSource(false)
+                // Создать CameraVideoCapturer для доступа к камере
+                videoCapturer = createCameraVideoCapturer()
+                videoSource = peerConnectionFactory.createVideoSource(videoCapturer?.isScreencast ?: false)
+
+                // Запустить камеру с разрешением 1280x720 при 30 fps
+                videoCapturer?.initialize(
+                    SurfaceTextureHelper.create("CaptureThread", EglBaseProvider.context),
+                    context,
+                    videoSource?.capturerObserver
+                )
+                videoCapturer?.startCapture(1280, 720, 30)
+
                 localVideoTrack = peerConnectionFactory.createVideoTrack("video_track", videoSource)
                 localVideoTrack?.let { mediaStream.addTrack(it) }
-                Log.d("WebRTCManager", "Video track added")
+                Log.d("WebRTCManager", "Video track added with camera capturer")
             }
 
             // Добавить в peer connection
@@ -270,6 +283,15 @@ class WebRTCManager(private val context: Context) {
      */
     fun close() {
         try {
+            // Остановить камеру
+            videoCapturer?.stopCapture()
+            videoCapturer?.dispose()
+            videoCapturer = null
+
+            // Очистить видео источник
+            videoSource?.dispose()
+            videoSource = null
+
             peerConnection?.close()
             peerConnection = null
             localMediaStream?.let {
@@ -303,6 +325,60 @@ class WebRTCManager(private val context: Context) {
      * Получить локальный поток
      */
     fun getLocalMediaStream(): MediaStream? = localMediaStream
+
+    /**
+     * 📷 Создать CameraVideoCapturer (по умолчанию фронтальная камера)
+     */
+    private fun createCameraVideoCapturer(): CameraVideoCapturer? {
+        val enumerator = Camera2Enumerator(context)
+        val deviceNames = enumerator.deviceNames
+
+        // Попробовать фронтальную камеру сначала
+        for (deviceName in deviceNames) {
+            if (enumerator.isFrontFacing(deviceName)) {
+                val capturer = enumerator.createCapturer(deviceName, null)
+                if (capturer != null) {
+                    Log.d(TAG, "Using front camera: $deviceName")
+                    return capturer
+                }
+            }
+        }
+
+        // Если нет фронтальной, попробовать заднюю
+        for (deviceName in deviceNames) {
+            if (!enumerator.isFrontFacing(deviceName)) {
+                val capturer = enumerator.createCapturer(deviceName, null)
+                if (capturer != null) {
+                    Log.d(TAG, "Using back camera: $deviceName")
+                    return capturer
+                }
+            }
+        }
+
+        Log.e(TAG, "No camera found")
+        return null
+    }
+
+    /**
+     * 🔄 Переключить камеру (фронтальная ↔ задняя)
+     */
+    fun switchCamera() {
+        videoCapturer?.let { capturer ->
+            if (capturer is CameraVideoCapturer) {
+                capturer.switchCamera(object : CameraVideoCapturer.CameraSwitchHandler {
+                    override fun onCameraSwitchDone(isFrontFacing: Boolean) {
+                        Log.d(TAG, "Camera switched to ${if (isFrontFacing) "front" else "back"}")
+                    }
+
+                    override fun onCameraSwitchError(errorDescription: String?) {
+                        Log.e(TAG, "Camera switch error: $errorDescription")
+                    }
+                })
+            }
+        } ?: run {
+            Log.w(TAG, "Cannot switch camera - videoCapturer is null")
+        }
+    }
 
     companion object {
         private const val TAG = "WebRTCManager"

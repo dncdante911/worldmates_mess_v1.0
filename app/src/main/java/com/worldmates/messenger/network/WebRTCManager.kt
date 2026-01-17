@@ -15,6 +15,7 @@ class WebRTCManager(private val context: Context) {
     private lateinit var peerConnectionFactory: PeerConnectionFactory
     private var peerConnection: PeerConnection? = null
     private var localMediaStream: MediaStream? = null
+    private var remoteMediaStream: MediaStream? = null
     private var localAudioTrack: AudioTrack? = null
     private var localVideoTrack: VideoTrack? = null
     private var videoCapturer: CameraVideoCapturer? = null
@@ -33,7 +34,7 @@ class WebRTCManager(private val context: Context) {
     )
 
     var onIceCandidateListener: ((IceCandidate) -> Unit)? = null
-    var onTrackListener: ((RtpTransceiver) -> Unit)? = null
+    var onTrackListener: ((MediaStream) -> Unit)? = null
     var onRemoveTrackListener: (() -> Unit)? = null
     var onConnectionStateChangeListener: ((PeerConnection.PeerConnectionState) -> Unit)? = null
     var onIceConnectionStateChangeListener: ((PeerConnection.IceConnectionState) -> Unit)? = null
@@ -121,9 +122,24 @@ class WebRTCManager(private val context: Context) {
 
                     override fun onTrack(transceiver: RtpTransceiver) {
                         val track = transceiver.receiver.track()
-                        val streams = transceiver.receiver.streams()
-                        Log.d("WebRTCManager", "Remote track received: ${track?.kind()}, streams: ${streams.size}")
-                        onTrackListener?.invoke(transceiver)
+                        Log.d("WebRTCManager", "Remote track received: ${track?.kind()}")
+
+                        // Создать remote stream если его еще нет
+                        if (remoteMediaStream == null) {
+                            remoteMediaStream = peerConnectionFactory.createLocalMediaStream("REMOTE_STREAM")
+                        }
+
+                        // Добавить track в remote stream
+                        track?.let {
+                            when (it) {
+                                is AudioTrack -> remoteMediaStream?.addTrack(it)
+                                is VideoTrack -> remoteMediaStream?.addTrack(it)
+                            }
+                            Log.d("WebRTCManager", "Track added to remote stream: ${it.kind()}")
+                        }
+
+                        // Уведомить listener
+                        remoteMediaStream?.let { onTrackListener?.invoke(it) }
                     }
 
                     override fun onDataChannel(dataChannel: DataChannel) {}
@@ -304,11 +320,21 @@ class WebRTCManager(private val context: Context) {
 
             peerConnection?.close()
             peerConnection = null
+
+            // Очистить локальный stream
             localMediaStream?.let {
                 it.audioTracks.forEach { track -> track.dispose() }
                 it.videoTracks.forEach { track -> track.dispose() }
             }
             localMediaStream = null
+
+            // Очистить remote stream
+            remoteMediaStream?.let {
+                it.audioTracks.forEach { track -> track.dispose() }
+                it.videoTracks.forEach { track -> track.dispose() }
+            }
+            remoteMediaStream = null
+
             Log.d("WebRTCManager", "PeerConnection closed")
         } catch (e: Exception) {
             Log.e("WebRTCManager", "Error closing PeerConnection", e)

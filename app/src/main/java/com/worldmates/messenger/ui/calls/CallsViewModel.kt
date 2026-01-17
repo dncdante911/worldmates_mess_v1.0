@@ -107,7 +107,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Ініціювати вызов користувачу (1-на-1)
      */
     fun initiateCall(recipientId: Int, recipientName: String, recipientAvatar: String, callType: String = "audio") {
-        val callLogic = {
+        val callLogic: () -> Unit = {
             viewModelScope.launch {
                 try {
                     // 1. Создать PeerConnection
@@ -176,7 +176,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Ініціювати групповой вызов
      */
     fun initiateGroupCall(groupId: Int, groupName: String, callType: String = "audio") {
-        val callLogic = {
+        val callLogic: () -> Unit = {
             viewModelScope.launch {
                 try {
                     webRTCManager.createPeerConnection()

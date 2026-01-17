@@ -8,6 +8,9 @@
  * - Паттерн registerListeners(socket, io, ctx)
  */
 
+// Импорт TURN credentials helper
+const turnHelper = require('../helpers/turn-credentials');
+
 /**
  * Регистрация обработчиков звонков
  * @param {Object} socket - Socket.IO socket объект
@@ -72,6 +75,9 @@ async function registerCallsListeners(socket, io, ctx) {
                 const recipientSockets = ctx.userIdSocket[toId];
 
                 if (recipientSockets && recipientSockets.length > 0) {
+                    // Получить ICE servers с TURN credentials для получателя
+                    const iceServers = turnHelper.getIceServers(toId);
+
                     // Отправить уведомление о входящем звонке на все устройства
                     const callData = {
                         fromId: fromId,
@@ -79,14 +85,15 @@ async function registerCallsListeners(socket, io, ctx) {
                         fromAvatar: initiator ? initiator.avatar : '',
                         callType: callType,
                         roomName: roomName,
-                        sdpOffer: sdpOffer
+                        sdpOffer: sdpOffer,
+                        iceServers: iceServers  // ✅ Добавлены TURN credentials
                     };
 
                     recipientSockets.forEach(recipientSocket => {
                         recipientSocket.emit('call:incoming', callData);
                     });
 
-                    console.log(`[CALLS] Incoming call sent to user ${toId} (${recipientSockets.length} devices)`);
+                    console.log(`[CALLS] Incoming call sent to user ${toId} with TURN credentials (${recipientSockets.length} devices)`);
 
                 } else {
                     // Получатель оффлайн
@@ -141,13 +148,17 @@ async function registerCallsListeners(socket, io, ctx) {
                     if (member.user_id !== fromId) {
                         const memberSockets = ctx.userIdSocket[member.user_id];
                         if (memberSockets && memberSockets.length > 0) {
+                            // Получить ICE servers для каждого участника
+                            const iceServers = turnHelper.getIceServers(member.user_id);
+
                             const callData = {
                                 groupId: groupId,
                                 initiatedBy: fromId,
                                 initiatorName: initiatorName,
                                 callType: callType,
                                 roomName: roomName,
-                                sdpOffer: sdpOffer
+                                sdpOffer: sdpOffer,
+                                iceServers: iceServers  // ✅ Добавлены TURN credentials
                             };
 
                             memberSockets.forEach(memberSocket => {
@@ -157,7 +168,7 @@ async function registerCallsListeners(socket, io, ctx) {
                     }
                 });
 
-                console.log(`[CALLS] Group call initiated for group ${groupId}`);
+                console.log(`[CALLS] Group call initiated for group ${groupId} with TURN credentials`);
             }
 
         } catch (error) {
@@ -200,18 +211,22 @@ async function registerCallsListeners(socket, io, ctx) {
                 const initiatorSockets = ctx.userIdSocket[initiatorId];
 
                 if (initiatorSockets && initiatorSockets.length > 0) {
+                    // Получить ICE servers с TURN credentials для инициатора
+                    const iceServers = turnHelper.getIceServers(initiatorId);
+
                     // Отправить SDP answer инициатору
                     const answerData = {
                         roomName: roomName,
                         sdpAnswer: sdpAnswer,
-                        acceptedBy: userId
+                        acceptedBy: userId,
+                        iceServers: iceServers  // ✅ Добавлены TURN credentials
                     };
 
                     initiatorSockets.forEach(initiatorSocket => {
                         initiatorSocket.emit('call:answer', answerData);
                     });
 
-                    console.log(`[CALLS] Answer sent to initiator ${initiatorId}`);
+                    console.log(`[CALLS] Answer sent to initiator ${initiatorId} with TURN credentials`);
                 }
             }
 

@@ -107,9 +107,13 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Ініціювати вызов користувачу (1-на-1)
      */
     fun initiateCall(recipientId: Int, recipientName: String, recipientAvatar: String, callType: String = "audio") {
+        Log.d("CallsViewModel", "📞 Initiating call to $recipientName (ID: $recipientId), type: $callType")
+
         val callLogic: () -> Unit = {
             viewModelScope.launch {
                 try {
+                    Log.d("CallsViewModel", "🔧 Creating PeerConnection and media stream...")
+
                     // 1. Создать PeerConnection
                     webRTCManager.createPeerConnection()
 
@@ -119,7 +123,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                     webRTCManager.createLocalMediaStream(audioEnabled, videoEnabled)
 
                     // Опубліковати локальний стрім
-                    getLocalStream()?.let { localStreamAdded.postValue(it) }
+                    val localStream = getLocalStream()
+                    Log.d("CallsViewModel", "Local stream created: audio=${localStream?.audioTracks?.size}, video=${localStream?.videoTracks?.size}")
+                    localStream?.let { localStreamAdded.postValue(it) }
 
                     // 3. Создать offer
                     webRTCManager.createOffer(

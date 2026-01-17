@@ -72,9 +72,13 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
             }
         }
 
-        webRTCManager.onAddStreamListener = { stream ->
-            remoteStreamAdded.postValue(stream)
-            Log.d("CallsViewModel", "Remote stream added with ${stream.audioTracks.size + stream.videoTracks.size} tracks")
+        // ✅ UNIFIED_PLAN: используем onTrack вместо onAddStream
+        webRTCManager.onTrackListener = { receiver, streams ->
+            Log.d("CallsViewModel", "Remote track received: ${receiver.track()?.kind()}, streams: ${streams.size}")
+            if (streams.isNotEmpty()) {
+                remoteStreamAdded.postValue(streams[0])
+                Log.d("CallsViewModel", "Remote stream added with ${streams[0].audioTracks.size + streams[0].videoTracks.size} tracks")
+            }
         }
 
         webRTCManager.onConnectionStateChangeListener = { state ->

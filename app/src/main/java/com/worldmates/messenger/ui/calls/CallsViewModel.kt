@@ -49,10 +49,12 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     val remoteStreamAdded = MutableLiveData<MediaStream>()
     val localStreamAdded = MutableLiveData<MediaStream>()
     val connectionState = MutableLiveData<String>()
+    val socketConnected = MutableLiveData<Boolean>(false)  // ✅ Додано для відстеження підключення
 
     private var currentCallData: CallData? = null
     private var currentCallId: Int = 0
     private var isInitiator = false
+    private var pendingCallInitiation: (() -> Unit)? = null  // ✅ Очікуючий виклик
 
     init {
         socketManager.connect()
@@ -105,57 +107,68 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Ініціювати вызов користувачу (1-на-1)
      */
     fun initiateCall(recipientId: Int, recipientName: String, recipientAvatar: String, callType: String = "audio") {
-        viewModelScope.launch {
-            try {
-                // 1. Создать PeerConnection
-                webRTCManager.createPeerConnection()
+        val callLogic = {
+            viewModelScope.launch {
+                try {
+                    // 1. Создать PeerConnection
+                    webRTCManager.createPeerConnection()
 
-                // 2. Создать локальный медиа стрим
-                val audioEnabled = true
-                val videoEnabled = (callType == "video")
-                webRTCManager.createLocalMediaStream(audioEnabled, videoEnabled)
+                    // 2. Создать локальный медиа стрим
+                    val audioEnabled = true
+                    val videoEnabled = (callType == "video")
+                    webRTCManager.createLocalMediaStream(audioEnabled, videoEnabled)
 
-                // Опубліковати локальний стрім
-                getLocalStream()?.let { localStreamAdded.postValue(it) }
+                    // Опубліковати локальний стрім
+                    getLocalStream()?.let { localStreamAdded.postValue(it) }
 
-                // 3. Создать offer
-                webRTCManager.createOffer(
-                    onSuccess = { offer ->
-                        // 4. Отправить через Socket.IO
-                        val roomName = generateRoomName()
-                        currentCallData = CallData(
-                            callId = 0,
-                            fromId = getUserId(),
-                            fromName = getUserName(),
-                            fromAvatar = getUserAvatar(),
-                            toId = recipientId,
-                            callType = callType,
-                            roomName = roomName,
-                            sdpOffer = offer.description
-                        )
-                        isInitiator = true
+                    // 3. Создать offer
+                    webRTCManager.createOffer(
+                        onSuccess = { offer ->
+                            // 4. Отправить через Socket.IO
+                            val roomName = generateRoomName()
+                            currentCallData = CallData(
+                                callId = 0,
+                                fromId = getUserId(),
+                                fromName = getUserName(),
+                                fromAvatar = getUserAvatar(),
+                                toId = recipientId,
+                                callType = callType,
+                                roomName = roomName,
+                                sdpOffer = offer.description
+                            )
+                            isInitiator = true
 
-                        val callEvent = JsonObject().apply {
-                            addProperty("fromId", getUserId())
-                            addProperty("toId", recipientId)
-                            addProperty("callType", callType)
-                            addProperty("roomName", roomName)
-                            addProperty("fromName", getUserName())
-                            add("sdpOffer", gson.toJsonTree(offer.description))
+                            val callEvent = JsonObject().apply {
+                                addProperty("fromId", getUserId())
+                                addProperty("toId", recipientId)
+                                addProperty("callType", callType)
+                                addProperty("roomName", roomName)
+                                addProperty("fromName", getUserName())
+                                add("sdpOffer", gson.toJsonTree(offer.description))
+                            }
+
+                            socketManager.emit("call:initiate", callEvent)
+                            Log.d("CallsViewModel", "Call initiated to user $recipientId")
+                        },
+                        onError = { error ->
+                            callError.postValue(error)
+                            Log.e("CallsViewModel", "Failed to create offer: $error")
                         }
-
-                        socketManager.emit("call:initiate", callEvent)
-                        Log.d("CallsViewModel", "Call initiated to user $recipientId")
-                    },
-                    onError = { error ->
-                        callError.postValue(error)
-                        Log.e("CallsViewModel", "Failed to create offer: $error")
-                    }
-                )
-            } catch (e: Exception) {
-                callError.postValue(e.message ?: "Unknown error")
-                Log.e("CallsViewModel", "Error initiating call", e)
+                    )
+                } catch (e: Exception) {
+                    callError.postValue(e.message ?: "Unknown error")
+                    Log.e("CallsViewModel", "Error initiating call", e)
+                }
             }
+        }
+
+        // ✅ Перевірити чи Socket підключений
+        if (socketConnected.value == true) {
+            Log.d("CallsViewModel", "Socket ready, initiating call immediately")
+            callLogic()
+        } else {
+            Log.d("CallsViewModel", "Socket not ready, pending call initiation...")
+            pendingCallInitiation = callLogic
         }
     }
 
@@ -163,46 +176,58 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Ініціювати групповой вызов
      */
     fun initiateGroupCall(groupId: Int, groupName: String, callType: String = "audio") {
-        viewModelScope.launch {
-            try {
-                webRTCManager.createPeerConnection()
-                webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = (callType == "video"))
+        val callLogic = {
+            viewModelScope.launch {
+                try {
+                    webRTCManager.createPeerConnection()
+                    webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = (callType == "video"))
 
-                // Опубліковати локальний стрім
-                getLocalStream()?.let { localStreamAdded.postValue(it) }
+                    // Опубліковати локальний стрім
+                    getLocalStream()?.let { localStreamAdded.postValue(it) }
 
-                webRTCManager.createOffer(
-                    onSuccess = { offer ->
-                        val roomName = generateRoomName()
-                        currentCallData = CallData(
-                            callId = 0,
-                            fromId = getUserId(),
-                            fromName = getUserName(),
-                            fromAvatar = getUserAvatar(),
-                            groupId = groupId,
-                            callType = callType,
-                            roomName = roomName,
-                            sdpOffer = offer.description
-                        )
-                        isInitiator = true
+                    webRTCManager.createOffer(
+                        onSuccess = { offer ->
+                            val roomName = generateRoomName()
+                            currentCallData = CallData(
+                                callId = 0,
+                                fromId = getUserId(),
+                                fromName = getUserName(),
+                                fromAvatar = getUserAvatar(),
+                                groupId = groupId,
+                                callType = callType,
+                                roomName = roomName,
+                                sdpOffer = offer.description
+                            )
+                            isInitiator = true
 
-                        val groupCallEvent = JsonObject().apply {
-                            addProperty("groupId", groupId)
-                            addProperty("initiatedBy", getUserId())
-                            addProperty("callType", callType)
-                            addProperty("roomName", roomName)
-                            add("sdpOffer", gson.toJsonTree(offer.description))
+                            val groupCallEvent = JsonObject().apply {
+                                addProperty("groupId", groupId)
+                                addProperty("initiatedBy", getUserId())
+                                addProperty("callType", callType)
+                                addProperty("roomName", roomName)
+                                add("sdpOffer", gson.toJsonTree(offer.description))
+                            }
+
+                            socketManager.emit("group_call:initiate", groupCallEvent)
+                            Log.d("CallsViewModel", "Group call initiated for group $groupId")
+                        },
+                        onError = { error ->
+                            callError.postValue(error)
                         }
-
-                        socketManager.emit("group_call:initiate", groupCallEvent)
-                    },
-                    onError = { error ->
-                        callError.postValue(error)
-                    }
-                )
-            } catch (e: Exception) {
-                callError.postValue(e.message)
+                    )
+                } catch (e: Exception) {
+                    callError.postValue(e.message)
+                }
             }
+        }
+
+        // ✅ Перевірити чи Socket підключений
+        if (socketConnected.value == true) {
+            Log.d("CallsViewModel", "Socket ready, initiating group call immediately")
+            callLogic()
+        } else {
+            Log.d("CallsViewModel", "Socket not ready, pending group call initiation...")
+            pendingCallInitiation = callLogic
         }
     }
 
@@ -292,10 +317,19 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     override fun onSocketConnected() {
         Log.i("CallsViewModel", "Socket connected for calls")
+        socketConnected.postValue(true)
+
+        // ✅ Виконати відкладений дзвінок якщо є
+        pendingCallInitiation?.let {
+            Log.d("CallsViewModel", "Executing pending call initiation...")
+            it.invoke()
+            pendingCallInitiation = null
+        }
     }
 
     override fun onSocketDisconnected() {
         Log.w("CallsViewModel", "Socket disconnected")
+        socketConnected.postValue(false)
     }
 
     override fun onSocketError(error: String) {

@@ -153,6 +153,17 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true" />
 
+        <!-- Incoming Call Activity -->
+        <activity
+            android:name=".ui.calls.IncomingCallActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true" />
+
         <!-- Drafts Activity -->
         <activity
             android:name=".ui.drafts.DraftsActivity"

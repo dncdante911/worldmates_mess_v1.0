@@ -78,6 +78,7 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel
     private lateinit var channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel
     private lateinit var storyViewModel: com.worldmates.messenger.ui.stories.StoryViewModel
+    private lateinit var callsViewModel: com.worldmates.messenger.ui.calls.CallsViewModel
 
     // Factory для створення ChatsViewModel з параметром context
     private class ChatsViewModelFactory(private val context: android.content.Context) : Factory {
@@ -103,6 +104,10 @@ class ChatsActivity : AppCompatActivity() {
         groupsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.groups.GroupsViewModel::class.java)
         channelsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.channels.ChannelsViewModel::class.java)
         storyViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.stories.StoryViewModel::class.java)
+
+        // ✅ Ініціалізуємо CallsViewModel для обробки вхідних дзвінків
+        callsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.calls.CallsViewModel::class.java)
+        android.util.Log.d("ChatsActivity", "📞 CallsViewModel initialized for incoming calls")
 
         setContent {
             WorldMatesThemedApp {

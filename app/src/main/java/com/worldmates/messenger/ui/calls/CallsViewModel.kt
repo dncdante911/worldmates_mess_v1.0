@@ -59,6 +59,20 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     init {
         socketManager.connect()
         setupWebRTCListeners()
+        registerForCalls()  // ✅ Зареєструватись для дзвінків
+    }
+
+    /**
+     * 📞 Зареєструвати користувача для отримання вхідних дзвінків
+     */
+    private fun registerForCalls() {
+        val userId = getUserId()
+        val registerData = JSONObject().apply {
+            put("userId", userId)
+            put("user_id", userId)  // Для сумісності
+        }
+        socketManager.emit("call:register", registerData)
+        Log.d("CallsViewModel", "📞 Registered for calls: userId=$userId")
     }
 
     private fun setupWebRTCListeners() {

@@ -456,9 +456,11 @@ class SocketManager(
     fun emit(event: String, data: Any) {
         if (socket?.connected() == true) {
             socket?.emit(event, data)
-            Log.d(TAG, "Emitted event: $event")
+            Log.d(TAG, "✅ Emitted event: $event")
+            Log.d(TAG, "   Data: ${data.toString().take(200)}")  // Перші 200 символів
         } else {
-            Log.w(TAG, "Cannot emit event '$event': Socket not connected")
+            Log.e(TAG, "❌ Cannot emit event '$event': Socket not connected!")
+            Log.e(TAG, "   Socket state: connected=${socket?.connected()}, socket=${socket != null}")
         }
     }
 

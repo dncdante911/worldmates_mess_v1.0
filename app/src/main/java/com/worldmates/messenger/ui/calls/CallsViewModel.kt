@@ -308,6 +308,40 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     /**
+     * 🔇 Увімкнути/вимкнути мікрофон
+     */
+    fun toggleAudio(enabled: Boolean) {
+        webRTCManager.setAudioEnabled(enabled)
+        Log.d("CallsViewModel", "Audio ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * 📹 Увімкнути/вимкнути відео
+     */
+    fun toggleVideo(enabled: Boolean) {
+        webRTCManager.setVideoEnabled(enabled)
+        Log.d("CallsViewModel", "Video ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * 🔊 Увімкнути/вимкнути громку зв'язок (speaker)
+     */
+    fun toggleSpeaker(enabled: Boolean) {
+        // TODO: Implement AudioManager logic for speaker
+        val audioManager = getApplication<Application>().getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        audioManager.isSpeakerphoneOn = enabled
+        Log.d("CallsViewModel", "Speaker ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * 🔄 Переключити камеру (передня/задня)
+     */
+    fun switchCamera() {
+        webRTCManager.switchCamera()
+        Log.d("CallsViewModel", "Camera switched")
+    }
+
+    /**
      * Socket.IO слушатели
      */
     // Required implementation from SocketListener
@@ -407,21 +441,6 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun generateRoomName(): String {
         return "room_${System.currentTimeMillis()}"
-    }
-
-    fun toggleAudio(enabled: Boolean) {
-        webRTCManager.setAudioEnabled(enabled)
-    }
-
-    fun toggleVideo(enabled: Boolean) {
-        webRTCManager.setVideoEnabled(enabled)
-    }
-
-    /**
-     * 📷 Перемикання між фронтальною та задньою камерою
-     */
-    fun switchCamera() {
-        webRTCManager.switchCamera()
     }
 
     /**

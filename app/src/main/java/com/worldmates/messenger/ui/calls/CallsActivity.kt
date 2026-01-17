@@ -514,6 +514,9 @@ fun ActiveCallScreen(
     val context = LocalContext.current
     var audioEnabled by remember { mutableStateOf(true) }
     var videoEnabled by remember { mutableStateOf(false) }
+    var speakerEnabled by remember { mutableStateOf(false) }
+    var showReactions by remember { mutableStateOf(false) }
+    var showChatOverlay by remember { mutableStateOf(false) }
     var callDuration by remember { mutableStateOf(0) }
 
     // 🎨 Завантажити збережений стиль рамки з Settings
@@ -607,55 +610,134 @@ fun ActiveCallScreen(
             }
         }
 
-        // Контрольні кнопки в низу
-        Row(
+        // 🎭 Reactions Overlay
+        if (showReactions) {
+            ReactionsOverlay(
+                onReactionSelected = { reaction ->
+                    // TODO: Send reaction through Socket.IO
+                    showReactions = false
+                },
+                onDismiss = { showReactions = false }
+            )
+        }
+
+        // 💬 Chat Overlay during call
+        if (showChatOverlay) {
+            ChatDuringCallOverlay(
+                onDismiss = { showChatOverlay = false }
+            )
+        }
+
+        // Контрольні кнопки в низу (2 ряди)
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
-                .align(Alignment.BottomCenter),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
+                .align(Alignment.BottomCenter)
         ) {
-            // Перемикач аудіо
-            CallControlButton(
-                icon = if (audioEnabled) Icons.Default.Mic else Icons.Default.MicOff,
-                label = "Мік",
-                isActive = audioEnabled,
-                backgroundColor = if (audioEnabled) Color(0xFF2196F3) else Color(0xFF555555)
+            // Ряд 1: Основні функції
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                audioEnabled = !audioEnabled
-                viewModel.toggleAudio(audioEnabled)
+                // Перемикач аудіо (Mute)
+                CallControlButton(
+                    icon = if (audioEnabled) Icons.Default.Mic else Icons.Default.MicOff,
+                    label = "Мік",
+                    isActive = audioEnabled,
+                    backgroundColor = if (audioEnabled) Color(0xFF2196F3) else Color(0xFF555555)
+                ) {
+                    audioEnabled = !audioEnabled
+                    viewModel.toggleAudio(audioEnabled)
+                }
+
+                // Перемикач відео
+                CallControlButton(
+                    icon = if (videoEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                    label = "Відео",
+                    isActive = videoEnabled,
+                    backgroundColor = if (videoEnabled) Color(0xFF2196F3) else Color(0xFF555555)
+                ) {
+                    videoEnabled = !videoEnabled
+                    viewModel.toggleVideo(videoEnabled)
+                }
+
+                // Громка связь (Speaker)
+                CallControlButton(
+                    icon = if (speakerEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeDown,
+                    label = "Динамік",
+                    isActive = speakerEnabled,
+                    backgroundColor = if (speakerEnabled) Color(0xFF4CAF50) else Color(0xFF555555)
+                ) {
+                    speakerEnabled = !speakerEnabled
+                    viewModel.toggleSpeaker(speakerEnabled)
+                }
+
+                // Перемикач камери (front/back)
+                CallControlButton(
+                    icon = Icons.Default.Cameraswitch,
+                    label = "Поверн.",
+                    isActive = false,
+                    backgroundColor = Color(0xFF555555)
+                ) {
+                    viewModel.switchCamera()
+                }
             }
 
-            // Перемикач камери
-            CallControlButton(
-                icon = Icons.Default.Cameraswitch,
-                label = "Камера",
-                isActive = false,
-                backgroundColor = Color(0xFF555555)
-            ) {
-                viewModel.switchCamera()
-            }
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Перемикач відео
-            CallControlButton(
-                icon = if (videoEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                label = "Відео",
-                isActive = videoEnabled,
-                backgroundColor = if (videoEnabled) Color(0xFF2196F3) else Color(0xFF555555)
+            // Ряд 2: Додаткові функції
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                videoEnabled = !videoEnabled
-                viewModel.toggleVideo(videoEnabled)
-            }
+                // Reactions
+                CallControlButton(
+                    icon = Icons.Default.EmojiEmotions,
+                    label = "Реакції",
+                    isActive = false,
+                    backgroundColor = Color(0xFFFF9800)
+                ) {
+                    showReactions = !showReactions
+                }
 
-            // Кнопка завершення дзвінка
-            CallControlButton(
-                icon = Icons.Default.CallEnd,
-                label = "Завершити",
-                isActive = false,
-                backgroundColor = Color(0xFFd32f2f)
-            ) {
-                viewModel.endCall()
+                // Chat during call
+                CallControlButton(
+                    icon = Icons.Default.Chat,
+                    label = "Чат",
+                    isActive = showChatOverlay,
+                    backgroundColor = if (showChatOverlay) Color(0xFF9C27B0) else Color(0xFF555555)
+                ) {
+                    showChatOverlay = !showChatOverlay
+                }
+
+                // Picture-in-Picture
+                CallControlButton(
+                    icon = Icons.Default.PictureInPicture,
+                    label = "PiP",
+                    isActive = false,
+                    backgroundColor = Color(0xFF00BCD4)
+                ) {
+                    // Minimize to PiP mode
+                    if (context is ComponentActivity) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val params = android.app.PictureInPictureParams.Builder().build()
+                            context.enterPictureInPictureMode(params)
+                        }
+                    }
+                }
+
+                // Завершити дзвінок
+                CallControlButton(
+                    icon = Icons.Default.CallEnd,
+                    label = "Завершити",
+                    isActive = false,
+                    backgroundColor = Color(0xFFd32f2f)
+                ) {
+                    viewModel.endCall()
+                }
             }
         }
     }
@@ -1133,6 +1215,217 @@ fun RainbowVideoFrame(remoteStream: MediaStream) {
             },
             modifier = Modifier.fillMaxSize()
         )
+    }
+}
+
+/**
+ * 🎭 Reactions Overlay - анімовані емоції як на YouTube
+ */
+@Composable
+fun ReactionsOverlay(
+    onReactionSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val reactions = listOf(
+        "❤️" to "Сердечко",
+        "👍" to "Лайк",
+        "😂" to "Сміх",
+        "😮" to "Wow",
+        "😢" to "Сумно",
+        "🔥" to "Вогонь",
+        "👏" to "Аплодисменти",
+        "🎉" to "Святкування"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f))
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    onDismiss()
+                }
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Color(0xFF2a2a2a),
+                    RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                )
+                .padding(24.dp)
+                .align(Alignment.BottomCenter),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Виберіть реакцію",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Grid з реакціями
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                reactions.chunked(4).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        row.forEach { (emoji, label) ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .size(70.dp)
+                                    .clickable {
+                                        onReactionSelected(emoji)
+                                    }
+                            ) {
+                                Text(
+                                    text = emoji,
+                                    fontSize = 40.sp
+                                )
+                                Text(
+                                    text = label,
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFaaaaaa)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 💬 Chat Overlay - можливість писати під час дзвінка
+ */
+@Composable
+fun ChatDuringCallOverlay(
+    onDismiss: () -> Unit
+) {
+    var messageText by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        // Затемнений фон
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        onDismiss()
+                    }
+                }
+        )
+
+        // Chat UI
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.6f)
+                .background(
+                    Color(0xFF1a1a1a),
+                    RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                )
+                .align(Alignment.BottomCenter)
+                .pointerInput(Unit) {
+                    // Prevent click through
+                    detectTapGestures { }
+                }
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "💬 Чат під час дзвінка",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White
+                    )
+                }
+            }
+
+            // Messages area (placeholder)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "Повідомлення з'являться тут...",
+                    color = Color(0xFF666666),
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            // Input area
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF2a2a2a))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = messageText,
+                    onValueChange = { messageText = it },
+                    placeholder = {
+                        Text("Напишіть повідомлення...", color = Color(0xFF666666))
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color(0xFF333333), RoundedCornerShape(24.dp)),
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = {
+                        if (messageText.isNotEmpty()) {
+                            // TODO: Send message
+                            messageText = ""
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Send",
+                        tint = Color(0xFF2196F3)
+                    )
+                }
+            }
+        }
     }
 }
 

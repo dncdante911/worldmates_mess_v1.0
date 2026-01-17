@@ -75,6 +75,109 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         Log.d("CallsViewModel", "📞 Registered for calls: userId=$userId")
     }
 
+    /**
+     * 🔌 Налаштувати Socket.IO listeners для call events
+     */
+    private fun setupCallSocketListeners() {
+        Log.d("CallsViewModel", "🔌 Setting up call Socket.IO listeners...")
+
+        // 📞 Вхідний дзвінок
+        socketManager.on("call:incoming") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        Log.d("CallsViewModel", "📞 Incoming call received from ${it.optInt("fromId")}")
+
+                        // Конвертувати в Gson JsonObject для сумісності
+                        val callData = gson.fromJson(data.toString(), JsonObject::class.java)
+                        onIncomingCall(callData)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:incoming", e)
+            }
+        }
+
+        // ✅ Відповідь на дзвінок (SDP answer)
+        socketManager.on("call:answer") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        Log.d("CallsViewModel", "✅ Call answer received")
+                        val roomName = it.optString("roomName")
+                        val sdpAnswer = it.optString("sdpAnswer")
+
+                        // Встановити remote description
+                        val answerSdp = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
+                        webRTCManager.setRemoteDescription(answerSdp)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:answer", e)
+            }
+        }
+
+        // 🧊 ICE candidate від іншого користувача
+        socketManager.on("ice:candidate") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        val candidate = it.optString("candidate")
+                        val sdpMLineIndex = it.optInt("sdpMLineIndex")
+                        val sdpMid = it.optString("sdpMid")
+
+                        val iceCandidate = IceCandidate(sdpMid, sdpMLineIndex, candidate)
+                        webRTCManager.addIceCandidate(iceCandidate)
+                        Log.d("CallsViewModel", "🧊 ICE candidate added")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing ice:candidate", e)
+            }
+        }
+
+        // ❌ Дзвінок відхилено
+        socketManager.on("call:rejected") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        val roomName = it.optString("roomName")
+                        val rejectedBy = it.optInt("rejectedBy")
+                        Log.d("CallsViewModel", "❌ Call rejected by user $rejectedBy")
+                        callEnded.postValue(true)
+                        endCall()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:rejected", e)
+            }
+        }
+
+        // 📴 Дзвінок завершено
+        socketManager.on("call:ended") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        val roomName = it.optString("roomName")
+                        val reason = it.optString("reason")
+                        Log.d("CallsViewModel", "📴 Call ended: $reason")
+                        callEnded.postValue(true)
+                        endCall()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:ended", e)
+            }
+        }
+
+        Log.d("CallsViewModel", "✅ Call Socket.IO listeners configured")
+    }
+
     private fun setupWebRTCListeners() {
         webRTCManager.onIceCandidateListener = { candidate ->
             currentCallData?.let {
@@ -392,6 +495,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         // ✅ Зареєструватись для дзвінків ПІСЛЯ підключення
         registerForCalls()
 
+        // ✅ Налаштувати listeners для call events
+        setupCallSocketListeners()
+
         // ✅ Виконати відкладений дзвінок якщо є
         pendingCallInitiation?.let {
             Log.d("CallsViewModel", "Executing pending call initiation...")
@@ -424,7 +530,20 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 sdpOffer = data.get("sdpOffer")?.asString
             )
             incomingCall.postValue(callData)
-            Log.d("CallsViewModel", "Incoming call from ${callData.fromName}")
+            Log.d("CallsViewModel", "📞 Incoming call from ${callData.fromName}")
+
+            // ✅ Запустити IncomingCallActivity
+            val intent = IncomingCallActivity.createIntent(
+                context = getApplication(),
+                fromId = callData.fromId,
+                fromName = callData.fromName,
+                fromAvatar = callData.fromAvatar,
+                callType = callData.callType,
+                roomName = callData.roomName,
+                sdpOffer = callData.sdpOffer
+            )
+            getApplication<android.app.Application>().startActivity(intent)
+            Log.d("CallsViewModel", "🚀 IncomingCallActivity launched")
         } catch (e: Exception) {
             Log.e("CallsViewModel", "Error parsing incoming call", e)
         }

@@ -1,0 +1,35 @@
+{
+  "name": "worldmates-server",
+  "version": "1.0.0",
+  "description": "WorldMates Messenger Backend with WebRTC Video Calls Support",
+  "main": "server-example.js",
+  "scripts": {
+    "start": "node server-example.js",
+    "dev": "nodemon server-example.js",
+    "test-turn": "node generate-turn-credentials.js",
+    "turn-start": "sudo systemctl start coturn",
+    "turn-stop": "sudo systemctl stop coturn",
+    "turn-status": "sudo systemctl status coturn",
+    "turn-logs": "sudo tail -f /var/log/turnserver.log"
+  },
+  "keywords": [
+    "webrtc",
+    "socket.io",
+    "video-calls",
+    "turn-server",
+    "messenger"
+  ],
+  "author": "WorldMates Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

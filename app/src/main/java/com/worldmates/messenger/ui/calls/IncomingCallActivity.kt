@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
-import com.worldmates.messenger.ui.theme.WorldMatesMessengerTheme
+import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 
 /**
  * 📞 Activity для відображення вхідного дзвінка
@@ -96,7 +96,7 @@ class IncomingCallActivity : ComponentActivity() {
 
         // Показати UI
         setContent {
-            WorldMatesMessengerTheme {
+            WorldMatesThemedApp {
                 IncomingCallScreen(
                     fromName = fromName,
                     fromAvatar = fromAvatar,

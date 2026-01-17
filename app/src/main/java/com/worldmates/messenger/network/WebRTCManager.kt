@@ -33,8 +33,8 @@ class WebRTCManager(private val context: Context) {
     )
 
     var onIceCandidateListener: ((IceCandidate) -> Unit)? = null
-    var onAddStreamListener: ((MediaStream) -> Unit)? = null
-    var onRemoveStreamListener: (() -> Unit)? = null
+    var onTrackListener: ((RtpReceiver, Array<MediaStream>) -> Unit)? = null
+    var onRemoveTrackListener: (() -> Unit)? = null
     var onConnectionStateChangeListener: ((PeerConnection.PeerConnectionState) -> Unit)? = null
     var onIceConnectionStateChangeListener: ((PeerConnection.IceConnectionState) -> Unit)? = null
 
@@ -112,13 +112,16 @@ class WebRTCManager(private val context: Context) {
                     override fun onIceCandidatesRemoved(candidates: Array<IceCandidate>) {}
 
                     override fun onAddStream(stream: MediaStream) {
-                        Log.d("WebRTCManager", "Remote stream added, tracks: ${stream.audioTracks.size + stream.videoTracks.size}")
-                        onAddStreamListener?.invoke(stream)
+                        // Deprecated in Unified Plan - use onTrack instead
                     }
 
                     override fun onRemoveStream(stream: MediaStream) {
-                        Log.d("WebRTCManager", "Remote stream removed")
-                        onRemoveStreamListener?.invoke()
+                        // Deprecated in Unified Plan
+                    }
+
+                    override fun onTrack(receiver: RtpReceiver, streams: Array<MediaStream>) {
+                        Log.d("WebRTCManager", "Remote track received: ${receiver.track()?.kind()}, streams: ${streams.size}")
+                        onTrackListener?.invoke(receiver, streams)
                     }
 
                     override fun onDataChannel(dataChannel: DataChannel) {}
@@ -149,7 +152,11 @@ class WebRTCManager(private val context: Context) {
             if (audioEnabled) {
                 val audioSource = peerConnectionFactory.createAudioSource(MediaConstraints())
                 localAudioTrack = peerConnectionFactory.createAudioTrack("audio_track", audioSource)
-                localAudioTrack?.let { mediaStream.addTrack(it) }
+                localAudioTrack?.let {
+                    mediaStream.addTrack(it)
+                    // ✅ UNIFIED_PLAN: addTrack вместо addStream
+                    peerConnection?.addTrack(it, listOf("LOCAL_STREAM"))
+                }
                 Log.d("WebRTCManager", "Audio track added")
             }
 
@@ -168,12 +175,13 @@ class WebRTCManager(private val context: Context) {
                 videoCapturer?.startCapture(1280, 720, 30)
 
                 localVideoTrack = peerConnectionFactory.createVideoTrack("video_track", videoSource)
-                localVideoTrack?.let { mediaStream.addTrack(it) }
+                localVideoTrack?.let {
+                    mediaStream.addTrack(it)
+                    // ✅ UNIFIED_PLAN: addTrack вместо addStream
+                    peerConnection?.addTrack(it, listOf("LOCAL_STREAM"))
+                }
                 Log.d("WebRTCManager", "Video track added with camera capturer")
             }
-
-            // Добавить в peer connection
-            peerConnection?.addStream(mediaStream)
 
             localMediaStream = mediaStream
             mediaStream

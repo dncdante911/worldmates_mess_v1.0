@@ -250,16 +250,20 @@ async function registerCallsListeners(socket, io, ctx) {
         try {
             const { roomName, toUserId, fromUserId, candidate, sdpMLineIndex, sdpMid } = data;
 
-            // Опционально: сохранить в БД для восстановления
+            // Опционально: сохранить в БД для восстановления (может не работать если нет таблицы)
             if (ctx.wo_ice_candidates) {
-                await ctx.wo_ice_candidates.create({
-                    room_name: roomName,
-                    user_id: fromUserId,
-                    candidate: JSON.stringify(candidate),
-                    sdp_mid: sdpMid,
-                    sdp_m_line_index: sdpMLineIndex,
-                    created_at: new Date()
-                });
+                try {
+                    await ctx.wo_ice_candidates.create({
+                        room_name: roomName,
+                        candidate: JSON.stringify(candidate),
+                        sdp_mid: sdpMid,
+                        sdp_m_line_index: sdpMLineIndex,
+                        created_at: new Date()
+                    });
+                } catch (dbError) {
+                    // ✅ Если таблица не существует или нет нужных колонок - игнорируем
+                    console.warn('[CALLS] Could not save ICE candidate to DB (not critical):', dbError.message);
+                }
             }
 
             if (toUserId) {

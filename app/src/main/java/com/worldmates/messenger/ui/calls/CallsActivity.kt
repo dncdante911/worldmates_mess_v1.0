@@ -638,25 +638,7 @@ fun ActiveCallScreen(
             }
         }
 
-        // 🎭 Reactions Overlay
-        if (showReactions) {
-            ReactionsOverlay(
-                onReactionSelected = { reaction ->
-                    // TODO: Send reaction through Socket.IO
-                    showReactions = false
-                },
-                onDismiss = { showReactions = false }
-            )
-        }
-
-        // 💬 Chat Overlay during call
-        if (showChatOverlay) {
-            ChatDuringCallOverlay(
-                onDismiss = { showChatOverlay = false }
-            )
-        }
-
-        // Контрольні кнопки в низу (2 ряди)
+        // Контрольні кнопки в низу (2 ряди) - ЗАВЖДИ видимі
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -767,6 +749,24 @@ fun ActiveCallScreen(
                     viewModel.endCall()
                 }
             }
+        }
+
+        // 🎭 Reactions Overlay - рендериться ПОВЕРХ усього
+        if (showReactions) {
+            ReactionsOverlay(
+                onReactionSelected = { reaction ->
+                    // TODO: Send reaction through Socket.IO
+                    showReactions = false
+                },
+                onDismiss = { showReactions = false }
+            )
+        }
+
+        // 💬 Chat Overlay during call - рендериться ПОВЕРХ усього
+        if (showChatOverlay) {
+            ChatDuringCallOverlay(
+                onDismiss = { showChatOverlay = false }
+            )
         }
     }
 }

@@ -119,7 +119,7 @@ async function init() {
   ctx.userHashUserId = {}
   ctx.userIdCount = {}
   ctx.userIdChatOpen = {}
-  ctx.userIdSocket = []
+  ctx.userIdSocket = {}  // ✅ ВИПРАВЛЕНО: Має бути ОБ'ЄКТ, не масив!
   ctx.userIdExtra = {}
   ctx.userIdGroupChatOpen = {}
 
@@ -133,7 +133,7 @@ async function main() {
   await init()
 
   // ==================== REST API для TURN/ICE ====================
-  const turnHelper = require('./helpers/turn-credentials');
+  // turnHelper вже імпортовано на початку файлу
 
   // Middleware для парсинга JSON
   app.use(express.json());

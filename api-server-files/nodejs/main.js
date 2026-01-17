@@ -132,6 +132,77 @@ async function init() {
 async function main() {
   await init()
 
+  // ==================== REST API для TURN/ICE ====================
+  const turnHelper = require('./helpers/turn-credentials');
+
+  // Middleware для парсинга JSON
+  app.use(express.json());
+
+  // GET /api/ice-servers/:userId - получить ICE серверы с TURN credentials
+  app.get('/api/ice-servers/:userId', (req, res) => {
+    try {
+      const userId = req.params.userId;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          error: 'userId is required'
+        });
+      }
+
+      const iceConfig = turnHelper.getIceConfigForAndroid(userId);
+      res.json(iceConfig);
+
+      console.log(`[ICE] Generated ICE servers for user ${userId}`);
+    } catch (error) {
+      console.error('[ICE] Error generating ICE servers:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to generate ICE servers'
+      });
+    }
+  });
+
+  // POST /api/turn-credentials - альтернативный метод
+  app.post('/api/turn-credentials', (req, res) => {
+    try {
+      const { userId, ttl } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          error: 'userId is required'
+        });
+      }
+
+      const credentials = turnHelper.generateTurnCredentials(userId, ttl || 86400);
+      const iceServers = turnHelper.getIceServers(userId, ttl || 86400);
+
+      res.json({
+        success: true,
+        credentials: credentials,
+        iceServers: iceServers
+      });
+
+      console.log(`[TURN] Generated credentials for user ${userId}`);
+    } catch (error) {
+      console.error('[TURN] Error generating credentials:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to generate credentials'
+      });
+    }
+  });
+
+  // Health check endpoint
+  app.get('/api/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  });
+
   app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
   });

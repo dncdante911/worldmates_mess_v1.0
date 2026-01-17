@@ -166,8 +166,80 @@ class CallsActivity : ComponentActivity() {
      * 🔌 Налаштувати Socket.IO listeners для вхідних подій
      */
     private fun setupSocketListeners() {
-        // TODO: Підключити Socket.IO events (call:incoming, call:answer, ice:candidate, call:end)
-        android.util.Log.d("CallsActivity", "Socket.IO listeners налаштовано")
+        android.util.Log.d("CallsActivity", "Налаштування Socket.IO listeners для дзвінків...")
+
+        // 📞 Вхідний дзвінок
+        callsViewModel.socketManager.on("call:incoming") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? org.json.JSONObject
+                    data?.let {
+                        android.util.Log.d("CallsActivity", "📞 Отримано вхідний дзвінок від ${it.optInt("fromId")}")
+
+                        val callData = com.google.gson.JsonParser.parseString(data.toString()).asJsonObject
+                        callsViewModel.onIncomingCall(callData)
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CallsActivity", "Помилка обробки call:incoming", e)
+            }
+        }
+
+        // ✅ Відповідь на дзвінок (SDP answer)
+        callsViewModel.socketManager.on("call:answer") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? org.json.JSONObject
+                    data?.let {
+                        android.util.Log.d("CallsActivity", "✅ Отримано відповідь на дзвінок")
+
+                        val answerData = com.google.gson.JsonParser.parseString(data.toString()).asJsonObject
+                        callsViewModel.onCallAnswer(answerData)
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CallsActivity", "Помилка обробки call:answer", e)
+            }
+        }
+
+        // 🧊 ICE candidate
+        callsViewModel.socketManager.on("ice:candidate") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? org.json.JSONObject
+                    data?.let {
+                        android.util.Log.d("CallsActivity", "🧊 Отримано ICE candidate")
+
+                        val candidateData = com.google.gson.JsonParser.parseString(data.toString()).asJsonObject
+                        callsViewModel.onIceCandidate(candidateData)
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CallsActivity", "Помилка обробки ice:candidate", e)
+            }
+        }
+
+        // ❌ Завершення дзвінка
+        callsViewModel.socketManager.on("call:end") { args ->
+            try {
+                android.util.Log.d("CallsActivity", "❌ Дзвінок завершено")
+                callsViewModel.endCall()
+            } catch (e: Exception) {
+                android.util.Log.e("CallsActivity", "Помилка обробки call:end", e)
+            }
+        }
+
+        // 🚫 Відхилення дзвінка
+        callsViewModel.socketManager.on("call:reject") { args ->
+            try {
+                android.util.Log.d("CallsActivity", "🚫 Дзвінок відхилено")
+                callsViewModel.endCall()
+            } catch (e: Exception) {
+                android.util.Log.e("CallsActivity", "Помилка обробки call:reject", e)
+            }
+        }
+
+        android.util.Log.d("CallsActivity", "✅ Socket.IO listeners налаштовано успішно")
     }
 
     private fun requestPermissions() {

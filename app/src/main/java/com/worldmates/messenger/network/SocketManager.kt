@@ -463,6 +463,31 @@ class SocketManager(
     }
 
     /**
+     * 🔌 Підписатись на Socket.IO подію
+     * Використовується для WebRTC call events
+     */
+    fun on(event: String, listener: (Array<Any>) -> Unit): io.socket.emitter.Emitter.Listener {
+        val emitterListener = io.socket.emitter.Emitter.Listener { args ->
+            listener(args)
+        }
+        socket?.on(event, emitterListener)
+        Log.d(TAG, "Subscribed to event: $event")
+        return emitterListener
+    }
+
+    /**
+     * 🔌 Відписатись від Socket.IO події
+     */
+    fun off(event: String, listener: io.socket.emitter.Emitter.Listener? = null) {
+        if (listener != null) {
+            socket?.off(event, listener)
+        } else {
+            socket?.off(event)
+        }
+        Log.d(TAG, "Unsubscribed from event: $event")
+    }
+
+    /**
      * Відправляє індикатор "печатає" (тільки при хорошому з'єднанні)
      */
     fun sendTyping(recipientId: Long, isTyping: Boolean) {

@@ -30,7 +30,7 @@ async function registerCallsListeners(socket, io, ctx) {
      */
     socket.on('call:register', (data) => {
         const userId = data.userId || data.user_id;
-        console.log(`[CALLS] User registered for calls: ${userId}`);
+        console.log(`[CALLS] 📝 User registered for calls: ${userId}, socket: ${socket.id}`);
 
         // Добавить в существующую структуру если нужно
         if (!ctx.userIdSocket[userId]) {
@@ -38,6 +38,9 @@ async function registerCallsListeners(socket, io, ctx) {
         }
         if (!ctx.userIdSocket[userId].includes(socket)) {
             ctx.userIdSocket[userId].push(socket);
+            console.log(`[CALLS] ✅ Added socket to user ${userId}, total sockets: ${ctx.userIdSocket[userId].length}`);
+        } else {
+            console.log(`[CALLS] ⚠️ Socket already registered for user ${userId}`);
         }
     });
 
@@ -47,6 +50,8 @@ async function registerCallsListeners(socket, io, ctx) {
      */
     socket.on('call:initiate', async (data) => {
         try {
+            console.log('[CALLS] 📞 call:initiate received, raw data:', JSON.stringify(data).substring(0, 200));
+
             const { fromId, toId, groupId, callType, roomName, sdpOffer } = data;
 
             console.log(`[CALLS] Call initiated: ${fromId} -> ${toId || groupId} (${callType})`);
@@ -73,6 +78,7 @@ async function registerCallsListeners(socket, io, ctx) {
 
                 // Найти сокеты получателя
                 const recipientSockets = ctx.userIdSocket[toId];
+                console.log(`[CALLS] 🔍 Looking for recipient ${toId}, found: ${recipientSockets ? recipientSockets.length : 0} sockets`);
 
                 if (recipientSockets && recipientSockets.length > 0) {
                     // Получить ICE servers с TURN credentials для получателя

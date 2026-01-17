@@ -285,21 +285,14 @@ fun CallsScreen(
                 // 📞 Вхідний дзвінок
                 IncomingCallScreen(incomingCall!!, viewModel)
             }
-            callConnected -> {
-                // ✅ Активний дзвінок
+            isInitiating || connectionState != "IDLE" || callConnected -> {
+                // ✅ Активний дзвінок (показуємо ЗАВЖДИ під час будь-якого дзвінка)
                 ActiveCallScreen(
                     viewModel = viewModel,
                     remoteStream = remoteStream,
-                    connectionState = connectionState ?: "CONNECTING"
-                )
-            }
-            isInitiating || (connectionState != "IDLE" && !callConnected) -> {
-                // 📤 Вихідний дзвінок (ініціюємо або з'єднуємося)
-                OutgoingCallScreen(
+                    connectionState = connectionState ?: "CONNECTING",
                     calleeName = calleeName,
-                    calleeAvatar = calleeAvatar,
-                    callType = callType,
-                    viewModel = viewModel
+                    calleeAvatar = calleeAvatar
                 )
             }
             callError != null -> {
@@ -509,7 +502,9 @@ fun OutgoingCallScreen(
 fun ActiveCallScreen(
     viewModel: CallsViewModel,
     remoteStream: MediaStream?,
-    connectionState: String
+    connectionState: String,
+    calleeName: String = "Користувач",
+    calleeAvatar: String = ""
 ) {
     val context = LocalContext.current
     var audioEnabled by remember { mutableStateOf(true) }
@@ -538,30 +533,63 @@ fun ActiveCallScreen(
             .background(Color(0xFF000000))
     ) {
         // Віддалена відео/аудіо потік
-        remoteStream?.let {
-            if (it.videoTracks.isNotEmpty()) {
-                // 🎥 Показати відео з кастомними рамками
-                RemoteVideoView(
-                    remoteStream = remoteStream,
-                    localStream = localStream,
-                    frameStyle = currentFrameStyle,
-                    onSwitchCamera = { viewModel.switchCamera() }
-                )
-            } else {
-                // Показати аватар під час аудіо дзвінка
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
+        if (remoteStream?.videoTracks?.isNotEmpty() == true) {
+            // 🎥 Показати відео з кастомними рамками
+            RemoteVideoView(
+                remoteStream = remoteStream,
+                localStream = null,  // Не показуємо тут, покажемо окремо
+                frameStyle = currentFrameStyle,
+                onSwitchCamera = { viewModel.switchCamera() }
+            )
+        } else {
+            // Показати аватар/ім'я співрозмовника (під час аудіо дзвінка або поки немає відео)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                if (calleeAvatar.isNotEmpty()) {
+                    AsyncImage(
+                        model = calleeAvatar,
+                        contentDescription = calleeName,
+                        modifier = Modifier
+                            .size(140.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
                     Icon(
                         imageVector = Icons.Default.AccountCircle,
                         contentDescription = null,
-                        modifier = Modifier.size(120.dp),
+                        modifier = Modifier.size(140.dp),
                         tint = Color(0xFF666666)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = calleeName,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+
+        // 📱 Локальне відео (PiP) - показуємо ЗАВЖДИ якщо є localStream
+        localStream?.let { stream ->
+            if (stream.videoTracks.isNotEmpty()) {
+                var pipOffset by remember { mutableStateOf(Offset(0f, 0f)) }
+                LocalVideoPiP(
+                    localStream = stream,
+                    offset = pipOffset,
+                    onOffsetChange = { newOffset ->
+                        pipOffset = newOffset
+                    },
+                    onSwitchCamera = { viewModel.switchCamera() }
+                )
             }
         }
 
@@ -857,7 +885,6 @@ fun RemoteVideoView(
     onSwitchCamera: () -> Unit = {}
 ) {
     var isFullscreen by remember { mutableStateOf(false) }
-    var pipOffset by remember { mutableStateOf(Offset(0f, 0f)) }
 
     Box(
         modifier = Modifier
@@ -889,17 +916,7 @@ fun RemoteVideoView(
             }
         }
 
-        // 📱 PiP: Локальне відео (draggable + swipe to switch camera)
-        if (!isFullscreen && localStream != null) {
-            LocalVideoPiP(
-                localStream = localStream,
-                offset = pipOffset,
-                onOffsetChange = { newOffset ->
-                    pipOffset = newOffset
-                },
-                onSwitchCamera = onSwitchCamera
-            )
-        }
+        // Локальне відео тепер показується окремо в ActiveCallScreen
     }
 }
 

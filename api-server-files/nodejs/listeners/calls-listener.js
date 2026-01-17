@@ -295,6 +295,12 @@ async function registerCallsListeners(socket, io, ctx) {
         try {
             const { roomName, userId, reason } = data;
 
+            // ✅ Валідація: якщо немає roomName, пропустити
+            if (!roomName) {
+                console.warn('[CALLS] call:end received without roomName, ignoring');
+                return;
+            }
+
             console.log(`[CALLS] Call ended: ${roomName} by ${userId} (${reason})`);
 
             // Обновить в БД
@@ -353,6 +359,12 @@ async function registerCallsListeners(socket, io, ctx) {
     socket.on('call:reject', async (data) => {
         try {
             const { roomName, userId } = data;
+
+            // ✅ Валідація
+            if (!roomName) {
+                console.warn('[CALLS] call:reject received without roomName, ignoring');
+                return;
+            }
 
             console.log(`[CALLS] Call rejected: ${roomName} by ${userId}`);
 

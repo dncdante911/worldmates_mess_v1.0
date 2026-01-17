@@ -66,6 +66,7 @@ async function registerCallsListeners(socket, io, ctx) {
                     call_type: callType,
                     status: 'ringing',
                     room_name: roomName,
+                    sdp_offer: sdpOffer,
                     created_at: new Date()
                 });
 
@@ -200,7 +201,8 @@ async function registerCallsListeners(socket, io, ctx) {
             await ctx.wo_calls.update(
                 {
                     status: 'connected',
-                    accepted_at: new Date()
+                    accepted_at: new Date(),
+                    sdp_answer: sdpAnswer
                 },
                 { where: { room_name: roomName } }
             );
@@ -330,8 +332,7 @@ async function registerCallsListeners(socket, io, ctx) {
                     {
                         status: 'ended',
                         ended_at: new Date(),
-                        duration: duration,
-                        end_reason: reason
+                        duration: duration
                     },
                     { where: { room_name: roomName } }
                 );

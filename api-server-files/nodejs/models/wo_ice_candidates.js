@@ -16,11 +16,6 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             comment: 'Комната, к которой относится candidate'
         },
-        user_id: {
-            type: DataTypes.INTEGER(11),
-            allowNull: false,
-            comment: 'ID пользователя, отправившего candidate'
-        },
         candidate: {
             type: DataTypes.TEXT,
             allowNull: false,
@@ -44,7 +39,6 @@ module.exports = (sequelize, DataTypes) => {
         timestamps: false,
         indexes: [
             { fields: ['room_name'] },
-            { fields: ['user_id'] },
             { fields: ['created_at'] }
         ]
     });

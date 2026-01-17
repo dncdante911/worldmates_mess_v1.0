@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,6 +39,7 @@ import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
+import com.worldmates.messenger.ui.settings.getSavedCallFrameStyle
 import org.webrtc.MediaStream
 import org.webrtc.SurfaceViewRenderer
 
@@ -243,10 +245,15 @@ fun ActiveCallScreen(
     remoteStream: MediaStream?,
     connectionState: String
 ) {
+    val context = LocalContext.current
     var audioEnabled by remember { mutableStateOf(true) }
     var videoEnabled by remember { mutableStateOf(false) }
     var callDuration by remember { mutableStateOf(0) }
-    var currentFrameStyle by remember { mutableStateOf(CallFrameStyle.CLASSIC) }
+
+    // 🎨 Завантажити збережений стиль рамки з Settings
+    var currentFrameStyle by remember {
+        mutableStateOf(getSavedCallFrameStyle(context))
+    }
     val localStream by viewModel.localStreamAdded.observeAsState()
 
     LaunchedEffect(Unit) {

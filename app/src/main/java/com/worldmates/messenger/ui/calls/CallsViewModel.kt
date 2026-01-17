@@ -167,8 +167,15 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                                 add("sdpOffer", gson.toJsonTree(offer.description))
                             }
 
+                            Log.d("CallsViewModel", "🚀 Emitting call:initiate:")
+                            Log.d("CallsViewModel", "   fromId: ${getUserId()}")
+                            Log.d("CallsViewModel", "   toId: $recipientId")
+                            Log.d("CallsViewModel", "   callType: $callType")
+                            Log.d("CallsViewModel", "   roomName: $roomName")
+                            Log.d("CallsViewModel", "   fromName: ${getUserName()}")
+
                             socketManager.emit("call:initiate", callEvent)
-                            Log.d("CallsViewModel", "Call initiated to user $recipientId")
+                            Log.d("CallsViewModel", "✅ call:initiate emitted successfully")
                         },
                         onError = { error ->
                             callError.postValue(error)

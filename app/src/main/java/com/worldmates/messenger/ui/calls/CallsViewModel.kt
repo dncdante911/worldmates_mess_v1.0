@@ -111,7 +111,10 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
                         // Встановити remote description
                         val answerSdp = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
-                        webRTCManager.setRemoteDescription(answerSdp)
+                        webRTCManager.setRemoteDescription(answerSdp) { error ->
+                            Log.e("CallsViewModel", "Failed to set remote description: $error")
+                            callError.postValue("Failed to set remote description: $error")
+                        }
                     }
                 }
             } catch (e: Exception) {

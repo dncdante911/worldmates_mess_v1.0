@@ -78,13 +78,15 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     private fun setupWebRTCListeners() {
         webRTCManager.onIceCandidateListener = { candidate ->
             currentCallData?.let {
-                val iceCandidateData = IceCandidateData(
-                    roomName = it.roomName,
-                    candidate = candidate.sdp,
-                    sdpMLineIndex = candidate.sdpMLineIndex,
-                    sdpMid = candidate.sdpMid ?: ""
-                )
-                socketManager.emit("ice:candidate", gson.toJsonTree(iceCandidateData))
+                // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                val iceCandidateData = JSONObject().apply {
+                    put("roomName", it.roomName)
+                    put("fromUserId", getUserId())
+                    put("candidate", candidate.sdp)
+                    put("sdpMLineIndex", candidate.sdpMLineIndex)
+                    put("sdpMid", candidate.sdpMid ?: "")
+                }
+                socketManager.emit("ice:candidate", iceCandidateData)
             }
         }
 
@@ -158,13 +160,14 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                             )
                             isInitiator = true
 
-                            val callEvent = JsonObject().apply {
-                                addProperty("fromId", getUserId())
-                                addProperty("toId", recipientId)
-                                addProperty("callType", callType)
-                                addProperty("roomName", roomName)
-                                addProperty("fromName", getUserName())
-                                add("sdpOffer", gson.toJsonTree(offer.description))
+                            // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                            val callEvent = JSONObject().apply {
+                                put("fromId", getUserId())
+                                put("toId", recipientId)
+                                put("callType", callType)
+                                put("roomName", roomName)
+                                put("fromName", getUserName())
+                                put("sdpOffer", offer.description)
                             }
 
                             Log.d("CallsViewModel", "🚀 Emitting call:initiate:")
@@ -227,12 +230,13 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                             )
                             isInitiator = true
 
-                            val groupCallEvent = JsonObject().apply {
-                                addProperty("groupId", groupId)
-                                addProperty("initiatedBy", getUserId())
-                                addProperty("callType", callType)
-                                addProperty("roomName", roomName)
-                                add("sdpOffer", gson.toJsonTree(offer.description))
+                            // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                            val groupCallEvent = JSONObject().apply {
+                                put("groupId", groupId)
+                                put("initiatedBy", getUserId())
+                                put("callType", callType)
+                                put("roomName", roomName)
+                                put("sdpOffer", offer.description)
                             }
 
                             socketManager.emit("group_call:initiate", groupCallEvent)
@@ -288,10 +292,11 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 // 4. Создать answer
                 webRTCManager.createAnswer(
                     onSuccess = { answer ->
-                        val acceptEvent = JsonObject().apply {
-                            addProperty("roomName", callData.roomName)
-                            addProperty("fromId", getUserId())
-                            add("sdpAnswer", gson.toJsonTree(answer.description))
+                        // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                        val acceptEvent = JSONObject().apply {
+                            put("roomName", callData.roomName)
+                            put("userId", getUserId())
+                            put("sdpAnswer", answer.description)
                         }
                         socketManager.emit("call:accept", acceptEvent)
                         Log.d("CallsViewModel", "Call accepted")
@@ -310,8 +315,10 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Отклонить вызов
      */
     fun rejectCall(roomName: String) {
-        val rejectEvent = JsonObject().apply {
-            addProperty("roomName", roomName)
+        // ✅ Використовуємо org.json.JSONObject для Socket.IO
+        val rejectEvent = JSONObject().apply {
+            put("roomName", roomName)
+            put("userId", getUserId())
         }
         socketManager.emit("call:reject", rejectEvent)
         incomingCall.postValue(null)
@@ -322,9 +329,11 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      */
     fun endCall() {
         currentCallData?.let { callData ->
-            val endEvent = JsonObject().apply {
-                addProperty("roomName", callData.roomName)
-                addProperty("reason", "user_ended")
+            // ✅ Використовуємо org.json.JSONObject для Socket.IO
+            val endEvent = JSONObject().apply {
+                put("roomName", callData.roomName)
+                put("userId", getUserId())
+                put("reason", "user_ended")
             }
             socketManager.emit("call:end", endEvent)
         }

@@ -33,7 +33,7 @@ class WebRTCManager(private val context: Context) {
     )
 
     var onIceCandidateListener: ((IceCandidate) -> Unit)? = null
-    var onTrackListener: ((RtpReceiver, Array<MediaStream>) -> Unit)? = null
+    var onTrackListener: ((RtpTransceiver) -> Unit)? = null
     var onRemoveTrackListener: (() -> Unit)? = null
     var onConnectionStateChangeListener: ((PeerConnection.PeerConnectionState) -> Unit)? = null
     var onIceConnectionStateChangeListener: ((PeerConnection.IceConnectionState) -> Unit)? = null
@@ -119,9 +119,11 @@ class WebRTCManager(private val context: Context) {
                         // Deprecated in Unified Plan
                     }
 
-                    override fun onTrack(receiver: RtpReceiver, streams: Array<MediaStream>) {
-                        Log.d("WebRTCManager", "Remote track received: ${receiver.track()?.kind()}, streams: ${streams.size}")
-                        onTrackListener?.invoke(receiver, streams)
+                    override fun onTrack(transceiver: RtpTransceiver) {
+                        val track = transceiver.receiver.track()
+                        val streams = transceiver.receiver.streams()
+                        Log.d("WebRTCManager", "Remote track received: ${track?.kind()}, streams: ${streams.size}")
+                        onTrackListener?.invoke(transceiver)
                     }
 
                     override fun onDataChannel(dataChannel: DataChannel) {}

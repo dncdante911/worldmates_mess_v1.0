@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -58,12 +59,35 @@ enum class CallFrameStyle {
 class CallsActivity : ComponentActivity() {
 
     private lateinit var callsViewModel: CallsViewModel
+    private var shouldInitiateCall = false
+    private var callInitiated = false
+
+    // 📋 Параметри дзвінка з Intent
+    private var recipientId: Long = 0
+    private var recipientName: String = ""
+    private var recipientAvatar: String = ""
+    private var callType: String = "audio"  // "audio" або "video"
+    private var isGroup: Boolean = false
+    private var groupId: Long = 0
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            if (permissions.getOrDefault(Manifest.permission.RECORD_AUDIO, false) &&
-                permissions.getOrDefault(Manifest.permission.CAMERA, false)) {
-                // Дозволи отримано
+            val audioGranted = permissions.getOrDefault(Manifest.permission.RECORD_AUDIO, false)
+            val cameraGranted = permissions.getOrDefault(Manifest.permission.CAMERA, false)
+
+            if (audioGranted && (callType == "audio" || cameraGranted)) {
+                // ✅ Дозволи отримано - ініціюємо дзвінок
+                if (shouldInitiateCall && !callInitiated) {
+                    initiateCall()
+                }
+            } else {
+                // ❌ Дозволи не надано
+                android.widget.Toast.makeText(
+                    this,
+                    "Для дзвінків потрібні дозволи на мікрофон" + if (callType == "video") " та камеру" else "",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                finish()
             }
         }
 
@@ -75,14 +99,75 @@ class CallsActivity : ComponentActivity() {
 
         callsViewModel = ViewModelProvider(this).get(CallsViewModel::class.java)
 
+        // 📥 Отримати параметри з Intent
+        recipientId = intent.getLongExtra("recipientId", 0)
+        recipientName = intent.getStringExtra("recipientName") ?: "Користувач"
+        recipientAvatar = intent.getStringExtra("recipientAvatar") ?: ""
+        callType = intent.getStringExtra("callType") ?: "audio"
+        isGroup = intent.getBooleanExtra("isGroup", false)
+        groupId = intent.getLongExtra("groupId", 0)
+
+        // Якщо є recipientId або groupId - потрібно ініціювати дзвінок
+        shouldInitiateCall = (recipientId > 0 || groupId > 0)
+
+        // Налаштувати Socket.IO listeners
+        setupSocketListeners()
+
         // Запросити дозволи
         requestPermissions()
 
         setContent {
             WorldMatesThemedApp {
-                CallsScreen(callsViewModel, this)
+                CallsScreen(
+                    callsViewModel,
+                    this,
+                    isInitiating = shouldInitiateCall && !callInitiated,
+                    calleeName = recipientName,
+                    calleeAvatar = recipientAvatar,
+                    callType = callType
+                )
             }
         }
+
+        // Обробити завершення дзвінка
+        callsViewModel.callEnded.observe(this) { ended ->
+            if (ended == true) {
+                finish()
+            }
+        }
+    }
+
+    /**
+     * 📞 Ініціювати дзвінок
+     */
+    private fun initiateCall() {
+        callInitiated = true
+        android.util.Log.d("CallsActivity", "Ініціація дзвінка: recipientId=$recipientId, type=$callType, isGroup=$isGroup")
+
+        if (isGroup && groupId > 0) {
+            // Груповий дзвінок
+            callsViewModel.initiateGroupCall(
+                groupId = groupId.toInt(),
+                groupName = recipientName,
+                callType = callType
+            )
+        } else if (recipientId > 0) {
+            // Особистий дзвінок
+            callsViewModel.initiateCall(
+                recipientId = recipientId.toInt(),
+                recipientName = recipientName,
+                recipientAvatar = recipientAvatar,
+                callType = callType
+            )
+        }
+    }
+
+    /**
+     * 🔌 Налаштувати Socket.IO listeners для вхідних подій
+     */
+    private fun setupSocketListeners() {
+        // TODO: Підключити Socket.IO events (call:incoming, call:answer, ice:candidate, call:end)
+        android.util.Log.d("CallsActivity", "Socket.IO listeners налаштовано")
     }
 
     private fun requestPermissions() {
@@ -103,7 +188,14 @@ class CallsActivity : ComponentActivity() {
  * Основний екран дзвінків
  */
 @Composable
-fun CallsScreen(viewModel: CallsViewModel, activity: CallsActivity) {
+fun CallsScreen(
+    viewModel: CallsViewModel,
+    activity: CallsActivity,
+    isInitiating: Boolean = false,
+    calleeName: String = "",
+    calleeAvatar: String = "",
+    callType: String = "audio"
+) {
     val incomingCall by viewModel.incomingCall.observeAsState()
     val callConnected by viewModel.callConnected.observeAsState(false)
     val callEnded by viewModel.callEnded.observeAsState(false)
@@ -118,19 +210,32 @@ fun CallsScreen(viewModel: CallsViewModel, activity: CallsActivity) {
     ) {
         when {
             incomingCall != null && !callConnected -> {
+                // 📞 Вхідний дзвінок
                 IncomingCallScreen(incomingCall!!, viewModel)
             }
             callConnected -> {
+                // ✅ Активний дзвінок
                 ActiveCallScreen(
                     viewModel = viewModel,
                     remoteStream = remoteStream,
                     connectionState = connectionState ?: "CONNECTING"
                 )
             }
+            isInitiating || (connectionState != "IDLE" && !callConnected) -> {
+                // 📤 Вихідний дзвінок (ініціюємо або з'єднуємося)
+                OutgoingCallScreen(
+                    calleeName = calleeName,
+                    calleeAvatar = calleeAvatar,
+                    callType = callType,
+                    viewModel = viewModel
+                )
+            }
             callError != null -> {
+                // ❌ Помилка дзвінка
                 ErrorScreen(callError!!, viewModel)
             }
             else -> {
+                // ⏸️ Очікування
                 IdleScreen(viewModel)
             }
         }
@@ -232,6 +337,95 @@ fun IncomingCallScreen(callData: CallData, viewModel: CallsViewModel) {
                     modifier = Modifier.size(32.dp)
                 )
             }
+        }
+    }
+}
+
+/**
+ * 📤 Екран вихідного дзвінка (дзвонимо...)
+ */
+@Composable
+fun OutgoingCallScreen(
+    calleeName: String,
+    calleeAvatar: String,
+    callType: String,
+    viewModel: CallsViewModel
+) {
+    // Анімація пульсації
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0d0d0d)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Аватар
+        if (calleeAvatar.isNotEmpty()) {
+            AsyncImage(
+                model = calleeAvatar,
+                contentDescription = calleeName,
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+                tint = Color(0xFF888888)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Ім'я
+        Text(
+            text = calleeName,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Статус з анімацією
+        Text(
+            text = if (callType == "video") "📹 Відеодзвінок..." else "📞 Дзвонимо...",
+            fontSize = 16.sp,
+            color = Color(0xFFbbbbbb).copy(alpha = alpha),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(60.dp))
+
+        // Кнопка скасування
+        IconButton(
+            onClick = { viewModel.endCall() },
+            modifier = Modifier
+                .size(64.dp)
+                .background(Color(0xFFd32f2f), CircleShape)
+                .clip(CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CallEnd,
+                contentDescription = "Cancel",
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
         }
     }
 }

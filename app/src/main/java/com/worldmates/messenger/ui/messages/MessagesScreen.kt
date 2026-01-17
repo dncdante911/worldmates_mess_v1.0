@@ -383,12 +383,34 @@ fun MessagesScreen(
                     android.widget.Toast.makeText(context, "Профіль: $recipientName", android.widget.Toast.LENGTH_SHORT).show()
                 },
                 onCallClick = {
-                    Log.d("MessagesScreen", "Аудіо дзвінок до: $recipientName")
-                    android.widget.Toast.makeText(context, "Дзвінок до $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                    // 📞 Аудіо дзвінок
+                    val intent = android.content.Intent(context, com.worldmates.messenger.ui.calls.CallsActivity::class.java).apply {
+                        putExtra("recipientId", viewModel.getRecipientId())
+                        putExtra("recipientName", recipientName)
+                        putExtra("recipientAvatar", recipientAvatar)
+                        putExtra("callType", "audio")
+                        putExtra("isGroup", isGroup)
+                        if (isGroup) {
+                            putExtra("groupId", viewModel.getGroupId())
+                        }
+                    }
+                    context.startActivity(intent)
+                    Log.d("MessagesScreen", "Запускаємо аудіо дзвінок до: $recipientName")
                 },
                 onVideoCallClick = {
-                    Log.d("MessagesScreen", "Відеодзвінок до: $recipientName")
-                    android.widget.Toast.makeText(context, "Відеодзвінок до $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                    // 📹 Відеодзвінок
+                    val intent = android.content.Intent(context, com.worldmates.messenger.ui.calls.CallsActivity::class.java).apply {
+                        putExtra("recipientId", viewModel.getRecipientId())
+                        putExtra("recipientName", recipientName)
+                        putExtra("recipientAvatar", recipientAvatar)
+                        putExtra("callType", "video")
+                        putExtra("isGroup", isGroup)
+                        if (isGroup) {
+                            putExtra("groupId", viewModel.getGroupId())
+                        }
+                    }
+                    context.startActivity(intent)
+                    Log.d("MessagesScreen", "Запускаємо відеодзвінок до: $recipientName")
                 },
                 onSearchClick = {
                     if (isGroup) {

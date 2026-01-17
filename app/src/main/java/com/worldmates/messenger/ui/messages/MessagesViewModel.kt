@@ -121,6 +121,10 @@ class MessagesViewModel(application: Application) :
     private var mediaUploader: MediaUploader? = null
     private var fileManager: FileManager? = null
 
+    // 🎥 Публічні getters для відеодзвінків
+    fun getRecipientId(): Long = recipientId
+    fun getGroupId(): Long = groupId
+
     fun initialize(recipientId: Long) {
         Log.d("MessagesViewModel", "🔧 initialize() викликано для користувача $recipientId")
         this.recipientId = recipientId

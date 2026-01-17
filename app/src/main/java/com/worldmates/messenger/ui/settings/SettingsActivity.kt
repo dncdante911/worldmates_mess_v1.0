@@ -99,6 +99,11 @@ class SettingsActivity : AppCompatActivity() {
                             onBackClick = { currentScreen = SettingsScreen.Main }
                         )
                     }
+                    SettingsScreen.CallFrameStyle -> {
+                        CallFrameSettingsScreen(
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
                     SettingsScreen.MyGroups -> {
                         MyGroupsScreen(
                             viewModel = viewModel,
@@ -138,6 +143,7 @@ sealed class SettingsScreen {
     object Privacy : SettingsScreen()
     object Notifications : SettingsScreen()
     object Theme : SettingsScreen()
+    object CallFrameStyle : SettingsScreen()
     object MyGroups : SettingsScreen()
     object TwoFactorAuth : SettingsScreen()
     object AppLock : SettingsScreen()
@@ -423,6 +429,14 @@ fun SettingsScreen(
                     title = "Тема",
                     subtitle = "Налаштування кольорів",
                     onClick = { onNavigate(SettingsScreen.Theme) }
+                )
+            }
+            item {
+                SettingsItem(
+                    icon = Icons.Default.Videocam,
+                    title = "Стиль рамок відеодзвінків",
+                    subtitle = "Classic, Neon, Gradient, Rainbow...",
+                    onClick = { onNavigate(SettingsScreen.CallFrameStyle) }
                 )
             }
             item {

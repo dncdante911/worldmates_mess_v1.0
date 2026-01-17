@@ -39,6 +39,16 @@ module.exports = (sequelize, DataTypes) => {
             unique: true,
             comment: 'Уникальное имя комнаты для WebRTC'
         },
+        sdp_offer: {
+            type: DataTypes.TEXT('long'),
+            allowNull: true,
+            comment: 'SDP offer от инициатора'
+        },
+        sdp_answer: {
+            type: DataTypes.TEXT('long'),
+            allowNull: true,
+            comment: 'SDP answer от получателя'
+        },
         created_at: {
             type: DataTypes.DATE,
             allowNull: false,
@@ -59,11 +69,6 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER(11),
             allowNull: true,
             comment: 'Длительность звонка в секундах'
-        },
-        end_reason: {
-            type: DataTypes.STRING(50),
-            allowNull: true,
-            comment: 'Причина завершения звонка'
         }
     }, {
         tableName: 'wo_calls',

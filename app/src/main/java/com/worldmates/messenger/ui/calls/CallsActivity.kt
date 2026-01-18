@@ -1,8 +1,11 @@
 package com.worldmates.messenger.ui.calls
 
 import android.Manifest
+import android.app.PictureInPictureParams
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -41,8 +43,11 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.ui.settings.getSavedCallFrameStyle
+import kotlinx.coroutines.delay
+import org.json.JSONObject
 import org.webrtc.MediaStream
 import org.webrtc.SurfaceViewRenderer
+import kotlin.math.abs
 
 /**
  * 🎨 Стилі кастомних рамок для відеодзвінків
@@ -82,10 +87,10 @@ class CallsActivity : ComponentActivity() {
                 }
             } else {
                 // ❌ Дозволи не надано
-                android.widget.Toast.makeText(
+                Toast.makeText(
                     this,
                     "Для дзвінків потрібні дозволи на мікрофон" + if (callType == "video") " та камеру" else "",
-                    android.widget.Toast.LENGTH_LONG
+                    Toast.LENGTH_LONG
                 ).show()
                 finish()
             }
@@ -142,7 +147,7 @@ class CallsActivity : ComponentActivity() {
      */
     private fun initiateCall() {
         callInitiated = true
-        android.util.Log.d("CallsActivity", "Ініціація дзвінка: recipientId=$recipientId, type=$callType, isGroup=$isGroup")
+        Log.d("CallsActivity", "Ініціація дзвінка: recipientId=$recipientId, type=$callType, isGroup=$isGroup")
 
         if (isGroup && groupId > 0) {
             // Груповий дзвінок
@@ -166,80 +171,48 @@ class CallsActivity : ComponentActivity() {
      * 🔌 Налаштувати Socket.IO listeners для вхідних подій
      */
     private fun setupSocketListeners() {
-        android.util.Log.d("CallsActivity", "Налаштування Socket.IO listeners для дзвінків...")
+        Log.d("CallsActivity", "Налаштування Socket.IO listeners для дзвінків...")
 
         // 📞 Вхідний дзвінок
         callsViewModel.socketManager.on("call:incoming") { args ->
-            try {
-                if (args.isNotEmpty()) {
-                    val data = args[0] as? org.json.JSONObject
-                    data?.let {
-                        android.util.Log.d("CallsActivity", "📞 Отримано вхідний дзвінок від ${it.optInt("fromId")}")
-
-                        val callData = com.google.gson.JsonParser.parseString(data.toString()).asJsonObject
-                        callsViewModel.onIncomingCall(callData)
-                    }
+            if (args.isNotEmpty()) {
+                (args[0] as? JSONObject)?.let { data ->
+                    Log.d("CallsActivity", "📞 Вхідний дзвінок: ${data.optInt("fromId")}")
+                    // Передаємо нативний JSONObject прямо у ViewModel
+                    callsViewModel.onIncomingCall(data)
                 }
-            } catch (e: Exception) {
-                android.util.Log.e("CallsActivity", "Помилка обробки call:incoming", e)
             }
         }
 
-        // ✅ Відповідь на дзвінок (SDP answer)
+// ✅ Відповідь на дзвінок
         callsViewModel.socketManager.on("call:answer") { args ->
-            try {
-                if (args.isNotEmpty()) {
-                    val data = args[0] as? org.json.JSONObject
-                    data?.let {
-                        android.util.Log.d("CallsActivity", "✅ Отримано відповідь на дзвінок")
-
-                        val answerData = com.google.gson.JsonParser.parseString(data.toString()).asJsonObject
-                        callsViewModel.onCallAnswer(answerData)
-                    }
+            if (args.isNotEmpty()) {
+                (args[0] as? JSONObject)?.let { data ->
+                    callsViewModel.onCallAnswer(data)
                 }
-            } catch (e: Exception) {
-                android.util.Log.e("CallsActivity", "Помилка обробки call:answer", e)
             }
         }
 
-        // 🧊 ICE candidate
+// 🧊 ICE candidate
         callsViewModel.socketManager.on("ice:candidate") { args ->
-            try {
-                if (args.isNotEmpty()) {
-                    val data = args[0] as? org.json.JSONObject
-                    data?.let {
-                        android.util.Log.d("CallsActivity", "🧊 Отримано ICE candidate")
-
-                        val candidateData = com.google.gson.JsonParser.parseString(data.toString()).asJsonObject
-                        callsViewModel.onIceCandidate(candidateData)
-                    }
+            if (args.isNotEmpty()) {
+                (args[0] as? JSONObject)?.let { data ->
+                    callsViewModel.onIceCandidate(data)
                 }
-            } catch (e: Exception) {
-                android.util.Log.e("CallsActivity", "Помилка обробки ice:candidate", e)
             }
         }
 
-        // ❌ Завершення дзвінка
-        callsViewModel.socketManager.on("call:end") { args ->
-            try {
-                android.util.Log.d("CallsActivity", "❌ Дзвінок завершено")
-                callsViewModel.endCall()
-            } catch (e: Exception) {
-                android.util.Log.e("CallsActivity", "Помилка обробки call:end", e)
-            }
+// ❌ Завершення дзвінка
+        callsViewModel.socketManager.on("call:end") {
+            Log.d("CallsActivity", "❌ Завершення дзвінка")
+            callsViewModel.endCall()
         }
 
         // 🚫 Відхилення дзвінка
-        callsViewModel.socketManager.on("call:reject") { args ->
-            try {
-                android.util.Log.d("CallsActivity", "🚫 Дзвінок відхилено")
-                callsViewModel.endCall()
-            } catch (e: Exception) {
-                android.util.Log.e("CallsActivity", "Помилка обробки call:reject", e)
-            }
+        callsViewModel.socketManager.on("call:reject") {
+            Log.d("CallsActivity", "🚫 Відхилено")
+            callsViewModel.endCall()
         }
-
-        android.util.Log.d("CallsActivity", "✅ Socket.IO listeners налаштовано успішно")
     }
 
     private fun requestPermissions() {
@@ -522,7 +495,7 @@ fun ActiveCallScreen(
 
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(1000)
+            delay(1000)
             callDuration++
         }
     }
@@ -588,7 +561,8 @@ fun ActiveCallScreen(
                     onOffsetChange = { newOffset ->
                         pipOffset = newOffset
                     },
-                    onSwitchCamera = { viewModel.switchCamera() }
+                    viewModel = viewModel,
+                    onSwitchCamera = { viewModel.switchCamera() },
                 )
             }
         }
@@ -733,7 +707,7 @@ fun ActiveCallScreen(
                     // Minimize to PiP mode
                     if (context is ComponentActivity) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            val params = android.app.PictureInPictureParams.Builder().build()
+                            val params = PictureInPictureParams.Builder().build()
                             context.enterPictureInPictureMode(params)
                         }
                     }
@@ -847,6 +821,7 @@ fun CallControlButton(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.clickable { onClick() }
+
     ) {
         Box(
             modifier = Modifier
@@ -928,6 +903,7 @@ fun LocalVideoPiP(
     localStream: MediaStream,
     offset: Offset,
     onOffsetChange: (Offset) -> Unit,
+    viewModel: CallsViewModel,
     onSwitchCamera: () -> Unit = {}
 ) {
     var isDragging by remember { mutableStateOf(false) }
@@ -953,9 +929,10 @@ fun LocalVideoPiP(
 
                         // Перевірка на swipe (горизонтальний рух більше 100px)
                         val totalDragX = change.position.x - dragStartOffset.x
-                        if (kotlin.math.abs(totalDragX) > 100f && kotlin.math.abs(dragAmount.y) < 50f) {
+                        if (abs(totalDragX) > 100f && abs(dragAmount.y) < 50f) {
                             // Swipe left/right → switch camera
                             onSwitchCamera()
+                            viewModel.switchCamera()
                             isDragging = false
                         } else {
                             // Normal drag → move PiP
@@ -1059,7 +1036,7 @@ fun NeonVideoFrame(remoteStream: MediaStream) {
 
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(1000)
+            delay(1000)
             animatedAlpha = if (animatedAlpha == 1f) 0.5f else 1f
         }
     }
@@ -1192,7 +1169,7 @@ fun RainbowVideoFrame(remoteStream: MediaStream) {
 
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(50)
+            delay(50)
             offsetX = (offsetX + 10f) % 360f
         }
     }

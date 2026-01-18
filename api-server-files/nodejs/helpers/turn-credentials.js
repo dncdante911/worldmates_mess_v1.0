@@ -1,34 +1,33 @@
 /**
  * TURN Credentials Helper for WorldMates
  * Generates dynamic TURN credentials using HMAC-SHA1
- *
- * Integrates with existing Node.js backend structure
  */
 
 const crypto = require('crypto');
 
-// ⚠️ ВАЖНО: Этот секрет ДОЛЖЕН совпадать с static-auth-secret в /etc/turnserver.conf
-const TURN_SECRET = 'a7f3e9c2d8b4f6a1c5e8d9b2f4a6c8e1d3f5a7b9c2e4f6a8b1d3f5a7c9e2f4a6';
+// ВАЖНО: Этот секрет совпадает с static-auth-secret в /etc/turnserver.conf
+const TURN_SECRET = 'ad8a76d057d6ba0d6fd79bbc84504e320c8538b92db5c9b84fc3bd18d1c511b9';
 
-// TURN server configuration
+// Конфигурация серверов (внешние IP вашего шлюза с HAProxy)
 const TURN_SERVER_URL = 'worldmates.club';
+const TURN_IPS = ['195.22.131.11', '46.232.232.38'];
 const TURN_PORT = 3478;
 const TURN_TLS_PORT = 5349;
 
 /**
- * Generate TURN credentials for a user
- * @param {string|number} userId - User ID
- * @param {number} ttl - Time to live in seconds (default: 86400 = 24 hours)
+ * Генерирует временные учетные данные TURN для пользователя
+ * @param {string|number} userId - ID пользователя
+ * @param {number} ttl - Время жизни в секундах (по умолчанию 24 часа)
  * @returns {Object} - { username, password, expiresAt }
  */
 function generateTurnCredentials(userId, ttl = 86400) {
-    // Unix timestamp когда credentials истекут
+    // Unix timestamp срока действия
     const expirationTimestamp = Math.floor(Date.now() / 1000) + ttl;
 
-    // Username формат: timestamp:userId
+    // Формат имени пользователя для Coturn: timestamp:userId
     const username = `${expirationTimestamp}:${userId}`;
 
-    // Password: base64(HMAC-SHA1(secret, username))
+    // Генерация пароля: base64(HMAC-SHA1(secret, username))
     const hmac = crypto.createHmac('sha1', TURN_SECRET);
     hmac.update(username);
     const password = hmac.digest('base64');
@@ -41,47 +40,45 @@ function generateTurnCredentials(userId, ttl = 86400) {
 }
 
 /**
- * Get complete ICE servers configuration for WebRTC
- * @param {string|number} userId - User ID
- * @param {number} ttl - Credential TTL in seconds
- * @returns {Array} - Array of ICE server configurations
+ * Получает полную конфигурацию ICE серверов для WebRTC
+ * @param {string|number} userId - ID пользователя
+ * @param {number} ttl - TTL учетных данных
+ * @returns {Array} - Массив конфигураций ICE серверов
  */
 function getIceServers(userId, ttl = 86400) {
     const turnCredentials = generateTurnCredentials(userId, ttl);
 
-    return [
-        // Google STUN servers (бесплатные, для NAT traversal)
-        {
-            urls: 'stun:stun.l.google.com:19302'
-        },
-        {
-            urls: 'stun:stun1.l.google.com:19302'
-        },
+    // Базовые STUN серверы Google
+    const iceServers = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ];
 
-        // WorldMates TURN server (с динамическими credentials)
-        {
+    // Добавляем TURN серверы для каждого внешнего IP
+    TURN_IPS.forEach(ip => {
+        // Стандартный TURN (UDP и TCP)
+        iceServers.push({
             urls: [
-                `turn:${TURN_SERVER_URL}:${TURN_PORT}?transport=udp`,
-                `turn:${TURN_SERVER_URL}:${TURN_PORT}?transport=tcp`
+                `turn:${ip}:${TURN_PORT}?transport=udp`,
+                `turn:${ip}:${TURN_PORT}?transport=tcp`
             ],
             username: turnCredentials.username,
             credential: turnCredentials.password
-        },
+        });
 
-        // TURN over TLS (более безопасный)
-        {
-            urls: `turns:${TURN_SERVER_URL}:${TURN_TLS_PORT}?transport=tcp`,
+        // Защищенный TURN over TLS (через TCP)
+        iceServers.push({
+            urls: `turns:${ip}:${TURN_TLS_PORT}?transport=tcp`,
             username: turnCredentials.username,
             credential: turnCredentials.password
-        }
-    ];
+        });
+    });
+
+    return iceServers;
 }
 
 /**
- * Validate TURN credentials
- * @param {string} username - Format: "timestamp:userId"
- * @param {string} password - Base64 HMAC-SHA1
- * @returns {boolean} - True if valid and not expired
+ * Проверка валидности учетных данных (если потребуется на бэкенде)
  */
 function validateTurnCredentials(username, password) {
     try {
@@ -91,13 +88,8 @@ function validateTurnCredentials(username, password) {
         const expirationTimestamp = parseInt(parts[0]);
         const now = Math.floor(Date.now() / 1000);
 
-        // Check expiration
-        if (now > expirationTimestamp) {
-            console.log('[TURN] Credentials expired');
-            return false;
-        }
+        if (now > expirationTimestamp) return false;
 
-        // Verify HMAC
         const hmac = crypto.createHmac('sha1', TURN_SECRET);
         hmac.update(username);
         const expectedPassword = hmac.digest('base64');
@@ -110,9 +102,7 @@ function validateTurnCredentials(username, password) {
 }
 
 /**
- * Get ICE servers configuration in simple format for Android
- * @param {string|number} userId - User ID
- * @returns {Object} - Simplified ICE configuration
+ * Формат ответа специально для Android/iOS и API
  */
 function getIceConfigForAndroid(userId) {
     const iceServers = getIceServers(userId);

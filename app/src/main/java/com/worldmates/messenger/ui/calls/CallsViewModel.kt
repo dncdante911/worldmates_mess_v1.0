@@ -6,7 +6,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.model.*
-import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.SocketManager
 import com.worldmates.messenger.network.WebRTCManager
 import kotlinx.coroutines.*
@@ -42,7 +41,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     private val gson = Gson()
 
     // LiveData для UI
-    val incomingCall = MutableLiveData<CallData>()
+    val incomingCall = MutableLiveData<CallData?>()
     val callConnected = MutableLiveData<Boolean>()
     val callEnded = MutableLiveData<Boolean>()
     val callError = MutableLiveData<String>()
@@ -85,13 +84,11 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         socketManager.on("call:incoming") { args ->
             try {
                 if (args.isNotEmpty()) {
-                    val data = args[0] as? JSONObject
+                    val data = args[0] as? org.json.JSONObject // Используем нативный тип
                     data?.let {
-                        Log.d("CallsViewModel", "📞 Incoming call received from ${it.optInt("fromId")}")
-
-                        // Конвертувати в Gson JsonObject для сумісності
-                        val callData = gson.fromJson(data.toString(), JsonObject::class.java)
-                        onIncomingCall(callData)
+                        Log.d("CallsViewModel", "📞 Incoming call received")
+                        // Передаем напрямую объект org.json.JSONObject
+                        onIncomingCall(it)
                     }
                 }
             } catch (e: Exception) {
@@ -520,22 +517,35 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     // Call-specific handlers (not part of SocketListener interface)
-    fun onIncomingCall(data: JsonObject) {
+    fun onIncomingCall(data: org.json.JSONObject) { // Работаем напрямую с JSONObject
+        val roomName = data.optString("roomName", "")
         try {
             val callData = CallData(
-                callId = data.get("callId").asInt,
-                fromId = data.get("fromId").asInt,
-                fromName = data.get("fromName").asString,
-                fromAvatar = data.get("fromAvatar").asString,
+                // optInt/optString никогда не вызовут NullPointerException
+                callId = data.optInt("callId", 0),
+                fromId = data.optInt("fromId", 0),
+                fromName = data.optString("fromName", "Анонім"),
+                fromAvatar = data.optString("fromAvatar", ""),
                 toId = getUserId(),
-                callType = data.get("callType").asString,
-                roomName = data.get("roomName").asString,
-                sdpOffer = data.get("sdpOffer")?.asString
+                callType = data.optString("callType", "audio"),
+                roomName = data.optString("roomName", ""),
+                sdpOffer = data.optString("sdpOffer", null)
             )
+
+            if (currentCallData?.roomName == roomName) {
+                Log.d("CallsViewModel", "⚠️ Игнорируем дубликат входящего звонка для комнаты: $roomName")
+                return
+            }
+            if (callData.roomName.isEmpty()) {
+                Log.e("CallsViewModel", "❌ Room name is empty, ignoring call")
+                return
+            }
+
             incomingCall.postValue(callData)
+
             Log.d("CallsViewModel", "📞 Incoming call from ${callData.fromName}")
 
-            // ✅ Запустити IncomingCallActivity
+            // Запуск Activity через контекст приложения
             val intent = IncomingCallActivity.createIntent(
                 context = getApplication(),
                 fromId = callData.fromId,
@@ -544,41 +554,50 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 callType = callData.callType,
                 roomName = callData.roomName,
                 sdpOffer = callData.sdpOffer
-            )
-            getApplication<android.app.Application>().startActivity(intent)
-            Log.d("CallsViewModel", "🚀 IncomingCallActivity launched")
+            ).apply {
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            getApplication<Application>().startActivity(intent)
+
         } catch (e: Exception) {
-            Log.e("CallsViewModel", "Error parsing incoming call", e)
+            Log.e("CallsViewModel", "🔥 Error parsing incoming call safely: ${e.message}")
         }
     }
 
-    fun onCallAnswer(data: JsonObject) {
+    fun onCallAnswer(data: org.json.JSONObject) { // Проверь, что тут JSONObject
         try {
-            val sdpAnswer = data.get("sdpAnswer").asString
-            val remoteDescription = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
-            webRTCManager.setRemoteDescription(remoteDescription) { error ->
-                callError.postValue(error)
+            // В org.json используем optString вместо get().asString
+            val sdpAnswer = data.optString("sdpAnswer", "")
+            if (sdpAnswer.isNotEmpty()) {
+                val remoteDescription = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
+                webRTCManager.setRemoteDescription(remoteDescription) { error ->
+                    callError.postValue(error)
+                }
+                Log.d("CallsViewModel", "✅ Received answer and set remote description")
             }
-            Log.d("CallsViewModel", "Received answer")
         } catch (e: Exception) {
             Log.e("CallsViewModel", "Error handling answer", e)
         }
     }
 
-    fun onIceCandidate(data: JsonObject) {
+    fun onIceCandidate(data: org.json.JSONObject) { // И тут JSONObject
         try {
-            val candidate = data.get("candidate").asString
-            val sdpMLineIndex = data.get("sdpMLineIndex").asInt
-            val sdpMid = data.get("sdpMid").asString
+            // В org.json используем optString и optInt
+            val candidate = data.optString("candidate", "")
+            val sdpMLineIndex = data.optInt("sdpMLineIndex", 0)
+            val sdpMid = data.optString("sdpMid", "")
 
-            val iceCandidate = IceCandidate(sdpMid, sdpMLineIndex, candidate)
-            webRTCManager.addIceCandidate(iceCandidate)
+            if (candidate.isNotEmpty()) {
+                val iceCandidate = IceCandidate(sdpMid, sdpMLineIndex, candidate)
+                webRTCManager.addIceCandidate(iceCandidate)
+                Log.d("CallsViewModel", "🧊 ICE candidate added from remote")
+            }
         } catch (e: Exception) {
             Log.e("CallsViewModel", "Error adding ICE candidate", e)
         }
     }
 
-    fun onCallEnded(data: JsonObject) {
+    fun onCallEnded(data: JSONObject) { // Изменили тип с JsonObject на JSONObject
         webRTCManager.close()
         callEnded.postValue(true)
         currentCallData = null

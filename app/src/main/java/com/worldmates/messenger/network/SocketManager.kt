@@ -187,10 +187,10 @@ class SocketManager(
             // 8. Обработка индикатора печатания
             socket?.on(Constants.SOCKET_EVENT_TYPING) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
-                    val data = args[0] as JSONObject
+                    val data = args[0] as? org.json.JSONObject
                     // Сервер отправляет sender_id (НЕ user_id!) и is_typing: 200 (печатает) или 300 (закончил)
-                    val senderId = data.optLong("sender_id", 0)
-                    val isTypingCode = data.optInt("is_typing", 0)
+                    val senderId = data?.optLong("sender_id", 0)
+                    val isTypingCode = data?.optInt("is_typing", 0)
                     val isTyping = isTypingCode == 200  // 200 = печатает, 300 = закончил
                     Log.d("SocketManager", "User $senderId is typing: $isTyping (code: $isTypingCode)")
                     if (listener is ExtendedSocketListener) {
@@ -425,7 +425,7 @@ class SocketManager(
      */
     fun canSendTypingIndicators(): Boolean {
         return currentQuality != NetworkQualityMonitor.ConnectionQuality.POOR &&
-               currentQuality != NetworkQualityMonitor.ConnectionQuality.OFFLINE
+                currentQuality != NetworkQualityMonitor.ConnectionQuality.OFFLINE
     }
 
     /**
@@ -777,7 +777,7 @@ class SocketManager(
      * Расширенный интерфейс для дополнительных событий
      */
     interface ExtendedSocketListener : SocketListener {
-        fun onTypingStatus(userId: Long, isTyping: Boolean) {}
+        fun onTypingStatus(userId: Long?, isTyping: Boolean) {}
         fun onLastSeen(userId: Long, lastSeen: Long) {}
         fun onMessageSeen(messageId: Long, userId: Long) {}
         fun onGroupMessage(messageJson: JSONObject) {}

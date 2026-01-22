@@ -604,7 +604,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     // Вспомогательные функции
-    private fun getUserId(): Int {
+    fun getUserId(): Int {
         // Получить из UserSession
         return 1 // Заменить на реальный ID
     }

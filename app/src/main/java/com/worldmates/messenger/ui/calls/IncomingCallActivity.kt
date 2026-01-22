@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
+import com.worldmates.messenger.data.model.CallData
 
 /**
  * 📞 Activity для відображення вхідного дзвінка
@@ -167,7 +168,25 @@ class IncomingCallActivity : ComponentActivity() {
         roomName: String,
         sdpOffer: String?
     ) {
-        Log.d(TAG, "✅ Call accepted, starting CallsActivity...")
+        Log.d(TAG, "✅ Call accepted, calling acceptCall() on ViewModel...")
+
+        // ✅ КРИТИЧНО: Викликати acceptCall() з ViewModel ДО запуску CallsActivity
+        // Це відправить call:accept на сервер і встановить WebRTC з'єднання
+        val callData = CallData(
+            callId = 0,
+            fromId = fromId,
+            fromName = fromName,
+            fromAvatar = fromAvatar,
+            toId = callsViewModel.getUserId(),
+            callType = callType,
+            roomName = roomName,
+            sdpOffer = sdpOffer
+        )
+
+        // Відправити прийняття дзвінка на сервер
+        callsViewModel.acceptCall(callData)
+
+        Log.d(TAG, "✅ acceptCall() called, now starting CallsActivity...")
 
         // Запустити CallsActivity для активного дзвінка
         val intent = Intent(this, CallsActivity::class.java).apply {

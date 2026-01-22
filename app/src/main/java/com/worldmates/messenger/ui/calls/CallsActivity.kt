@@ -66,6 +66,7 @@ class CallsActivity : ComponentActivity() {
     private lateinit var callsViewModel: CallsViewModel
     private var shouldInitiateCall = false
     private var callInitiated = false
+    private var isIncomingCall = false  // ✅ Додано для відстеження вхідних дзвінків
 
     // 📋 Параметри дзвінка з Intent
     private var recipientId: Long = 0
@@ -105,15 +106,32 @@ class CallsActivity : ComponentActivity() {
         callsViewModel = ViewModelProvider(this).get(CallsViewModel::class.java)
 
         // 📥 Отримати параметри з Intent
-        recipientId = intent.getLongExtra("recipientId", 0)
-        recipientName = intent.getStringExtra("recipientName") ?: "Користувач"
-        recipientAvatar = intent.getStringExtra("recipientAvatar") ?: ""
-        callType = intent.getStringExtra("callType") ?: "audio"
-        isGroup = intent.getBooleanExtra("isGroup", false)
-        groupId = intent.getLongExtra("groupId", 0)
+        // Перевіряємо чи це вхідний дзвінок
+        isIncomingCall = intent.getBooleanExtra("is_incoming", false)
 
-        // Якщо є recipientId або groupId - потрібно ініціювати дзвінок
-        shouldInitiateCall = (recipientId > 0 || groupId > 0)
+        if (isIncomingCall) {
+            // ✅ Вхідний дзвінок - отримуємо дані від IncomingCallActivity
+            recipientId = intent.getIntExtra("from_id", 0).toLong()
+            recipientName = intent.getStringExtra("from_name") ?: "Користувач"
+            recipientAvatar = intent.getStringExtra("from_avatar") ?: ""
+            callType = intent.getStringExtra("call_type") ?: "audio"
+            shouldInitiateCall = false  // ✅ НЕ ініціюємо дзвінок (вже прийнято в IncomingCallActivity)
+
+            android.util.Log.d("CallsActivity", "✅ Incoming call accepted from: $recipientName (ID: $recipientId)")
+        } else {
+            // ✅ Вихідний дзвінок - ініціюємо звонок
+            recipientId = intent.getLongExtra("recipientId", 0)
+            recipientName = intent.getStringExtra("recipientName") ?: "Користувач"
+            recipientAvatar = intent.getStringExtra("recipientAvatar") ?: ""
+            callType = intent.getStringExtra("callType") ?: "audio"
+            isGroup = intent.getBooleanExtra("isGroup", false)
+            groupId = intent.getLongExtra("groupId", 0)
+
+            // Якщо є recipientId або groupId - потрібно ініціювати дзвінок
+            shouldInitiateCall = (recipientId > 0 || groupId > 0)
+
+            android.util.Log.d("CallsActivity", "✅ Outgoing call to: $recipientName (ID: $recipientId)")
+        }
 
         // Налаштувати Socket.IO listeners
         setupSocketListeners()
@@ -127,6 +145,7 @@ class CallsActivity : ComponentActivity() {
                     callsViewModel,
                     this,
                     isInitiating = shouldInitiateCall && !callInitiated,
+                    isIncoming = isIncomingCall,  // ✅ Передаємо флаг вхідного дзвінка
                     calleeName = recipientName,
                     calleeAvatar = recipientAvatar,
                     callType = callType
@@ -237,6 +256,7 @@ fun CallsScreen(
     viewModel: CallsViewModel,
     activity: CallsActivity,
     isInitiating: Boolean = false,
+    isIncoming: Boolean = false,  // ✅ Додано параметр для вхідних дзвінків
     calleeName: String = "",
     calleeAvatar: String = "",
     callType: String = "audio"
@@ -254,16 +274,16 @@ fun CallsScreen(
             .background(Color(0xFF1a1a1a))
     ) {
         when {
-            incomingCall != null && !callConnected -> {
-                // 📞 Вхідний дзвінок
+            incomingCall != null && !callConnected && !isIncoming -> {
+                // 📞 Вхідний дзвінок (тільки якщо НЕ прийнято через IncomingCallActivity)
                 IncomingCallScreen(incomingCall!!, viewModel)
             }
-            isInitiating || connectionState != "IDLE" || callConnected -> {
-                // ✅ Активний дзвінок (показуємо ЗАВЖДИ під час будь-якого дзвінка)
+            isInitiating || isIncoming || connectionState != "IDLE" || callConnected -> {
+                // ✅ Активний дзвінок (показуємо для вихідних, вхідних прийнятих, та підключених)
                 ActiveCallScreen(
                     viewModel = viewModel,
                     remoteStream = remoteStream,
-                    connectionState = connectionState ?: "CONNECTING",
+                    connectionState = connectionState ?: if (isIncoming) "ACCEPTING" else "CONNECTING",
                     calleeName = calleeName,
                     calleeAvatar = calleeAvatar
                 )

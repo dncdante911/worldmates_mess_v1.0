@@ -41,6 +41,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.network.WebRTCManager
+import com.worldmates.messenger.network.WebRTCManager.EglBaseProvider
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.ui.settings.getSavedCallFrameStyle

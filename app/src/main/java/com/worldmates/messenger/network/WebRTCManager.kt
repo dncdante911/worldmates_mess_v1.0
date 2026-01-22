@@ -171,11 +171,12 @@ class WebRTCManager(private val context: Context) {
                 val audioSource = peerConnectionFactory.createAudioSource(MediaConstraints())
                 localAudioTrack = peerConnectionFactory.createAudioTrack("audio_track", audioSource)
                 localAudioTrack?.let {
+                    it.setEnabled(true)  // ✅ Явно включить аудио трек
                     mediaStream.addTrack(it)
                     // ✅ UNIFIED_PLAN: addTrack вместо addStream
                     peerConnection?.addTrack(it, listOf("LOCAL_STREAM"))
                 }
-                Log.d("WebRTCManager", "Audio track added")
+                Log.d("WebRTCManager", "Audio track added and enabled")
             }
 
             // Создать видео трек (если нужно)
@@ -194,11 +195,12 @@ class WebRTCManager(private val context: Context) {
 
                 localVideoTrack = peerConnectionFactory.createVideoTrack("video_track", videoSource)
                 localVideoTrack?.let {
+                    it.setEnabled(true)  // ✅ Явно включить видео трек
                     mediaStream.addTrack(it)
                     // ✅ UNIFIED_PLAN: addTrack вместо addStream
                     peerConnection?.addTrack(it, listOf("LOCAL_STREAM"))
                 }
-                Log.d("WebRTCManager", "Video track added with camera capturer")
+                Log.d("WebRTCManager", "Video track added with camera capturer and enabled")
             }
 
             localMediaStream = mediaStream

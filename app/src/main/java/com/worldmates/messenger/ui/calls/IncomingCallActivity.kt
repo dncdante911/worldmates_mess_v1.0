@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
-import com.worldmates.messenger.data.model.CallData
 
 /**
  * 📞 Activity для відображення вхідного дзвінка

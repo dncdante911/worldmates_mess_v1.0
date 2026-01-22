@@ -998,8 +998,8 @@ fun LocalVideoPiP(
     ) {
         // Локальне відео
         AndroidView(
-            factory = { context ->
-                SurfaceViewRenderer(context).apply {
+            factory = { androidContext ->
+                SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
                     init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(true)
@@ -1060,8 +1060,8 @@ fun ClassicVideoFrame(remoteStream: MediaStream) {
     ) {
         // WebRTC SurfaceViewRenderer
         AndroidView(
-            factory = { context ->
-                SurfaceViewRenderer(context).apply {
+            factory = { androidContext ->
+                SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
                     init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
@@ -1103,8 +1103,8 @@ fun NeonVideoFrame(remoteStream: MediaStream) {
             .background(Color.Black)
     ) {
         AndroidView(
-            factory = { context ->
-                SurfaceViewRenderer(context).apply {
+            factory = { androidContext ->
+                SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
                     init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
@@ -1142,8 +1142,8 @@ fun GradientVideoFrame(remoteStream: MediaStream) {
             .background(Color.Black)
     ) {
         AndroidView(
-            factory = { context ->
-                SurfaceViewRenderer(context).apply {
+            factory = { androidContext ->
+                SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
                     init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
@@ -1169,8 +1169,8 @@ fun MinimalVideoFrame(remoteStream: MediaStream) {
             .background(Color.Black)
     ) {
         AndroidView(
-            factory = { context ->
-                SurfaceViewRenderer(context).apply {
+            factory = { androidContext ->
+                SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
                     init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
@@ -1202,8 +1202,8 @@ fun GlassVideoFrame(remoteStream: MediaStream) {
             .background(Color.Black)
     ) {
         AndroidView(
-            factory = { context ->
-                SurfaceViewRenderer(context).apply {
+            factory = { androidContext ->
+                SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
                     init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
@@ -1256,8 +1256,8 @@ fun RainbowVideoFrame(remoteStream: MediaStream) {
             .background(Color.Black)
     ) {
         AndroidView(
-            factory = { context ->
-                SurfaceViewRenderer(context).apply {
+            factory = { androidContext ->
+                SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
                     init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)

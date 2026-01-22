@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
+import com.worldmates.messenger.network.WebRTCManager
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.ui.settings.getSavedCallFrameStyle
@@ -1000,7 +1001,7 @@ fun LocalVideoPiP(
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(true)
                     setEnableHardwareScaler(true)
                     if (localStream.videoTracks.isNotEmpty()) {
@@ -1062,7 +1063,7 @@ fun ClassicVideoFrame(remoteStream: MediaStream) {
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     // Підключаємо відеотрек
@@ -1105,7 +1106,7 @@ fun NeonVideoFrame(remoteStream: MediaStream) {
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1144,7 +1145,7 @@ fun GradientVideoFrame(remoteStream: MediaStream) {
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1171,7 +1172,7 @@ fun MinimalVideoFrame(remoteStream: MediaStream) {
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1204,7 +1205,7 @@ fun GlassVideoFrame(remoteStream: MediaStream) {
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1258,7 +1259,7 @@ fun RainbowVideoFrame(remoteStream: MediaStream) {
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {

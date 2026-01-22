@@ -463,6 +463,14 @@ class WebRTCManager(private val context: Context) {
     companion object {
         private const val TAG = "WebRTCManager"
 
+        /**
+         * Получить EGL контекст для инициализации SurfaceViewRenderer
+         * Публичная функция для доступа из других классов
+         */
+        fun getEglContext(): EglBase.Context {
+            return EglBaseProvider.context
+        }
+
         // Помощник для инициализации EGL контекста
         object EglBaseProvider {
             private var eglBase: EglBase? = null

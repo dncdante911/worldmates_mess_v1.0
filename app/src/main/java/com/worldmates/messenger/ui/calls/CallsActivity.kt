@@ -41,7 +41,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.network.WebRTCManager
-import com.worldmates.messenger.network.WebRTCManager.EglBaseProvider
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.ui.settings.getSavedCallFrameStyle
@@ -980,7 +979,7 @@ fun LocalVideoPiP(
             factory = { androidContext ->
                 SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(true)
                     setEnableHardwareScaler(true)
                     if (localStream.videoTracks.isNotEmpty()) {
@@ -1042,7 +1041,7 @@ fun ClassicVideoFrame(remoteStream: MediaStream) {
             factory = { androidContext ->
                 SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     // Підключаємо відеотрек
@@ -1085,7 +1084,7 @@ fun NeonVideoFrame(remoteStream: MediaStream) {
             factory = { androidContext ->
                 SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1124,7 +1123,7 @@ fun GradientVideoFrame(remoteStream: MediaStream) {
             factory = { androidContext ->
                 SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1151,7 +1150,7 @@ fun MinimalVideoFrame(remoteStream: MediaStream) {
             factory = { androidContext ->
                 SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1184,7 +1183,7 @@ fun GlassVideoFrame(remoteStream: MediaStream) {
             factory = { androidContext ->
                 SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1238,7 +1237,7 @@ fun RainbowVideoFrame(remoteStream: MediaStream) {
             factory = { androidContext ->
                 SurfaceViewRenderer(androidContext).apply {
                     // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.EglBaseProvider.context, null)
+                    init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {

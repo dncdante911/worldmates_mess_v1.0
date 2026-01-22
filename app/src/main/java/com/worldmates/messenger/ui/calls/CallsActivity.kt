@@ -285,7 +285,8 @@ fun CallsScreen(
                     remoteStream = remoteStream,
                     connectionState = connectionState ?: if (isIncoming) "ACCEPTING" else "CONNECTING",
                     calleeName = calleeName,
-                    calleeAvatar = calleeAvatar
+                    calleeAvatar = calleeAvatar,
+                    callType = callType  // ✅ Передаємо callType
                 )
             }
             callError != null -> {
@@ -497,11 +498,12 @@ fun ActiveCallScreen(
     remoteStream: MediaStream?,
     connectionState: String,
     calleeName: String = "Користувач",
-    calleeAvatar: String = ""
+    calleeAvatar: String = "",
+    callType: String = "audio"  // ✅ Додано параметр callType
 ) {
     val context = LocalContext.current
     var audioEnabled by remember { mutableStateOf(true) }
-    var videoEnabled by remember { mutableStateOf(false) }
+    var videoEnabled by remember { mutableStateOf(callType == "video") }  // ✅ Ініціалізувати з callType
     var speakerEnabled by remember { mutableStateOf(false) }
     var showReactions by remember { mutableStateOf(false) }
     var showChatOverlay by remember { mutableStateOf(false) }
@@ -974,6 +976,8 @@ fun LocalVideoPiP(
         AndroidView(
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
+                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
+                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(true)
                     setEnableHardwareScaler(true)
                     if (localStream.videoTracks.isNotEmpty()) {
@@ -1034,6 +1038,8 @@ fun ClassicVideoFrame(remoteStream: MediaStream) {
         AndroidView(
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
+                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
+                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     // Підключаємо відеотрек
@@ -1075,6 +1081,8 @@ fun NeonVideoFrame(remoteStream: MediaStream) {
         AndroidView(
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
+                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
+                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1112,6 +1120,8 @@ fun GradientVideoFrame(remoteStream: MediaStream) {
         AndroidView(
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
+                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
+                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1137,6 +1147,8 @@ fun MinimalVideoFrame(remoteStream: MediaStream) {
         AndroidView(
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
+                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
+                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1168,6 +1180,8 @@ fun GlassVideoFrame(remoteStream: MediaStream) {
         AndroidView(
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
+                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
+                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {
@@ -1220,6 +1234,8 @@ fun RainbowVideoFrame(remoteStream: MediaStream) {
         AndroidView(
             factory = { context ->
                 SurfaceViewRenderer(context).apply {
+                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
+                    init(com.worldmates.messenger.network.WebRTCManager.EglBaseProvider.context, null)
                     setZOrderMediaOverlay(false)
                     setEnableHardwareScaler(true)
                     if (remoteStream.videoTracks.isNotEmpty()) {

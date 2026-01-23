@@ -318,7 +318,11 @@ class WebRTCManager(private val context: Context) {
                 override fun onSetSuccess() {}
                 override fun onSetFailure(p0: String?) {}
             },
-            MediaConstraints()
+            MediaConstraints().apply {
+                // ✅ КРИТИЧНО: Указать что хотим получать audio/video!
+                mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            }
         )
     }
 

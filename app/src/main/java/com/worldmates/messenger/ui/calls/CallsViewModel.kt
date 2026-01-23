@@ -6,7 +6,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.model.*
-import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.SocketManager
 import com.worldmates.messenger.network.WebRTCManager
 import kotlinx.coroutines.*
@@ -234,18 +233,17 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 try {
                     Log.d("CallsViewModel", "🔧 Fetching ICE servers before creating PeerConnection...")
 
-                    // ✅ 1. Try to fetch ICE servers from API (may fail if Apache proxy not configured)
+                    // ✅ 1. Fetch ICE servers via Socket.IO BEFORE creating PeerConnection
                     val iceServers = fetchIceServersFromApi()
                     if (iceServers != null && iceServers.isNotEmpty()) {
                         webRTCManager.setIceServers(iceServers)
                         Log.d("CallsViewModel", "✅ ICE servers set before creating PeerConnection: ${iceServers.size} servers")
                     } else {
-                        Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers via HTTP, will use default STUN and rely on call:answer ICE servers")
-                        // Note: Recipient will send ICE servers in call:answer event, but we can't use them
-                        // because PeerConnection is already created. This may cause connection issues.
+                        Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers via Socket.IO, using default STUN servers")
+                        // Fallback to default STUN servers (may fail through restrictive NATs)
                     }
 
-                    // 2. Создать PeerConnection (with ICE servers if fetched, otherwise defaults)
+                    // 2. Создать PeerConnection (with TURN credentials if fetched successfully)
                     webRTCManager.createPeerConnection()
 
                     // 3. Создать локальный медиа стрим
@@ -716,55 +714,32 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     /**
-     * Fetch ICE servers from HTTP API endpoint
+     * Fetch ICE servers via Socket.IO (more reliable than HTTP API)
+     * Uses Socket.IO acknowledgments for synchronous request-response
      */
     private suspend fun fetchIceServersFromApi(): List<PeerConnection.IceServer>? {
         return try {
             val userId = getUserId()
-            val response = RetrofitClient.apiService.getIceServers(userId)
+            Log.d("CallsViewModel", "🧊 Requesting ICE servers via Socket.IO for user $userId...")
 
-            if (response.success && response.iceServers != null) {
-                val iceServers = mutableListOf<PeerConnection.IceServer>()
+            val response = socketManager.requestIceServers(userId)
 
-                for (serverConfig in response.iceServers) {
-                    val urlsList = mutableListOf<String>()
-
-                    // Parse urls (can be String or List)
-                    when (val urls = serverConfig.urls) {
-                        is String -> urlsList.add(urls)
-                        is List<*> -> {
-                            urls.forEach { url ->
-                                if (url is String) urlsList.add(url)
-                            }
-                        }
-                    }
-
-                    if (urlsList.isNotEmpty()) {
-                        val builder = if (urlsList.size == 1) {
-                            PeerConnection.IceServer.builder(urlsList[0])
-                        } else {
-                            PeerConnection.IceServer.builder(urlsList)
-                        }
-
-                        // Add credentials if present (for TURN servers)
-                        if (serverConfig.username != null && serverConfig.credential != null) {
-                            builder.setUsername(serverConfig.username)
-                            builder.setPassword(serverConfig.credential)
-                        }
-
-                        iceServers.add(builder.createIceServer())
-                        Log.d("CallsViewModel", "✅ Fetched ICE server: ${urlsList.joinToString()}")
-                    }
+            if (response?.optBoolean("success") == true) {
+                val iceServersArray = response.optJSONArray("iceServers")
+                if (iceServersArray != null) {
+                    val iceServers = parseIceServers(iceServersArray)
+                    Log.d("CallsViewModel", "✅ Total ICE servers fetched via Socket.IO: ${iceServers.size}")
+                    return iceServers
+                } else {
+                    Log.w("CallsViewModel", "⚠️ ICE servers array is null in response")
                 }
-
-                Log.d("CallsViewModel", "✅ Total ICE servers fetched from API: ${iceServers.size}")
-                iceServers
             } else {
-                Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers from API: success=${response.success}")
-                null
+                Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers via Socket.IO: success=${response?.optBoolean("success")}")
             }
+
+            null
         } catch (e: Exception) {
-            Log.e("CallsViewModel", "❌ Error fetching ICE servers from API", e)
+            Log.e("CallsViewModel", "❌ Error fetching ICE servers via Socket.IO", e)
             null
         }
     }

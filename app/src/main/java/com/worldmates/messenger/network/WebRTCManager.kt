@@ -5,9 +5,6 @@ import android.util.Log
 import org.webrtc.*
 import org.webrtc.audio.AudioDeviceModule
 import org.webrtc.audio.JavaAudioDeviceModule
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
-import android.util.Base64
 
 /**
  * WebRTCManager - управление WebRTC соединениями для аудио/видео вызовов
@@ -24,55 +21,19 @@ class WebRTCManager(private val context: Context) {
     private var videoCapturer: CameraVideoCapturer? = null
     private var videoSource: VideoSource? = null
 
-    private val iceServers: List<PeerConnection.IceServer> by lazy {
-        val servers = mutableListOf(
-            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-            PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer()
-        )
+    private var iceServers: List<PeerConnection.IceServer> = listOf(
+        // Базовые STUN серверы Google (работают без аутентификации)
+        PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
+        PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer()
+    )
 
-        // Генерируем данные для TURN по REST API протоколу
-        val (user, pass) = getTurnCredentials("ad8a76d057d6ba0d6fd79bbc84504e320c8538b92db5c9b84fc3bd18d1c511b9")
-
-        // Добавляем твои сервера
-        val turnIps = listOf("195.22.131.11", "46.232.232.38")
-
-        turnIps.forEach { ip ->
-            // UDP версия (основная)
-            servers.add(
-                PeerConnection.IceServer.builder("turn:$ip:3478?transport=udp")
-                    .setUsername(user)
-                    .setPassword(pass)
-                    .createIceServer()
-            )
-            // TCP версия (на случай блокировок UDP мобильными операторами)
-            servers.add(
-                PeerConnection.IceServer.builder("turn:$ip:3478?transport=tcp")
-                    .setUsername(user)
-                    .setPassword(pass)
-                    .createIceServer()
-            )
-        }
-        servers
-    }
-
-    private fun getTurnCredentials(sharedSecret: String): Pair<String, String> {
-        return try {
-            // Время жизни токена — 24 часа (86400 сек)
-            val unixTimestamp = (System.currentTimeMillis() / 1000) + 86400
-            val username = "$unixTimestamp:worldmates_user"
-
-            val secretKey = SecretKeySpec(sharedSecret.toByteArray(), "HmacSHA1")
-            val mac = Mac.getInstance("HmacSHA1")
-            mac.init(secretKey)
-            val result = mac.doFinal(username.toByteArray())
-
-            val password = Base64.encodeToString(result, Base64.NO_WRAP)
-
-            Pair(username, password)
-        } catch (e: Exception) {
-            Log.e("WebRTCManager", "Error generating TURN credentials", e)
-            Pair("error", "error")
-        }
+    /**
+     * Установить ICE servers (включая TURN с credentials от сервера)
+     * Вызывается из CallsViewModel при получении credentials от сервера
+     */
+    fun setIceServers(servers: List<PeerConnection.IceServer>) {
+        iceServers = servers
+        Log.d("WebRTCManager", "ICE servers updated: ${servers.size} servers")
     }
 
     var onIceCandidateListener: ((IceCandidate) -> Unit)? = null

@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.model.*
+import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.SocketManager
 import com.worldmates.messenger.network.WebRTCManager
 import kotlinx.coroutines.*
@@ -231,12 +232,21 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         val callLogic: () -> Unit = {
             viewModelScope.launch {
                 try {
-                    Log.d("CallsViewModel", "🔧 Creating PeerConnection and media stream...")
+                    Log.d("CallsViewModel", "🔧 Fetching ICE servers before creating PeerConnection...")
 
-                    // 1. Создать PeerConnection
+                    // ✅ 1. Fetch ICE servers from API FIRST
+                    val iceServers = fetchIceServersFromApi()
+                    if (iceServers != null) {
+                        webRTCManager.setIceServers(iceServers)
+                        Log.d("CallsViewModel", "✅ ICE servers set before creating PeerConnection: ${iceServers.size} servers")
+                    } else {
+                        Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers, using default STUN servers")
+                    }
+
+                    // 2. Создать PeerConnection (now with correct ICE servers)
                     webRTCManager.createPeerConnection()
 
-                    // 2. Создать локальный медиа стрим
+                    // 3. Создать локальный медиа стрим
                     val audioEnabled = true
                     val videoEnabled = (callType == "video")
                     webRTCManager.createLocalMediaStream(audioEnabled, videoEnabled)
@@ -246,10 +256,10 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                     Log.d("CallsViewModel", "Local stream created: audio=${localStream?.audioTracks?.size}, video=${localStream?.videoTracks?.size}")
                     localStream?.let { localStreamAdded.postValue(it) }
 
-                    // 3. Создать offer
+                    // 4. Создать offer
                     webRTCManager.createOffer(
                         onSuccess = { offer ->
-                            // 4. Отправить через Socket.IO
+                            // 5. Отправить через Socket.IO
                             val roomName = generateRoomName()
                             currentCallData = CallData(
                                 callId = 0,
@@ -312,6 +322,13 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         val callLogic: () -> Unit = {
             viewModelScope.launch {
                 try {
+                    // ✅ Fetch ICE servers from API FIRST
+                    val iceServers = fetchIceServersFromApi()
+                    if (iceServers != null) {
+                        webRTCManager.setIceServers(iceServers)
+                        Log.d("CallsViewModel", "✅ ICE servers set for group call: ${iceServers.size} servers")
+                    }
+
                     webRTCManager.createPeerConnection()
                     webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = (callType == "video"))
 
@@ -688,6 +705,60 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         }
 
         return iceServers
+    }
+
+    /**
+     * Fetch ICE servers from HTTP API endpoint
+     */
+    private suspend fun fetchIceServersFromApi(): List<PeerConnection.IceServer>? {
+        return try {
+            val userId = getUserId()
+            val response = RetrofitClient.apiService.getIceServers(userId)
+
+            if (response.success && response.iceServers != null) {
+                val iceServers = mutableListOf<PeerConnection.IceServer>()
+
+                for (serverConfig in response.iceServers) {
+                    val urlsList = mutableListOf<String>()
+
+                    // Parse urls (can be String or List)
+                    when (val urls = serverConfig.urls) {
+                        is String -> urlsList.add(urls)
+                        is List<*> -> {
+                            urls.forEach { url ->
+                                if (url is String) urlsList.add(url)
+                            }
+                        }
+                    }
+
+                    if (urlsList.isNotEmpty()) {
+                        val builder = if (urlsList.size == 1) {
+                            PeerConnection.IceServer.builder(urlsList[0])
+                        } else {
+                            PeerConnection.IceServer.builder(urlsList)
+                        }
+
+                        // Add credentials if present (for TURN servers)
+                        if (serverConfig.username != null && serverConfig.credential != null) {
+                            builder.setUsername(serverConfig.username)
+                            builder.setPassword(serverConfig.credential)
+                        }
+
+                        iceServers.add(builder.createIceServer())
+                        Log.d("CallsViewModel", "✅ Fetched ICE server: ${urlsList.joinToString()}")
+                    }
+                }
+
+                Log.d("CallsViewModel", "✅ Total ICE servers fetched from API: ${iceServers.size}")
+                iceServers
+            } else {
+                Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers from API: success=${response.success}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("CallsViewModel", "❌ Error fetching ICE servers from API", e)
+            null
+        }
     }
 
     /**

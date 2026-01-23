@@ -5,6 +5,7 @@ import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.model.*
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import org.webrtc.PeerConnection
 import retrofit2.http.*
 
 interface WorldMatesApi {
@@ -650,6 +651,11 @@ interface WorldMatesApi {
 
     // ==================== VOICE/VIDEO CALLS ====================
 
+    @GET("/api/ice-servers/{userId}")
+    suspend fun getIceServers(
+        @Path("userId") userId: Int
+    ): IceServersResponse
+
     @FormUrlEncoded
     @POST("?type=initiate_call")
     suspend fun initiateCall(
@@ -1127,6 +1133,21 @@ data class CallResponse(
     @SerializedName("rtc_signal") val rtcSignal: String?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
+)
+
+/**
+ * ICE Server configuration from backend
+ */
+data class IceServerConfig(
+    @SerializedName("urls") val urls: Any?, // Can be String or List<String>
+    @SerializedName("username") val username: String?,
+    @SerializedName("credential") val credential: String?
+)
+
+data class IceServersResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("iceServers") val iceServers: List<IceServerConfig>?,
+    @SerializedName("timestamp") val timestamp: Long?
 )
 
 // ==================== REACTION RESPONSES ====================

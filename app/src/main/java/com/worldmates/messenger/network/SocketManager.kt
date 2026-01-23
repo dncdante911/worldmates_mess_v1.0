@@ -496,48 +496,54 @@ class SocketManager(
      * 🧊 Request ICE servers from server via Socket.IO
      * Uses Socket.IO acknowledgments for synchronous response
      */
-    suspend fun requestIceServers(userId: Int): JSONObject? = suspendCancellableCoroutine { continuation ->
-        if (socket?.connected() != true) {
-            Log.e(TAG, "❌ Cannot request ICE servers: Socket not connected")
-            continuation.resume(null) {}
-            return@suspendCancellableCoroutine
-        }
-
-        try {
-            val requestData = JSONObject().apply {
-                put("userId", userId)
+    suspend fun requestIceServers(userId: Int): JSONObject? = withTimeoutOrNull(2000) {
+        suspendCancellableCoroutine { continuation ->
+            if (socket?.connected() != true) {
+                Log.e(TAG, "❌ Cannot request ICE servers: Socket not connected")
+                continuation.resume(null) {}
+                return@suspendCancellableCoroutine
             }
 
-            Log.d(TAG, "🧊 Requesting ICE servers for user $userId via Socket.IO...")
+            try {
+                val requestData = JSONObject().apply {
+                    put("userId", userId)
+                }
 
-            socket?.emit("ice:request", requestData) { args ->
-                try {
-                    if (args.isNotEmpty()) {
-                        val response = args[0] as? JSONObject
-                        if (response?.optBoolean("success") == true) {
-                            Log.d(TAG, "✅ ICE servers received via Socket.IO")
-                            continuation.resume(response) {}
+                Log.d(TAG, "🧊 Requesting ICE servers for user $userId via Socket.IO...")
+
+                // Create Ack callback with proper Socket.IO interface
+                val ackCallback = io.socket.client.Ack { args ->
+                    try {
+                        if (args.isNotEmpty()) {
+                            val response = args[0] as? JSONObject
+                            if (response?.optBoolean("success") == true) {
+                                Log.d(TAG, "✅ ICE servers received via Socket.IO")
+                                continuation.resume(response) {}
+                            } else {
+                                Log.e(TAG, "❌ ICE servers request failed: ${response?.optString("error")}")
+                                continuation.resume(null) {}
+                            }
                         } else {
-                            Log.e(TAG, "❌ ICE servers request failed: ${response?.optString("error")}")
+                            Log.e(TAG, "❌ ICE servers response empty")
                             continuation.resume(null) {}
                         }
-                    } else {
-                        Log.e(TAG, "❌ ICE servers response empty")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ Error processing ICE servers response", e)
                         continuation.resume(null) {}
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "❌ Error processing ICE servers response", e)
-                    continuation.resume(null) {}
                 }
-            }
 
-            // Timeout handling
-            continuation.invokeOnCancellation {
-                Log.w(TAG, "⚠️ ICE servers request cancelled/timed out")
+                // Emit with acknowledgment
+                socket?.emit("ice:request", requestData, ackCallback)
+
+                // Cleanup on cancellation
+                continuation.invokeOnCancellation {
+                    Log.w(TAG, "⚠️ ICE servers request cancelled")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error requesting ICE servers", e)
+                continuation.resume(null) {}
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error requesting ICE servers", e)
-            continuation.resume(null) {}
         }
     }
 

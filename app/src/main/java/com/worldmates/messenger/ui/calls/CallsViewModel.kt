@@ -520,6 +520,14 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     fun onIncomingCall(data: org.json.JSONObject) { // Работаем напрямую с JSONObject
         val roomName = data.optString("roomName", "")
         try {
+            // ✅ Парсим и устанавливаем ICE servers с TURN credentials от сервера
+            val iceServersArray = data.optJSONArray("iceServers")
+            if (iceServersArray != null) {
+                val iceServers = parseIceServers(iceServersArray)
+                webRTCManager.setIceServers(iceServers)
+                Log.d("CallsViewModel", "✅ ICE servers received from server: ${iceServers.size} servers")
+            }
+
             val callData = CallData(
                 // optInt/optString никогда не вызовут NullPointerException
                 callId = data.optInt("callId", 0),
@@ -566,6 +574,14 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     fun onCallAnswer(data: org.json.JSONObject) { // Проверь, что тут JSONObject
         try {
+            // ✅ Парсим и устанавливаем ICE servers с TURN credentials от сервера
+            val iceServersArray = data.optJSONArray("iceServers")
+            if (iceServersArray != null) {
+                val iceServers = parseIceServers(iceServersArray)
+                webRTCManager.setIceServers(iceServers)
+                Log.d("CallsViewModel", "✅ ICE servers received from server in answer: ${iceServers.size} servers")
+            }
+
             // В org.json используем optString вместо get().asString
             val sdpAnswer = data.optString("sdpAnswer", "")
             if (sdpAnswer.isNotEmpty()) {
@@ -621,6 +637,57 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun generateRoomName(): String {
         return "room_${System.currentTimeMillis()}"
+    }
+
+    /**
+     * Парсинг ICE servers из JSONArray от сервера
+     */
+    private fun parseIceServers(iceServersArray: org.json.JSONArray): List<PeerConnection.IceServer> {
+        val iceServers = mutableListOf<PeerConnection.IceServer>()
+
+        try {
+            for (i in 0 until iceServersArray.length()) {
+                val serverObj = iceServersArray.getJSONObject(i)
+
+                // Парсим urls (может быть строкой или массивом)
+                val urlsList = mutableListOf<String>()
+                val urlsField = serverObj.opt("urls")
+
+                when (urlsField) {
+                    is String -> urlsList.add(urlsField)
+                    is org.json.JSONArray -> {
+                        for (j in 0 until urlsField.length()) {
+                            urlsList.add(urlsField.getString(j))
+                        }
+                    }
+                }
+
+                // Создаём IceServer
+                if (urlsList.isNotEmpty()) {
+                    val username = serverObj.optString("username", null)
+                    val credential = serverObj.optString("credential", null)
+
+                    val builder = if (urlsList.size == 1) {
+                        PeerConnection.IceServer.builder(urlsList[0])
+                    } else {
+                        PeerConnection.IceServer.builder(urlsList)
+                    }
+
+                    // Добавляем credentials если есть (для TURN серверов)
+                    if (username != null && credential != null) {
+                        builder.setUsername(username)
+                        builder.setPassword(credential)
+                    }
+
+                    iceServers.add(builder.createIceServer())
+                    Log.d("CallsViewModel", "Parsed ICE server: ${urlsList.joinToString()}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("CallsViewModel", "Error parsing ICE servers", e)
+        }
+
+        return iceServers
     }
 
     /**

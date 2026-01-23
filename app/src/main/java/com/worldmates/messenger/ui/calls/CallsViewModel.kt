@@ -234,16 +234,18 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 try {
                     Log.d("CallsViewModel", "🔧 Fetching ICE servers before creating PeerConnection...")
 
-                    // ✅ 1. Fetch ICE servers from API FIRST
+                    // ✅ 1. Try to fetch ICE servers from API (may fail if Apache proxy not configured)
                     val iceServers = fetchIceServersFromApi()
-                    if (iceServers != null) {
+                    if (iceServers != null && iceServers.isNotEmpty()) {
                         webRTCManager.setIceServers(iceServers)
                         Log.d("CallsViewModel", "✅ ICE servers set before creating PeerConnection: ${iceServers.size} servers")
                     } else {
-                        Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers, using default STUN servers")
+                        Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers via HTTP, will use default STUN and rely on call:answer ICE servers")
+                        // Note: Recipient will send ICE servers in call:answer event, but we can't use them
+                        // because PeerConnection is already created. This may cause connection issues.
                     }
 
-                    // 2. Создать PeerConnection (now with correct ICE servers)
+                    // 2. Создать PeerConnection (with ICE servers if fetched, otherwise defaults)
                     webRTCManager.createPeerConnection()
 
                     // 3. Создать локальный медиа стрим
@@ -537,14 +539,6 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     fun onIncomingCall(data: org.json.JSONObject) { // Работаем напрямую с JSONObject
         val roomName = data.optString("roomName", "")
         try {
-            // ✅ Парсим и устанавливаем ICE servers с TURN credentials от сервера
-            val iceServersArray = data.optJSONArray("iceServers")
-            if (iceServersArray != null) {
-                val iceServers = parseIceServers(iceServersArray)
-                webRTCManager.setIceServers(iceServers)
-                Log.d("CallsViewModel", "✅ ICE servers received from server: ${iceServers.size} servers")
-            }
-
             val callData = CallData(
                 // optInt/optString никогда не вызовут NullPointerException
                 callId = data.optInt("callId", 0),
@@ -557,9 +551,23 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 sdpOffer = data.optString("sdpOffer", null)
             )
 
+            // ✅ CRITICAL: Ignore calls from yourself (initiator receiving their own call)
+            if (callData.fromId == getUserId()) {
+                Log.w("CallsViewModel", "⚠️ Ignoring incoming call from myself (fromId=${callData.fromId}, userId=${getUserId()})")
+                return
+            }
+
             if (currentCallData?.roomName == roomName) {
                 Log.d("CallsViewModel", "⚠️ Игнорируем дубликат входящего звонка для комнаты: $roomName")
                 return
+            }
+
+            // ✅ Парсим и устанавливаем ICE servers с TURN credentials от сервера
+            val iceServersArray = data.optJSONArray("iceServers")
+            if (iceServersArray != null) {
+                val iceServers = parseIceServers(iceServersArray)
+                webRTCManager.setIceServers(iceServers)
+                Log.d("CallsViewModel", "✅ ICE servers received from server: ${iceServers.size} servers")
             }
             if (callData.roomName.isEmpty()) {
                 Log.e("CallsViewModel", "❌ Room name is empty, ignoring call")

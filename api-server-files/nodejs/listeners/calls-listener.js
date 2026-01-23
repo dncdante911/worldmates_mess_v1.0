@@ -45,6 +45,47 @@ async function registerCallsListeners(socket, io, ctx) {
     });
 
     /**
+     * Запрос ICE servers перед инициацией звонка
+     * Data: { userId }
+     * Response: { success: true, iceServers: [...] }
+     */
+    socket.on('ice:request', (data, callback) => {
+        try {
+            const userId = data.userId || data.user_id;
+            console.log(`[CALLS] 🧊 ICE servers requested by user ${userId}`);
+
+            // Получить ICE servers с TURN credentials
+            const iceServers = turnHelper.getIceServers(userId);
+
+            const response = {
+                success: true,
+                iceServers: iceServers,
+                timestamp: Date.now()
+            };
+
+            // Отправить ответ через callback
+            if (typeof callback === 'function') {
+                callback(response);
+                console.log(`[CALLS] ✅ ICE servers sent to user ${userId}: ${iceServers.length} servers`);
+            } else {
+                // Fallback: emit event
+                socket.emit('ice:response', response);
+            }
+        } catch (error) {
+            console.error('[CALLS] Error generating ICE servers:', error);
+            const errorResponse = {
+                success: false,
+                error: 'Failed to generate ICE servers'
+            };
+            if (typeof callback === 'function') {
+                callback(errorResponse);
+            } else {
+                socket.emit('ice:response', errorResponse);
+            }
+        }
+    });
+
+    /**
      * Инициация звонка (1-на-1 или групповой)
      * Data: { fromId, toId?, groupId?, callType, roomName, sdpOffer }
      */

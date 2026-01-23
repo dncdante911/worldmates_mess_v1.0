@@ -185,11 +185,14 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 val iceCandidateData = JSONObject().apply {
                     put("roomName", it.roomName)
                     put("fromUserId", getUserId())
+                    // ✅ CRITICAL: Add toUserId so server knows who to send the candidate to
+                    put("toUserId", if (it.toId == getUserId()) it.fromId else it.toId)
                     put("candidate", candidate.sdp)
                     put("sdpMLineIndex", candidate.sdpMLineIndex)
                     put("sdpMid", candidate.sdpMid ?: "")
                 }
                 socketManager.emit("ice:candidate", iceCandidateData)
+                Log.d("CallsViewModel", "🧊 Sent ICE candidate to peer")
             }
         }
 
@@ -292,6 +295,14 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
                             socketManager.emit("call:initiate", callEvent)
                             Log.d("CallsViewModel", "✅ call:initiate emitted successfully")
+
+                            // ✅ Join the Socket.IO room for this call
+                            val joinRoomData = JSONObject().apply {
+                                put("roomName", roomName)
+                                put("userId", getUserId())
+                            }
+                            socketManager.emit("call:join_room", joinRoomData)
+                            Log.d("CallsViewModel", "📍 Joined call room: $roomName")
                         },
                         onError = { error ->
                             callError.postValue(error)
@@ -409,6 +420,14 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
+                // ✅ Join the Socket.IO room for this call BEFORE creating answer
+                val joinRoomData = JSONObject().apply {
+                    put("roomName", callData.roomName)
+                    put("userId", getUserId())
+                }
+                socketManager.emit("call:join_room", joinRoomData)
+                Log.d("CallsViewModel", "📍 Joined call room: ${callData.roomName}")
+
                 // 4. Создать answer
                 webRTCManager.createAnswer(
                     onSuccess = { answer ->
@@ -419,7 +438,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                             put("sdpAnswer", answer.description)
                         }
                         socketManager.emit("call:accept", acceptEvent)
-                        Log.d("CallsViewModel", "Call accepted")
+                        Log.d("CallsViewModel", "Call accepted and answer sent")
                     },
                     onError = { error ->
                         callError.postValue(error)
@@ -456,6 +475,14 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 put("reason", "user_ended")
             }
             socketManager.emit("call:end", endEvent)
+
+            // ✅ Leave the Socket.IO room
+            val leaveRoomData = JSONObject().apply {
+                put("roomName", callData.roomName)
+                put("userId", getUserId())
+            }
+            socketManager.emit("call:leave_room", leaveRoomData)
+            Log.d("CallsViewModel", "📍 Left call room: ${callData.roomName}")
         }
 
         webRTCManager.close()

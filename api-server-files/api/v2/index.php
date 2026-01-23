@@ -48,6 +48,21 @@ $routes = [
     'delete_story' => 'endpoints/delete-story.php',
     'get_story_views' => 'endpoints/get_story_views.php',
 
+    // User Settings
+    'get-user-data' => 'endpoints/get-user-data.php',
+    'update-user-data' => 'endpoints/update-user-data.php',
+    'update-privacy-settings' => 'endpoints/update-privacy-settings.php',
+    'update-notification-settings' => 'endpoints/update-notification-settings.php',
+    'update-profile-picture' => 'endpoints/update-user-data.php', // Handled by update-user-data
+    'update-cover-picture' => 'endpoints/update-user-data.php',   // Handled by update-user-data
+    'get-my-groups' => 'endpoints/get-my-groups.php',
+
+    // Cloud Backup & Media Settings
+    'get_media_settings' => 'endpoints/get_media_settings.php',
+    'update_media_settings' => 'endpoints/update_media_settings.php',
+    'get_cloud_backup_settings' => 'endpoints/get_cloud_backup_settings.php',
+    'update_cloud_backup_settings' => 'endpoints/update_cloud_backup_settings.php',
+
     // Other
     'get_invites' => 'endpoints/get_invites.php',
     'get_live_friends' => 'endpoints/get_live_friends.php',

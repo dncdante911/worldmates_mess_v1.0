@@ -9,6 +9,9 @@ import io.socket.client.Socket
 import org.json.JSONObject
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * 🔄 Адаптивний менеджер для Socket.IO з автоматичною оптимізацією
@@ -487,6 +490,55 @@ class SocketManager(
             socket?.off(event)
         }
         Log.d(TAG, "Unsubscribed from event: $event")
+    }
+
+    /**
+     * 🧊 Request ICE servers from server via Socket.IO
+     * Uses Socket.IO acknowledgments for synchronous response
+     */
+    suspend fun requestIceServers(userId: Int): JSONObject? = suspendCancellableCoroutine { continuation ->
+        if (socket?.connected() != true) {
+            Log.e(TAG, "❌ Cannot request ICE servers: Socket not connected")
+            continuation.resume(null) {}
+            return@suspendCancellableCoroutine
+        }
+
+        try {
+            val requestData = JSONObject().apply {
+                put("userId", userId)
+            }
+
+            Log.d(TAG, "🧊 Requesting ICE servers for user $userId via Socket.IO...")
+
+            socket?.emit("ice:request", requestData) { args ->
+                try {
+                    if (args.isNotEmpty()) {
+                        val response = args[0] as? JSONObject
+                        if (response?.optBoolean("success") == true) {
+                            Log.d(TAG, "✅ ICE servers received via Socket.IO")
+                            continuation.resume(response) {}
+                        } else {
+                            Log.e(TAG, "❌ ICE servers request failed: ${response?.optString("error")}")
+                            continuation.resume(null) {}
+                        }
+                    } else {
+                        Log.e(TAG, "❌ ICE servers response empty")
+                        continuation.resume(null) {}
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error processing ICE servers response", e)
+                    continuation.resume(null) {}
+                }
+            }
+
+            // Timeout handling
+            continuation.invokeOnCancellation {
+                Log.w(TAG, "⚠️ ICE servers request cancelled/timed out")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error requesting ICE servers", e)
+            continuation.resume(null) {}
+        }
     }
 
     /**

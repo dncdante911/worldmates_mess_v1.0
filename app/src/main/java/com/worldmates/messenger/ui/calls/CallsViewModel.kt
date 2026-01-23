@@ -644,18 +644,15 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     // Вспомогательные функции
     fun getUserId(): Int {
-        // Получить из UserSession
-        return 1 // Заменить на реальный ID
+        return com.worldmates.messenger.data.UserSession.userId.toInt()
     }
 
     private fun getUserName(): String {
-        // Получить из UserSession
-        return "Current User"
+        return com.worldmates.messenger.data.UserSession.username ?: "Current User"
     }
 
     private fun getUserAvatar(): String {
-        // Получить из UserSession
-        return ""
+        return com.worldmates.messenger.data.UserSession.avatar ?: ""
     }
 
     private fun generateRoomName(): String {

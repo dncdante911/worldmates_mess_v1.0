@@ -118,6 +118,14 @@ async function registerCallsListeners(socket, io, ctx) {
                     raw: true
                 });
 
+                // ✅ DEBUG: Логируем что получили из БД
+                console.log(`[CALLS] 🔍 Initiator data from DB:`, {
+                    user_id: initiator?.user_id,
+                    first_name: initiator?.first_name,
+                    last_name: initiator?.last_name,
+                    avatar: initiator?.avatar
+                });
+
                 // Найти сокеты получателя
                 const recipientSockets = ctx.userIdSocket[toId];
                 console.log(`[CALLS] 🔍 Looking for recipient ${toId}, found: ${recipientSockets ? recipientSockets.length : 0} sockets`);
@@ -126,16 +134,27 @@ async function registerCallsListeners(socket, io, ctx) {
                     // Получить ICE servers с TURN credentials для получателя
                     const iceServers = turnHelper.getIceServers(toId);
 
+                    // ✅ Формируем имя с проверками
+                    let fromName = 'Unknown';
+                    if (initiator) {
+                        const firstName = initiator.first_name || '';
+                        const lastName = initiator.last_name || '';
+                        fromName = `${firstName} ${lastName}`.trim() || 'Unknown';
+                    }
+
                     // Отправить уведомление о входящем звонке на все устройства
                     const callData = {
                         fromId: fromId,
-                        fromName: initiator ? `${initiator.first_name} ${initiator.last_name}` : 'Unknown',
-                        fromAvatar: initiator ? initiator.avatar : '',
+                        fromName: fromName,
+                        fromAvatar: initiator ? (initiator.avatar || '') : '',
                         callType: callType,
                         roomName: roomName,
                         sdpOffer: sdpOffer,
                         iceServers: iceServers  // ✅ Добавлены TURN credentials
                     };
+
+                    // ✅ DEBUG: Логируем что отправляем
+                    console.log(`[CALLS] 📤 Sending call:incoming with fromName="${fromName}", fromId=${fromId}, toId=${toId}`);
 
                     recipientSockets.forEach(recipientSocket => {
                         recipientSocket.emit('call:incoming', callData);

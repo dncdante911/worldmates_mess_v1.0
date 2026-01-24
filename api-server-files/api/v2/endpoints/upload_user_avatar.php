@@ -5,6 +5,9 @@
 // | Загрузка аватара пользователя с детальным логированием
 // +------------------------------------------------------------------------+
 
+// КРИТИЧНО: Завантажуємо config.php для доступу до функцій WoWonder
+require_once(__DIR__ . '/../config.php');
+
 // Налаштування логування
 define('AVATAR_LOG_FILE', '/var/www/www-root/data/www/worldmates.club/api/v2/logs/avatar_upload.log');
 

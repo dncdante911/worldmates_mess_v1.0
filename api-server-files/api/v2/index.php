@@ -55,6 +55,7 @@ $routes = [
     'update-notification-settings' => 'endpoints/update-notification-settings.php',
     'update-profile-picture' => 'endpoints/update-user-data.php', // Handled by update-user-data
     'update-cover-picture' => 'endpoints/update-user-data.php',   // Handled by update-user-data
+    'upload_user_avatar' => 'endpoints/upload_user_avatar.php',
     'get-my-groups' => 'endpoints/get-my-groups.php',
 
     // Cloud Backup & Media Settings

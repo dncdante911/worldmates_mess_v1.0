@@ -52,9 +52,6 @@ class ApiKeyInterceptor : Interceptor {
             // Добавляем server_key первым
             formBodyBuilder.add("server_key", Constants.SERVER_KEY)
 
-            // HYBRID: Добавляем use_gcm=true для WorldMates (топовая защита AES-256-GCM)
-            formBodyBuilder.add("use_gcm", "true")
-
             // Копируем все существующие параметры
             for (i in 0 until formBody.size) {
                 formBodyBuilder.add(formBody.name(i), formBody.value(i))
@@ -72,9 +69,6 @@ class ApiKeyInterceptor : Interceptor {
 
             // Добавляем server_key первым
             multipartBuilder.addFormDataPart("server_key", Constants.SERVER_KEY)
-
-            // HYBRID: Добавляем use_gcm=true для WorldMates (топовая защита AES-256-GCM)
-            multipartBuilder.addFormDataPart("use_gcm", "true")
 
             // Копируем все существующие части
             for (i in 0 until multipartBody.size) {

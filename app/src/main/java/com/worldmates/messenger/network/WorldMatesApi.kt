@@ -799,8 +799,7 @@ interface WorldMatesApi {
     /**
      * Получить список заблокированных пользователей
      */
-    @FormUrlEncoded
-    @POST("/api/v2/endpoints/get-blocked-users.php")
+    @GET("/api/v2/endpoints/get-blocked-users.php")
     suspend fun getBlockedUsers(
         @Query("access_token") accessToken: String
     ): GetBlockedUsersResponse

@@ -67,6 +67,10 @@ $routes = [
     // Channels
     'get_channel_subscribers' => 'endpoints/get_channel_subscribers.php',
 
+    // User Rating System (Karma/Trust)
+    'rate_user' => 'endpoints/rate_user.php',
+    'get_user_rating' => 'endpoints/get_user_rating.php',
+
     // Other
     'get_invites' => 'endpoints/get_invites.php',
     'get_live_friends' => 'endpoints/get_live_friends.php',

@@ -1096,6 +1096,27 @@ interface WorldMatesApi {
         @Field("access_token") accessToken: String,
         @Field("channel_id") channelId: Long
     ): GenericResponse
+
+    // ⭐ Rate User (Like/Dislike)
+    @FormUrlEncoded
+    @POST("/api/v2/")
+    suspend fun rateUser(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "rate_user",
+        @Field("user_id") userId: Long,
+        @Field("rating_type") ratingType: String, // "like" or "dislike"
+        @Field("comment") comment: String? = null
+    ): com.worldmates.messenger.data.model.RateUserResponse
+
+    // ⭐ Get User Rating
+    @FormUrlEncoded
+    @POST("/api/v2/")
+    suspend fun getUserRating(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "get_user_rating",
+        @Field("user_id") userId: Long,
+        @Field("include_details") includeDetails: String = "0" // "1" to include ratings list
+    ): com.worldmates.messenger.data.model.GetUserRatingResponse
 }
 
 // ==================== RESPONSE MODELS ====================

@@ -717,8 +717,9 @@ fun SettingsDrawerContent(
                     title = "Мій профіль",
                     onClick = {
                         onClose()
-                        // TODO: Navigate to UserProfileActivity when created
-                        Toast.makeText(context, "Профіль - функція в розробці", Toast.LENGTH_SHORT).show()
+                        context.startActivity(
+                            Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java)
+                        )
                     }
                 )
             }

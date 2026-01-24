@@ -8,6 +8,9 @@
  * - Паттерн registerListeners(socket, io, ctx)
  */
 
+// Импорт TURN credentials helper
+const turnHelper = require('../helpers/turn-credentials');
+
 /**
  * Регистрация обработчиков звонков
  * @param {Object} socket - Socket.IO socket объект
@@ -27,7 +30,7 @@ async function registerCallsListeners(socket, io, ctx) {
      */
     socket.on('call:register', (data) => {
         const userId = data.userId || data.user_id;
-        console.log(`[CALLS] User registered for calls: ${userId}`);
+        console.log(`[CALLS] 📝 User registered for calls: ${userId}, socket: ${socket.id}`);
 
         // Добавить в существующую структуру если нужно
         if (!ctx.userIdSocket[userId]) {
@@ -35,6 +38,50 @@ async function registerCallsListeners(socket, io, ctx) {
         }
         if (!ctx.userIdSocket[userId].includes(socket)) {
             ctx.userIdSocket[userId].push(socket);
+            console.log(`[CALLS] ✅ Added socket to user ${userId}, total sockets: ${ctx.userIdSocket[userId].length}`);
+        } else {
+            console.log(`[CALLS] ⚠️ Socket already registered for user ${userId}`);
+        }
+    });
+
+    /**
+     * Запрос ICE servers перед инициацией звонка
+     * Data: { userId }
+     * Response: { success: true, iceServers: [...] }
+     */
+    socket.on('ice:request', (data, callback) => {
+        try {
+            const userId = data.userId || data.user_id;
+            console.log(`[CALLS] 🧊 ICE servers requested by user ${userId}`);
+
+            // Получить ICE servers с TURN credentials
+            const iceServers = turnHelper.getIceServers(userId);
+
+            const response = {
+                success: true,
+                iceServers: iceServers,
+                timestamp: Date.now()
+            };
+
+            // Отправить ответ через callback
+            if (typeof callback === 'function') {
+                callback(response);
+                console.log(`[CALLS] ✅ ICE servers sent to user ${userId}: ${iceServers.length} servers`);
+            } else {
+                // Fallback: emit event
+                socket.emit('ice:response', response);
+            }
+        } catch (error) {
+            console.error('[CALLS] Error generating ICE servers:', error);
+            const errorResponse = {
+                success: false,
+                error: 'Failed to generate ICE servers'
+            };
+            if (typeof callback === 'function') {
+                callback(errorResponse);
+            } else {
+                socket.emit('ice:response', errorResponse);
+            }
         }
     });
 
@@ -44,6 +91,8 @@ async function registerCallsListeners(socket, io, ctx) {
      */
     socket.on('call:initiate', async (data) => {
         try {
+            console.log('[CALLS] 📞 call:initiate received, raw data:', JSON.stringify(data).substring(0, 200));
+
             const { fromId, toId, groupId, callType, roomName, sdpOffer } = data;
 
             console.log(`[CALLS] Call initiated: ${fromId} -> ${toId || groupId} (${callType})`);
@@ -58,6 +107,7 @@ async function registerCallsListeners(socket, io, ctx) {
                     call_type: callType,
                     status: 'ringing',
                     room_name: roomName,
+                    sdp_offer: sdpOffer,
                     created_at: new Date()
                 });
 
@@ -68,25 +118,49 @@ async function registerCallsListeners(socket, io, ctx) {
                     raw: true
                 });
 
+                // ✅ DEBUG: Логируем что получили из БД
+                console.log(`[CALLS] 🔍 Initiator data from DB:`, {
+                    user_id: initiator?.user_id,
+                    first_name: initiator?.first_name,
+                    last_name: initiator?.last_name,
+                    avatar: initiator?.avatar
+                });
+
                 // Найти сокеты получателя
                 const recipientSockets = ctx.userIdSocket[toId];
+                console.log(`[CALLS] 🔍 Looking for recipient ${toId}, found: ${recipientSockets ? recipientSockets.length : 0} sockets`);
 
                 if (recipientSockets && recipientSockets.length > 0) {
+                    // Получить ICE servers с TURN credentials для получателя
+                    const iceServers = turnHelper.getIceServers(toId);
+
+                    // ✅ Формируем имя с проверками
+                    let fromName = 'Unknown';
+                    if (initiator) {
+                        const firstName = initiator.first_name || '';
+                        const lastName = initiator.last_name || '';
+                        fromName = `${firstName} ${lastName}`.trim() || 'Unknown';
+                    }
+
                     // Отправить уведомление о входящем звонке на все устройства
                     const callData = {
                         fromId: fromId,
-                        fromName: initiator ? `${initiator.first_name} ${initiator.last_name}` : 'Unknown',
-                        fromAvatar: initiator ? initiator.avatar : '',
+                        fromName: fromName,
+                        fromAvatar: initiator ? (initiator.avatar || '') : '',
                         callType: callType,
                         roomName: roomName,
-                        sdpOffer: sdpOffer
+                        sdpOffer: sdpOffer,
+                        iceServers: iceServers  // ✅ Добавлены TURN credentials
                     };
+
+                    // ✅ DEBUG: Логируем что отправляем
+                    console.log(`[CALLS] 📤 Sending call:incoming with fromName="${fromName}", fromId=${fromId}, toId=${toId}`);
 
                     recipientSockets.forEach(recipientSocket => {
                         recipientSocket.emit('call:incoming', callData);
                     });
 
-                    console.log(`[CALLS] Incoming call sent to user ${toId} (${recipientSockets.length} devices)`);
+                    console.log(`[CALLS] Incoming call sent to user ${toId} with TURN credentials (${recipientSockets.length} devices)`);
 
                 } else {
                     // Получатель оффлайн
@@ -141,13 +215,17 @@ async function registerCallsListeners(socket, io, ctx) {
                     if (member.user_id !== fromId) {
                         const memberSockets = ctx.userIdSocket[member.user_id];
                         if (memberSockets && memberSockets.length > 0) {
+                            // Получить ICE servers для каждого участника
+                            const iceServers = turnHelper.getIceServers(member.user_id);
+
                             const callData = {
                                 groupId: groupId,
                                 initiatedBy: fromId,
                                 initiatorName: initiatorName,
                                 callType: callType,
                                 roomName: roomName,
-                                sdpOffer: sdpOffer
+                                sdpOffer: sdpOffer,
+                                iceServers: iceServers  // ✅ Добавлены TURN credentials
                             };
 
                             memberSockets.forEach(memberSocket => {
@@ -157,7 +235,7 @@ async function registerCallsListeners(socket, io, ctx) {
                     }
                 });
 
-                console.log(`[CALLS] Group call initiated for group ${groupId}`);
+                console.log(`[CALLS] Group call initiated for group ${groupId} with TURN credentials`);
             }
 
         } catch (error) {
@@ -183,7 +261,8 @@ async function registerCallsListeners(socket, io, ctx) {
             await ctx.wo_calls.update(
                 {
                     status: 'connected',
-                    accepted_at: new Date()
+                    accepted_at: new Date(),
+                    sdp_answer: sdpAnswer
                 },
                 { where: { room_name: roomName } }
             );
@@ -200,18 +279,22 @@ async function registerCallsListeners(socket, io, ctx) {
                 const initiatorSockets = ctx.userIdSocket[initiatorId];
 
                 if (initiatorSockets && initiatorSockets.length > 0) {
+                    // Получить ICE servers с TURN credentials для инициатора
+                    const iceServers = turnHelper.getIceServers(initiatorId);
+
                     // Отправить SDP answer инициатору
                     const answerData = {
                         roomName: roomName,
                         sdpAnswer: sdpAnswer,
-                        acceptedBy: userId
+                        acceptedBy: userId,
+                        iceServers: iceServers  // ✅ Добавлены TURN credentials
                     };
 
                     initiatorSockets.forEach(initiatorSocket => {
                         initiatorSocket.emit('call:answer', answerData);
                     });
 
-                    console.log(`[CALLS] Answer sent to initiator ${initiatorId}`);
+                    console.log(`[CALLS] Answer sent to initiator ${initiatorId} with TURN credentials`);
                 }
             }
 
@@ -229,16 +312,20 @@ async function registerCallsListeners(socket, io, ctx) {
         try {
             const { roomName, toUserId, fromUserId, candidate, sdpMLineIndex, sdpMid } = data;
 
-            // Опционально: сохранить в БД для восстановления
+            // Опционально: сохранить в БД для восстановления (может не работать если нет таблицы)
             if (ctx.wo_ice_candidates) {
-                await ctx.wo_ice_candidates.create({
-                    room_name: roomName,
-                    user_id: fromUserId,
-                    candidate: JSON.stringify(candidate),
-                    sdp_mid: sdpMid,
-                    sdp_m_line_index: sdpMLineIndex,
-                    created_at: new Date()
-                });
+                try {
+                    await ctx.wo_ice_candidates.create({
+                        room_name: roomName,
+                        candidate: JSON.stringify(candidate),
+                        sdp_mid: sdpMid,
+                        sdp_m_line_index: sdpMLineIndex,
+                        created_at: new Date()
+                    });
+                } catch (dbError) {
+                    // ✅ Если таблица не существует или нет нужных колонок - игнорируем
+                    console.warn('[CALLS] Could not save ICE candidate to DB (not critical):', dbError.message);
+                }
             }
 
             if (toUserId) {
@@ -280,6 +367,12 @@ async function registerCallsListeners(socket, io, ctx) {
         try {
             const { roomName, userId, reason } = data;
 
+            // ✅ Валідація: якщо немає roomName, пропустити
+            if (!roomName) {
+                console.warn('[CALLS] call:end received without roomName, ignoring');
+                return;
+            }
+
             console.log(`[CALLS] Call ended: ${roomName} by ${userId} (${reason})`);
 
             // Обновить в БД
@@ -299,8 +392,7 @@ async function registerCallsListeners(socket, io, ctx) {
                     {
                         status: 'ended',
                         ended_at: new Date(),
-                        duration: duration,
-                        end_reason: reason
+                        duration: duration
                     },
                     { where: { room_name: roomName } }
                 );
@@ -338,6 +430,12 @@ async function registerCallsListeners(socket, io, ctx) {
     socket.on('call:reject', async (data) => {
         try {
             const { roomName, userId } = data;
+
+            // ✅ Валідація
+            if (!roomName) {
+                console.warn('[CALLS] call:reject received without roomName, ignoring');
+                return;
+            }
 
             console.log(`[CALLS] Call rejected: ${roomName} by ${userId}`);
 

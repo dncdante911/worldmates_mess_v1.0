@@ -181,7 +181,9 @@ data class AuthResponse(
     @SerializedName("avatar") val avatar: String?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?,
-    @SerializedName("errors") val errors: ErrorsObject? = null
+    @SerializedName("errors") val errors: ErrorsObject? = null,
+    @SerializedName("success_type") val successType: String? = null, // "verification" or "registered"
+    @SerializedName("message") val message: String? = null // Success message
 ) {
     val apiStatus: Int
         get() = when (_apiStatus) {

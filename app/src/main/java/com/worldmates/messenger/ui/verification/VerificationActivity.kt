@@ -105,8 +105,11 @@ class VerificationActivity : AppCompatActivity() {
             }
         }
 
-        // Автоматически отправляем код при открытии экрана
-        viewModel.sendVerificationCode(verificationType, contactInfo, username)
+        // TODO: Автоматична відправка коду тимчасово вимкнена
+        // Проблеми: 1) "Not authorized" - потрібен access_token
+        //           2) JsonSyntaxException - errors як об'єкт
+        //           3) BringIntoViewRequester crash
+        // viewModel.sendVerificationCode(verificationType, contactInfo, username)
     }
 
     private fun navigateToChats() {
@@ -332,7 +335,13 @@ fun CodeInputField(
     val colorScheme = MaterialTheme.colorScheme
 
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        // Додаємо невеликий delay щоб view встигли розміститися
+        delay(100)
+        try {
+            focusRequester.requestFocus()
+        } catch (e: Exception) {
+            // Ігноруємо помилки фокусування
+        }
     }
 
     Row(

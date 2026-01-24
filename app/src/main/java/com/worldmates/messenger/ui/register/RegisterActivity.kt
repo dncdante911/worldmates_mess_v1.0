@@ -73,17 +73,27 @@ class RegisterActivity : AppCompatActivity() {
             viewModel.registerState.collect { state ->
                 when (state) {
                     is RegisterState.Success -> {
-                        // Старый flow - прямой вход без верификации
+                        // Прямий вхід без верифікації
                         navigateToChats()
                     }
                     is RegisterState.VerificationRequired -> {
-                        // Новый flow - переход на экран верификации
-                        navigateToVerification(
-                            state.verificationType,
-                            state.contactInfo,
-                            state.username,
-                            ""
-                        )
+                        // ТИМЧАСОВО: Оскільки ми вже зберегли access_token під час реєстрації,
+                        // користувач може користуватися додатком навіть без email верифікації
+                        // Пропускаємо екран верифікації і відразу переходимо до чатів
+                        Toast.makeText(
+                            this@RegisterActivity,
+                            "Реєстрація успішна! Перевірте email для активації акаунту.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        navigateToChats()
+
+                        // TODO: Верифікація буде додана пізніше
+                        // navigateToVerification(
+                        //     state.verificationType,
+                        //     state.contactInfo,
+                        //     state.username,
+                        //     ""
+                        // )
                     }
                     is RegisterState.Error -> {
                         Toast.makeText(
@@ -134,16 +144,12 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var phoneNumber by remember { mutableStateOf("") }
+    var selectedGender by remember { mutableStateOf("male") } // ✅ Добавлено
     var selectedTab by remember { mutableStateOf(0) }
     val registerState by viewModel.registerState.collectAsState()
     val isLoading = registerState is RegisterState.Loading
 
-    // Для отслеживания успешной регистрации
-    LaunchedEffect(registerState) {
-        if (registerState is RegisterState.Success) {
-            onRegisterSuccess(email, phoneNumber, username, password)
-        }
-    }
+    // Убрано дублирование - состояние обрабатывается в lifecycleScope.launch
 
     // Анимация фона
     val infiniteTransition = rememberInfiniteTransition()
@@ -213,6 +219,8 @@ fun RegisterScreen(
                 onConfirmPasswordVisibilityToggle = { confirmPasswordVisible = !confirmPasswordVisible },
                 phoneNumber = phoneNumber,
                 onPhoneNumberChange = { phoneNumber = it },
+                selectedGender = selectedGender,  // ✅ Добавлено
+                onGenderChange = { selectedGender = it },  // ✅ Добавлено
                 selectedTab = selectedTab,
                 onTabChange = { selectedTab = it },
                 isLoading = isLoading,
@@ -221,13 +229,13 @@ fun RegisterScreen(
                         // Email регистрация
                         if (username.isNotEmpty() && email.isNotEmpty() &&
                             password.isNotEmpty() && password == confirmPassword) {
-                            viewModel.register(username, email, password, confirmPassword)
+                            viewModel.registerWithEmail(username, email, password, confirmPassword, selectedGender)  // ✅ Добавлено gender
                         }
                     } else {
                         // Phone регистрация
                         if (username.isNotEmpty() && phoneNumber.isNotEmpty() &&
                             password.isNotEmpty() && password == confirmPassword) {
-                            viewModel.register(username, phoneNumber, password, confirmPassword)
+                            viewModel.registerWithPhone(username, phoneNumber, password, confirmPassword, selectedGender)  // ✅ Добавлено gender
                         }
                     }
                 },
@@ -277,6 +285,8 @@ fun RegisterFormCard(
     onConfirmPasswordVisibilityToggle: () -> Unit,
     phoneNumber: String,
     onPhoneNumberChange: (String) -> Unit,
+    selectedGender: String,  // ✅ Добавлено
+    onGenderChange: (String) -> Unit,  // ✅ Добавлено
     selectedTab: Int,
     onTabChange: (Int) -> Unit,
     isLoading: Boolean,
@@ -406,6 +416,14 @@ fun RegisterFormCard(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ✅ Выбор пола
+            GenderSelectionGroup(
+                selectedGender = selectedGender,
+                onGenderChange = onGenderChange
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 

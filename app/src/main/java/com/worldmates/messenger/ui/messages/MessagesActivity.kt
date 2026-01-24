@@ -1,12 +1,16 @@
 package com.worldmates.messenger.ui.messages
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import com.worldmates.messenger.network.FileManager
@@ -40,6 +44,21 @@ class MessagesActivity : AppCompatActivity() {
     private var recipientName: String = ""
     private var recipientAvatar: String = ""
     private var isGroup: Boolean = false
+
+    // Permission request launcher
+    private val audioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Toast.makeText(this, "✅ Дозвіл на мікрофон надано", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(
+                this,
+                "⚠️ Для голосових повідомлень потрібен дозвіл на мікрофон",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,8 +116,30 @@ class MessagesActivity : AppCompatActivity() {
             recipientName = recipientName,
             recipientAvatar = recipientAvatar,
             isGroup = isGroup,
-            onBackPressed = { finish() }
+            onBackPressed = { finish() },
+            onRequestAudioPermission = { requestAudioPermission() }
         )
+    }
+
+    /**
+     * Перевіряє та запитує дозвіл на запис аудіо
+     * @return true якщо дозвіл вже є, false якщо треба запитати
+     */
+    private fun requestAudioPermission(): Boolean {
+        return when {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                // Дозвіл вже є
+                true
+            }
+            else -> {
+                // Запитуємо дозвіл
+                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                false
+            }
+        }
     }
 
     override fun onDestroy() {

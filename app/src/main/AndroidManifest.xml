@@ -25,6 +25,9 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <!-- Features -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -144,6 +147,14 @@
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.chats.ChatsActivity" />
 
+        <!-- User Profile Activity -->
+        <activity
+            android:name=".ui.profile.UserProfileActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:parentActivityName=".ui.chats.ChatsActivity" />
+
         <!-- Calls Activity -->
         <activity
             android:name=".ui.calls.CallsActivity"
@@ -152,6 +163,18 @@
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:showWhenLocked="true"
             android:turnScreenOn="true" />
+
+        <!-- Incoming Call Activity -->
+        <activity
+            android:name=".ui.calls.IncomingCallActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true"
+            tools:ignore="MissingClass" />
 
         <!-- Drafts Activity -->
         <activity
@@ -210,4 +233,4 @@
 
     </application>
 
-</manifest>
+    </manifest>

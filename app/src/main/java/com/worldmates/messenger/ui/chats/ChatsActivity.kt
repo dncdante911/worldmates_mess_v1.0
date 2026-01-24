@@ -78,6 +78,7 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel
     private lateinit var channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel
     private lateinit var storyViewModel: com.worldmates.messenger.ui.stories.StoryViewModel
+    private lateinit var callsViewModel: com.worldmates.messenger.ui.calls.CallsViewModel
 
     // Factory для створення ChatsViewModel з параметром context
     private class ChatsViewModelFactory(private val context: android.content.Context) : Factory {
@@ -103,6 +104,10 @@ class ChatsActivity : AppCompatActivity() {
         groupsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.groups.GroupsViewModel::class.java)
         channelsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.channels.ChannelsViewModel::class.java)
         storyViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.stories.StoryViewModel::class.java)
+
+        // ✅ Ініціалізуємо CallsViewModel для обробки вхідних дзвінків
+        callsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.calls.CallsViewModel::class.java)
+        android.util.Log.d("ChatsActivity", "📞 CallsViewModel initialized for incoming calls")
 
         setContent {
             WorldMatesThemedApp {
@@ -636,6 +641,10 @@ fun SettingsDrawerContent(
 ) {
     val context = LocalContext.current
 
+    // State для діалогів
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -708,7 +717,9 @@ fun SettingsDrawerContent(
                     title = "Мій профіль",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Мій профіль", Toast.LENGTH_SHORT).show()
+                        context.startActivity(
+                            Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java)
+                        )
                     }
                 )
             }
@@ -719,7 +730,7 @@ fun SettingsDrawerContent(
                     title = "Нова група",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Створити групу", Toast.LENGTH_SHORT).show()
+                        showCreateGroupDialog = true
                     }
                 )
             }
@@ -800,7 +811,16 @@ fun SettingsDrawerContent(
                     title = "Запросити друзів",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Запросити друзів", Toast.LENGTH_SHORT).show()
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Приєднуйся до WorldMates - найкращого месенджера! 🚀\n" +
+                                "Завантаж тут: https://worldmates.com"
+                            )
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Запросити друга"))
                     }
                 )
             }
@@ -811,11 +831,26 @@ fun SettingsDrawerContent(
                     title = "Про додаток",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "WorldMates Messenger v1.0", Toast.LENGTH_SHORT).show()
+                        showAboutDialog = true
                     }
                 )
             }
         }
+    }
+
+    // Діалог "Про додаток"
+    if (showAboutDialog) {
+        com.worldmates.messenger.ui.components.AboutAppDialog(
+            onDismiss = { showAboutDialog = false }
+        )
+    }
+
+    // Діалог створення групи
+    if (showCreateGroupDialog) {
+        // Need to get GroupsViewModel from parent
+        // For now, show a Toast - will need to refactor to pass ViewModel
+        Toast.makeText(context, "Функція створення групи доступна на вкладці Групи", Toast.LENGTH_LONG).show()
+        showCreateGroupDialog = false
     }
 }
 
@@ -1217,7 +1252,7 @@ fun UserSearchDialog(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(searchResults) { user ->
+                    items(searchResults, key = { it.userId }) { user ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

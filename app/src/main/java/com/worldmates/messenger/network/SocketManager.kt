@@ -9,6 +9,9 @@ import io.socket.client.Socket
 import org.json.JSONObject
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * 🔄 Адаптивний менеджер для Socket.IO з автоматичною оптимізацією
@@ -187,10 +190,10 @@ class SocketManager(
             // 8. Обработка индикатора печатания
             socket?.on(Constants.SOCKET_EVENT_TYPING) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
-                    val data = args[0] as JSONObject
+                    val data = args[0] as? org.json.JSONObject
                     // Сервер отправляет sender_id (НЕ user_id!) и is_typing: 200 (печатает) или 300 (закончил)
-                    val senderId = data.optLong("sender_id", 0)
-                    val isTypingCode = data.optInt("is_typing", 0)
+                    val senderId = data?.optLong("sender_id", 0)
+                    val isTypingCode = data?.optInt("is_typing", 0)
                     val isTyping = isTypingCode == 200  // 200 = печатает, 300 = закончил
                     Log.d("SocketManager", "User $senderId is typing: $isTyping (code: $isTypingCode)")
                     if (listener is ExtendedSocketListener) {
@@ -425,7 +428,7 @@ class SocketManager(
      */
     fun canSendTypingIndicators(): Boolean {
         return currentQuality != NetworkQualityMonitor.ConnectionQuality.POOR &&
-               currentQuality != NetworkQualityMonitor.ConnectionQuality.OFFLINE
+                currentQuality != NetworkQualityMonitor.ConnectionQuality.OFFLINE
     }
 
     /**
@@ -456,9 +459,91 @@ class SocketManager(
     fun emit(event: String, data: Any) {
         if (socket?.connected() == true) {
             socket?.emit(event, data)
-            Log.d(TAG, "Emitted event: $event")
+            Log.d(TAG, "✅ Emitted event: $event")
+            Log.d(TAG, "   Data: ${data.toString().take(200)}")  // Перші 200 символів
         } else {
-            Log.w(TAG, "Cannot emit event '$event': Socket not connected")
+            Log.e(TAG, "❌ Cannot emit event '$event': Socket not connected!")
+            Log.e(TAG, "   Socket state: connected=${socket?.connected()}, socket=${socket != null}")
+        }
+    }
+
+    /**
+     * 🔌 Підписатись на Socket.IO подію
+     * Використовується для WebRTC call events
+     */
+    fun on(event: String, listener: (Array<Any>) -> Unit): io.socket.emitter.Emitter.Listener {
+        val emitterListener = io.socket.emitter.Emitter.Listener { args ->
+            listener(args)
+        }
+        socket?.on(event, emitterListener)
+        Log.d(TAG, "Subscribed to event: $event")
+        return emitterListener
+    }
+
+    /**
+     * 🔌 Відписатись від Socket.IO події
+     */
+    fun off(event: String, listener: io.socket.emitter.Emitter.Listener? = null) {
+        if (listener != null) {
+            socket?.off(event, listener)
+        } else {
+            socket?.off(event)
+        }
+        Log.d(TAG, "Unsubscribed from event: $event")
+    }
+
+    /**
+     * 🧊 Request ICE servers from server via Socket.IO
+     * Uses Socket.IO acknowledgments for synchronous response
+     */
+    suspend fun requestIceServers(userId: Int): JSONObject? = withTimeoutOrNull(2000) {
+        suspendCancellableCoroutine { continuation ->
+            if (socket?.connected() != true) {
+                Log.e(TAG, "❌ Cannot request ICE servers: Socket not connected")
+                continuation.resume(null) {}
+                return@suspendCancellableCoroutine
+            }
+
+            try {
+                val requestData = JSONObject().apply {
+                    put("userId", userId)
+                }
+
+                Log.d(TAG, "🧊 Requesting ICE servers for user $userId via Socket.IO...")
+
+                // Create Ack callback with proper Socket.IO interface
+                val ackCallback = io.socket.client.Ack { args ->
+                    try {
+                        if (args.isNotEmpty()) {
+                            val response = args[0] as? JSONObject
+                            if (response?.optBoolean("success") == true) {
+                                Log.d(TAG, "✅ ICE servers received via Socket.IO")
+                                continuation.resume(response) {}
+                            } else {
+                                Log.e(TAG, "❌ ICE servers request failed: ${response?.optString("error")}")
+                                continuation.resume(null) {}
+                            }
+                        } else {
+                            Log.e(TAG, "❌ ICE servers response empty")
+                            continuation.resume(null) {}
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ Error processing ICE servers response", e)
+                        continuation.resume(null) {}
+                    }
+                }
+
+                // Emit with acknowledgment
+                socket?.emit("ice:request", requestData, ackCallback)
+
+                // Cleanup on cancellation
+                continuation.invokeOnCancellation {
+                    Log.w(TAG, "⚠️ ICE servers request cancelled")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error requesting ICE servers", e)
+                continuation.resume(null) {}
+            }
         }
     }
 
@@ -750,7 +835,7 @@ class SocketManager(
      * Расширенный интерфейс для дополнительных событий
      */
     interface ExtendedSocketListener : SocketListener {
-        fun onTypingStatus(userId: Long, isTyping: Boolean) {}
+        fun onTypingStatus(userId: Long?, isTyping: Boolean) {}
         fun onLastSeen(userId: Long, lastSeen: Long) {}
         fun onMessageSeen(messageId: Long, userId: Long) {}
         fun onGroupMessage(messageJson: JSONObject) {}

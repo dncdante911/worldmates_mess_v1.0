@@ -6,7 +6,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.model.*
-import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.network.SocketManager
 import com.worldmates.messenger.network.WebRTCManager
 import kotlinx.coroutines.*
@@ -38,42 +37,169 @@ data class IceCandidateData(
 class CallsViewModel(application: Application) : AndroidViewModel(application), SocketManager.SocketListener {
 
     private val webRTCManager = WebRTCManager(application)
-    private val socketManager = SocketManager(this, application)
+    val socketManager = SocketManager(this, application)  // ✅ public для доступу з CallsActivity
     private val gson = Gson()
 
     // LiveData для UI
-    val incomingCall = MutableLiveData<CallData>()
+    val incomingCall = MutableLiveData<CallData?>()
     val callConnected = MutableLiveData<Boolean>()
     val callEnded = MutableLiveData<Boolean>()
     val callError = MutableLiveData<String>()
     val remoteStreamAdded = MutableLiveData<MediaStream>()
+    val localStreamAdded = MutableLiveData<MediaStream>()
     val connectionState = MutableLiveData<String>()
+    val socketConnected = MutableLiveData<Boolean>(false)  // ✅ Додано для відстеження підключення
 
     private var currentCallData: CallData? = null
     private var currentCallId: Int = 0
     private var isInitiator = false
+    private var pendingCallInitiation: (() -> Unit)? = null  // ✅ Очікуючий виклик
 
     init {
         socketManager.connect()
         setupWebRTCListeners()
+        // registerForCalls() перенесено в onSocketConnected() для правильного таймінгу
+    }
+
+    /**
+     * 📞 Зареєструвати користувача для отримання вхідних дзвінків
+     */
+    private fun registerForCalls() {
+        val userId = getUserId()
+        val registerData = JSONObject().apply {
+            put("userId", userId)
+            put("user_id", userId)  // Для сумісності
+        }
+        socketManager.emit("call:register", registerData)
+        Log.d("CallsViewModel", "📞 Registered for calls: userId=$userId")
+    }
+
+    /**
+     * 🔌 Налаштувати Socket.IO listeners для call events
+     */
+    private fun setupCallSocketListeners() {
+        Log.d("CallsViewModel", "🔌 Setting up call Socket.IO listeners...")
+
+        // 📞 Вхідний дзвінок
+        socketManager.on("call:incoming") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? org.json.JSONObject // Используем нативный тип
+                    data?.let {
+                        Log.d("CallsViewModel", "📞 Incoming call received")
+                        // Передаем напрямую объект org.json.JSONObject
+                        onIncomingCall(it)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:incoming", e)
+            }
+        }
+
+        // ✅ Відповідь на дзвінок (SDP answer)
+        socketManager.on("call:answer") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        Log.d("CallsViewModel", "✅ Call answer received")
+                        val roomName = it.optString("roomName")
+                        val sdpAnswer = it.optString("sdpAnswer")
+
+                        // Встановити remote description
+                        val answerSdp = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
+                        webRTCManager.setRemoteDescription(answerSdp) { error ->
+                            Log.e("CallsViewModel", "Failed to set remote description: $error")
+                            callError.postValue("Failed to set remote description: $error")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:answer", e)
+            }
+        }
+
+        // 🧊 ICE candidate від іншого користувача
+        socketManager.on("ice:candidate") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        val candidate = it.optString("candidate")
+                        val sdpMLineIndex = it.optInt("sdpMLineIndex")
+                        val sdpMid = it.optString("sdpMid")
+
+                        val iceCandidate = IceCandidate(sdpMid, sdpMLineIndex, candidate)
+                        webRTCManager.addIceCandidate(iceCandidate)
+                        Log.d("CallsViewModel", "🧊 ICE candidate added")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing ice:candidate", e)
+            }
+        }
+
+        // ❌ Дзвінок відхилено
+        socketManager.on("call:rejected") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        val roomName = it.optString("roomName")
+                        val rejectedBy = it.optInt("rejectedBy")
+                        Log.d("CallsViewModel", "❌ Call rejected by user $rejectedBy")
+                        callEnded.postValue(true)
+                        endCall()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:rejected", e)
+            }
+        }
+
+        // 📴 Дзвінок завершено
+        socketManager.on("call:ended") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        val roomName = it.optString("roomName")
+                        val reason = it.optString("reason")
+                        Log.d("CallsViewModel", "📴 Call ended: $reason")
+                        callEnded.postValue(true)
+                        endCall()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:ended", e)
+            }
+        }
+
+        Log.d("CallsViewModel", "✅ Call Socket.IO listeners configured")
     }
 
     private fun setupWebRTCListeners() {
         webRTCManager.onIceCandidateListener = { candidate ->
             currentCallData?.let {
-                val iceCandidateData = IceCandidateData(
-                    roomName = it.roomName,
-                    candidate = candidate.sdp,
-                    sdpMLineIndex = candidate.sdpMLineIndex,
-                    sdpMid = candidate.sdpMid ?: ""
-                )
-                socketManager.emit("ice:candidate", gson.toJsonTree(iceCandidateData))
+                // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                val iceCandidateData = JSONObject().apply {
+                    put("roomName", it.roomName)
+                    put("fromUserId", getUserId())
+                    // ✅ CRITICAL: Add toUserId so server knows who to send the candidate to
+                    put("toUserId", if (it.toId == getUserId()) it.fromId else it.toId)
+                    put("candidate", candidate.sdp)
+                    put("sdpMLineIndex", candidate.sdpMLineIndex)
+                    put("sdpMid", candidate.sdpMid ?: "")
+                }
+                socketManager.emit("ice:candidate", iceCandidateData)
+                Log.d("CallsViewModel", "🧊 Sent ICE candidate to peer")
             }
         }
 
-        webRTCManager.onAddStreamListener = { stream ->
+        // ✅ UNIFIED_PLAN: используем onTrack вместо onAddStream
+        webRTCManager.onTrackListener = { stream ->
             remoteStreamAdded.postValue(stream)
-            Log.d("CallsViewModel", "Remote stream added with ${stream.audioTracks.size + stream.videoTracks.size} tracks")
+            Log.d("CallsViewModel", "Remote stream updated: ${stream.audioTracks.size} audio, ${stream.videoTracks.size} video tracks")
         }
 
         webRTCManager.onConnectionStateChangeListener = { state ->
@@ -103,54 +229,100 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Ініціювати вызов користувачу (1-на-1)
      */
     fun initiateCall(recipientId: Int, recipientName: String, recipientAvatar: String, callType: String = "audio") {
-        viewModelScope.launch {
-            try {
-                // 1. Создать PeerConnection
-                webRTCManager.createPeerConnection()
+        Log.d("CallsViewModel", "📞 Initiating call to $recipientName (ID: $recipientId), type: $callType")
 
-                // 2. Создать локальный медиа стрим
-                val audioEnabled = true
-                val videoEnabled = (callType == "video")
-                webRTCManager.createLocalMediaStream(audioEnabled, videoEnabled)
+        val callLogic: () -> Unit = {
+            viewModelScope.launch {
+                try {
+                    Log.d("CallsViewModel", "🔧 Fetching ICE servers before creating PeerConnection...")
 
-                // 3. Создать offer
-                webRTCManager.createOffer(
-                    onSuccess = { offer ->
-                        // 4. Отправить через Socket.IO
-                        val roomName = generateRoomName()
-                        currentCallData = CallData(
-                            callId = 0,
-                            fromId = getUserId(),
-                            fromName = getUserName(),
-                            fromAvatar = getUserAvatar(),
-                            toId = recipientId,
-                            callType = callType,
-                            roomName = roomName,
-                            sdpOffer = offer.description
-                        )
-                        isInitiator = true
-
-                        val callEvent = JsonObject().apply {
-                            addProperty("fromId", getUserId())
-                            addProperty("toId", recipientId)
-                            addProperty("callType", callType)
-                            addProperty("roomName", roomName)
-                            addProperty("fromName", getUserName())
-                            add("sdpOffer", gson.toJsonTree(offer.description))
-                        }
-
-                        socketManager.emit("call:initiate", callEvent)
-                        Log.d("CallsViewModel", "Call initiated to user $recipientId")
-                    },
-                    onError = { error ->
-                        callError.postValue(error)
-                        Log.e("CallsViewModel", "Failed to create offer: $error")
+                    // ✅ 1. Fetch ICE servers via Socket.IO BEFORE creating PeerConnection
+                    val iceServers = fetchIceServersFromApi()
+                    if (iceServers != null && iceServers.isNotEmpty()) {
+                        webRTCManager.setIceServers(iceServers)
+                        Log.d("CallsViewModel", "✅ ICE servers set before creating PeerConnection: ${iceServers.size} servers")
+                    } else {
+                        Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers via Socket.IO, using default STUN servers")
+                        // Fallback to default STUN servers (may fail through restrictive NATs)
                     }
-                )
-            } catch (e: Exception) {
-                callError.postValue(e.message ?: "Unknown error")
-                Log.e("CallsViewModel", "Error initiating call", e)
+
+                    // 2. Создать PeerConnection (with TURN credentials if fetched successfully)
+                    webRTCManager.createPeerConnection()
+
+                    // 3. Создать локальный медиа стрим
+                    val audioEnabled = true
+                    val videoEnabled = (callType == "video")
+                    webRTCManager.createLocalMediaStream(audioEnabled, videoEnabled)
+
+                    // Опубліковати локальний стрім
+                    val localStream = getLocalStream()
+                    Log.d("CallsViewModel", "Local stream created: audio=${localStream?.audioTracks?.size}, video=${localStream?.videoTracks?.size}")
+                    localStream?.let { localStreamAdded.postValue(it) }
+
+                    // 4. Создать offer
+                    webRTCManager.createOffer(
+                        onSuccess = { offer ->
+                            // 5. Отправить через Socket.IO
+                            val roomName = generateRoomName()
+                            currentCallData = CallData(
+                                callId = 0,
+                                fromId = getUserId(),
+                                fromName = getUserName(),
+                                fromAvatar = getUserAvatar(),
+                                toId = recipientId,
+                                callType = callType,
+                                roomName = roomName,
+                                sdpOffer = offer.description
+                            )
+                            isInitiator = true
+
+                            // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                            val callEvent = JSONObject().apply {
+                                put("fromId", getUserId())
+                                put("toId", recipientId)
+                                put("callType", callType)
+                                put("roomName", roomName)
+                                put("fromName", getUserName())
+                                put("sdpOffer", offer.description)
+                            }
+
+                            Log.d("CallsViewModel", "🚀 Emitting call:initiate:")
+                            Log.d("CallsViewModel", "   fromId: ${getUserId()}")
+                            Log.d("CallsViewModel", "   toId: $recipientId")
+                            Log.d("CallsViewModel", "   callType: $callType")
+                            Log.d("CallsViewModel", "   roomName: $roomName")
+                            Log.d("CallsViewModel", "   fromName: ${getUserName()}")
+
+                            socketManager.emit("call:initiate", callEvent)
+                            Log.d("CallsViewModel", "✅ call:initiate emitted successfully")
+
+                            // ✅ Join the Socket.IO room for this call
+                            val joinRoomData = JSONObject().apply {
+                                put("roomName", roomName)
+                                put("userId", getUserId())
+                            }
+                            socketManager.emit("call:join_room", joinRoomData)
+                            Log.d("CallsViewModel", "📍 Joined call room: $roomName")
+                        },
+                        onError = { error ->
+                            callError.postValue(error)
+                            Log.e("CallsViewModel", "Failed to create offer: $error")
+                        }
+                    )
+                } catch (e: Exception) {
+                    callError.postValue(e.message ?: "Unknown error")
+                    Log.e("CallsViewModel", "Error initiating call", e)
+                }
             }
+        }
+
+        // ✅ Перевірити чи Socket підключений
+        if (socketConnected.value == true) {
+            Log.d("CallsViewModel", "Socket ready, initiating call immediately")
+            callLogic()
+        } else {
+            Log.d("CallsViewModel", "Socket not ready, pending call initiation...")
+            pendingCallInitiation = callLogic
         }
     }
 
@@ -158,43 +330,66 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Ініціювати групповой вызов
      */
     fun initiateGroupCall(groupId: Int, groupName: String, callType: String = "audio") {
-        viewModelScope.launch {
-            try {
-                webRTCManager.createPeerConnection()
-                webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = (callType == "video"))
-
-                webRTCManager.createOffer(
-                    onSuccess = { offer ->
-                        val roomName = generateRoomName()
-                        currentCallData = CallData(
-                            callId = 0,
-                            fromId = getUserId(),
-                            fromName = getUserName(),
-                            fromAvatar = getUserAvatar(),
-                            groupId = groupId,
-                            callType = callType,
-                            roomName = roomName,
-                            sdpOffer = offer.description
-                        )
-                        isInitiator = true
-
-                        val groupCallEvent = JsonObject().apply {
-                            addProperty("groupId", groupId)
-                            addProperty("initiatedBy", getUserId())
-                            addProperty("callType", callType)
-                            addProperty("roomName", roomName)
-                            add("sdpOffer", gson.toJsonTree(offer.description))
-                        }
-
-                        socketManager.emit("group_call:initiate", groupCallEvent)
-                    },
-                    onError = { error ->
-                        callError.postValue(error)
+        val callLogic: () -> Unit = {
+            viewModelScope.launch {
+                try {
+                    // ✅ Fetch ICE servers from API FIRST
+                    val iceServers = fetchIceServersFromApi()
+                    if (iceServers != null) {
+                        webRTCManager.setIceServers(iceServers)
+                        Log.d("CallsViewModel", "✅ ICE servers set for group call: ${iceServers.size} servers")
                     }
-                )
-            } catch (e: Exception) {
-                callError.postValue(e.message)
+
+                    webRTCManager.createPeerConnection()
+                    webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = (callType == "video"))
+
+                    // Опубліковати локальний стрім
+                    getLocalStream()?.let { localStreamAdded.postValue(it) }
+
+                    webRTCManager.createOffer(
+                        onSuccess = { offer ->
+                            val roomName = generateRoomName()
+                            currentCallData = CallData(
+                                callId = 0,
+                                fromId = getUserId(),
+                                fromName = getUserName(),
+                                fromAvatar = getUserAvatar(),
+                                groupId = groupId,
+                                callType = callType,
+                                roomName = roomName,
+                                sdpOffer = offer.description
+                            )
+                            isInitiator = true
+
+                            // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                            val groupCallEvent = JSONObject().apply {
+                                put("groupId", groupId)
+                                put("initiatedBy", getUserId())
+                                put("callType", callType)
+                                put("roomName", roomName)
+                                put("sdpOffer", offer.description)
+                            }
+
+                            socketManager.emit("group_call:initiate", groupCallEvent)
+                            Log.d("CallsViewModel", "Group call initiated for group $groupId")
+                        },
+                        onError = { error ->
+                            callError.postValue(error)
+                        }
+                    )
+                } catch (e: Exception) {
+                    callError.postValue(e.message)
+                }
             }
+        }
+
+        // ✅ Перевірити чи Socket підключений
+        if (socketConnected.value == true) {
+            Log.d("CallsViewModel", "Socket ready, initiating group call immediately")
+            callLogic()
+        } else {
+            Log.d("CallsViewModel", "Socket not ready, pending group call initiation...")
+            pendingCallInitiation = callLogic
         }
     }
 
@@ -214,6 +409,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                 val videoEnabled = (callData.callType == "video")
                 webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = videoEnabled)
 
+                // Опубліковати локальний стрім
+                getLocalStream()?.let { localStreamAdded.postValue(it) }
+
                 // 3. Установить remote description (offer от другого юзера)
                 callData.sdpOffer?.let { offerSdp ->
                     val remoteDescription = SessionDescription(SessionDescription.Type.OFFER, offerSdp)
@@ -222,16 +420,25 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
+                // ✅ Join the Socket.IO room for this call BEFORE creating answer
+                val joinRoomData = JSONObject().apply {
+                    put("roomName", callData.roomName)
+                    put("userId", getUserId())
+                }
+                socketManager.emit("call:join_room", joinRoomData)
+                Log.d("CallsViewModel", "📍 Joined call room: ${callData.roomName}")
+
                 // 4. Создать answer
                 webRTCManager.createAnswer(
                     onSuccess = { answer ->
-                        val acceptEvent = JsonObject().apply {
-                            addProperty("roomName", callData.roomName)
-                            addProperty("fromId", getUserId())
-                            add("sdpAnswer", gson.toJsonTree(answer.description))
+                        // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                        val acceptEvent = JSONObject().apply {
+                            put("roomName", callData.roomName)
+                            put("userId", getUserId())
+                            put("sdpAnswer", answer.description)
                         }
                         socketManager.emit("call:accept", acceptEvent)
-                        Log.d("CallsViewModel", "Call accepted")
+                        Log.d("CallsViewModel", "Call accepted and answer sent")
                     },
                     onError = { error ->
                         callError.postValue(error)
@@ -247,8 +454,10 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * Отклонить вызов
      */
     fun rejectCall(roomName: String) {
-        val rejectEvent = JsonObject().apply {
-            addProperty("roomName", roomName)
+        // ✅ Використовуємо org.json.JSONObject для Socket.IO
+        val rejectEvent = JSONObject().apply {
+            put("roomName", roomName)
+            put("userId", getUserId())
         }
         socketManager.emit("call:reject", rejectEvent)
         incomingCall.postValue(null)
@@ -259,16 +468,60 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      */
     fun endCall() {
         currentCallData?.let { callData ->
-            val endEvent = JsonObject().apply {
-                addProperty("roomName", callData.roomName)
-                addProperty("reason", "user_ended")
+            // ✅ Використовуємо org.json.JSONObject для Socket.IO
+            val endEvent = JSONObject().apply {
+                put("roomName", callData.roomName)
+                put("userId", getUserId())
+                put("reason", "user_ended")
             }
             socketManager.emit("call:end", endEvent)
+
+            // ✅ Leave the Socket.IO room
+            val leaveRoomData = JSONObject().apply {
+                put("roomName", callData.roomName)
+                put("userId", getUserId())
+            }
+            socketManager.emit("call:leave_room", leaveRoomData)
+            Log.d("CallsViewModel", "📍 Left call room: ${callData.roomName}")
         }
 
         webRTCManager.close()
         callEnded.postValue(true)
         currentCallData = null
+    }
+
+    /**
+     * 🔇 Увімкнути/вимкнути мікрофон
+     */
+    fun toggleAudio(enabled: Boolean) {
+        webRTCManager.setAudioEnabled(enabled)
+        Log.d("CallsViewModel", "Audio ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * 📹 Увімкнути/вимкнути відео
+     */
+    fun toggleVideo(enabled: Boolean) {
+        webRTCManager.setVideoEnabled(enabled)
+        Log.d("CallsViewModel", "Video ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * 🔊 Увімкнути/вимкнути громку зв'язок (speaker)
+     */
+    fun toggleSpeaker(enabled: Boolean) {
+        // TODO: Implement AudioManager logic for speaker
+        val audioManager = getApplication<Application>().getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        audioManager.isSpeakerphoneOn = enabled
+        Log.d("CallsViewModel", "Speaker ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * 🔄 Переключити камеру (передня/задня)
+     */
+    fun switchCamera() {
+        webRTCManager.switchCamera()
+        Log.d("CallsViewModel", "Camera switched")
     }
 
     /**
@@ -281,10 +534,25 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     override fun onSocketConnected() {
         Log.i("CallsViewModel", "Socket connected for calls")
+        socketConnected.postValue(true)
+
+        // ✅ Зареєструватись для дзвінків ПІСЛЯ підключення
+        registerForCalls()
+
+        // ✅ Налаштувати listeners для call events
+        setupCallSocketListeners()
+
+        // ✅ Виконати відкладений дзвінок якщо є
+        pendingCallInitiation?.let {
+            Log.d("CallsViewModel", "Executing pending call initiation...")
+            it.invoke()
+            pendingCallInitiation = null
+        }
     }
 
     override fun onSocketDisconnected() {
         Log.w("CallsViewModel", "Socket disconnected")
+        socketConnected.postValue(false)
     }
 
     override fun onSocketError(error: String) {
@@ -293,83 +561,218 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     // Call-specific handlers (not part of SocketListener interface)
-    fun onIncomingCall(data: JsonObject) {
+    fun onIncomingCall(data: org.json.JSONObject) { // Работаем напрямую с JSONObject
+        val roomName = data.optString("roomName", "")
         try {
             val callData = CallData(
-                callId = data.get("callId").asInt,
-                fromId = data.get("fromId").asInt,
-                fromName = data.get("fromName").asString,
-                fromAvatar = data.get("fromAvatar").asString,
+                // optInt/optString никогда не вызовут NullPointerException
+                callId = data.optInt("callId", 0),
+                fromId = data.optInt("fromId", 0),
+                fromName = data.optString("fromName", "Анонім"),
+                fromAvatar = data.optString("fromAvatar", ""),
                 toId = getUserId(),
-                callType = data.get("callType").asString,
-                roomName = data.get("roomName").asString,
-                sdpOffer = data.get("sdpOffer")?.asString
+                callType = data.optString("callType", "audio"),
+                roomName = data.optString("roomName", ""),
+                sdpOffer = data.optString("sdpOffer", null)
             )
+
+            // ✅ CRITICAL: Ignore calls from yourself (initiator receiving their own call)
+            if (callData.fromId == getUserId()) {
+                Log.w("CallsViewModel", "⚠️ Ignoring incoming call from myself (fromId=${callData.fromId}, userId=${getUserId()})")
+                return
+            }
+
+            if (currentCallData?.roomName == roomName) {
+                Log.d("CallsViewModel", "⚠️ Игнорируем дубликат входящего звонка для комнаты: $roomName")
+                return
+            }
+
+            // ✅ Парсим и устанавливаем ICE servers с TURN credentials от сервера
+            val iceServersArray = data.optJSONArray("iceServers")
+            if (iceServersArray != null) {
+                val iceServers = parseIceServers(iceServersArray)
+                webRTCManager.setIceServers(iceServers)
+                Log.d("CallsViewModel", "✅ ICE servers received from server: ${iceServers.size} servers")
+            }
+            if (callData.roomName.isEmpty()) {
+                Log.e("CallsViewModel", "❌ Room name is empty, ignoring call")
+                return
+            }
+
             incomingCall.postValue(callData)
-            Log.d("CallsViewModel", "Incoming call from ${callData.fromName}")
+
+            Log.d("CallsViewModel", "📞 Incoming call from ${callData.fromName}")
+
+            // Запуск Activity через контекст приложения
+            val intent = IncomingCallActivity.createIntent(
+                context = getApplication(),
+                fromId = callData.fromId,
+                fromName = callData.fromName,
+                fromAvatar = callData.fromAvatar,
+                callType = callData.callType,
+                roomName = callData.roomName,
+                sdpOffer = callData.sdpOffer
+            ).apply {
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            getApplication<Application>().startActivity(intent)
+
         } catch (e: Exception) {
-            Log.e("CallsViewModel", "Error parsing incoming call", e)
+            Log.e("CallsViewModel", "🔥 Error parsing incoming call safely: ${e.message}")
         }
     }
 
-    fun onCallAnswer(data: JsonObject) {
+    fun onCallAnswer(data: org.json.JSONObject) { // Проверь, что тут JSONObject
         try {
-            val sdpAnswer = data.get("sdpAnswer").asString
-            val remoteDescription = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
-            webRTCManager.setRemoteDescription(remoteDescription) { error ->
-                callError.postValue(error)
+            // ✅ Парсим и устанавливаем ICE servers с TURN credentials от сервера
+            val iceServersArray = data.optJSONArray("iceServers")
+            if (iceServersArray != null) {
+                val iceServers = parseIceServers(iceServersArray)
+                webRTCManager.setIceServers(iceServers)
+                Log.d("CallsViewModel", "✅ ICE servers received from server in answer: ${iceServers.size} servers")
             }
-            Log.d("CallsViewModel", "Received answer")
+
+            // В org.json используем optString вместо get().asString
+            val sdpAnswer = data.optString("sdpAnswer", "")
+            if (sdpAnswer.isNotEmpty()) {
+                val remoteDescription = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
+                webRTCManager.setRemoteDescription(remoteDescription) { error ->
+                    callError.postValue(error)
+                }
+                Log.d("CallsViewModel", "✅ Received answer and set remote description")
+            }
         } catch (e: Exception) {
             Log.e("CallsViewModel", "Error handling answer", e)
         }
     }
 
-    fun onIceCandidate(data: JsonObject) {
+    fun onIceCandidate(data: org.json.JSONObject) { // И тут JSONObject
         try {
-            val candidate = data.get("candidate").asString
-            val sdpMLineIndex = data.get("sdpMLineIndex").asInt
-            val sdpMid = data.get("sdpMid").asString
+            // В org.json используем optString и optInt
+            val candidate = data.optString("candidate", "")
+            val sdpMLineIndex = data.optInt("sdpMLineIndex", 0)
+            val sdpMid = data.optString("sdpMid", "")
 
-            val iceCandidate = IceCandidate(sdpMid, sdpMLineIndex, candidate)
-            webRTCManager.addIceCandidate(iceCandidate)
+            if (candidate.isNotEmpty()) {
+                val iceCandidate = IceCandidate(sdpMid, sdpMLineIndex, candidate)
+                webRTCManager.addIceCandidate(iceCandidate)
+                Log.d("CallsViewModel", "🧊 ICE candidate added from remote")
+            }
         } catch (e: Exception) {
             Log.e("CallsViewModel", "Error adding ICE candidate", e)
         }
     }
 
-    fun onCallEnded(data: JsonObject) {
+    fun onCallEnded(data: JSONObject) { // Изменили тип с JsonObject на JSONObject
         webRTCManager.close()
         callEnded.postValue(true)
         currentCallData = null
     }
 
     // Вспомогательные функции
-    private fun getUserId(): Int {
-        // Получить из UserSession
-        return 1 // Заменить на реальный ID
+    fun getUserId(): Int {
+        return com.worldmates.messenger.data.UserSession.userId.toInt()
     }
 
     private fun getUserName(): String {
-        // Получить из UserSession
-        return "Current User"
+        return com.worldmates.messenger.data.UserSession.username ?: "Current User"
     }
 
     private fun getUserAvatar(): String {
-        // Получить из UserSession
-        return ""
+        return com.worldmates.messenger.data.UserSession.avatar ?: ""
     }
 
     private fun generateRoomName(): String {
         return "room_${System.currentTimeMillis()}"
     }
 
-    fun toggleAudio(enabled: Boolean) {
-        webRTCManager.setAudioEnabled(enabled)
+    /**
+     * Парсинг ICE servers из JSONArray от сервера
+     */
+    private fun parseIceServers(iceServersArray: org.json.JSONArray): List<PeerConnection.IceServer> {
+        val iceServers = mutableListOf<PeerConnection.IceServer>()
+
+        try {
+            for (i in 0 until iceServersArray.length()) {
+                val serverObj = iceServersArray.getJSONObject(i)
+
+                // Парсим urls (может быть строкой или массивом)
+                val urlsList = mutableListOf<String>()
+                val urlsField = serverObj.opt("urls")
+
+                when (urlsField) {
+                    is String -> urlsList.add(urlsField)
+                    is org.json.JSONArray -> {
+                        for (j in 0 until urlsField.length()) {
+                            urlsList.add(urlsField.getString(j))
+                        }
+                    }
+                }
+
+                // Создаём IceServer
+                if (urlsList.isNotEmpty()) {
+                    val username = serverObj.optString("username", null)
+                    val credential = serverObj.optString("credential", null)
+
+                    val builder = if (urlsList.size == 1) {
+                        PeerConnection.IceServer.builder(urlsList[0])
+                    } else {
+                        PeerConnection.IceServer.builder(urlsList)
+                    }
+
+                    // Добавляем credentials если есть (для TURN серверов)
+                    if (username != null && credential != null) {
+                        builder.setUsername(username)
+                        builder.setPassword(credential)
+                    }
+
+                    iceServers.add(builder.createIceServer())
+                    Log.d("CallsViewModel", "Parsed ICE server: ${urlsList.joinToString()}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("CallsViewModel", "Error parsing ICE servers", e)
+        }
+
+        return iceServers
     }
 
-    fun toggleVideo(enabled: Boolean) {
-        webRTCManager.setVideoEnabled(enabled)
+    /**
+     * Fetch ICE servers via Socket.IO (more reliable than HTTP API)
+     * Uses Socket.IO acknowledgments for synchronous request-response
+     */
+    private suspend fun fetchIceServersFromApi(): List<PeerConnection.IceServer>? {
+        return try {
+            val userId = getUserId()
+            Log.d("CallsViewModel", "🧊 Requesting ICE servers via Socket.IO for user $userId...")
+
+            val response = socketManager.requestIceServers(userId)
+
+            if (response?.optBoolean("success") == true) {
+                val iceServersArray = response.optJSONArray("iceServers")
+                if (iceServersArray != null) {
+                    val iceServers = parseIceServers(iceServersArray)
+                    Log.d("CallsViewModel", "✅ Total ICE servers fetched via Socket.IO: ${iceServers.size}")
+                    return iceServers
+                } else {
+                    Log.w("CallsViewModel", "⚠️ ICE servers array is null in response")
+                }
+            } else {
+                Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers via Socket.IO: success=${response?.optBoolean("success")}")
+            }
+
+            null
+        } catch (e: Exception) {
+            Log.e("CallsViewModel", "❌ Error fetching ICE servers via Socket.IO", e)
+            null
+        }
+    }
+
+    /**
+     * 🎥 Отримати локальний медіа стрім
+     */
+    fun getLocalStream(): MediaStream? {
+        return webRTCManager.getLocalMediaStream()
     }
 
     override fun onCleared() {

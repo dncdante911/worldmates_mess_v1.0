@@ -698,7 +698,7 @@ fun UserSearchDialogForChats(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(searchResults) { user ->
+                    items(searchResults, key = { it.userId }) { user ->
                         ListItem(
                             headlineContent = { Text(user.name ?: user.username) },
                             supportingContent = { Text("@${user.username}") },

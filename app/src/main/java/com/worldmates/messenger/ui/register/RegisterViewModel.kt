@@ -34,19 +34,33 @@ class RegisterViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Генеруємо унікальний session ID для WoWonder API
+                val sessionId = generateSessionId()
+
                 // Виклик API для регистрации
                 val response = RetrofitClient.apiService.register(
                     username = username,
                     email = email,
                     password = password,
                     confirmPassword = confirmPassword,
+                    sessionId = sessionId,
                     deviceType = "phone"
                 )
+
+                // ДЕТАЛЬНЕ ЛОГУВАННЯ для діагностики
+                Log.d("RegisterViewModel", "=== RESPONSE DEBUG ===")
+                Log.d("RegisterViewModel", "apiStatus: ${response.apiStatus}")
+                Log.d("RegisterViewModel", "accessToken: ${response.accessToken}")
+                Log.d("RegisterViewModel", "userId: ${response.userId}")
+                Log.d("RegisterViewModel", "successType: ${response.successType}")
+                Log.d("RegisterViewModel", "message: ${response.message}")
+                Log.d("RegisterViewModel", "errorMessage: ${response.errorMessage}")
+                Log.d("RegisterViewModel", "======================")
 
                 // Перевірка статусу відповіді
                 when {
                     response.apiStatus == 200 && response.accessToken != null && response.userId != null -> {
-                        // Успішна регистрация
+                        // Успішна регистрация з автоматичним логіном
                         UserSession.saveSession(
                             response.accessToken,
                             response.userId,
@@ -56,6 +70,16 @@ class RegisterViewModel : ViewModel() {
                         _registerState.value = RegisterState.Success
                         Log.d("RegisterViewModel", "Успішно зареєстровано! User ID: ${response.userId}")
                     }
+                    response.apiStatus == 200 && response.successType == "verification" -> {
+                        // Успішна реєстрація з email верифікацією
+                        _registerState.value = RegisterState.VerificationRequired(
+                            userId = 0,
+                            username = username,
+                            verificationType = "email",
+                            contactInfo = email
+                        )
+                        Log.d("RegisterViewModel", "Реєстрація успішна! Потрібна верифікація email: $email")
+                    }
                     response.apiStatus == 400 -> {
                         // Помилка від сервера
                         val errorMsg = response.errorMessage ?: "Помилка реєстрації"
@@ -63,7 +87,7 @@ class RegisterViewModel : ViewModel() {
                         Log.e("RegisterViewModel", "Помилка реєстрації: $errorMsg")
                     }
                     else -> {
-                        val errorMsg = response.errorMessage ?: "Невідома помилка"
+                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
                         _registerState.value = RegisterState.Error(errorMsg)
                         Log.e("RegisterViewModel", "Помилка: ${response.apiStatus} - $errorMsg")
                     }
@@ -91,7 +115,8 @@ class RegisterViewModel : ViewModel() {
         username: String,
         email: String,
         password: String,
-        confirmPassword: String
+        confirmPassword: String,
+        gender: String = "male"  // ✅ Добавлено
     ) {
         if (username.isBlank() || email.isBlank() || password.isBlank()) {
             _registerState.value = RegisterState.Error("Заповніть всі поля")
@@ -112,27 +137,61 @@ class RegisterViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.registerWithVerification(
+                // Генеруємо унікальний session ID
+                val sessionId = generateSessionId()
+
+                val response = RetrofitClient.apiService.register(
                     username = username,
+                    email = email,
+                    phoneNumber = null,
                     password = password,
                     confirmPassword = confirmPassword,
-                    verificationType = "email",
-                    email = email,
-                    phoneNumber = null
+                    sessionId = sessionId,
+                    gender = gender  // ✅ Добавлено
                 )
 
-                if (response.apiStatus == 200) {
-                    _registerState.value = RegisterState.VerificationRequired(
-                        userId = response.userId ?: 0,
-                        username = response.username ?: username,
-                        verificationType = "email",
-                        contactInfo = email
-                    )
-                    Log.d("RegisterViewModel", "Реєстрація успішна, потрібна верифікація")
-                } else {
-                    val errorMsg = response.errors ?: response.message ?: "Помилка реєстрації"
-                    _registerState.value = RegisterState.Error(errorMsg)
-                    Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                Log.d("RegisterViewModel", "=== EMAIL REGISTRATION ===")
+                Log.d("RegisterViewModel", "apiStatus: ${response.apiStatus}")
+                Log.d("RegisterViewModel", "successType: ${response.successType}")
+                Log.d("RegisterViewModel", "accessToken: ${response.accessToken}")
+                Log.d("RegisterViewModel", "userId: ${response.userId}")
+
+                when {
+                    response.apiStatus == 200 && response.accessToken != null && response.userId != null -> {
+                        // Успішна регистрация (може бути як auto-login так і verification)
+                        // Зберігаємо сесію в обох випадках
+                        UserSession.saveSession(
+                            response.accessToken,
+                            response.userId,
+                            response.username,
+                            response.avatar
+                        )
+
+                        if (response.successType == "verification") {
+                            // Email верифікація потрібна, але сесія вже збережена
+                            _registerState.value = RegisterState.VerificationRequired(
+                                userId = response.userId,
+                                username = response.username ?: username,
+                                verificationType = "email",
+                                contactInfo = email
+                            )
+                            Log.d("RegisterViewModel", "Email верифікація потрібна, але сесію збережено")
+                        } else {
+                            // Автоматичний логін
+                            _registerState.value = RegisterState.Success
+                            Log.d("RegisterViewModel", "Успішно зареєстровано з auto-login")
+                        }
+                    }
+                    response.apiStatus == 400 -> {
+                        val errorMsg = response.errorMessage ?: "Помилка реєстрації"
+                        _registerState.value = RegisterState.Error(errorMsg)
+                        Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                    }
+                    else -> {
+                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
+                        _registerState.value = RegisterState.Error(errorMsg)
+                        Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                    }
                 }
             } catch (e: java.net.ConnectException) {
                 val errorMsg = "Помилка з'єднання. Перевірте мережу"
@@ -157,7 +216,8 @@ class RegisterViewModel : ViewModel() {
         username: String,
         phoneNumber: String,
         password: String,
-        confirmPassword: String
+        confirmPassword: String,
+        gender: String = "male"  // ✅ Добавлено
     ) {
         if (username.isBlank() || phoneNumber.isBlank() || password.isBlank()) {
             _registerState.value = RegisterState.Error("Заповніть всі поля")
@@ -178,27 +238,48 @@ class RegisterViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.registerWithVerification(
+                // Генеруємо унікальний session ID
+                val sessionId = generateSessionId()
+
+                val response = RetrofitClient.apiService.register(
                     username = username,
+                    email = null,
+                    phoneNumber = phoneNumber,
                     password = password,
                     confirmPassword = confirmPassword,
-                    verificationType = "phone",
-                    email = null,
-                    phoneNumber = phoneNumber
+                    sessionId = sessionId,
+                    gender = gender  // ✅ Добавлено
                 )
 
-                if (response.apiStatus == 200) {
-                    _registerState.value = RegisterState.VerificationRequired(
-                        userId = response.userId ?: 0,
-                        username = response.username ?: username,
-                        verificationType = "phone",
-                        contactInfo = phoneNumber
-                    )
-                    Log.d("RegisterViewModel", "Реєстрація успішна, потрібна верифікація")
-                } else {
-                    val errorMsg = response.errors ?: response.message ?: "Помилка реєстрації"
-                    _registerState.value = RegisterState.Error(errorMsg)
-                    Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                Log.d("RegisterViewModel", "=== PHONE REGISTRATION ===")
+                Log.d("RegisterViewModel", "apiStatus: ${response.apiStatus}")
+                Log.d("RegisterViewModel", "successType: ${response.successType}")
+                Log.d("RegisterViewModel", "accessToken: ${response.accessToken}")
+                Log.d("RegisterViewModel", "userId: ${response.userId}")
+
+                when {
+                    response.apiStatus == 200 && response.accessToken != null && response.userId != null -> {
+                        // Успішна регистрация
+                        // Phone registration should auto-activate (no verification needed)
+                        UserSession.saveSession(
+                            response.accessToken,
+                            response.userId,
+                            response.username,
+                            response.avatar
+                        )
+                        _registerState.value = RegisterState.Success
+                        Log.d("RegisterViewModel", "Успішно зареєстровано через телефон! User ID: ${response.userId}")
+                    }
+                    response.apiStatus == 400 -> {
+                        val errorMsg = response.errorMessage ?: "Помилка реєстрації"
+                        _registerState.value = RegisterState.Error(errorMsg)
+                        Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                    }
+                    else -> {
+                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
+                        _registerState.value = RegisterState.Error(errorMsg)
+                        Log.e("RegisterViewModel", "Помилка: $errorMsg")
+                    }
                 }
             } catch (e: java.net.ConnectException) {
                 val errorMsg = "Помилка з'єднання. Перевірте мережу"
@@ -218,6 +299,21 @@ class RegisterViewModel : ViewModel() {
 
     fun resetState() {
         _registerState.value = RegisterState.Idle
+    }
+
+    /**
+     * Генерує унікальний session ID для WoWonder API
+     * Формат схожий на те, що генерує сервер: SHA1 + MD5 + random
+     */
+    private fun generateSessionId(): String {
+        val timestamp = System.currentTimeMillis()
+        val random = (100000000..999999999).random()
+        val baseString = "$timestamp-$random-${System.nanoTime()}"
+
+        // Генеруємо хеш схожий на WoWonder формат
+        return java.security.MessageDigest.getInstance("SHA-256")
+            .digest(baseString.toByteArray())
+            .joinToString("") { "%02x".format(it) }
     }
 }
 

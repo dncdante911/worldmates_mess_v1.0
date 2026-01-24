@@ -121,6 +121,10 @@ class MessagesViewModel(application: Application) :
     private var mediaUploader: MediaUploader? = null
     private var fileManager: FileManager? = null
 
+    // 🎥 Публічні getters для відеодзвінків
+    fun getRecipientId(): Long = recipientId
+    fun getGroupId(): Long = groupId
+
     fun initialize(recipientId: Long) {
         Log.d("MessagesViewModel", "🔧 initialize() викликано для користувача $recipientId")
         this.recipientId = recipientId
@@ -1077,7 +1081,7 @@ class MessagesViewModel(application: Application) :
         _error.value = error
     }
 
-    override fun onTypingStatus(userId: Long, isTyping: Boolean) {
+    override fun onTypingStatus(userId: Long?, isTyping: Boolean) {
         if (userId == recipientId) {
             _isTyping.value = isTyping
             // ВАЖНО: Если пользователь печатает, значит он онлайн!

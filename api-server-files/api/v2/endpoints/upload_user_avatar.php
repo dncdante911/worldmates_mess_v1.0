@@ -197,11 +197,19 @@ if ($error_code == 0 && !empty($user_data)) {
 
                         log_avatar("✅ Avatar saved to DB: {$updated_user['avatar']}");
 
+                        // Prepare avatar URL - check if it already contains domain
+                        $avatar_url = $updated_user['avatar'];
+                        if (!empty($avatar_url) && strpos($avatar_url, 'http') !== 0) {
+                            // Relative path - use Wo_GetMedia to add domain
+                            $avatar_url = Wo_GetMedia($avatar_url);
+                        }
+                        // If it already starts with http, use as-is (already full URL)
+
                         // Success response
                         $data = array(
                             'api_status' => 200,
                             'message' => 'Avatar uploaded successfully',
-                            'url' => Wo_GetMedia($updated_user['avatar']),
+                            'url' => $avatar_url,
                             'avatar' => $updated_user['avatar'],
                             'avatar_org' => $updated_user['avatar_org']
                         );
@@ -260,4 +268,7 @@ if ($error_code > 0) {
 }
 
 log_avatar("========== REQUEST COMPLETED ==========\n");
+
+// Exit to prevent api-v2.php from echoing additional output
+exit();
 ?>

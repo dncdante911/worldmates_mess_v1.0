@@ -164,6 +164,7 @@ fun SettingsScreen(
     val userData by viewModel.userData.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     // Показать сообщение об успехе
     LaunchedEffect(successMessage) {
@@ -444,7 +445,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Info,
                     title = "Про додаток",
                     subtitle = "Версія 1.0.0",
-                    onClick = { /* TODO */ }
+                    onClick = { showAboutDialog = true }
                 )
             }
 
@@ -529,6 +530,13 @@ fun SettingsScreen(
                     Text("Скасувати")
                 }
             }
+        )
+    }
+
+    // About App dialog
+    if (showAboutDialog) {
+        com.worldmates.messenger.ui.components.AboutAppDialog(
+            onDismiss = { showAboutDialog = false }
         )
     }
 }

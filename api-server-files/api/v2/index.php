@@ -64,6 +64,9 @@ $routes = [
     'get_cloud_backup_settings' => 'endpoints/get_cloud_backup_settings.php',
     'update_cloud_backup_settings' => 'endpoints/update_cloud_backup_settings.php',
 
+    // Channels
+    'get_channel_subscribers' => 'endpoints/get_channel_subscribers.php',
+
     // Other
     'get_invites' => 'endpoints/get_invites.php',
     'get_live_friends' => 'endpoints/get_live_friends.php',

@@ -9,15 +9,18 @@ $error_code = 0;
 $error_message = '';
 $data = [];
 
+// Get access token from POST or GET (Android sends via URL query param)
+$access_token = $_POST['access_token'] ?? $_GET['access_token'] ?? '';
+
 // Validate access token
-if (empty($_POST['access_token'])) {
+if (empty($access_token)) {
     $error_code = 3;
     $error_message = 'access_token is missing';
     http_response_code(400);
 }
 
 if ($error_code == 0) {
-    $requester_id = Wo_ValidateAccessToken($_POST['access_token']);
+    $requester_id = Wo_ValidateAccessToken($access_token);
 
     if (empty($requester_id) || !is_numeric($requester_id) || $requester_id < 1) {
         $error_code = 4;

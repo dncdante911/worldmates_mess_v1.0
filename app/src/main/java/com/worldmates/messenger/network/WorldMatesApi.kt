@@ -617,9 +617,9 @@ interface WorldMatesApi {
     ): MediaUploadResponse
     // 📸 Upload Channel Avatar
     @Multipart
-    @POST("/api/v2/channels.php?type=upload_channel_avatar")
+    @POST("?type=upload_channel_avatar")
     suspend fun uploadChannelAvatar(
-        @Part("access_token") accessToken: RequestBody,
+        @Query("access_token") accessToken: String,
         @Part("channel_id") channelId: RequestBody,
         @Part avatar: MultipartBody.Part
     ): MediaUploadResponse

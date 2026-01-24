@@ -641,6 +641,10 @@ fun SettingsDrawerContent(
 ) {
     val context = LocalContext.current
 
+    // State для діалогів
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -713,7 +717,8 @@ fun SettingsDrawerContent(
                     title = "Мій профіль",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Мій профіль", Toast.LENGTH_SHORT).show()
+                        // TODO: Navigate to UserProfileActivity when created
+                        Toast.makeText(context, "Профіль - функція в розробці", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -724,7 +729,7 @@ fun SettingsDrawerContent(
                     title = "Нова група",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Створити групу", Toast.LENGTH_SHORT).show()
+                        showCreateGroupDialog = true
                     }
                 )
             }
@@ -805,7 +810,16 @@ fun SettingsDrawerContent(
                     title = "Запросити друзів",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Запросити друзів", Toast.LENGTH_SHORT).show()
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Приєднуйся до WorldMates - найкращого месенджера! 🚀\n" +
+                                "Завантаж тут: https://worldmates.com"
+                            )
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Запросити друга"))
                     }
                 )
             }
@@ -816,11 +830,26 @@ fun SettingsDrawerContent(
                     title = "Про додаток",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "WorldMates Messenger v1.0", Toast.LENGTH_SHORT).show()
+                        showAboutDialog = true
                     }
                 )
             }
         }
+    }
+
+    // Діалог "Про додаток"
+    if (showAboutDialog) {
+        com.worldmates.messenger.ui.components.AboutAppDialog(
+            onDismiss = { showAboutDialog = false }
+        )
+    }
+
+    // Діалог створення групи
+    if (showCreateGroupDialog) {
+        // Need to get GroupsViewModel from parent
+        // For now, show a Toast - will need to refactor to pass ViewModel
+        Toast.makeText(context, "Функція створення групи доступна на вкладці Групи", Toast.LENGTH_LONG).show()
+        showCreateGroupDialog = false
     }
 }
 

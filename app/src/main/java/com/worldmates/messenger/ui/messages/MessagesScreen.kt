@@ -698,6 +698,16 @@ fun MessagesScreen(
                                     kotlinx.coroutines.delay(1000)
                                     showQuickReaction = false
                                 }
+                            },
+                            // 👤 Параметри для відображення імені в групових чатах
+                            isGroup = isGroup,
+                            onSenderNameClick = { senderId ->
+                                // Відкриваємо профіль відправника
+                                context.startActivity(
+                                    android.content.Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java).apply {
+                                        putExtra("user_id", senderId)
+                                    }
+                                )
                             }
                         )
                     }  // Закриття AnimatedVisibility
@@ -1329,7 +1339,10 @@ fun MessageBubbleComposable(
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onToggleSelection: (Long) -> Unit = {},
-    onDoubleTap: (Long) -> Unit = {}
+    onDoubleTap: (Long) -> Unit = {},
+    // 👤 Параметри для відображення імені відправника в групових чатах
+    isGroup: Boolean = false,
+    onSenderNameClick: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val isOwn = message.fromId == UserSession.userId
@@ -1505,6 +1518,21 @@ fun MessageBubbleComposable(
             } else {
                 // 💬 ТЕКСТ В БУЛЬБАШЦІ - використовуємо вибраний стиль
                 Column {
+                    // 👤 Ім'я відправника (тільки для групових чатів/каналів, і не для власних повідомлень)
+                    if (isGroup && !isOwn && !message.senderName.isNullOrEmpty()) {
+                        Text(
+                            text = message.senderName!!,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(start = 12.dp, bottom = 2.dp)
+                                .clickable {
+                                    onSenderNameClick(message.fromId)
+                                }
+                        )
+                    }
+
                     StyledBubble(
                         bubbleStyle = bubbleStyle,
                         isOwn = isOwn,

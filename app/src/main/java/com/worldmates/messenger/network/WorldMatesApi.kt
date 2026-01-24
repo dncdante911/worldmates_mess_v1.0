@@ -1099,10 +1099,9 @@ interface WorldMatesApi {
 
     // ⭐ Rate User (Like/Dislike)
     @FormUrlEncoded
-    @POST("/api/v2/")
+    @POST("/api/v2/?type=rate_user")
     suspend fun rateUser(
-        @Field("access_token") accessToken: String,
-        @Field("type") type: String = "rate_user",
+        @Query("access_token") accessToken: String,
         @Field("user_id") userId: Long,
         @Field("rating_type") ratingType: String, // "like" or "dislike"
         @Field("comment") comment: String? = null
@@ -1110,10 +1109,9 @@ interface WorldMatesApi {
 
     // ⭐ Get User Rating
     @FormUrlEncoded
-    @POST("/api/v2/")
+    @POST("/api/v2/?type=get_user_rating")
     suspend fun getUserRating(
-        @Field("access_token") accessToken: String,
-        @Field("type") type: String = "get_user_rating",
+        @Query("access_token") accessToken: String,
         @Field("user_id") userId: Long,
         @Field("include_details") includeDetails: String = "0" // "1" to include ratings list
     ): com.worldmates.messenger.data.model.GetUserRatingResponse

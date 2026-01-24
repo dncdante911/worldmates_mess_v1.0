@@ -813,12 +813,12 @@ fun UserRatingCard(
                     onClick = onLikeClick,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (rating.myRating?.ratingType == "like") {
+                        containerColor = if (rating.myRating?.type == "like") {
                             Color(0xFF4CAF50)
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
                         },
-                        contentColor = if (rating.myRating?.ratingType == "like") {
+                        contentColor = if (rating.myRating?.type == "like") {
                             Color.White
                         } else {
                             Color(0xFF4CAF50)
@@ -832,7 +832,7 @@ fun UserRatingCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (rating.myRating?.ratingType == "like") "Лайк поставлено" else "Лайк"
+                        text = if (rating.myRating?.type == "like") "Лайк поставлено" else "Лайк"
                     )
                 }
 
@@ -841,12 +841,12 @@ fun UserRatingCard(
                     onClick = onDislikeClick,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (rating.myRating?.ratingType == "dislike") {
+                        containerColor = if (rating.myRating?.type == "dislike") {
                             Color(0xFFF44336)
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
                         },
-                        contentColor = if (rating.myRating?.ratingType == "dislike") {
+                        contentColor = if (rating.myRating?.type == "dislike") {
                             Color.White
                         } else {
                             Color(0xFFF44336)
@@ -860,7 +860,7 @@ fun UserRatingCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (rating.myRating?.ratingType == "dislike") "Дізлайк поставлено" else "Дізлайк"
+                        text = if (rating.myRating?.type == "dislike") "Дізлайк поставлено" else "Дізлайк"
                     )
                 }
             }

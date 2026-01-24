@@ -1,11 +1,13 @@
 package com.worldmates.messenger.ui.channels
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import kotlinx.coroutines.CoroutineScope
@@ -1278,6 +1280,12 @@ fun SubscribersDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clickable {
+                                    // Відкриваємо профіль користувача
+                                    val profileIntent = Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java)
+                                    profileIntent.putExtra("user_id", subscriber.userId ?: subscriber.id ?: 0L)
+                                    context.startActivity(profileIntent)
+                                }
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {

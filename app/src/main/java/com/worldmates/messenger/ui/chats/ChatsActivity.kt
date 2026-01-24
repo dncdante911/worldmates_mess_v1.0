@@ -817,7 +817,7 @@ fun SettingsDrawerContent(
                             putExtra(
                                 Intent.EXTRA_TEXT,
                                 "Приєднуйся до WorldMates - найкращого месенджера! 🚀\n" +
-                                "Завантаж тут: https://worldmates.com"
+                                "Завантаж тут: https://worldmates.club"
                             )
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "Запросити друга"))

@@ -54,19 +54,19 @@ if ($error_code == 0) {
     log_avatar("🔍 Step 1: Validating access token...");
 
     // Перевірка чи функція існує
-    if (!function_exists('Wo_UserIdFromAccessToken')) {
-        log_avatar("❌ CRITICAL: Function Wo_UserIdFromAccessToken does NOT exist!");
+    if (!function_exists('Wo_ValidateAccessToken')) {
+        log_avatar("❌ CRITICAL: Function Wo_ValidateAccessToken does NOT exist!");
         log_avatar("❌ This means config.php was not loaded properly");
         log_avatar("❌ Available functions starting with 'Wo_': " . implode(', ', array_filter(get_defined_functions()['user'], function($f) { return strpos($f, 'Wo_') === 0; })));
         $error_code = 500;
         $error_message = 'Server configuration error: Required function not found';
         http_response_code(500);
     } else {
-        log_avatar("✓ Function Wo_UserIdFromAccessToken exists");
+        log_avatar("✓ Function Wo_ValidateAccessToken exists");
 
         try {
-            $user_id = Wo_UserIdFromAccessToken($access_token);
-            log_avatar("✓ Wo_UserIdFromAccessToken returned: " . var_export($user_id, true));
+            $user_id = Wo_ValidateAccessToken($access_token);
+            log_avatar("✓ Wo_ValidateAccessToken returned: " . var_export($user_id, true));
 
             if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
                 log_avatar("❌ ERROR: Invalid access_token - user_id is invalid");
@@ -77,13 +77,13 @@ if ($error_code == 0) {
                 log_avatar("✓ Valid user_id: {$user_id}");
             }
         } catch (Exception $e) {
-            log_avatar("❌ EXCEPTION in Wo_UserIdFromAccessToken: " . $e->getMessage());
+            log_avatar("❌ EXCEPTION in Wo_ValidateAccessToken: " . $e->getMessage());
             log_avatar("❌ Stack trace: " . $e->getTraceAsString());
             $error_code = 500;
             $error_message = 'Error validating access token';
             http_response_code(500);
         } catch (Error $e) {
-            log_avatar("❌ FATAL ERROR in Wo_UserIdFromAccessToken: " . $e->getMessage());
+            log_avatar("❌ FATAL ERROR in Wo_ValidateAccessToken: " . $e->getMessage());
             log_avatar("❌ File: " . $e->getFile() . " Line: " . $e->getLine());
             $error_code = 500;
             $error_message = 'Fatal error validating access token';

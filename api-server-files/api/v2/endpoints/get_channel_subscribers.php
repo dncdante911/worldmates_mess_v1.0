@@ -17,7 +17,7 @@ if (empty($_POST['access_token'])) {
 }
 
 if ($error_code == 0) {
-    $user_id = Wo_UserIdFromAccessToken($_POST['access_token']);
+    $user_id = Wo_ValidateAccessToken($_POST['access_token']);
 
     if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
         $error_code = 4;

@@ -17,7 +17,7 @@ if (empty($_POST['access_token'])) {
 }
 
 if ($error_code == 0) {
-    $rater_id = Wo_UserIdFromAccessToken($_POST['access_token']);
+    $rater_id = Wo_ValidateAccessToken($_POST['access_token']);
 
     if (empty($rater_id) || !is_numeric($rater_id) || $rater_id < 1) {
         $error_code = 4;

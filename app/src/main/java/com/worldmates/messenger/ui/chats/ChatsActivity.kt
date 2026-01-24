@@ -247,6 +247,10 @@ fun ChatsScreen(
                         context.startActivity(
                             Intent(context, com.worldmates.messenger.ui.drafts.DraftsActivity::class.java)
                         )
+                    },
+                    onCreateGroup = {
+                        // Open create group dialog
+                        showCreateGroupDialog = true
                     }
                 )
             }
@@ -637,7 +641,8 @@ fun SettingsDrawerContent(
     onClose: () -> Unit,
     onShowContactPicker: () -> Unit = {},
     onShowDrafts: () -> Unit = {},
-    onCreateStoryClick: () -> Unit = {}
+    onCreateStoryClick: () -> Unit = {},
+    onCreateGroup: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -646,7 +651,6 @@ fun SettingsDrawerContent(
 
     // State для діалогів
     var showAboutDialog by remember { mutableStateOf(false) }
-    var showCreateGroupDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -733,7 +737,7 @@ fun SettingsDrawerContent(
                     title = "Нова група",
                     onClick = {
                         onClose()
-                        showCreateGroupDialog = true
+                        onCreateGroup()
                     }
                 )
             }
@@ -846,14 +850,6 @@ fun SettingsDrawerContent(
         com.worldmates.messenger.ui.components.AboutAppDialog(
             onDismiss = { showAboutDialog = false }
         )
-    }
-
-    // Діалог створення групи
-    if (showCreateGroupDialog) {
-        // Need to get GroupsViewModel from parent
-        // For now, show a Toast - will need to refactor to pass ViewModel
-        Toast.makeText(context, "Функція створення групи доступна на вкладці Групи", Toast.LENGTH_LONG).show()
-        showCreateGroupDialog = false
     }
 }
 

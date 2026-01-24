@@ -7,7 +7,7 @@
 // +------------------------------------------------------------------------+
 
 if ($error_code == 0) {
-    $user_id = Wo_UserIdFromAccessToken($_POST['access_token']);
+    $user_id = Wo_ValidateAccessToken($_POST['access_token']);
     if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
         $error_code    = 4;
         $error_message = 'Invalid access_token';
@@ -114,4 +114,7 @@ if ($error_code == 0) {
         }
     }
 }
+
+// Exit to prevent api-v2.php from echoing additional output
+exit();
 ?>

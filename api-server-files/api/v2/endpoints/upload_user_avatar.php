@@ -134,8 +134,15 @@ if ($error_code == 0 && !empty($user_data)) {
     log_avatar("🔍 Step 3: Checking uploaded file...");
     log_avatar("📂 \$_FILES dump: " . print_r($_FILES, true));
 
+    // Android sends file with key 'file', but we expect 'avatar'
+    if (!empty($_FILES['file']['tmp_name']) && empty($_FILES['avatar']['tmp_name'])) {
+        $_FILES['avatar'] = $_FILES['file'];
+        log_avatar("✓ Remapped \$_FILES['file'] to \$_FILES['avatar']");
+    }
+
     if (empty($_FILES['avatar']['tmp_name'])) {
         log_avatar("❌ ERROR: Avatar file is required - \$_FILES['avatar']['tmp_name'] is empty");
+        log_avatar("❌ Available keys in \$_FILES: " . implode(', ', array_keys($_FILES)));
         if (isset($_FILES['avatar']['error'])) {
             $upload_errors = [
                 UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize',

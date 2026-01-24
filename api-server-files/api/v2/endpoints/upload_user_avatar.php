@@ -5,9 +5,6 @@
 // | Загрузка аватара пользователя с детальным логированием
 // +------------------------------------------------------------------------+
 
-// КРИТИЧНО: Завантажуємо config.php для доступу до функцій WoWonder
-require_once(__DIR__ . '/../config.php');
-
 // Налаштування логування
 define('AVATAR_LOG_FILE', '/var/www/www-root/data/www/worldmates.club/api/v2/logs/avatar_upload.log');
 
@@ -32,6 +29,11 @@ $data = [];
 log_avatar("========== NEW AVATAR UPLOAD REQUEST ==========");
 log_avatar("📊 Request method: " . $_SERVER['REQUEST_METHOD']);
 log_avatar("📊 Content-Type: " . ($_SERVER['CONTENT_TYPE'] ?? 'not set'));
+log_avatar("📊 REQUEST_URI: " . ($_SERVER['REQUEST_URI'] ?? 'not set'));
+log_avatar("📊 SCRIPT_FILENAME: " . ($_SERVER['SCRIPT_FILENAME'] ?? 'not set'));
+log_avatar("📊 Called through index.php: " . (defined('DB_HOST') ? 'YES (config loaded)' : 'NO (config NOT loaded)'));
+log_avatar("📊 \$sqlConnect exists: " . (isset($sqlConnect) ? 'YES' : 'NO'));
+log_avatar("📊 \$wo exists: " . (isset($wo) ? 'YES' : 'NO'));
 
 // Get access token from POST or GET (Android sends via URL, but WoWonder expects POST)
 $access_token = $_POST['access_token'] ?? $_GET['access_token'] ?? '';

@@ -138,9 +138,9 @@ class UserProfileViewModel : ViewModel() {
 
                 Log.d("UserProfileViewModel", "Rating response: apiStatus=${response.apiStatus}")
 
-                if (response.apiStatus == 200 && response.userRating != null) {
-                    _ratingState.value = RatingState.Success(response.userRating)
-                    Log.d("UserProfileViewModel", "Rating loaded: likes=${response.userRating.likes}, dislikes=${response.userRating.dislikes}")
+                if (response.apiStatus == 200 && response.rating != null) {
+                    _ratingState.value = RatingState.Success(response.rating)
+                    Log.d("UserProfileViewModel", "Rating loaded: likes=${response.rating.likes}, dislikes=${response.rating.dislikes}")
                 } else {
                     val errorMsg = response.errorMessage ?: "Failed to load rating"
                     _ratingState.value = RatingState.Error(errorMsg)

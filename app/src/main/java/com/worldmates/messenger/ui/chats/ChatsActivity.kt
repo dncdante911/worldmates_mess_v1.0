@@ -218,6 +218,7 @@ fun ChatsScreen(
 
     // 📇 Стан для ContactPicker
     var showContactPicker by remember { mutableStateOf(false) }
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -262,7 +263,6 @@ fun ChatsScreen(
 
     var searchText by remember { mutableStateOf("") }
     var showGroups by remember { mutableStateOf(false) }
-    var showCreateGroupDialog by remember { mutableStateOf(false) }
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
     var showContactMenu by remember { mutableStateOf(false) }
 

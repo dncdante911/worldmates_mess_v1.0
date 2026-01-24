@@ -1,4 +1,3 @@
-// ============ ChannelsViewModel.kt ============
 
 package com.worldmates.messenger.ui.channels
 
@@ -338,6 +337,100 @@ class ChannelsViewModel : ViewModel() {
     }
 
     /**
+     * Додати учасника до каналу (тільки для адмінів)
+     */
+    fun addChannelMember(
+        channelId: Long,
+        userId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.addChannelMember(
+                    accessToken = UserSession.accessToken!!,
+                    channelId = channelId,
+                    userId = userId
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d("ChannelsViewModel", "Учасника додано до каналу успішно")
+                    onSuccess()
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка додавання учасника"
+                    Log.e("ChannelsViewModel", errorMsg)
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                Log.e("ChannelsViewModel", "Помилка додавання учасника до каналу", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Пошук користувачів для додавання в канал
+     */
+    fun searchUsers(
+        query: String,
+        onSuccess: (List<com.worldmates.messenger.network.SearchUser>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        if (query.isBlank()) {
+            onSuccess(emptyList())
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.searchUsers(
+                    accessToken = UserSession.accessToken!!,
+                    query = query,
+                    limit = 30
+                )
+
+                if (response.apiStatus == 200 && response.users != null) {
+                    onSuccess(response.users)
+                } else {
+                    val errorMsg = response.errorMessage ?: "Помилка пошуку користувачів"
+                    Log.e("ChannelsViewModel", errorMsg)
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                Log.e("ChannelsViewModel", "Помилка пошуку користувачів", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * Додати користувача до каналу (підписати його)
+     */
+    fun addUserToChannel(
+        channelId: Long,
+        userId: Long,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        // Використовуємо існуючу функцію підписки
+        // Примітка: Зазвичай тільки сам користувач може підписатися
+        // але для адміністраторів можна використати окремий endpoint якщо він існує
+        subscribeChannel(channelId, onSuccess, onError)
+    }
+
+    /**
      * Видалити канал (тільки для адмінів)
      */
     fun deleteChannel(channelId: Long, onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
@@ -583,9 +676,7 @@ class ChannelsViewModel : ViewModel() {
             }
         }
     }
-    /**
-     * 📸 Завантажити новий аватар каналу
-     */
+
     /**
      * 📸 Завантажити новий аватар каналу
      */
@@ -619,7 +710,7 @@ class ChannelsViewModel : ViewModel() {
                 )
 
                 val filePart = okhttp3.MultipartBody.Part.createFormData(
-                    "file", // Убедитесь, что сервер ожидает именно "file"
+                    "avatar", // PHP сервер очікує саме "avatar"
                     "avatar.jpg",
                     requestFile
                 )
@@ -629,13 +720,18 @@ class ChannelsViewModel : ViewModel() {
                     channelId.toString()
                 )
 
+                val accessTokenBody = okhttp3.RequestBody.create(
+                    "text/plain".toMediaTypeOrNull(),
+                    token
+                )
+
                 Log.d("ChannelsViewModel", "📸 Uploading avatar for channel $channelId")
 
-                // ИСПРАВЛЕНО: Используем RetrofitClient.apiService
+                // Викликаємо API з правильними параметрами
                 val response = RetrofitClient.apiService.uploadChannelAvatar(
-                    accessToken = token,
+                    accessToken = accessTokenBody,
                     channelId = channelIdBody,
-                    file = filePart
+                    avatar = filePart
                 )
 
                 // ВАЖНО: В CreateChannelResponse обычно поле называется apiStatus (Int)

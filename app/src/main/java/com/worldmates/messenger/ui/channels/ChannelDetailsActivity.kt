@@ -8,6 +8,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -27,11 +31,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.Brush
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import androidx.lifecycle.ViewModelProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,6 +55,7 @@ import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.ui.theme.BackgroundImage
 import com.worldmates.messenger.ui.theme.rememberThemeState
+import com.worldmates.messenger.util.toFullMediaUrl
 
 /**
  * Активність для перегляду деталей каналу та його постів
@@ -74,21 +86,12 @@ class ChannelDetailsActivity : AppCompatActivity() {
 
         setContent {
             WorldMatesThemedApp {
-                val themeState = rememberThemeState()
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Фоновое изображение из настроек тем
-                    BackgroundImage(
-                        backgroundImageUri = themeState.backgroundImageUri,
-                        presetBackgroundId = themeState.presetBackgroundId
-                    )
-                    
-                    ChannelDetailsScreen(
-                        channelId = channelId,
-                        channelsViewModel = channelsViewModel,
-                        detailsViewModel = detailsViewModel,
-                        onBackPressed = { finish() }
-                    )
-                }
+                ChannelDetailsScreen(
+                    channelId = channelId,
+                    channelsViewModel = channelsViewModel,
+                    detailsViewModel = detailsViewModel,
+                    onBackPressed = { finish() }
+                )
             }
         }
     }
@@ -130,6 +133,7 @@ fun ChannelDetailsScreen(
     var showCreatePostDialog by remember { mutableStateOf(false) }
     var showChangeAvatarDialog by remember { mutableStateOf(false) }
     var showSubscribersDialog by remember { mutableStateOf(false) }
+    var showAddMembersDialog by remember { mutableStateOf(false) }
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showPostOptions by remember { mutableStateOf(false) }
     var showEditPostDialog by remember { mutableStateOf(false) }
@@ -160,6 +164,7 @@ fun ChannelDetailsScreen(
             refreshing = false
         }
     )
+
     // URI для вибраного зображення аватара
     var selectedAvatarUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
@@ -233,255 +238,269 @@ fun ChannelDetailsScreen(
         }
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,  // Прозорий фон, щоб було видно BackgroundImage
-        floatingActionButton = {
-            // FAB для створення поста (тільки для адмінів)
-            if (channel?.isAdmin == true) {
-                FloatingActionButton(
-                    onClick = { showCreatePostDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Створити пост",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (channel == null) {
-                // Канал не знайдено
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Канал не знайдено",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = onBackPressed) {
-                        Text("Повернутися")
-                    }
-                }
-            } else {
-                // Відображаємо канал
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pullRefresh(pullRefreshState)
-                ) {
-                    // Шапка каналу
-                    item {
-                        ChannelHeader(
-                            channel = channel,
-                            onBackClick = onBackPressed,
-                            onSettingsClick = if (channel.isAdmin) {
-                                { showChannelMenuDialog = true }
-                            } else null,
-                            onSubscribersClick = {
-                                detailsViewModel.loadSubscribers(channelId)
-                                showSubscribersDialog = true
-                            },
-                            onAvatarClick = if (channel.isAdmin) {
-                                { showChangeAvatarDialog = true }
-                            } else null
+    // Отримуємо стан теми для фону
+    val themeState = rememberThemeState()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Застосовуємо фон з налаштувань тем
+        BackgroundImage(
+            backgroundImageUri = themeState.backgroundImageUri,
+            presetBackgroundId = themeState.presetBackgroundId
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent, // Прозорий фон щоб був видно BackgroundImage
+            floatingActionButton = {
+                // FAB для створення поста (тільки для адмінів)
+                if (channel?.isAdmin == true) {
+                    FloatingActionButton(
+                        onClick = { showCreatePostDialog = true },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Створити пост",
+                            modifier = Modifier.size(28.dp)
                         )
                     }
-
-                    // Кнопка підписки (якщо не адмін)
-                    if (!channel.isAdmin) {
+                }
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                if (channel == null) {
+                    // Канал не знайдено
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Канал не знайдено",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onBackPressed) {
+                            Text("Повернутися")
+                        }
+                    }
+                } else {
+                    // Відображаємо канал
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pullRefresh(pullRefreshState)
+                    ) {
+                        // Шапка каналу
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .padding(16.dp)
+                            ChannelHeader(
+                                channel = channel,
+                                onBackClick = onBackPressed,
+                                onSettingsClick = if (channel.isAdmin) {
+                                    { showChannelMenuDialog = true }
+                                } else null,
+                                onSubscribersClick = {
+                                    detailsViewModel.loadSubscribers(channelId)
+                                    showSubscribersDialog = true
+                                },
+                                onAddMembersClick = if (channel.isAdmin) {
+                                    { showAddMembersDialog = true }
+                                } else null,
+                                onAvatarClick = if (channel.isAdmin) {
+                                    { showChangeAvatarDialog = true }
+                                } else null
+                            )
+                        }
+
+                        // Кнопка підписки (якщо не адмін)
+                        if (!channel.isAdmin) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .padding(16.dp)
+                                ) {
+                                    SubscribeButton(
+                                        isSubscribed = channel.isSubscribed,
+                                        onToggle = {
+                                            if (channel.isSubscribed) {
+                                                channelsViewModel.unsubscribeChannel(
+                                                    channelId = channelId,
+                                                    onSuccess = {
+                                                        Toast.makeText(context, "Ви відписалися від каналу", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onError = { error ->
+                                                        Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            } else {
+                                                channelsViewModel.subscribeChannel(
+                                                    channelId = channelId,
+                                                    onSuccess = {
+                                                        Toast.makeText(context, "Ви підписалися на канал!", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onError = { error ->
+                                                        Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+
+                        // Заголовок секції постів
+                        item {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.surface
                             ) {
-                                SubscribeButton(
-                                    isSubscribed = channel.isSubscribed,
-                                    onToggle = {
-                                        if (channel.isSubscribed) {
-                                            channelsViewModel.unsubscribeChannel(
-                                                channelId = channelId,
-                                                onSuccess = {
-                                                    Toast.makeText(context, "Ви відписалися від каналу", Toast.LENGTH_SHORT).show()
-                                                },
-                                                onError = { error ->
-                                                    Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
-                                                }
-                                            )
-                                        } else {
-                                            channelsViewModel.subscribeChannel(
-                                                channelId = channelId,
-                                                onSuccess = {
-                                                    Toast.makeText(context, "Ви підписалися на канал!", Toast.LENGTH_SHORT).show()
-                                                },
-                                                onError = { error ->
-                                                    Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
-                                                }
-                                            )
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                Column {
+                                    Text(
+                                        text = "Пости • ${posts.size}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        modifier = Modifier.padding(16.dp)
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                    }
 
-                    // Заголовок секції постів
-                    item {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.surface
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Пости • ${posts.size}",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                    modifier = Modifier.padding(16.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
-                    // Список постів
-                    if (posts.isEmpty() && !isLoadingPosts) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(64.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                        // Список постів
+                        if (posts.isEmpty() && !isLoadingPosts) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(64.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = "Поки що немає постів",
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    if (channel.isAdmin) {
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
                                         Text(
-                                            text = "Створіть перший пост!",
-                                            fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                            text = "Поки що немає постів",
+                                            fontSize = 16.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                            fontWeight = FontWeight.Medium
                                         )
+                                        if (channel.isAdmin) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = "Створіть перший пост!",
+                                                fontSize = 14.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        items(
-                            items = posts.sortedByDescending { it.createdTime },
-                            key = { it.id }
-                        ) { post ->
-                            ChannelPostCard(
-                                post = post,
-                                onPostClick = {
-                                    selectedPostForDetail = post
-                                    detailsViewModel.loadComments(post.id)
-                                    detailsViewModel.registerPostView(
-                                        postId = post.id,
-                                        onSuccess = { /* Просмотр зареєстровано */ },
-                                        onError = { /* Помилка реєстрації, але не показуємо користувачу */ }
-                                    )
-                                    showPostDetailDialog = true
-                                },
-                                onReactionClick = { emoji ->
-                                    detailsViewModel.addPostReaction(
-                                        postId = post.id,
-                                        emoji = emoji,
-                                        onSuccess = {
-                                            Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
-                                        },
-                                        onError = { error ->
-                                            Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                        } else {
+                            items(
+                                items = posts.sortedByDescending { it.createdTime },
+                                key = { it.id }
+                            ) { post ->
+                                ChannelPostCard(
+                                    post = post,
+                                    onPostClick = {
+                                        selectedPostForDetail = post
+                                        detailsViewModel.loadComments(post.id)
+                                        detailsViewModel.registerPostView(
+                                            postId = post.id,
+                                            onSuccess = { /* Просмотр зареєстровано */ },
+                                            onError = { /* Помилка реєстрації, але не показуємо користувачу */ }
+                                        )
+                                        showPostDetailDialog = true
+                                    },
+                                    onReactionClick = { emoji ->
+                                        detailsViewModel.addPostReaction(
+                                            postId = post.id,
+                                            emoji = emoji,
+                                            onSuccess = {
+                                                Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            onError = { error ->
+                                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                            }
+                                        )
+                                    },
+                                    onCommentsClick = {
+                                        detailsViewModel.loadComments(post.id)
+                                        showCommentsSheet = true
+                                    },
+                                    onShareClick = {
+                                        // Використовуємо Android Share Intent для поширення поста
+                                        val shareText = buildString {
+                                            append(post.text)
+                                            append("\n\n")
+                                            append("Від: ${post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}"}")
+                                            append("\n")
+                                            append("Канал: ${channel?.name ?: "WorldMates Channel"}")
                                         }
-                                    )
-                                },
-                                onCommentsClick = {
-                                    detailsViewModel.loadComments(post.id)
-                                    showCommentsSheet = true
-                                },
-                                onShareClick = {
-                                    // Використовуємо Android Share Intent для поширення поста
-                                    val shareText = buildString {
-                                        append(post.text)
-                                        append("\n\n")
-                                        append("Від: ${post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}"}")
-                                        append("\n")
-                                        append("Канал: ${channel?.name ?: "WorldMates Channel"}")
-                                    }
 
-                                    val sendIntent = android.content.Intent().apply {
-                                        action = android.content.Intent.ACTION_SEND
-                                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                                        type = "text/plain"
-                                    }
+                                        val sendIntent = android.content.Intent().apply {
+                                            action = android.content.Intent.ACTION_SEND
+                                            putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                            type = "text/plain"
+                                        }
 
-                                    val shareIntent = android.content.Intent.createChooser(sendIntent, "Поділитися постом")
-                                    context.startActivity(shareIntent)
-                                },
-                                onMoreClick = {
-                                    selectedPostForOptions = post
-                                    showPostOptions = true
-                                },
-                                canEdit = channel.isAdmin,
-                                modifier = Modifier
-                                    .padding(horizontal = 0.dp, vertical = 0.dp)
-                                    .animateItem()
-                            )
-                        }
-                    }
-
-                    // Індикатор завантаження
-                    if (isLoadingPosts && posts.isNotEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(32.dp),
-                                    color = MaterialTheme.colorScheme.primary
+                                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Поділитися постом")
+                                        context.startActivity(shareIntent)
+                                    },
+                                    onMoreClick = {
+                                        selectedPostForOptions = post
+                                        showPostOptions = true
+                                    },
+                                    canEdit = channel.isAdmin,
+                                    modifier = Modifier
+                                        .padding(horizontal = 0.dp, vertical = 0.dp)
+                                        .animateItem()
                                 )
                             }
                         }
+
+                        // Індикатор завантаження
+                        if (isLoadingPosts && posts.isNotEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(32.dp),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+                        // Нижній відступ
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
+                        }
                     }
 
-                    // Нижній відступ
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
+                    // Pull-to-refresh індикатор
+                    PullRefreshIndicator(
+                        refreshing = refreshing,
+                        state = pullRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
-
-                // Pull-to-refresh індикатор
-                PullRefreshIndicator(
-                    refreshing = refreshing,
-                    state = pullRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
             }
         }
 
@@ -524,6 +543,15 @@ fun ChannelDetailsScreen(
             SubscribersDialog(
                 subscribers = subscribers,
                 onDismiss = { showSubscribersDialog = false }
+            )
+        }
+
+        // Діалог додавання учасників
+        if (showAddMembersDialog && channel?.isAdmin == true) {
+            AddMembersDialog(
+                channelId = channelId,
+                channelsViewModel = channelsViewModel,
+                onDismiss = { showAddMembersDialog = false }
             )
         }
 
@@ -904,20 +932,21 @@ fun ChannelDetailsScreen(
                 }
             )
         }
-   // Діалог зміни аватара каналу
-    if (showChangeAvatarDialog) {
-        ChannelAvatarDialog(
-            onDismiss = { showChangeAvatarDialog = false },
-            onCameraClick = {
-                cameraUri?.let { cameraLauncher.launch(it) }
-            },
-            onGalleryClick = {
-                galleryLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            }
-        )
-    }
+
+        // Діалог зміни аватара каналу
+        if (showChangeAvatarDialog) {
+            ChannelAvatarDialog(
+                onDismiss = { showChangeAvatarDialog = false },
+                onCameraClick = {
+                    cameraUri?.let { cameraLauncher.launch(it) }
+                },
+                onGalleryClick = {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
+            )
+        }
     }
 }
 
@@ -931,8 +960,40 @@ fun CreatePostDialog(
     onDismiss: () -> Unit,
     onCreate: (text: String, mediaUrl: String?) -> Unit
 ) {
+    val context = LocalContext.current
     var text by remember { mutableStateOf("") }
     var mediaUrl by remember { mutableStateOf("") }
+    var selectedMediaUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var isUploadingMedia by remember { mutableStateOf(false) }
+    var uploadedMediaUrl by remember { mutableStateOf<String?>(null) }
+
+    // Лаунчер для вибору зображення з галереї
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: android.net.Uri? ->
+        selectedMediaUri = uri
+    }
+
+    // Лаунчер для зйомки фото
+    val cameraUri = remember {
+        android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.TITLE, "post_image_${System.currentTimeMillis()}")
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }.let {
+            context.contentResolver.insert(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                it
+            )
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraUri != null) {
+            selectedMediaUri = cameraUri
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -944,9 +1005,12 @@ fun CreatePostDialog(
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Текст поста
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
@@ -954,18 +1018,111 @@ fun CreatePostDialog(
                     placeholder = { Text("Введіть текст поста...") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
-                    maxLines = 10
+                        .height(160.dp),
+                    maxLines = 8
                 )
 
+                // Preview вибраного медіа
+                if (selectedMediaUri != null) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AsyncImage(
+                                model = selectedMediaUri,
+                                contentDescription = "Selected Media",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            // Кнопка видалення
+                            IconButton(
+                                onClick = {
+                                    selectedMediaUri = null
+                                    uploadedMediaUrl = null
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .background(
+                                        Color.Black.copy(alpha = 0.6f),
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Remove",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Кнопки вибору медіа
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            imagePicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isUploadingMedia
+                    ) {
+                        Icon(
+                            Icons.Default.Image,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Галерея")
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            cameraUri?.let { cameraLauncher.launch(it) }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isUploadingMedia
+                    ) {
+                        Icon(
+                            Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Камера")
+                    }
+                }
+
+                // Або URL
                 OutlinedTextField(
                     value = mediaUrl,
                     onValueChange = { mediaUrl = it },
-                    label = { Text("URL медіа (опціонально)") },
+                    label = { Text("Або вставте URL") },
                     placeholder = { Text("https://example.com/image.jpg") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = selectedMediaUri == null && !isUploadingMedia
                 )
+
+                if (isUploadingMedia) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Завантаження медіа...", fontSize = 12.sp)
+                    }
+                }
 
                 Text(
                     text = "💡 Підтримуються зображення, відео та GIF",
@@ -978,13 +1135,33 @@ fun CreatePostDialog(
             Button(
                 onClick = {
                     if (text.isNotBlank()) {
-                        onCreate(
-                            text.trim(),
-                            mediaUrl.trim().takeIf { it.isNotBlank() }
-                        )
+                        // Якщо вибрано локальне медіа, спочатку завантажуємо його
+                        if (selectedMediaUri != null && uploadedMediaUrl == null) {
+                            isUploadingMedia = true
+                            uploadMediaFile(
+                                context = context,
+                                uri = selectedMediaUri!!,
+                                onSuccess = { url ->
+                                    isUploadingMedia = false
+                                    uploadedMediaUrl = url
+                                    // Створюємо пост з завантаженим медіа
+                                    onCreate(text.trim(), url)
+                                },
+                                onError = { error ->
+                                    isUploadingMedia = false
+                                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        } else {
+                            // Використовуємо URL (якщо є) або вже завантажене медіа
+                            onCreate(
+                                text.trim(),
+                                uploadedMediaUrl ?: mediaUrl.trim().takeIf { it.isNotBlank() }
+                            )
+                        }
                     }
                 },
-                enabled = text.isNotBlank(),
+                enabled = text.isNotBlank() && !isUploadingMedia,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
@@ -993,11 +1170,80 @@ fun CreatePostDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isUploadingMedia
+            ) {
                 Text("Скасувати")
             }
         }
     )
+}
+
+/**
+ * Допоміжна функція для завантаження медіа файлу
+ */
+private fun uploadMediaFile(
+    context: android.content.Context,
+    uri: android.net.Uri,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit
+) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val contentResolver = context.contentResolver
+            val inputStream = contentResolver.openInputStream(uri) ?: run {
+                withContext(Dispatchers.Main) {
+                    onError("Не вдалося відкрити файл")
+                }
+                return@launch
+            }
+
+            val bytes = inputStream.readBytes()
+            inputStream.close()
+
+            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+            val mediaType = when {
+                mimeType.startsWith("image/") -> "image"
+                mimeType.startsWith("video/") -> "video"
+                else -> "file"
+            }
+
+            val requestFile = okhttp3.RequestBody.create(
+                mimeType.toMediaTypeOrNull(),
+                bytes
+            )
+
+            val filePart = okhttp3.MultipartBody.Part.createFormData(
+                "file",
+                "media_${System.currentTimeMillis()}.${mimeType.split("/").last()}",
+                requestFile
+            )
+
+            val mediaTypePart = okhttp3.RequestBody.create(
+                "text/plain".toMediaTypeOrNull(),
+                mediaType
+            )
+
+            val response = com.worldmates.messenger.network.RetrofitClient.apiService.uploadMedia(
+                accessToken = com.worldmates.messenger.data.UserSession.accessToken!!,
+                mediaType = mediaTypePart,
+                file = filePart
+            )
+
+            withContext(Dispatchers.Main) {
+                if (response.apiStatus == 200 && response.url != null) {
+                    onSuccess(response.url)
+                } else {
+                    onError(response.errorMessage ?: "Помилка завантаження")
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                onError("Помилка: ${e.localizedMessage}")
+            }
+        }
+    }
 }
 
 /**
@@ -1119,6 +1365,220 @@ fun SubscribersDialog(
                                 modifier = Modifier.padding(start = 52.dp),
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                             )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрити")
+            }
+        }
+    )
+}
+
+/**
+ * Діалог для додавання учасників в канал
+ */
+@Composable
+fun AddMembersDialog(
+    channelId: Long,
+    channelsViewModel: ChannelsViewModel,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<com.worldmates.messenger.network.SearchUser>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+
+    // Виконуємо пошук з debounce
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = emptyList()
+            return@LaunchedEffect
+        }
+
+        kotlinx.coroutines.delay(500) // debounce
+        isSearching = true
+        channelsViewModel.searchUsers(
+            query = searchQuery,
+            onSuccess = { users ->
+                searchResults = users
+                isSearching = false
+            },
+            onError = { error ->
+                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                isSearching = false
+            }
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        title = {
+            Text(
+                "Додати учасників",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp, max = 400.dp)
+            ) {
+                // Поле пошуку
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    placeholder = { Text("Пошук користувачів...") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    )
+                )
+
+                // Результати пошуку
+                if (isSearching) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    }
+                } else if (searchResults.isEmpty() && searchQuery.isNotBlank()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Користувачів не знайдено",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(searchResults) { user ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // Аватар користувача
+                                        if (user.avatarUrl.isNotEmpty()) {
+                                            AsyncImage(
+                                                model = user.avatarUrl.toFullMediaUrl(),
+                                                contentDescription = "Avatar",
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        Brush.radialGradient(
+                                                            colors = listOf(
+                                                                MaterialTheme.colorScheme.primary,
+                                                                MaterialTheme.colorScheme.tertiary
+                                                            )
+                                                        )
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = (user.name?.firstOrNull() ?: user.username.firstOrNull() ?: 'U')
+                                                        .uppercaseChar().toString(),
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column {
+                                            Text(
+                                                text = user.name ?: user.username,
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 15.sp
+                                            )
+                                            Text(
+                                                text = "@${user.username}",
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                            )
+                                        }
+                                    }
+
+                                    // Кнопка додавання
+                                    FilledTonalButton(
+                                        onClick = {
+                                            channelsViewModel.addChannelMember(
+                                                channelId = channelId,
+                                                userId = user.userId,
+                                                onSuccess = {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Користувача ${user.username} додано до каналу",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    // Видаляємо користувача зі списку результатів пошуку
+                                                    searchResults = searchResults.filter { it.userId != user.userId }
+                                                },
+                                                onError = { error ->
+                                                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
+                                        },
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Додати")
+                                    }
+                                }
+                            }
                         }
                     }
                 }

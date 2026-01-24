@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -96,6 +97,11 @@ fun ChannelPostCard(
                                 contentScale = ContentScale.Crop
                             )
                         } else {
+                            // Placeholder з першою літерою імені автора
+                            val authorInitial = (post.authorName?.firstOrNull()
+                                ?: post.authorUsername?.firstOrNull()
+                                ?: 'U').uppercaseChar().toString()
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -120,11 +126,11 @@ fun ChannelPostCard(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = "Author",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(24.dp)
+                                Text(
+                                    text = authorInitial,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
                         }
@@ -922,6 +928,9 @@ fun CommentsBottomSheet(
     modifier: Modifier = Modifier
 ) {
     var commentText by remember { mutableStateOf("") }
+    var showEmojiPicker by remember { mutableStateOf(false) }
+    var showGifPicker by remember { mutableStateOf(false) }
+    var showStrapiPicker by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -996,43 +1005,231 @@ fun CommentsBottomSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Add comment field
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(bottom = 16.dp)
             ) {
-                TextField(
-                    value = commentText,
-                    onValueChange = { commentText = it },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp),
-                    placeholder = { Text("Додати коментар...") },
-                    maxLines = 3,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
-                )
-
-                IconButton(
-                    onClick = {
-                        if (commentText.isNotBlank()) {
-                            onAddComment(commentText)
-                            commentText = ""
-                        }
-                    },
-                    enabled = commentText.isNotBlank()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Send,
-                        contentDescription = "Надіслати",
-                        tint = if (commentText.isNotBlank())
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                    TextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp),
+                        placeholder = { Text("Додати коментар...") },
+                        maxLines = 3,
+                        shape = RoundedCornerShape(24.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        )
+                    )
+
+                    // Strapi Stickers button
+                    IconButton(
+                        onClick = {
+                            showStrapiPicker = !showStrapiPicker
+                            if (showStrapiPicker) {
+                                showEmojiPicker = false
+                                showGifPicker = false
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.InsertEmoticon,
+                            contentDescription = "Стікери",
+                            tint = if (showStrapiPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Emoji button
+                    IconButton(
+                        onClick = {
+                            showEmojiPicker = !showEmojiPicker
+                            if (showEmojiPicker) {
+                                showGifPicker = false
+                                showStrapiPicker = false
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEmotions,
+                            contentDescription = "Емоджі",
+                            tint = if (showEmojiPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // GIF button
+                    IconButton(
+                        onClick = {
+                            showGifPicker = !showGifPicker
+                            if (showGifPicker) {
+                                showEmojiPicker = false
+                                showStrapiPicker = false
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Gif,
+                            contentDescription = "GIF",
+                            tint = if (showGifPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Send button
+                    IconButton(
+                        onClick = {
+                            if (commentText.isNotBlank()) {
+                                onAddComment(commentText)
+                                commentText = ""
+                            }
+                        },
+                        enabled = commentText.isNotBlank()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Надіслати",
+                            tint = if (commentText.isNotBlank())
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Emoji Picker
+                if (showEmojiPicker) {
+                    com.worldmates.messenger.ui.components.EmojiPicker(
+                        onEmojiSelected = { emoji ->
+                            commentText += emoji
+                        },
+                        onDismiss = { showEmojiPicker = false }
+                    )
+                }
+
+                // GIF Picker
+                if (showGifPicker) {
+                    com.worldmates.messenger.ui.components.GifPicker(
+                        onGifSelected = { gifUrl ->
+                            // Додаємо GIF як текст з посиланням або markdown
+                            commentText += "\n[GIF]($gifUrl)"
+                            showGifPicker = false
+                        },
+                        onDismiss = { showGifPicker = false }
+                    )
+                }
+
+                // Strapi Stickers/GIF Picker
+                if (showStrapiPicker) {
+                    com.worldmates.messenger.ui.strapi.StrapiContentPicker(
+                        onItemSelected = { contentUrl ->
+                            // Додаємо стікер або GIF з Strapi
+                            commentText += "\n[Стікер]($contentUrl)"
+                            showStrapiPicker = false
+                        },
+                        onDismiss = { showStrapiPicker = false }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Компонент для відображення контенту коментаря (текст, стікери, GIF)
+ */
+@Composable
+fun CommentContent(text: String) {
+    // Парсимо markdown формат [Текст](URL)
+    val markdownRegex = """\[(.*?)\]\((.*?)\)""".toRegex()
+    val matches = markdownRegex.findAll(text).toList()
+
+    if (matches.isEmpty()) {
+        // Звичайний текст без markdown
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            var lastIndex = 0
+            matches.forEach { match ->
+                // Текст перед markdown
+                if (match.range.first > lastIndex) {
+                    val beforeText = text.substring(lastIndex, match.range.first)
+                    if (beforeText.isNotBlank()) {
+                        Text(
+                            text = beforeText,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                // Відображаємо стікер/GIF/Lottie анімацію
+                val label = match.groupValues[1]
+                val url = match.groupValues[2]
+
+                when {
+                    // Telegram stickers (.tgs - Lottie animations)
+                    url.matches(""".*\.tgs$""".toRegex(RegexOption.IGNORE_CASE)) -> {
+                        com.airbnb.lottie.compose.LottieAnimation(
+                            composition = com.airbnb.lottie.compose.rememberLottieComposition(
+                                com.airbnb.lottie.compose.LottieCompositionSpec.Url(url)
+                            ).value,
+                            iterations = com.airbnb.lottie.compose.LottieConstants.IterateForever,
+                            modifier = Modifier
+                                .size(150.dp)
+                        )
+                    }
+                    // Звичайні зображення (GIF, PNG, JPG, WEBP, SVG)
+                    url.matches(""".*\.(gif|jpg|jpeg|png|webp|svg)$""".toRegex(RegexOption.IGNORE_CASE)) -> {
+                        AsyncImage(
+                            model = url,
+                            contentDescription = label,
+                            modifier = Modifier
+                                .heightIn(max = 200.dp)
+                                .widthIn(max = 200.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    // WebM відео (Telegram premium stickers)
+                    url.matches(""".*\.webm$""".toRegex(RegexOption.IGNORE_CASE)) -> {
+                        // TODO: Додати підтримку WebM через ExoPlayer якщо потрібно
+                        Text(
+                            text = "🎬 $label (WebM)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    else -> {
+                        // Якщо не медіа, показуємо як текст-посилання
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            textDecoration = TextDecoration.Underline
+                        )
+                    }
+                }
+
+                lastIndex = match.range.last + 1
+            }
+
+            // Текст після останнього markdown
+            if (lastIndex < text.length) {
+                val afterText = text.substring(lastIndex)
+                if (afterText.isNotBlank()) {
+                    Text(
+                        text = afterText,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
@@ -1121,11 +1318,8 @@ fun CommentItem(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Comment text
-            Text(
-                text = comment.text,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            // Comment text with sticker/GIF support
+            CommentContent(text = comment.text)
 
             Spacer(modifier = Modifier.height(6.dp))
 

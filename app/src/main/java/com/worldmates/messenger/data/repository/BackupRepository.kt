@@ -266,4 +266,3 @@ class BackupRepository(private val context: Context) {
         messageDao.markChatAsRead(chatId, chatType)
     }
 }
-

@@ -658,7 +658,7 @@ fun StoryActionButton(
     // FIXED: Використовуємо InteractionSource для відслідковування стану натискання
     val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-
+    
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
         animationSpec = spring(
@@ -667,7 +667,6 @@ fun StoryActionButton(
         ),
         label = "button_scale"
     )
-
     val iconSize = if (uiStyle == UIStyle.WORLDMATES) 26.dp else 24.dp
     val fontSize = if (uiStyle == UIStyle.WORLDMATES) 13.sp else 12.sp
     val fontWeight = if (uiStyle == UIStyle.WORLDMATES) FontWeight.SemiBold else FontWeight.Normal

@@ -21,12 +21,14 @@ interface WorldMatesApi {
     ): AuthResponse
 
     @FormUrlEncoded
-    @POST("?type=create-account")
+    @POST("../phone/register_user.php?type=user_registration")
     suspend fun register(
         @Field("username") username: String,
-        @Field("email") email: String,
+        @Field("email") email: String? = null,
+        @Field("phone_number") phoneNumber: String? = null,
         @Field("password") password: String,
         @Field("confirm_password") confirmPassword: String,
+        @Field("s") sessionId: String, // КРИТИЧНО: обов'язковий параметр для WoWonder API
         @Field("device_type") deviceType: String = "phone",
         @Field("gender") gender: String = "male",
         @Field("android_m_device_id") deviceId: String? = null
@@ -47,16 +49,15 @@ interface WorldMatesApi {
     ): RegisterVerificationResponse
 
     @FormUrlEncoded
-    @POST("/xhr/index.php?f=send_verification_code")
+    @POST("/api/v2/?type=send_verification_code")
     suspend fun sendVerificationCode(
         @Field("verification_type") verificationType: String,
         @Field("contact_info") contactInfo: String,
-        @Field("username") username: String? = null,
-        @Field("user_id") userId: Long? = null
+        @Field("username") username: String?
     ): SendCodeResponse
 
     @FormUrlEncoded
-    @POST("/xhr/index.php?f=verify_code")
+    @POST("/api/v2/?type=verify_code")
     suspend fun verifyCode(
         @Field("verification_type") verificationType: String,
         @Field("contact_info") contactInfo: String,
@@ -66,13 +67,12 @@ interface WorldMatesApi {
     ): VerifyCodeResponse
 
     @FormUrlEncoded
-    @POST("/xhr/index.php?f=resend_verification_code")
+    @POST("/api/v2/?type=send_verification_code")
     suspend fun resendVerificationCode(
         @Field("verification_type") verificationType: String,
         @Field("contact_info") contactInfo: String,
-        @Field("username") username: String? = null,
-        @Field("user_id") userId: Long? = null
-    ): ResendCodeResponse
+        @Field("username") username: String?
+    ): SendCodeResponse
 
     @FormUrlEncoded
     @POST("/api/v2/sync_session.php")
@@ -617,11 +617,11 @@ interface WorldMatesApi {
     ): MediaUploadResponse
     // 📸 Upload Channel Avatar
     @Multipart
-    @POST("?type=upload_channel_avatar")
+    @POST("/api/v2/channels.php?type=upload_channel_avatar")
     suspend fun uploadChannelAvatar(
-        @Query("access_token") accessToken: String,
+        @Part("access_token") accessToken: RequestBody,
         @Part("channel_id") channelId: RequestBody,
-        @Part file: MultipartBody.Part
+        @Part avatar: MultipartBody.Part
     ): MediaUploadResponse
 
     @Multipart
@@ -649,6 +649,11 @@ interface WorldMatesApi {
     ): MessageResponse
 
     // ==================== VOICE/VIDEO CALLS ====================
+
+    @GET("/api/ice-servers/{userId}")
+    suspend fun getIceServers(
+        @Path("userId") userId: Int
+    ): IceServersResponse
 
     @FormUrlEncoded
     @POST("?type=initiate_call")
@@ -793,8 +798,7 @@ interface WorldMatesApi {
     /**
      * Получить список заблокированных пользователей
      */
-    @FormUrlEncoded
-    @POST("/api/v2/endpoints/get-blocked-users.php")
+    @GET("/api/v2/endpoints/get-blocked-users.php")
     suspend fun getBlockedUsers(
         @Query("access_token") accessToken: String
     ): GetBlockedUsersResponse
@@ -877,6 +881,15 @@ interface WorldMatesApi {
         @Query("access_token") accessToken: String,
         @Field("action") action: String = "unsubscribe_channel",
         @Field("channel_id") channelId: Long
+    ): CreateChannelResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/channels.php")
+    suspend fun addChannelMember(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "add_channel_member",
+        @Field("channel_id") channelId: Long,
+        @Field("user_id") userId: Long
     ): CreateChannelResponse
 
     // Channel Posts
@@ -1052,15 +1065,6 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): ChannelSubscribersResponse
 
-    @Multipart
-    @POST("/api/v2/channels.php")
-    suspend fun uploadChannelAvatar(
-        @Query("access_token") accessToken: String,
-        @Query("type") type: String = "upload_avatar",
-        @Part("id") channelId: RequestBody,
-        @Part avatar: MultipartBody.Part
-    ): CreateChannelResponse
-
     // 🔲 Generate Channel QR Code
     @FormUrlEncoded
     @POST("/api/v2/endpoints/generate_channel_qr.php")
@@ -1127,6 +1131,21 @@ data class CallResponse(
     @SerializedName("rtc_signal") val rtcSignal: String?,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
+)
+
+/**
+ * ICE Server configuration from backend
+ */
+data class IceServerConfig(
+    @SerializedName("urls") val urls: Any?, // Can be String or List<String>
+    @SerializedName("username") val username: String?,
+    @SerializedName("credential") val credential: String?
+)
+
+data class IceServersResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("iceServers") val iceServers: List<IceServerConfig>?,
+    @SerializedName("timestamp") val timestamp: Long?
 )
 
 // ==================== REACTION RESPONSES ====================
@@ -1213,18 +1232,29 @@ data class RegisterVerificationResponse(
 )
 
 /**
+ * Error object for API responses
+ */
+data class ApiErrorObject(
+    @SerializedName("error_id") val errorId: Int? = null,
+    @SerializedName("error_text") val errorText: String? = null
+)
+
+/**
  * Response for sending verification code
  */
 data class SendCodeResponse(
     @SerializedName("status") val status: Int? = null,
     @SerializedName("api_status") val apiStatus: Int? = null,
-    @SerializedName("message") val message: String?,
+    @SerializedName("message") val message: String? = null,
     @SerializedName("code_length") val codeLength: Int? = null,
     @SerializedName("expires_in") val expiresIn: Int? = null,
-    @SerializedName("errors") val errors: String? = null
+    @SerializedName("errors") val errorsObject: ApiErrorObject? = null
 ) {
     val actualStatus: Int
         get() = apiStatus ?: status ?: 400
+
+    val errors: String?
+        get() = errorsObject?.errorText
 }
 
 /**
@@ -1232,12 +1262,15 @@ data class SendCodeResponse(
  */
 data class VerifyCodeResponse(
     @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("message") val message: String?,
+    @SerializedName("message") val message: String? = null,
     @SerializedName("user_id") val userId: Long? = null,
     @SerializedName("access_token") val accessToken: String? = null,
     @SerializedName("timezone") val timezone: String? = null,
-    @SerializedName("errors") val errors: String? = null
-)
+    @SerializedName("errors") val errorsObject: ApiErrorObject? = null
+) {
+    val errors: String?
+        get() = errorsObject?.errorText
+}
 
 /**
  * Response for resending verification code

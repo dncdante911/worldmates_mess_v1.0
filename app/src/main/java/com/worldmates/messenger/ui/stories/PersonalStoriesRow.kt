@@ -107,6 +107,9 @@ fun CreateStoryButton(
     onCreateClick: () -> Unit,
     onViewClick: () -> Unit
 ) {
+    // Observe avatar changes
+    val currentAvatar by UserSession.avatarFlow.collectAsState()
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -119,7 +122,7 @@ fun CreateStoryButton(
         ) {
             // Аватар користувача
             AsyncImage(
-                model = UserSession.avatar,
+                model = currentAvatar,
                 contentDescription = "My avatar",
                 modifier = Modifier
                     .fillMaxSize()

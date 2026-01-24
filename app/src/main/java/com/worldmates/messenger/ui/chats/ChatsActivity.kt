@@ -641,6 +641,9 @@ fun SettingsDrawerContent(
 ) {
     val context = LocalContext.current
 
+    // Observe avatar changes
+    val currentAvatar by com.worldmates.messenger.data.UserSession.avatarFlow.collectAsState()
+
     // State для діалогів
     var showAboutDialog by remember { mutableStateOf(false) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
@@ -672,7 +675,7 @@ fun SettingsDrawerContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AsyncImage(
-                        model = com.worldmates.messenger.data.UserSession.avatar,
+                        model = currentAvatar,
                         contentDescription = "Avatar",
                         modifier = Modifier
                             .size(70.dp)

@@ -5,8 +5,31 @@
 // | Загрузка аватара пользователя
 // +------------------------------------------------------------------------+
 
-if ($error_code == 0) {
-    $user_id = Wo_UserIdFromAccessToken($_POST['access_token']);
+// Get access token from GET or POST
+$access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+
+// Initialize error variables
+$error_code = 0;
+$error_message = '';
+$data = [];
+
+if (empty($access_token)) {
+    $error_code = 3;
+    $error_message = 'Missing access_token';
+    http_response_code(400);
+} else {
+    // Validate access token and get user_id
+    $user_id = 0;
+
+    // Try WoWonder function if available
+    if (function_exists('Wo_UserIdFromAccessToken')) {
+        $user_id = Wo_UserIdFromAccessToken($access_token);
+    } else {
+        // Fallback: use validateAccessToken from config.php
+        global $db;
+        $user_id = validateAccessToken($db, $access_token);
+    }
+
     if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
         $error_code    = 4;
         $error_message = 'Invalid access_token';
@@ -68,5 +91,24 @@ if ($error_code == 0) {
             }
         }
     }
+}
+
+// Send response
+if ($error_code > 0) {
+    http_response_code($error_code >= 100 ? $error_code : 400);
+    echo json_encode([
+        'api_status' => $error_code >= 100 ? $error_code : 400,
+        'error_code' => $error_code,
+        'error_message' => $error_message
+    ]);
+} else if (!empty($data)) {
+    echo json_encode($data);
+} else {
+    // No data and no error - something went wrong
+    http_response_code(500);
+    echo json_encode([
+        'api_status' => 500,
+        'error_message' => 'Unknown error occurred'
+    ]);
 }
 ?>

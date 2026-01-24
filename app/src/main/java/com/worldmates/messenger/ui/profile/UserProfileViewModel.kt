@@ -27,10 +27,12 @@ class UserProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val accessToken = UserSession.accessToken ?: throw Exception("No access token")
+                // If userId is null, load current user's profile
+                val targetUserId = userId ?: UserSession.userId
 
                 val response = RetrofitClient.apiService.getUserData(
                     accessToken = accessToken,
-                    userId = userId
+                    userId = targetUserId
                 )
 
                 Log.d("UserProfileViewModel", "Profile response: apiStatus=${response.apiStatus}")

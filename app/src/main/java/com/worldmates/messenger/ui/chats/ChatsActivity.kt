@@ -1252,7 +1252,7 @@ fun UserSearchDialog(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(searchResults) { user ->
+                    items(searchResults, key = { it.userId }) { user ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

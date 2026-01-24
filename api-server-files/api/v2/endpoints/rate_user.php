@@ -159,4 +159,7 @@ if ($error_code > 0) {
         'error_message' => 'Unknown error occurred'
     ]);
 }
+
+// Exit to prevent api-v2.php from echoing additional output
+exit();
 ?>

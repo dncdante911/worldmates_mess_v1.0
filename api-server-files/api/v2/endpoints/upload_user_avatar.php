@@ -47,6 +47,9 @@ if ($error_code == 0) {
                 $error_message = 'Avatar file is required';
                 http_response_code(400);
             } else {
+                // Log upload attempt
+                error_log("🖼️ Avatar upload: user_id={$user_id}, file={$_FILES['avatar']['name']}, size={$_FILES['avatar']['size']}");
+
                 // Upload image using WoWonder's function
                 // Same as update-user-data.php line 225
                 $upload_image = Wo_UploadImage(
@@ -57,6 +60,8 @@ if ($error_code == 0) {
                     $user_id
                 );
 
+                error_log("🖼️ Upload result: " . ($upload_image === true ? 'SUCCESS' : 'FAILED'));
+
                 if ($upload_image === true) {
                     // Get updated user data
                     $updated_user = Wo_UserData($user_id);
@@ -64,6 +69,9 @@ if ($error_code == 0) {
                     if ($updated_user) {
                         // Clear user cache
                         cache($user_id, 'users', 'delete');
+
+                        // Log database update
+                        error_log("✅ Avatar saved to DB: {$updated_user['avatar']}");
 
                         // Success response
                         // Return 'url' for compatibility with MediaUploadResponse
@@ -74,6 +82,8 @@ if ($error_code == 0) {
                             'avatar' => $updated_user['avatar'],
                             'avatar_org' => $updated_user['avatar_org']
                         );
+
+                        error_log("✅ Response: url={$data['url']}, avatar={$data['avatar']}");
                     } else {
                         $error_code = 8;
                         $error_message = 'Failed to retrieve updated user data';
@@ -82,6 +92,9 @@ if ($error_code == 0) {
                 } else {
                     $error_code = 7;
                     $error_message = 'Failed to upload image. Please check file type and size.';
+                    error_log("❌ Wo_UploadImage failed for user_id={$user_id}");
+                    error_log("❌ File details: name={$_FILES['avatar']['name']}, type={$_FILES['avatar']['type']}, size={$_FILES['avatar']['size']}");
+                    error_log("❌ wo[loggedin]=" . ($wo['loggedin'] ? 'true' : 'false') . ", wo[user][user_id]={$wo['user']['user_id']}");
                     http_response_code(500);
                 }
             }

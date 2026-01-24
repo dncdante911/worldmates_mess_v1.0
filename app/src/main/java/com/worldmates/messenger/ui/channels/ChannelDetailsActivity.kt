@@ -1271,6 +1271,7 @@ fun SubscribersDialog(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             } else {
+                val context = LocalContext.current
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()

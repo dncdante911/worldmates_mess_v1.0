@@ -144,6 +144,7 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var phoneNumber by remember { mutableStateOf("") }
+    var selectedGender by remember { mutableStateOf("male") } // ✅ Добавлено
     var selectedTab by remember { mutableStateOf(0) }
     val registerState by viewModel.registerState.collectAsState()
     val isLoading = registerState is RegisterState.Loading
@@ -218,6 +219,8 @@ fun RegisterScreen(
                 onConfirmPasswordVisibilityToggle = { confirmPasswordVisible = !confirmPasswordVisible },
                 phoneNumber = phoneNumber,
                 onPhoneNumberChange = { phoneNumber = it },
+                selectedGender = selectedGender,  // ✅ Добавлено
+                onGenderChange = { selectedGender = it },  // ✅ Добавлено
                 selectedTab = selectedTab,
                 onTabChange = { selectedTab = it },
                 isLoading = isLoading,
@@ -226,13 +229,13 @@ fun RegisterScreen(
                         // Email регистрация
                         if (username.isNotEmpty() && email.isNotEmpty() &&
                             password.isNotEmpty() && password == confirmPassword) {
-                            viewModel.registerWithEmail(username, email, password, confirmPassword)
+                            viewModel.registerWithEmail(username, email, password, confirmPassword, selectedGender)  // ✅ Добавлено gender
                         }
                     } else {
                         // Phone регистрация
                         if (username.isNotEmpty() && phoneNumber.isNotEmpty() &&
                             password.isNotEmpty() && password == confirmPassword) {
-                            viewModel.registerWithPhone(username, phoneNumber, password, confirmPassword)
+                            viewModel.registerWithPhone(username, phoneNumber, password, confirmPassword, selectedGender)  // ✅ Добавлено gender
                         }
                     }
                 },
@@ -282,6 +285,8 @@ fun RegisterFormCard(
     onConfirmPasswordVisibilityToggle: () -> Unit,
     phoneNumber: String,
     onPhoneNumberChange: (String) -> Unit,
+    selectedGender: String,  // ✅ Добавлено
+    onGenderChange: (String) -> Unit,  // ✅ Добавлено
     selectedTab: Int,
     onTabChange: (Int) -> Unit,
     isLoading: Boolean,
@@ -411,6 +416,14 @@ fun RegisterFormCard(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ✅ Выбор пола
+            GenderSelectionGroup(
+                selectedGender = selectedGender,
+                onGenderChange = onGenderChange
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 

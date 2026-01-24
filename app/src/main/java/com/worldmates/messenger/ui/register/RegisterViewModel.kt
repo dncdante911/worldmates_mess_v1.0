@@ -115,7 +115,8 @@ class RegisterViewModel : ViewModel() {
         username: String,
         email: String,
         password: String,
-        confirmPassword: String
+        confirmPassword: String,
+        gender: String = "male"  // ✅ Добавлено
     ) {
         if (username.isBlank() || email.isBlank() || password.isBlank()) {
             _registerState.value = RegisterState.Error("Заповніть всі поля")
@@ -145,7 +146,8 @@ class RegisterViewModel : ViewModel() {
                     phoneNumber = null,
                     password = password,
                     confirmPassword = confirmPassword,
-                    sessionId = sessionId
+                    sessionId = sessionId,
+                    gender = gender  // ✅ Добавлено
                 )
 
                 Log.d("RegisterViewModel", "=== EMAIL REGISTRATION ===")
@@ -214,7 +216,8 @@ class RegisterViewModel : ViewModel() {
         username: String,
         phoneNumber: String,
         password: String,
-        confirmPassword: String
+        confirmPassword: String,
+        gender: String = "male"  // ✅ Добавлено
     ) {
         if (username.isBlank() || phoneNumber.isBlank() || password.isBlank()) {
             _registerState.value = RegisterState.Error("Заповніть всі поля")
@@ -244,7 +247,8 @@ class RegisterViewModel : ViewModel() {
                     phoneNumber = phoneNumber,
                     password = password,
                     confirmPassword = confirmPassword,
-                    sessionId = sessionId
+                    sessionId = sessionId,
+                    gender = gender  // ✅ Добавлено
                 )
 
                 Log.d("RegisterViewModel", "=== PHONE REGISTRATION ===")

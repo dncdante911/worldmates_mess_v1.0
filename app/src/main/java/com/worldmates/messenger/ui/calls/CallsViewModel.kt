@@ -284,6 +284,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                                 put("callType", callType)
                                 put("roomName", roomName)
                                 put("fromName", getUserName())
+                                put("fromAvatar", getUserAvatar())  // ✅ Додано аватар
                                 put("sdpOffer", offer.description)
                             }
 
@@ -293,6 +294,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                             Log.d("CallsViewModel", "   callType: $callType")
                             Log.d("CallsViewModel", "   roomName: $roomName")
                             Log.d("CallsViewModel", "   fromName: ${getUserName()}")
+                            Log.d("CallsViewModel", "   fromAvatar: ${getUserAvatar()}")
 
                             socketManager.emit("call:initiate", callEvent)
                             Log.d("CallsViewModel", "✅ call:initiate emitted successfully")
@@ -642,16 +644,42 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     fun onIncomingCall(data: org.json.JSONObject) { // Работаем напрямую с JSONObject
         val roomName = data.optString("roomName", "")
         try {
+            // ✅ ВИПРАВЛЕНО: Парсити fromName з різних можливих полів (camelCase та snake_case)
+            val fromNameRaw = data.optString("fromName", "")
+            val fromNameSnake = data.optString("from_name", "")
+            val callerNameRaw = data.optString("callerName", "")
+            val nameRaw = data.optString("name", "")
+
+            // Вибираємо перше непусте ім'я
+            val fromName = listOf(fromNameRaw, fromNameSnake, callerNameRaw, nameRaw)
+                .firstOrNull { it.isNotEmpty() } ?: "Користувач"
+
+            Log.d("CallsViewModel", "📞 Parsing incoming call - fromNameRaw: '$fromNameRaw', fromNameSnake: '$fromNameSnake', callerNameRaw: '$callerNameRaw', result: '$fromName'")
+
+            // ✅ Парсити fromAvatar з різних полів
+            val fromAvatarRaw = data.optString("fromAvatar", "")
+            val fromAvatarSnake = data.optString("from_avatar", "")
+            val avatarRaw = data.optString("avatar", "")
+            val fromAvatar = listOf(fromAvatarRaw, fromAvatarSnake, avatarRaw)
+                .firstOrNull { it.isNotEmpty() } ?: ""
+
+            // ✅ Парсити fromId з різних полів
+            val fromIdCamel = data.optInt("fromId", 0)
+            val fromIdSnake = data.optInt("from_id", 0)
+            val callerIdRaw = data.optInt("callerId", 0)
+            val fromId = listOf(fromIdCamel, fromIdSnake, callerIdRaw)
+                .firstOrNull { it > 0 } ?: 0
+
             val callData = CallData(
                 // optInt/optString никогда не вызовут NullPointerException
                 callId = data.optInt("callId", 0),
-                fromId = data.optInt("fromId", 0),
-                fromName = data.optString("fromName", "Анонім"),
-                fromAvatar = data.optString("fromAvatar", ""),
+                fromId = fromId,
+                fromName = fromName,
+                fromAvatar = fromAvatar,
                 toId = getUserId(),
-                callType = data.optString("callType", "audio"),
-                roomName = data.optString("roomName", ""),
-                sdpOffer = data.optString("sdpOffer", null)
+                callType = data.optString("callType", data.optString("call_type", "audio")),
+                roomName = data.optString("roomName", data.optString("room_name", "")),
+                sdpOffer = data.optString("sdpOffer", data.optString("sdp_offer", null))
             )
 
             // ✅ CRITICAL: Ignore calls from yourself (initiator receiving their own call)

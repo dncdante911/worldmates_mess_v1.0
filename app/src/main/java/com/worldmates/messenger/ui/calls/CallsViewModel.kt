@@ -578,6 +578,24 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     /**
+     * 📹 Отримати поточну якість відео
+     */
+    fun getVideoQuality(): com.worldmates.messenger.network.VideoQuality {
+        return webRTCManager.getVideoQuality()
+    }
+
+    /**
+     * 📹 Змінити якість відео
+     */
+    fun setVideoQuality(quality: com.worldmates.messenger.network.VideoQuality): Boolean {
+        val success = webRTCManager.setVideoQuality(quality)
+        if (success) {
+            Log.d("CallsViewModel", "📹 Video quality changed to ${quality.label}")
+        }
+        return success
+    }
+
+    /**
      * Socket.IO слушатели
      */
     // Required implementation from SocketListener

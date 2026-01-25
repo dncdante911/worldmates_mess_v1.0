@@ -951,6 +951,9 @@ fun LocalVideoPiP(
     var isDragging by remember { mutableStateOf(false) }
     var dragStartOffset by remember { mutableStateOf(Offset.Zero) }
 
+    // ✅ Запам'ятовуємо поточний відео трек для відстеження змін
+    var currentVideoTrack by remember { mutableStateOf<org.webrtc.VideoTrack?>(null) }
+
     Box(
         modifier = Modifier
             .offset(x = offset.x.dp, y = offset.y.dp)
@@ -1000,9 +1003,22 @@ fun LocalVideoPiP(
                     init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(true)
                     setEnableHardwareScaler(true)
-                    if (localStream.videoTracks.isNotEmpty()) {
-                        localStream.videoTracks[0].addSink(this)
-                    }
+                    setMirror(true)  // ✅ Дзеркальне відображення для фронтальної камери
+                }
+            },
+            update = { surfaceViewRenderer ->
+                // ✅ КРИТИЧНО: Оновлювати sink при зміні stream або відео треку
+                val newVideoTrack = if (localStream.videoTracks.isNotEmpty()) {
+                    localStream.videoTracks[0]
+                } else null
+
+                if (newVideoTrack != currentVideoTrack) {
+                    // Видалити старий sink
+                    currentVideoTrack?.removeSink(surfaceViewRenderer)
+                    // Додати новий sink
+                    newVideoTrack?.addSink(surfaceViewRenderer)
+                    currentVideoTrack = newVideoTrack
+                    Log.d("LocalVideoPiP", "✅ Video track updated: ${newVideoTrack != null}")
                 }
             },
             modifier = Modifier.fillMaxSize()

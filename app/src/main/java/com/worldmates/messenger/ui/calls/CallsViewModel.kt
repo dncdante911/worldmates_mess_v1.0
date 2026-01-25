@@ -538,10 +538,25 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     /**
      * 📹 Увімкнути/вимкнути відео
+     *
+     * ✅ ВИПРАВЛЕНО: Тепер динамічно створює камеру якщо її немає
      */
     fun toggleVideo(enabled: Boolean) {
-        webRTCManager.setVideoEnabled(enabled)
-        Log.d("CallsViewModel", "Video ${if (enabled) "enabled" else "disabled"}")
+        if (enabled) {
+            // ✅ Включити відео - створити камеру якщо її немає
+            val success = webRTCManager.enableVideo()
+            if (success) {
+                // Оновити local stream в UI
+                getLocalStream()?.let { localStreamAdded.postValue(it) }
+                Log.d("CallsViewModel", "📹 Video enabled successfully")
+            } else {
+                Log.e("CallsViewModel", "❌ Failed to enable video")
+            }
+        } else {
+            // Вимкнути відео (камера зупиняється)
+            webRTCManager.disableVideo()
+            Log.d("CallsViewModel", "📹 Video disabled")
+        }
     }
 
     /**

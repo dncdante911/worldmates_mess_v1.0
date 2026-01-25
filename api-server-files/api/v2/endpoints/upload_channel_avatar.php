@@ -30,11 +30,11 @@ if ($error_code == 0) {
         $error_message = 'avatar file is missing';
         http_response_code(400);
     } else {
-        // Перевірити чи існує канал і чи є користувач власником/адміном
+        // Channels are stored in T_GROUPCHAT table
         $channel_query = mysqli_query($sqlConnect, "
-            SELECT c.id, c.user_id
-            FROM " . T_CHANNELS . " c
-            WHERE c.id = {$channel_id}
+            SELECT g.id, g.user_id
+            FROM " . T_GROUPCHAT . " g
+            WHERE g.id = {$channel_id}
         ");
 
         if (mysqli_num_rows($channel_query) == 0) {
@@ -44,18 +44,23 @@ if ($error_code == 0) {
         } else {
             $channel_data = mysqli_fetch_assoc($channel_query);
 
-            // Перевірити чи користувач є власником або адміном
+            // Check if user is owner or admin
             $is_admin = ($channel_data['user_id'] == $user_id);
 
             if (!$is_admin) {
+                // Check if user is admin in group chat users table
                 $admin_query = mysqli_query($sqlConnect, "
                     SELECT COUNT(*) as count
-                    FROM " . T_CHANNEL_ADMINS . "
-                    WHERE channel_id = {$channel_id}
+                    FROM " . T_GROUPCHATUSERS . "
+                    WHERE group_id = {$channel_id}
                     AND user_id = {$user_id}
+                    AND role IN ('owner', 'admin')
                 ");
-                $admin_data = mysqli_fetch_assoc($admin_query);
-                $is_admin = ($admin_data['count'] > 0);
+                
+                if ($admin_query) {
+                    $admin_data = mysqli_fetch_assoc($admin_query);
+                    $is_admin = ($admin_data['count'] > 0);
+                }
             }
 
             if (!$is_admin) {
@@ -63,14 +68,14 @@ if ($error_code == 0) {
                 $error_message = 'Only channel admins can upload avatar';
                 http_response_code(403);
             } else {
-                // Перевірка розміру файлу (макс 5MB)
-                $max_file_size = 5 * 1024 * 1024; // 5MB в байтах
+                // Check file size (max 5MB)
+                $max_file_size = 5 * 1024 * 1024; // 5MB in bytes
                 if ($_FILES['avatar']['size'] > $max_file_size) {
                     $error_code    = 9;
                     $error_message = 'File size exceeds maximum allowed (5MB)';
                     http_response_code(400);
                 } else {
-                    // Завантажуємо файл
+                    // Upload file
                     $file_info = array(
                         'file' => $_FILES['avatar']['tmp_name'],
                         'name' => $_FILES['avatar']['name'],
@@ -84,9 +89,9 @@ if ($error_code == 0) {
                     if (!empty($media) && !empty($media['filename'])) {
                         $avatar_url = $media['filename'];
 
-                        // Оновлюємо аватар в БД
+                        // Update avatar in database
                         $update_query = mysqli_query($sqlConnect, "
-                            UPDATE " . T_CHANNELS . "
+                            UPDATE " . T_GROUPCHAT . "
                             SET avatar = '{$avatar_url}'
                             WHERE id = {$channel_id}
                         ");

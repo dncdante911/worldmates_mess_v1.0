@@ -28,8 +28,10 @@ class WebRTCManager(private val context: Context) {
     private var remoteMediaStream: MediaStream? = null
     private var localAudioTrack: AudioTrack? = null
     private var localVideoTrack: VideoTrack? = null
+    private var remoteVideoTrack: VideoTrack? = null  // ✅ Окремий трек для remote video
     private var videoCapturer: CameraVideoCapturer? = null
     private var videoSource: VideoSource? = null
+    private var surfaceTextureHelper: SurfaceTextureHelper? = null  // ✅ Зберігаємо для правильного cleanup
 
     // 📹 Текущее качество видео (по умолчанию HIGH - 720p)
     private var currentVideoQuality: VideoQuality = VideoQuality.HIGH
@@ -138,7 +140,7 @@ class WebRTCManager(private val context: Context) {
 
                     override fun onTrack(transceiver: RtpTransceiver) {
                         val track = transceiver.receiver.track()
-                        Log.d("WebRTCManager", "Remote track received: ${track?.kind()}")
+                        Log.d("WebRTCManager", "📡 Remote track received: ${track?.kind()}, enabled: ${track?.enabled()}")
 
                         // Создать remote stream если его еще нет
                         if (remoteMediaStream == null) {
@@ -148,14 +150,21 @@ class WebRTCManager(private val context: Context) {
                         // Добавить track в remote stream
                         track?.let {
                             when (it) {
-                                is AudioTrack -> remoteMediaStream?.addTrack(it)
-                                is VideoTrack -> remoteMediaStream?.addTrack(it)
+                                is AudioTrack -> {
+                                    it.setEnabled(true)
+                                    remoteMediaStream?.addTrack(it)
+                                    Log.d("WebRTCManager", "📡 Remote AUDIO track added")
+                                }
+                                is VideoTrack -> {
+                                    it.setEnabled(true)
+                                    remoteVideoTrack = it  // ✅ Зберігаємо для відстеження
+                                    remoteMediaStream?.addTrack(it)
+                                    Log.d("WebRTCManager", "📡 Remote VIDEO track added - notifying listener")
+                                    // ✅ КРИТИЧНО: Сповістити listener ТІЛЬКИ коли є відео трек
+                                    remoteMediaStream?.let { stream -> onTrackListener?.invoke(stream) }
+                                }
                             }
-                            Log.d("WebRTCManager", "Track added to remote stream: ${it.kind()}")
                         }
-
-                        // Уведомить listener
-                        remoteMediaStream?.let { onTrackListener?.invoke(it) }
                     }
 
                     override fun onDataChannel(dataChannel: DataChannel) {}
@@ -201,9 +210,12 @@ class WebRTCManager(private val context: Context) {
                 videoCapturer = createCameraVideoCapturer()
                 videoSource = peerConnectionFactory.createVideoSource(videoCapturer?.isScreencast ?: false)
 
-                // Запустить камеру с разрешением 1280x720 при 30 fps
+                // ✅ Зберігаємо SurfaceTextureHelper для правильного cleanup
+                surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", EglBaseProvider.context)
+
+                // Запустити камеру
                 videoCapturer?.initialize(
-                    SurfaceTextureHelper.create("CaptureThread", EglBaseProvider.context),
+                    surfaceTextureHelper,
                     context,
                     videoSource?.capturerObserver
                 )
@@ -331,14 +343,25 @@ class WebRTCManager(private val context: Context) {
      */
     fun close() {
         try {
-            // Остановить камеру
-            videoCapturer?.stopCapture()
+            // ✅ Остановить камеру
+            try {
+                videoCapturer?.stopCapture()
+            } catch (e: Exception) {
+                Log.w("WebRTCManager", "Error stopping capture: ${e.message}")
+            }
             videoCapturer?.dispose()
             videoCapturer = null
+
+            // ✅ Очистить SurfaceTextureHelper
+            surfaceTextureHelper?.dispose()
+            surfaceTextureHelper = null
 
             // Очистить видео источник
             videoSource?.dispose()
             videoSource = null
+
+            // ✅ Очистить remote video track
+            remoteVideoTrack = null
 
             peerConnection?.close()
             peerConnection = null
@@ -349,6 +372,8 @@ class WebRTCManager(private val context: Context) {
                 it.videoTracks.forEach { track -> track.dispose() }
             }
             localMediaStream = null
+            localVideoTrack = null
+            localAudioTrack = null
 
             // Очистить remote stream
             remoteMediaStream?.let {
@@ -399,6 +424,15 @@ class WebRTCManager(private val context: Context) {
         }
 
         return try {
+            // ✅ Якщо камера вже існує але зупинена - просто перезапустити
+            if (videoCapturer != null && videoSource != null && localVideoTrack != null) {
+                Log.d("WebRTCManager", "Restarting existing camera...")
+                videoCapturer?.startCapture(currentVideoQuality.width, currentVideoQuality.height, currentVideoQuality.fps)
+                localVideoTrack?.setEnabled(true)
+                Log.d("WebRTCManager", "✅ Camera restarted")
+                return true
+            }
+
             // 1. Создать CameraVideoCapturer
             videoCapturer = createCameraVideoCapturer()
             if (videoCapturer == null) {
@@ -409,22 +443,25 @@ class WebRTCManager(private val context: Context) {
             // 2. Создать VideoSource
             videoSource = peerConnectionFactory.createVideoSource(videoCapturer?.isScreencast ?: false)
 
-            // 3. Инициализировать и запустить камеру
+            // 3. ✅ Зберігаємо SurfaceTextureHelper
+            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", EglBaseProvider.context)
+
+            // 4. Инициализировать и запустить камеру
             videoCapturer?.initialize(
-                SurfaceTextureHelper.create("CaptureThread", EglBaseProvider.context),
+                surfaceTextureHelper,
                 context,
                 videoSource?.capturerObserver
             )
             videoCapturer?.startCapture(currentVideoQuality.width, currentVideoQuality.height, currentVideoQuality.fps)
 
-            // 4. Создать видеотрек
+            // 5. Создать видеотрек
             localVideoTrack = peerConnectionFactory.createVideoTrack("video_track", videoSource)
             localVideoTrack?.setEnabled(true)
 
-            // 5. Добавить видеотрек в localMediaStream
+            // 6. Добавить видеотрек в localMediaStream
             localMediaStream?.addTrack(localVideoTrack!!)
 
-            // 6. Добавить видеотрек в PeerConnection (UNIFIED_PLAN)
+            // 7. Добавить видеотрек в PeerConnection (UNIFIED_PLAN)
             peerConnection?.addTrack(localVideoTrack!!, listOf("LOCAL_STREAM"))
 
             Log.d("WebRTCManager", "✅ Video enabled dynamically - camera started")
@@ -436,17 +473,22 @@ class WebRTCManager(private val context: Context) {
     }
 
     /**
-     * 📹 Выключить видео (остановить камеру и удалить трек)
+     * 📹 Выключить видео (остановить камеру, НЕ удалять ресурсы для возможности перезапуска)
      */
     fun disableVideo() {
         try {
-            // Выключить трек
+            // Выключить трек (но не удалять)
             localVideoTrack?.setEnabled(false)
 
-            // Остановить камеру для экономии батареи
-            videoCapturer?.stopCapture()
+            // ✅ Остановить камеру для экономии батареи
+            // НЕ вызываем dispose() чтобы можно было перезапустить
+            try {
+                videoCapturer?.stopCapture()
+            } catch (e: InterruptedException) {
+                Log.w("WebRTCManager", "Interrupted while stopping capture: ${e.message}")
+            }
 
-            Log.d("WebRTCManager", "Video disabled, camera stopped")
+            Log.d("WebRTCManager", "📹 Video disabled, camera paused (can be restarted)")
         } catch (e: Exception) {
             Log.e("WebRTCManager", "Error disabling video", e)
         }

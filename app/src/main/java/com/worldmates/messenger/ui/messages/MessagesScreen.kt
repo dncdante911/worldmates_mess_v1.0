@@ -2263,16 +2263,24 @@ fun MessageInputBar(
                         }
 
                         InputMode.VIDEO -> {
-                            // Підказка для відео (майбутнє)
-                            Box(
+                            // 📹 Відеоповідомлення - кнопка запису
+                            Row(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(40.dp)
-                                    .background(colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
-                                contentAlignment = Alignment.Center
+                                    .background(colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.Videocam,
+                                    contentDescription = null,
+                                    tint = Color.Red,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Відео-повідомлення (скоро)",
+                                    text = "Натисніть 📹 справа для запису",
                                     color = colorScheme.onSurfaceVariant,
                                     fontSize = 14.sp
                                 )
@@ -2457,16 +2465,15 @@ fun MessageInputBar(
                         }
 
                         InputMode.VIDEO -> {
-                            // Кнопка відео (майбутнє)
+                            // 📹 Кнопка запису відеоповідомлення
                             IconButton(
-                                onClick = { /* TODO */ },
-                                modifier = Modifier.size(40.dp),
-                                enabled = false
+                                onClick = onPickVideo,  // Використовуємо існуючий callback для відкриття запису
+                                modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Videocam,
-                                    contentDescription = "Відео",
-                                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    contentDescription = "Записати відео",
+                                    tint = Color.Red,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }

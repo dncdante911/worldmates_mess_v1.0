@@ -104,6 +104,11 @@ class SettingsActivity : AppCompatActivity() {
                             onBackClick = { currentScreen = SettingsScreen.Main }
                         )
                     }
+                    SettingsScreen.VideoMessageFrameStyle -> {
+                        VideoMessageFrameSettingsScreen(
+                            onBackClick = { currentScreen = SettingsScreen.Main }
+                        )
+                    }
                     SettingsScreen.MyGroups -> {
                         MyGroupsScreen(
                             viewModel = viewModel,
@@ -144,6 +149,7 @@ sealed class SettingsScreen {
     object Notifications : SettingsScreen()
     object Theme : SettingsScreen()
     object CallFrameStyle : SettingsScreen()
+    object VideoMessageFrameStyle : SettingsScreen()  // 📹 Стиль відеоповідомлень
     object MyGroups : SettingsScreen()
     object TwoFactorAuth : SettingsScreen()
     object AppLock : SettingsScreen()
@@ -438,6 +444,14 @@ fun SettingsScreen(
                     title = "Стиль рамок відеодзвінків",
                     subtitle = "Classic, Neon, Gradient, Rainbow...",
                     onClick = { onNavigate(SettingsScreen.CallFrameStyle) }
+                )
+            }
+            item {
+                SettingsItem(
+                    icon = Icons.Default.VideoLibrary,
+                    title = "Стиль відеоповідомлень",
+                    subtitle = "Круглий, Неоновий, Градієнт...",
+                    onClick = { onNavigate(SettingsScreen.VideoMessageFrameStyle) }
                 )
             }
             item {

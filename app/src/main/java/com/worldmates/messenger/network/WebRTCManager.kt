@@ -360,11 +360,89 @@ class WebRTCManager(private val context: Context) {
 
     /**
      * Отключить/включить видео
+     * Если видео трек не существует, просто выключаем (не создаем новый)
      */
     fun setVideoEnabled(enabled: Boolean) {
         localVideoTrack?.setEnabled(enabled)
-        Log.d("WebRTCManager", "Video enabled: $enabled")
+        Log.d("WebRTCManager", "Video enabled: $enabled (track exists: ${localVideoTrack != null})")
     }
+
+    /**
+     * 📹 Включить видео динамически (создать камеру и видеотрек если их нет)
+     * Возвращает true если видео успешно включено
+     */
+    fun enableVideo(): Boolean {
+        // Если видеотрек уже есть - просто включаем его
+        if (localVideoTrack != null) {
+            localVideoTrack?.setEnabled(true)
+            Log.d("WebRTCManager", "Video track already exists, enabling it")
+            return true
+        }
+
+        // Создаем видео если PeerConnection существует
+        if (peerConnection == null) {
+            Log.e("WebRTCManager", "Cannot enable video: PeerConnection is null")
+            return false
+        }
+
+        return try {
+            // 1. Создать CameraVideoCapturer
+            videoCapturer = createCameraVideoCapturer()
+            if (videoCapturer == null) {
+                Log.e("WebRTCManager", "Failed to create camera capturer")
+                return false
+            }
+
+            // 2. Создать VideoSource
+            videoSource = peerConnectionFactory.createVideoSource(videoCapturer?.isScreencast ?: false)
+
+            // 3. Инициализировать и запустить камеру
+            videoCapturer?.initialize(
+                SurfaceTextureHelper.create("CaptureThread", EglBaseProvider.context),
+                context,
+                videoSource?.capturerObserver
+            )
+            videoCapturer?.startCapture(1280, 720, 30)
+
+            // 4. Создать видеотрек
+            localVideoTrack = peerConnectionFactory.createVideoTrack("video_track", videoSource)
+            localVideoTrack?.setEnabled(true)
+
+            // 5. Добавить видеотрек в localMediaStream
+            localMediaStream?.addTrack(localVideoTrack!!)
+
+            // 6. Добавить видеотрек в PeerConnection (UNIFIED_PLAN)
+            peerConnection?.addTrack(localVideoTrack!!, listOf("LOCAL_STREAM"))
+
+            Log.d("WebRTCManager", "✅ Video enabled dynamically - camera started")
+            true
+        } catch (e: Exception) {
+            Log.e("WebRTCManager", "Failed to enable video dynamically", e)
+            false
+        }
+    }
+
+    /**
+     * 📹 Выключить видео (остановить камеру и удалить трек)
+     */
+    fun disableVideo() {
+        try {
+            // Выключить трек
+            localVideoTrack?.setEnabled(false)
+
+            // Остановить камеру для экономии батареи
+            videoCapturer?.stopCapture()
+
+            Log.d("WebRTCManager", "Video disabled, camera stopped")
+        } catch (e: Exception) {
+            Log.e("WebRTCManager", "Error disabling video", e)
+        }
+    }
+
+    /**
+     * 📹 Проверить есть ли видеотрек
+     */
+    fun hasVideoTrack(): Boolean = localVideoTrack != null
 
     /**
      * Получить локальный поток

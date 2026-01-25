@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1081,6 +1082,8 @@ fun LocalVideoPiP(
 /**
  * 🎥 Універсальний компонент для рендерингу WebRTC відео
  * Правильно обробляє оновлення відео треку
+ *
+ * ✅ ВИПРАВЛЕНО: Використовує key для перестворення при зміні stream
  */
 @Composable
 fun WebRTCVideoRenderer(
@@ -1089,25 +1092,55 @@ fun WebRTCVideoRenderer(
     isMirrored: Boolean = false,
     isOverlay: Boolean = false
 ) {
+    // ✅ Використовуємо label stream як key для перестворення
+    val streamId = remember(videoStream) { videoStream.id ?: "${System.currentTimeMillis()}" }
+
     // Запам'ятовуємо поточний відео трек для відстеження змін
-    var currentVideoTrack by remember { mutableStateOf<org.webrtc.VideoTrack?>(null) }
+    var currentVideoTrack by remember(streamId) { mutableStateOf<org.webrtc.VideoTrack?>(null) }
+
+    // ✅ Отримуємо актуальний відео трек
+    val newVideoTrack = remember(videoStream) {
+        if (videoStream.videoTracks.isNotEmpty()) videoStream.videoTracks[0] else null
+    }
+
+    Log.d("WebRTCVideoRenderer", "📹 Rendering stream: $streamId, hasVideo: ${newVideoTrack != null}")
+
+    // ✅ DisposableEffect для cleanup при unmount
+    DisposableEffect(streamId) {
+        onDispose {
+            Log.d("WebRTCVideoRenderer", "📹 Disposing renderer for stream: $streamId")
+        }
+    }
 
     AndroidView(
         factory = { androidContext ->
+            Log.d("WebRTCVideoRenderer", "📹 Creating SurfaceViewRenderer for stream: $streamId")
             SurfaceViewRenderer(androidContext).apply {
-                init(WebRTCManager.getEglContext(), null)
-                setZOrderMediaOverlay(isOverlay)
-                setEnableHardwareScaler(true)
-                setMirror(isMirrored)
+                try {
+                    init(WebRTCManager.getEglContext(), null)
+                    setZOrderMediaOverlay(isOverlay)
+                    setEnableHardwareScaler(true)
+                    setMirror(isMirrored)
+
+                    // ✅ КРИТИЧНО: Додати sink одразу при створенні
+                    newVideoTrack?.let { track ->
+                        track.addSink(this)
+                        currentVideoTrack = track
+                        Log.d("WebRTCVideoRenderer", "📹 Initial sink added for track: ${track.id()}")
+                    }
+                } catch (e: Exception) {
+                    Log.e("WebRTCVideoRenderer", "Error initializing SurfaceViewRenderer", e)
+                }
             }
         },
         update = { surfaceViewRenderer ->
             // ✅ КРИТИЧНО: Оновлювати sink при зміні відео треку
-            val newVideoTrack = if (videoStream.videoTracks.isNotEmpty()) {
+            val latestVideoTrack = if (videoStream.videoTracks.isNotEmpty()) {
                 videoStream.videoTracks[0]
             } else null
 
-            if (newVideoTrack != currentVideoTrack) {
+            if (latestVideoTrack != currentVideoTrack) {
+                Log.d("WebRTCVideoRenderer", "📹 Track changed: old=${currentVideoTrack?.id()}, new=${latestVideoTrack?.id()}")
                 // Видалити старий sink
                 try {
                     currentVideoTrack?.removeSink(surfaceViewRenderer)
@@ -1115,9 +1148,13 @@ fun WebRTCVideoRenderer(
                     Log.w("WebRTCVideoRenderer", "Error removing old sink: ${e.message}")
                 }
                 // Додати новий sink
-                newVideoTrack?.addSink(surfaceViewRenderer)
-                currentVideoTrack = newVideoTrack
-                Log.d("WebRTCVideoRenderer", "✅ Video track updated: ${newVideoTrack != null}")
+                try {
+                    latestVideoTrack?.addSink(surfaceViewRenderer)
+                    currentVideoTrack = latestVideoTrack
+                    Log.d("WebRTCVideoRenderer", "✅ Video track updated: ${latestVideoTrack != null}, id: ${latestVideoTrack?.id()}")
+                } catch (e: Exception) {
+                    Log.e("WebRTCVideoRenderer", "Error adding new sink: ${e.message}")
+                }
             }
         },
         modifier = modifier

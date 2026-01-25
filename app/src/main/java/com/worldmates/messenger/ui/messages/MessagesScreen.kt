@@ -198,6 +198,9 @@ fun MessagesScreen(
     // 📸 Галерея фото - збір всіх фото з чату
     var showImageGallery by remember { mutableStateOf(false) }
     var selectedImageIndex by remember { mutableStateOf(0) }
+
+    // 📹 Відеоповідомлення - показати рекордер камери
+    var showVideoMessageRecorder by remember { mutableStateOf(false) }
     val imageUrls = remember(messages) {
         messages.mapNotNull { message ->
             // Шукаємо URL медіа в різних полях
@@ -731,6 +734,26 @@ fun MessagesScreen(
                 }
             }
 
+            // 📹 ВІДЕОПОВІДОМЛЕННЯ РЕКОРДЕР
+            if (showVideoMessageRecorder) {
+                Log.d("MessagesScreen", "✅ Показуємо VideoMessageRecorder!")
+                VideoMessageRecorder(
+                    maxDurationSeconds = 120,  // 2 хвилини для звичайних користувачів
+                    isPremiumUser = false,     // TODO: перевірити статус преміум
+                    onVideoRecorded = { videoFile ->
+                        Log.d("MessagesScreen", "📹 Відео записано: ${videoFile.absolutePath}")
+                        showVideoMessageRecorder = false
+                        // Відправити відеоповідомлення
+                        viewModel.uploadAndSendMedia(videoFile, "video")
+                    },
+                    onCancel = {
+                        Log.d("MessagesScreen", "❌ Запис відео скасовано")
+                        showVideoMessageRecorder = false
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
             // Message Context Menu Bottom Sheet
             if (showContextMenu && selectedMessage != null) {
                 MessageContextMenu(
@@ -959,7 +982,7 @@ fun MessagesScreen(
                     },
                     onShowMediaOptions = { showMediaOptions = !showMediaOptions },
                     onPickImage = { imagePickerLauncher.launch("image/*") },
-                    onPickVideo = { videoPickerLauncher.launch("video/*") },
+                    onPickVideo = { showVideoMessageRecorder = true },  // ✅ Показати камеру замість галереї
                     onPickAudio = { audioPickerLauncher.launch("audio/*") },
                     onPickFile = { filePickerLauncher.launch("*/*") },
                     showMediaOptions = showMediaOptions,
@@ -2465,9 +2488,9 @@ fun MessageInputBar(
                         }
 
                         InputMode.VIDEO -> {
-                            // 📹 Кнопка запису відеоповідомлення
+                            // 📹 Кнопка запису відеоповідомлення - відкриває камеру
                             IconButton(
-                                onClick = onPickVideo,  // Використовуємо існуючий callback для відкриття запису
+                                onClick = onPickVideo,  // ✅ Відкриває VideoMessageRecorder для запису через камеру
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(

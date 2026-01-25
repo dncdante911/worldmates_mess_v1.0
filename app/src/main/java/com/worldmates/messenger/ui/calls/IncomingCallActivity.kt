@@ -158,6 +158,10 @@ class IncomingCallActivity : ComponentActivity() {
 
     /**
      * ✅ Прийняти дзвінок
+     *
+     * ВАЖЛИВО: НЕ викликаємо acceptCall() тут!
+     * CallsActivity сама ініціалізує WebRTC і відправить call:accept
+     * Це вирішує проблему з різними ViewModel instances
      */
     private fun acceptCall(
         fromId: Int,
@@ -167,25 +171,16 @@ class IncomingCallActivity : ComponentActivity() {
         roomName: String,
         sdpOffer: String?
     ) {
-        Log.d(TAG, "✅ Call accepted, calling acceptCall() on ViewModel...")
+        Log.d(TAG, "✅ Call accepted, starting CallsActivity...")
 
-        // ✅ КРИТИЧНО: Викликати acceptCall() з ViewModel ДО запуску CallsActivity
-        // Це відправить call:accept на сервер і встановить WebRTC з'єднання
-        val callData = CallData(
-            callId = 0,
-            fromId = fromId,
-            fromName = fromName,
-            fromAvatar = fromAvatar,
-            toId = callsViewModel.getUserId(),
-            callType = callType,
-            roomName = roomName,
-            sdpOffer = sdpOffer
-        )
-
-        // Відправити прийняття дзвінка на сервер
-        callsViewModel.acceptCall(callData)
-
-        Log.d(TAG, "✅ acceptCall() called, now starting CallsActivity...")
+        // ✅ ВИПРАВЛЕНО: НЕ викликаємо acceptCall() тут!
+        // CallsActivity має свій ViewModel і сама виконає:
+        // 1. Отримання ICE серверів
+        // 2. Створення PeerConnection
+        // 3. Встановлення remote SDP (offer)
+        // 4. Створення local media stream
+        // 5. Створення answer
+        // 6. Відправка call:accept на сервер
 
         // Запустити CallsActivity для активного дзвінка
         val intent = Intent(this, CallsActivity::class.java).apply {

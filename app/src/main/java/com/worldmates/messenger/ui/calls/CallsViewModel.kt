@@ -53,7 +53,8 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     private var currentCallData: CallData? = null
     private var currentCallId: Int = 0
     private var isInitiator = false
-    private var pendingCallInitiation: (() -> Unit)? = null  // ✅ Очікуючий виклик
+    private var pendingCallInitiation: (() -> Unit)? = null  // ✅ Очікуючий вихідний виклик
+    private var pendingCallAcceptance: (() -> Unit)? = null  // ✅ Очікуюче прийняття вхідного виклику
 
     init {
         socketManager.connect()
@@ -395,58 +396,95 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     /**
      * Прийняти вхідний вызов
+     *
+     * ✅ ВИПРАВЛЕНО: Тепер правильно обробляє випадок коли Socket ще не підключений
+     * і отримує ICE сервери ПЕРЕД створенням PeerConnection
      */
     fun acceptCall(callData: CallData) {
-        viewModelScope.launch {
-            try {
-                currentCallData = callData
-                isInitiator = false
+        Log.d("CallsViewModel", "📞 acceptCall() called for room: ${callData.roomName}")
 
-                // 1. Создать PeerConnection
-                webRTCManager.createPeerConnection()
+        val acceptLogic: () -> Unit = {
+            viewModelScope.launch {
+                try {
+                    currentCallData = callData
+                    isInitiator = false
 
-                // 2. Создать локальный стрим
-                val videoEnabled = (callData.callType == "video")
-                webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = videoEnabled)
+                    Log.d("CallsViewModel", "🔧 Fetching ICE servers before accepting call...")
 
-                // Опубліковати локальний стрім
-                getLocalStream()?.let { localStreamAdded.postValue(it) }
-
-                // 3. Установить remote description (offer от другого юзера)
-                callData.sdpOffer?.let { offerSdp ->
-                    val remoteDescription = SessionDescription(SessionDescription.Type.OFFER, offerSdp)
-                    webRTCManager.setRemoteDescription(remoteDescription) { error ->
-                        callError.postValue(error)
+                    // ✅ 1. КРИТИЧНО: Отримати ICE сервери ПЕРЕД створенням PeerConnection
+                    val iceServers = fetchIceServersFromApi()
+                    if (iceServers != null && iceServers.isNotEmpty()) {
+                        webRTCManager.setIceServers(iceServers)
+                        Log.d("CallsViewModel", "✅ ICE servers set for incoming call: ${iceServers.size} servers")
+                    } else {
+                        Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers, using default STUN")
                     }
-                }
 
-                // ✅ Join the Socket.IO room for this call BEFORE creating answer
-                val joinRoomData = JSONObject().apply {
-                    put("roomName", callData.roomName)
-                    put("userId", getUserId())
-                }
-                socketManager.emit("call:join_room", joinRoomData)
-                Log.d("CallsViewModel", "📍 Joined call room: ${callData.roomName}")
+                    // 2. Создать PeerConnection (з правильними ICE серверами)
+                    webRTCManager.createPeerConnection()
+                    Log.d("CallsViewModel", "✅ PeerConnection created")
 
-                // 4. Создать answer
-                webRTCManager.createAnswer(
-                    onSuccess = { answer ->
-                        // ✅ Використовуємо org.json.JSONObject для Socket.IO
-                        val acceptEvent = JSONObject().apply {
-                            put("roomName", callData.roomName)
-                            put("userId", getUserId())
-                            put("sdpAnswer", answer.description)
+                    // 3. Создать локальный стрим
+                    val videoEnabled = (callData.callType == "video")
+                    webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = videoEnabled)
+                    Log.d("CallsViewModel", "✅ Local media stream created (video=$videoEnabled)")
+
+                    // Опубліковати локальний стрім
+                    getLocalStream()?.let { localStreamAdded.postValue(it) }
+
+                    // 4. Установить remote description (offer от другого юзера)
+                    callData.sdpOffer?.let { offerSdp ->
+                        val remoteDescription = SessionDescription(SessionDescription.Type.OFFER, offerSdp)
+                        webRTCManager.setRemoteDescription(remoteDescription) { error ->
+                            Log.e("CallsViewModel", "❌ Failed to set remote description: $error")
+                            callError.postValue(error)
                         }
-                        socketManager.emit("call:accept", acceptEvent)
-                        Log.d("CallsViewModel", "Call accepted and answer sent")
-                    },
-                    onError = { error ->
-                        callError.postValue(error)
+                        Log.d("CallsViewModel", "✅ Remote description (offer) set")
+                    } ?: run {
+                        Log.e("CallsViewModel", "❌ No SDP offer in call data!")
+                        callError.postValue("No SDP offer received")
+                        return@launch
                     }
-                )
-            } catch (e: Exception) {
-                callError.postValue(e.message)
+
+                    // ✅ Join the Socket.IO room for this call BEFORE creating answer
+                    val joinRoomData = JSONObject().apply {
+                        put("roomName", callData.roomName)
+                        put("userId", getUserId())
+                    }
+                    socketManager.emit("call:join_room", joinRoomData)
+                    Log.d("CallsViewModel", "📍 Joined call room: ${callData.roomName}")
+
+                    // 5. Создать answer
+                    webRTCManager.createAnswer(
+                        onSuccess = { answer ->
+                            // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                            val acceptEvent = JSONObject().apply {
+                                put("roomName", callData.roomName)
+                                put("userId", getUserId())
+                                put("sdpAnswer", answer.description)
+                            }
+                            socketManager.emit("call:accept", acceptEvent)
+                            Log.d("CallsViewModel", "✅ Call accepted and answer sent successfully!")
+                        },
+                        onError = { error ->
+                            Log.e("CallsViewModel", "❌ Failed to create answer: $error")
+                            callError.postValue(error)
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e("CallsViewModel", "❌ Error accepting call", e)
+                    callError.postValue(e.message ?: "Unknown error accepting call")
+                }
             }
+        }
+
+        // ✅ Перевірити чи Socket підключений
+        if (socketConnected.value == true) {
+            Log.d("CallsViewModel", "Socket ready, accepting call immediately")
+            acceptLogic()
+        } else {
+            Log.d("CallsViewModel", "Socket not ready, pending call acceptance...")
+            pendingCallAcceptance = acceptLogic  // ✅ Окрема черга для прийняття
         }
     }
 
@@ -542,11 +580,18 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         // ✅ Налаштувати listeners для call events
         setupCallSocketListeners()
 
-        // ✅ Виконати відкладений дзвінок якщо є
+        // ✅ Виконати відкладений вихідний дзвінок якщо є
         pendingCallInitiation?.let {
             Log.d("CallsViewModel", "Executing pending call initiation...")
             it.invoke()
             pendingCallInitiation = null
+        }
+
+        // ✅ Виконати відкладене прийняття дзвінка якщо є
+        pendingCallAcceptance?.let {
+            Log.d("CallsViewModel", "Executing pending call acceptance...")
+            it.invoke()
+            pendingCallAcceptance = null
         }
     }
 

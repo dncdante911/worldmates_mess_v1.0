@@ -117,9 +117,27 @@ class CallsActivity : ComponentActivity() {
             recipientName = intent.getStringExtra("from_name") ?: "Користувач"
             recipientAvatar = intent.getStringExtra("from_avatar") ?: ""
             callType = intent.getStringExtra("call_type") ?: "audio"
-            shouldInitiateCall = false  // ✅ НЕ ініціюємо дзвінок (вже прийнято в IncomingCallActivity)
+            val roomName = intent.getStringExtra("room_name") ?: ""
+            val sdpOffer = intent.getStringExtra("sdp_offer")
+            shouldInitiateCall = false  // ✅ НЕ ініціюємо дзвінок
 
-            android.util.Log.d("CallsActivity", "✅ Incoming call accepted from: $recipientName (ID: $recipientId)")
+            android.util.Log.d("CallsActivity", "✅ Incoming call from: $recipientName (ID: $recipientId), room: $roomName")
+
+            // ✅ КРИТИЧНО: Прийняти дзвінок через ViewModel
+            // ViewModel виконає: отримання ICE, створення PeerConnection, answer, відправку call:accept
+            val callData = CallData(
+                callId = 0,
+                fromId = recipientId.toInt(),  // ID того, хто дзвонить (інініатор)
+                fromName = recipientName,
+                fromAvatar = recipientAvatar,
+                toId = callsViewModel.getUserId(),  // ✅ ID поточного користувача (отримувач)
+                callType = callType,
+                roomName = roomName,
+                sdpOffer = sdpOffer
+            )
+
+            // Викликаємо acceptCall() - ViewModel зачекає на Socket і виконає все необхідне
+            callsViewModel.acceptCall(callData)
         } else {
             // ✅ Вихідний дзвінок - ініціюємо звонок
             recipientId = intent.getLongExtra("recipientId", 0)

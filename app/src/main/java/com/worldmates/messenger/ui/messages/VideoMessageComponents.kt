@@ -439,7 +439,7 @@ fun VideoMessageFrameOverlay(
                 .border(
                     width = 4.dp,
                     color = Color.Red.copy(alpha = 0.8f),
-                    shape = RoundedCornerShape(if (style == VideoMessageFrameStyle.CIRCLE) 50 else 24.dp)
+                    shape = if (style == VideoMessageFrameStyle.CIRCLE) CircleShape else RoundedCornerShape(24.dp)
                 )
         )
     }

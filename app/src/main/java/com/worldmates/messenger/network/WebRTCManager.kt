@@ -7,6 +7,16 @@ import org.webrtc.audio.AudioDeviceModule
 import org.webrtc.audio.JavaAudioDeviceModule
 
 /**
+ * 📹 Качество видео для разных условий сети
+ */
+enum class VideoQuality(val width: Int, val height: Int, val fps: Int, val label: String) {
+    LOW(320, 240, 15, "Низкое (240p)"),           // Для очень медленного интернета
+    MEDIUM(640, 480, 24, "Среднее (480p)"),       // Для мобильного интернета
+    HIGH(1280, 720, 30, "Высокое (720p)"),        // Стандартное качество
+    FULL_HD(1920, 1080, 30, "Full HD (1080p)")    // Для быстрого WiFi
+}
+
+/**
  * WebRTCManager - управление WebRTC соединениями для аудио/видео вызовов
  * Поддерживает личные вызовы (1-на-1) и групповые вызовы
  */
@@ -20,6 +30,9 @@ class WebRTCManager(private val context: Context) {
     private var localVideoTrack: VideoTrack? = null
     private var videoCapturer: CameraVideoCapturer? = null
     private var videoSource: VideoSource? = null
+
+    // 📹 Текущее качество видео (по умолчанию HIGH - 720p)
+    private var currentVideoQuality: VideoQuality = VideoQuality.HIGH
 
     private var iceServers: List<PeerConnection.IceServer> = listOf(
         // Базовые STUN серверы Google (работают без аутентификации)
@@ -194,7 +207,7 @@ class WebRTCManager(private val context: Context) {
                     context,
                     videoSource?.capturerObserver
                 )
-                videoCapturer?.startCapture(1280, 720, 30)
+                videoCapturer?.startCapture(currentVideoQuality.width, currentVideoQuality.height, currentVideoQuality.fps)
 
                 localVideoTrack = peerConnectionFactory.createVideoTrack("video_track", videoSource)
                 localVideoTrack?.let {
@@ -402,7 +415,7 @@ class WebRTCManager(private val context: Context) {
                 context,
                 videoSource?.capturerObserver
             )
-            videoCapturer?.startCapture(1280, 720, 30)
+            videoCapturer?.startCapture(currentVideoQuality.width, currentVideoQuality.height, currentVideoQuality.fps)
 
             // 4. Создать видеотрек
             localVideoTrack = peerConnectionFactory.createVideoTrack("video_track", videoSource)
@@ -443,6 +456,40 @@ class WebRTCManager(private val context: Context) {
      * 📹 Проверить есть ли видеотрек
      */
     fun hasVideoTrack(): Boolean = localVideoTrack != null
+
+    /**
+     * 📹 Получить текущее качество видео
+     */
+    fun getVideoQuality(): VideoQuality = currentVideoQuality
+
+    /**
+     * 📹 Изменить качество видео на лету
+     * Перезапускает камеру с новым разрешением
+     */
+    fun setVideoQuality(quality: VideoQuality): Boolean {
+        if (currentVideoQuality == quality) {
+            Log.d(TAG, "Video quality already set to ${quality.label}")
+            return true
+        }
+
+        currentVideoQuality = quality
+        Log.d(TAG, "📹 Changing video quality to ${quality.label} (${quality.width}x${quality.height}@${quality.fps}fps)")
+
+        // Если камера уже запущена - перезапустить с новым качеством
+        if (videoCapturer != null) {
+            return try {
+                videoCapturer?.stopCapture()
+                videoCapturer?.startCapture(quality.width, quality.height, quality.fps)
+                Log.d(TAG, "✅ Video quality changed to ${quality.label}")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to change video quality", e)
+                false
+            }
+        }
+
+        return true
+    }
 
     /**
      * Получить локальный поток

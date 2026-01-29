@@ -15,7 +15,8 @@ $public_endpoints = [
     'auth',
     'send_verification_code',
     'verify_code',
-    'get_site_settings'
+    'get_site_settings',
+    'test_init'  // Debug endpoint
 ];
 
 // Get type early to check if it's a public endpoint
@@ -81,6 +82,9 @@ if (empty($type)) {
 
 // Route map: type => endpoint file
 $routes = [
+    // Debug
+    'test_init' => 'endpoints/test_init.php',
+
     // Search endpoints
     'search' => 'endpoints/search.php',
     'recent_search' => 'endpoints/recent_search.php',

@@ -3,19 +3,21 @@
 // | 📡 CHANNELS: Генерація QR коду для каналу
 // +------------------------------------------------------------------------+
 
-if (empty($_POST['access_token'])) {
-    $error_code    = 3;
-    $error_message = 'access_token is missing';
+// Initialize response variables
+$error_code = 0;
+$error_message = '';
+$data = [];
+
+// User is already authenticated by index.php router
+$user_id = $wo['user']['user_id'] ?? 0;
+
+if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
+    $error_code    = 4;
+    $error_message = 'Invalid access_token';
     http_response_code(400);
 }
 
 if ($error_code == 0) {
-    $user_id = Wo_UserIdFromAccessToken($_POST['access_token']);
-    if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
-        $error_code    = 4;
-        $error_message = 'Invalid access_token';
-        http_response_code(400);
-    } else {
         // Отримати параметр
         $channel_id = (!empty($_POST['channel_id']) && is_numeric($_POST['channel_id'])) ? (int)$_POST['channel_id'] : 0;
 
@@ -100,4 +102,23 @@ if ($error_code == 0) {
         }
     }
 }
+
+// Send JSON response
+header('Content-Type: application/json');
+if ($error_code > 0) {
+    echo json_encode([
+        'api_status' => http_response_code(),
+        'error_code' => $error_code,
+        'error_message' => $error_message
+    ]);
+} else if (!empty($data)) {
+    echo json_encode($data);
+} else {
+    http_response_code(500);
+    echo json_encode([
+        'api_status' => 500,
+        'error_message' => 'Unknown error occurred'
+    ]);
+}
+exit();
 ?>

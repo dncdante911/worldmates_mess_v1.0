@@ -4,12 +4,72 @@
  * Routes requests based on 'type' parameter to appropriate endpoint files
  */
 
-// Load configuration
-require_once(__DIR__ . '/config.php');
+// Load WoWonder framework initialization (from phone API)
+require_once(__DIR__ . '/../phone/api_init.php');
 
-// Get request type
+// Validate access token and set up $wo['user']
+$access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+
+// List of endpoints that don't require authentication
+$public_endpoints = [
+    'auth',
+    'send_verification_code',
+    'verify_code',
+    'get_site_settings'
+];
+
+// Get type early to check if it's a public endpoint
 $type = $_GET['type'] ?? $_POST['type'] ?? '';
 
+// Validate access token for protected endpoints
+if (!in_array($type, $public_endpoints)) {
+    if (empty($access_token)) {
+        http_response_code(401);
+        echo json_encode([
+            'api_status' => 401,
+            'error_message' => 'Missing access_token'
+        ]);
+        exit;
+    }
+
+    // Validate token by looking up in T_APP_SESSIONS table
+    $access_token_secure = Wo_Secure($access_token);
+    $session_query = mysqli_query($sqlConnect, "
+        SELECT s.user_id, s.session_id, s.platform, s.time
+        FROM " . T_APP_SESSIONS . " s
+        WHERE s.session_id = '{$access_token_secure}'
+        LIMIT 1
+    ");
+
+    if (!$session_query || mysqli_num_rows($session_query) == 0) {
+        http_response_code(401);
+        echo json_encode([
+            'api_status' => 401,
+            'error_message' => 'Invalid or expired access_token'
+        ]);
+        exit;
+    }
+
+    $session_data = mysqli_fetch_assoc($session_query);
+    $user_id = (int)$session_data['user_id'];
+
+    // Get full user data using WoWonder function
+    $user_data = Wo_UserData($user_id);
+    if (empty($user_data) || !isset($user_data['user_id'])) {
+        http_response_code(401);
+        echo json_encode([
+            'api_status' => 401,
+            'error_message' => 'User not found'
+        ]);
+        exit;
+    }
+
+    // Set up global $wo['user'] for endpoint files
+    $wo['user'] = $user_data;
+    $wo['loggedin'] = true;
+}
+
+// Type already retrieved above, check if empty
 if (empty($type)) {
     http_response_code(400);
     echo json_encode([
@@ -43,10 +103,28 @@ $routes = [
 
     // Groups
     'join_group' => 'endpoints/join-group.php',
+    'upload_group_avatar' => 'endpoints/upload_group_avatar.php',
+    'generate_group_qr' => 'endpoints/generate_group_qr.php',
+    'join_group_by_qr' => 'endpoints/join_group_by_qr.php',
+    'mute_group' => 'endpoints/mute_group.php',
+    'unmute_group' => 'endpoints/unmute_group.php',
+    'pin_group_message' => 'endpoints/pin_group_message.php',
+    'unpin_group_message' => 'endpoints/unpin_group_message.php',
+    'get_group_members' => 'endpoints/get_group_members.php',
+    'delete_group' => 'endpoints/delete_group.php',
+    'delete_group_member' => 'endpoints/delete_group_member.php',
+    'make_group_admin' => 'endpoints/make_group_admin.php',
+    'update-group-data' => 'endpoints/update-group-data.php',
+    'get-group-data' => 'endpoints/get-group-data.php',
 
     // Stories
     'delete_story' => 'endpoints/delete-story.php',
     'get_story_views' => 'endpoints/get_story_views.php',
+    'mute_story' => 'endpoints/mute_story.php',
+    'create_story_comment' => 'endpoints/create_story_comment.php',
+    'get_story_comments' => 'endpoints/get_story_comments.php',
+    'delete_story_comment' => 'endpoints/delete_story_comment.php',
+    'get_story_reactions' => 'endpoints/get_story_reactions.php',
 
     // User Settings
     'get-user-data' => 'endpoints/get-user-data.php',
@@ -66,6 +144,10 @@ $routes = [
 
     // Channels
     'get_channel_subscribers' => 'endpoints/get_channel_subscribers.php',
+    'upload_channel_avatar' => 'endpoints/upload_channel_avatar.php',
+    'generate_channel_qr' => 'endpoints/generate_channel_qr.php',
+    'mute_channel' => 'endpoints/mute_channel.php',
+    'unmute_channel' => 'endpoints/unmute_channel.php',
 
     // User Rating System (Karma/Trust)
     'rate_user' => 'endpoints/rate_user.php',

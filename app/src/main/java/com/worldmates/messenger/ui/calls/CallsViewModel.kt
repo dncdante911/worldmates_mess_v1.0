@@ -158,6 +158,68 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
             }
         }
 
+        // 🔄 Renegotiation offer от peer'а (когда он включил видео)
+        socketManager.on("call:renegotiate") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        Log.d("CallsViewModel", "🔄 Renegotiation offer received")
+                        val sdpOffer = it.optString("sdpOffer")
+                        val fromUserId = it.optInt("fromUserId")
+
+                        // Установить новый remote description
+                        val offerSdp = SessionDescription(SessionDescription.Type.OFFER, sdpOffer)
+                        webRTCManager.setRemoteDescription(offerSdp) { error ->
+                            Log.e("CallsViewModel", "Failed to set renegotiation offer: $error")
+                        }
+
+                        // Создать answer
+                        webRTCManager.createAnswer(
+                            onSuccess = { answer ->
+                                currentCallData?.let { callData ->
+                                    val answerEvent = JSONObject().apply {
+                                        put("roomName", callData.roomName)
+                                        put("fromUserId", getUserId())
+                                        put("toUserId", fromUserId)
+                                        put("sdpAnswer", answer.description)
+                                        put("type", "renegotiate_answer")
+                                    }
+                                    socketManager.emit("call:renegotiate_answer", answerEvent)
+                                    Log.d("CallsViewModel", "✅ Renegotiation answer sent")
+                                }
+                            },
+                            onError = { error ->
+                                Log.e("CallsViewModel", "Failed to create renegotiation answer: $error")
+                            }
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:renegotiate", e)
+            }
+        }
+
+        // 🔄 Renegotiation answer от peer'а
+        socketManager.on("call:renegotiate_answer") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        Log.d("CallsViewModel", "🔄 Renegotiation answer received")
+                        val sdpAnswer = it.optString("sdpAnswer")
+
+                        val answerSdp = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
+                        webRTCManager.setRemoteDescription(answerSdp) { error ->
+                            Log.e("CallsViewModel", "Failed to set renegotiation answer: $error")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:renegotiate_answer", e)
+            }
+        }
+
         // 📴 Дзвінок завершено
         socketManager.on("call:ended") { args ->
             try {
@@ -223,6 +285,45 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
         webRTCManager.onIceConnectionStateChangeListener = { state ->
             Log.d("CallsViewModel", "ICE Connection State: $state")
+        }
+
+        // ✅ Обработка renegotiation когда добавляется/удаляется track
+        webRTCManager.onRenegotiationNeededListener = {
+            Log.d("CallsViewModel", "🔄 Renegotiation needed - creating new offer")
+            // Только если мы инициатор или уже в звонке
+            if (currentCallData != null) {
+                performRenegotiation()
+            }
+        }
+    }
+
+    /**
+     * 🔄 Выполнить renegotiation - создать новый offer и отправить peer'у
+     */
+    private fun performRenegotiation() {
+        viewModelScope.launch {
+            try {
+                webRTCManager.createOffer(
+                    onSuccess = { offer ->
+                        currentCallData?.let { callData ->
+                            val renegotiateEvent = JSONObject().apply {
+                                put("roomName", callData.roomName)
+                                put("fromUserId", getUserId())
+                                put("toUserId", if (callData.toId == getUserId()) callData.fromId else callData.toId)
+                                put("sdpOffer", offer.description)
+                                put("type", "renegotiate")
+                            }
+                            socketManager.emit("call:renegotiate", renegotiateEvent)
+                            Log.d("CallsViewModel", "✅ Renegotiation offer sent")
+                        }
+                    },
+                    onError = { error ->
+                        Log.e("CallsViewModel", "❌ Failed to create renegotiation offer: $error")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "❌ Renegotiation error", e)
+            }
         }
     }
 

@@ -173,6 +173,8 @@ class WebRTCManager(private val context: Context) {
 
     var onIceCandidateListener: ((IceCandidate) -> Unit)? = null
     var onTrackListener: ((MediaStream) -> Unit)? = null
+    // ✅ Callback для renegotiation - вызывается когда добавляется/удаляется track
+    var onRenegotiationNeededListener: (() -> Unit)? = null
     var onRemoveTrackListener: (() -> Unit)? = null
     var onConnectionStateChangeListener: ((PeerConnection.PeerConnectionState) -> Unit)? = null
     var onIceConnectionStateChangeListener: ((PeerConnection.IceConnectionState) -> Unit)? = null
@@ -321,7 +323,15 @@ class WebRTCManager(private val context: Context) {
 
                     override fun onTrack(transceiver: RtpTransceiver) {
                         val track = transceiver.receiver.track()
-                        Log.d("WebRTCManager", "📡 Remote track received: ${track?.kind()}, enabled: ${track?.enabled()}, id: ${track?.id()}")
+                        val direction = transceiver.direction
+                        val mid = transceiver.mid
+                        Log.d(TAG, "📡 ========== REMOTE TRACK RECEIVED ==========")
+                        Log.d(TAG, "📡 Track kind: ${track?.kind()}")
+                        Log.d(TAG, "📡 Track ID: ${track?.id()}")
+                        Log.d(TAG, "📡 Track enabled: ${track?.enabled()}")
+                        Log.d(TAG, "📡 Transceiver direction: $direction")
+                        Log.d(TAG, "📡 Transceiver MID: $mid")
+                        Log.d(TAG, "📡 ============================================")
 
                         // ✅ Створити новий remote stream кожен раз для правильної роботи LiveData
                         // LiveData не оновлює UI якщо постити той самий об'єкт
@@ -368,7 +378,8 @@ class WebRTCManager(private val context: Context) {
 
                     override fun onDataChannel(dataChannel: DataChannel) {}
                     override fun onRenegotiationNeeded() {
-                        Log.d("WebRTCManager", "Renegotiation needed")
+                        Log.d(TAG, "🔄 Renegotiation needed - notifying listener")
+                        onRenegotiationNeededListener?.invoke()
                     }
                 }
             )
@@ -442,13 +453,26 @@ class WebRTCManager(private val context: Context) {
      * Создать offer для инициатора вызова
      */
     fun createOffer(onSuccess: (SessionDescription) -> Unit, onError: (String) -> Unit) {
+        Log.d(TAG, "📤 Creating offer...")
+        Log.d(TAG, "📤 Local audio track: ${localAudioTrack != null}, enabled: ${localAudioTrack?.enabled()}")
+        Log.d(TAG, "📤 Local video track: ${localVideoTrack != null}, enabled: ${localVideoTrack?.enabled()}")
+
         peerConnection?.createOffer(
             object : SdpObserver {
                 override fun onCreateSuccess(sessionDescription: SessionDescription) {
+                    // ✅ Логируем SDP для диагностики
+                    val hasAudio = sessionDescription.description.contains("m=audio")
+                    val hasVideo = sessionDescription.description.contains("m=video")
+                    Log.d(TAG, "📤 Offer created - hasAudio: $hasAudio, hasVideo: $hasVideo")
+                    if (!hasVideo) {
+                        Log.w(TAG, "⚠️ WARNING: Offer does NOT contain video m-line!")
+                    }
+
                     peerConnection?.setLocalDescription(
                         object : SdpObserver {
                             override fun onCreateSuccess(p0: SessionDescription?) {}
                             override fun onSetSuccess() {
+                                Log.d(TAG, "📤 Local description set successfully")
                                 onSuccess(sessionDescription)
                             }
                             override fun onCreateFailure(p0: String?) {}
@@ -461,6 +485,7 @@ class WebRTCManager(private val context: Context) {
                 }
 
                 override fun onCreateFailure(error: String?) {
+                    Log.e(TAG, "❌ Failed to create offer: $error")
                     onError(error ?: "Failed to create offer")
                 }
 
@@ -478,13 +503,26 @@ class WebRTCManager(private val context: Context) {
      * Создать answer для получателя вызова
      */
     fun createAnswer(onSuccess: (SessionDescription) -> Unit, onError: (String) -> Unit) {
+        Log.d(TAG, "📥 Creating answer...")
+        Log.d(TAG, "📥 Local audio track: ${localAudioTrack != null}, enabled: ${localAudioTrack?.enabled()}")
+        Log.d(TAG, "📥 Local video track: ${localVideoTrack != null}, enabled: ${localVideoTrack?.enabled()}")
+
         peerConnection?.createAnswer(
             object : SdpObserver {
                 override fun onCreateSuccess(sessionDescription: SessionDescription) {
+                    // ✅ Логируем SDP для диагностики
+                    val hasAudio = sessionDescription.description.contains("m=audio")
+                    val hasVideo = sessionDescription.description.contains("m=video")
+                    Log.d(TAG, "📥 Answer created - hasAudio: $hasAudio, hasVideo: $hasVideo")
+                    if (!hasVideo) {
+                        Log.w(TAG, "⚠️ WARNING: Answer does NOT contain video m-line!")
+                    }
+
                     peerConnection?.setLocalDescription(
                         object : SdpObserver {
                             override fun onCreateSuccess(p0: SessionDescription?) {}
                             override fun onSetSuccess() {
+                                Log.d(TAG, "📥 Local description (answer) set successfully")
                                 onSuccess(sessionDescription)
                             }
                             override fun onCreateFailure(p0: String?) {}
@@ -497,6 +535,7 @@ class WebRTCManager(private val context: Context) {
                 }
 
                 override fun onCreateFailure(error: String?) {
+                    Log.e(TAG, "❌ Failed to create answer: $error")
                     onError(error ?: "Failed to create answer")
                 }
 
@@ -515,14 +554,31 @@ class WebRTCManager(private val context: Context) {
      * Установить remote description (offer или answer от другого юзера)
      */
     fun setRemoteDescription(sessionDescription: SessionDescription, onError: (String) -> Unit) {
+        // ✅ Логируем remote SDP для диагностики
+        val hasAudio = sessionDescription.description.contains("m=audio")
+        val hasVideo = sessionDescription.description.contains("m=video")
+        Log.d(TAG, "📩 Setting remote description (${sessionDescription.type})")
+        Log.d(TAG, "📩 Remote SDP - hasAudio: $hasAudio, hasVideo: $hasVideo")
+        if (!hasVideo) {
+            Log.w(TAG, "⚠️ WARNING: Remote SDP does NOT contain video m-line!")
+        }
+
         peerConnection?.setRemoteDescription(
             object : SdpObserver {
                 override fun onCreateSuccess(p0: SessionDescription?) {}
                 override fun onSetSuccess() {
-                    Log.d("WebRTCManager", "Remote description set successfully")
+                    Log.d(TAG, "✅ Remote description set successfully")
+                    // ✅ После установки remote description проверяем transceivers
+                    peerConnection?.transceivers?.forEachIndexed { index, transceiver ->
+                        Log.d(TAG, "📡 Transceiver[$index]: mid=${transceiver.mid}, " +
+                                "direction=${transceiver.direction}, " +
+                                "currentDirection=${transceiver.currentDirection}, " +
+                                "receiverTrack=${transceiver.receiver.track()?.kind()}")
+                    }
                 }
                 override fun onCreateFailure(p0: String?) {}
                 override fun onSetFailure(error: String?) {
+                    Log.e(TAG, "❌ Failed to set remote description: $error")
                     onError(error ?: "Failed to set remote description")
                 }
             },

@@ -1390,7 +1390,7 @@ fun VideoQualitySelector(
                                 color = if (isSelected) Color.White else Color(0xFFbbbbbb)
                             )
                             Text(
-                                text = "${quality.width}x${quality.height} @ ${quality.fps}fps",
+                                text = "${quality.width}x${quality.height} @ ${quality.fps}fps • ${quality.maxBitrate/1000.0}Mbps",
                                 fontSize = 12.sp,
                                 color = Color(0xFF888888)
                             )

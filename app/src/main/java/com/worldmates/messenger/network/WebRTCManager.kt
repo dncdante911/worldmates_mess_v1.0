@@ -9,11 +9,18 @@ import org.webrtc.audio.JavaAudioDeviceModule
 /**
  * 📹 Качество видео для разных условий сети
  */
-enum class VideoQuality(val width: Int, val height: Int, val fps: Int, val label: String) {
-    LOW(320, 240, 15, "Низкое (240p)"),           // Для очень медленного интернета
-    MEDIUM(640, 480, 24, "Среднее (480p)"),       // Для мобильного интернета
-    HIGH(1280, 720, 30, "Высокое (720p)"),        // Стандартное качество
-    FULL_HD(1920, 1080, 30, "Full HD (1080p)")    // Для быстрого WiFi
+enum class VideoQuality(
+    val width: Int,
+    val height: Int,
+    val fps: Int,
+    val minBitrate: Int,  // Кбит/с
+    val maxBitrate: Int,  // Кбит/с
+    val label: String
+) {
+    LOW(320, 240, 15, 150, 300, "Низкое (240p)"),             // Для очень медленного интернета
+    MEDIUM(640, 480, 24, 500, 1000, "Среднее (480p)"),        // Для мобильного интернета
+    HIGH(1280, 720, 30, 1500, 2500, "Высокое (720p)"),        // Стандартное качество (как Viber)
+    FULL_HD(1920, 1080, 30, 2500, 4500, "Full HD (1080p)")    // Для быстрого WiFi (как Telegram)
 }
 
 /**
@@ -437,8 +444,10 @@ class WebRTCManager(private val context: Context) {
                     mediaStream.addTrack(it)
                     // ✅ UNIFIED_PLAN: addTrack вместо addStream
                     peerConnection?.addTrack(it, listOf("LOCAL_STREAM"))
+                    // ✅ Применить битрейт после добавления трека
+                    applyVideoBitrate(currentVideoQuality)
                 }
-                Log.d("WebRTCManager", "Video track added with camera capturer and enabled")
+                Log.d("WebRTCManager", "Video track added with camera capturer and enabled, bitrate: ${currentVideoQuality.maxBitrate} kbps")
             }
 
             localMediaStream = mediaStream
@@ -727,7 +736,10 @@ class WebRTCManager(private val context: Context) {
             // 7. Добавить видеотрек в PeerConnection (UNIFIED_PLAN)
             peerConnection?.addTrack(localVideoTrack!!, listOf("LOCAL_STREAM"))
 
-            Log.d("WebRTCManager", "✅ Video enabled dynamically - camera started")
+            // 8. ✅ Применить битрейт для качества
+            applyVideoBitrate(currentVideoQuality)
+
+            Log.d("WebRTCManager", "✅ Video enabled dynamically - camera started, bitrate: ${currentVideoQuality.maxBitrate} kbps")
             true
         } catch (e: Exception) {
             Log.e("WebRTCManager", "Failed to enable video dynamically", e)
@@ -799,7 +811,7 @@ class WebRTCManager(private val context: Context) {
 
     /**
      * 📹 Изменить качество видео на лету
-     * Перезапускает камеру с новым разрешением
+     * Перезапускает камеру с новым разрешением и применяет битрейт
      */
     fun setVideoQuality(quality: VideoQuality): Boolean {
         if (currentVideoQuality == quality) {
@@ -808,13 +820,15 @@ class WebRTCManager(private val context: Context) {
         }
 
         currentVideoQuality = quality
-        Log.d(TAG, "📹 Changing video quality to ${quality.label} (${quality.width}x${quality.height}@${quality.fps}fps)")
+        Log.d(TAG, "📹 Changing video quality to ${quality.label} (${quality.width}x${quality.height}@${quality.fps}fps, ${quality.minBitrate}-${quality.maxBitrate} kbps)")
 
         // Если камера уже запущена - перезапустить с новым качеством
         if (videoCapturer != null) {
             return try {
                 videoCapturer?.stopCapture()
                 videoCapturer?.startCapture(quality.width, quality.height, quality.fps)
+                // ✅ Применить новый битрейт
+                applyVideoBitrate(quality)
                 Log.d(TAG, "✅ Video quality changed to ${quality.label}")
                 true
             } catch (e: Exception) {
@@ -824,6 +838,43 @@ class WebRTCManager(private val context: Context) {
         }
 
         return true
+    }
+
+    /**
+     * 📹 Применить битрейт для видео через RtpSender
+     * Это ключевая настройка для качества видео!
+     */
+    private fun applyVideoBitrate(quality: VideoQuality) {
+        try {
+            peerConnection?.senders?.forEach { sender ->
+                if (sender.track()?.kind() == "video") {
+                    val parameters = sender.parameters
+                    if (parameters.encodings.isNotEmpty()) {
+                        parameters.encodings.forEach { encoding ->
+                            // ✅ Устанавливаем битрейт (в бит/с, не кбит/с!)
+                            encoding.minBitrateBps = quality.minBitrate * 1000
+                            encoding.maxBitrateBps = quality.maxBitrate * 1000
+                            // ✅ Устанавливаем максимальный FPS
+                            encoding.maxFramerate = quality.fps
+                            // ✅ Отключаем degradation для лучшего качества при хорошей сети
+                            encoding.scaleResolutionDownBy = 1.0
+                        }
+                        sender.parameters = parameters
+                        Log.d(TAG, "✅ Video bitrate applied: ${quality.minBitrate}-${quality.maxBitrate} kbps, ${quality.fps} fps")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to apply video bitrate", e)
+        }
+    }
+
+    /**
+     * 📹 Применить битрейт после добавления видеотрека в PeerConnection
+     * Вызывается из createLocalMediaStream и enableVideo
+     */
+    fun applyCurrentVideoBitrate() {
+        applyVideoBitrate(currentVideoQuality)
     }
 
     /**

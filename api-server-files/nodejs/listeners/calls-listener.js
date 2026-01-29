@@ -519,6 +519,94 @@ async function registerCallsListeners(socket, io, ctx) {
         console.log(`[CALLS] User ${userId} toggled media: audio=${audio}, video=${video}`);
     });
 
+    /**
+     * 🔄 Renegotiation - когда участник включает/выключает видео во время звонка
+     * Data: { roomName, fromUserId, toUserId, sdpOffer, type }
+     */
+    socket.on('call:renegotiate', async (data) => {
+        try {
+            const { roomName, fromUserId, toUserId, sdpOffer } = data;
+
+            console.log(`[CALLS] 🔄 Renegotiation from ${fromUserId} to ${toUserId} in room ${roomName}`);
+
+            if (toUserId) {
+                // Отправить конкретному пользователю
+                const recipientSockets = ctx.userIdSocket[toUserId];
+                if (recipientSockets && recipientSockets.length > 0) {
+                    const renegotiateData = {
+                        roomName: roomName,
+                        fromUserId: fromUserId,
+                        sdpOffer: sdpOffer,
+                        type: 'renegotiate'
+                    };
+
+                    recipientSockets.forEach(recipientSocket => {
+                        recipientSocket.emit('call:renegotiate', renegotiateData);
+                    });
+
+                    console.log(`[CALLS] ✅ Renegotiation offer sent to user ${toUserId}`);
+                } else {
+                    console.warn(`[CALLS] ⚠️ No sockets found for user ${toUserId}`);
+                }
+            } else {
+                // Broadcast в комнату (для групповых звонков)
+                socket.to(roomName).emit('call:renegotiate', {
+                    fromUserId: fromUserId,
+                    sdpOffer: sdpOffer,
+                    type: 'renegotiate'
+                });
+                console.log(`[CALLS] ✅ Renegotiation offer broadcast to room ${roomName}`);
+            }
+
+        } catch (error) {
+            console.error('[CALLS] Error in call:renegotiate:', error);
+        }
+    });
+
+    /**
+     * 🔄 Renegotiation Answer - ответ на renegotiation offer
+     * Data: { roomName, fromUserId, toUserId, sdpAnswer, type }
+     */
+    socket.on('call:renegotiate_answer', async (data) => {
+        try {
+            const { roomName, fromUserId, toUserId, sdpAnswer } = data;
+
+            console.log(`[CALLS] 🔄 Renegotiation answer from ${fromUserId} to ${toUserId} in room ${roomName}`);
+
+            if (toUserId) {
+                // Отправить конкретному пользователю
+                const recipientSockets = ctx.userIdSocket[toUserId];
+                if (recipientSockets && recipientSockets.length > 0) {
+                    const answerData = {
+                        roomName: roomName,
+                        fromUserId: fromUserId,
+                        sdpAnswer: sdpAnswer,
+                        type: 'renegotiate_answer'
+                    };
+
+                    recipientSockets.forEach(recipientSocket => {
+                        recipientSocket.emit('call:renegotiate_answer', answerData);
+                    });
+
+                    console.log(`[CALLS] ✅ Renegotiation answer sent to user ${toUserId}`);
+                } else {
+                    console.warn(`[CALLS] ⚠️ No sockets found for user ${toUserId}`);
+                }
+            } else {
+                // Broadcast в комнату (для групповых звонков)
+                socket.to(roomName).emit('call:renegotiate_answer', {
+                    fromUserId: fromUserId,
+                    sdpAnswer: sdpAnswer,
+                    type: 'renegotiate_answer'
+                });
+                console.log(`[CALLS] ✅ Renegotiation answer broadcast to room ${roomName}`);
+            }
+
+        } catch (error) {
+            console.error('[CALLS] Error in call:renegotiate_answer:', error);
+        }
+    });
+
     console.log(`[CALLS] Call listeners registered for socket ${socket.id}`);
 }
 

@@ -36,11 +36,131 @@ class WebRTCManager(private val context: Context) {
     // 📹 Текущее качество видео (по умолчанию HIGH - 720p)
     private var currentVideoQuality: VideoQuality = VideoQuality.HIGH
 
-    private var iceServers: List<PeerConnection.IceServer> = listOf(
-        // Базовые STUN серверы Google (работают без аутентификации)
-        PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-        PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer()
-    )
+    private var iceServers: List<PeerConnection.IceServer> = createDefaultIceServers()
+
+    companion object {
+        private const val TAG = "WebRTCManager"
+
+        // 🔐 TURN Server Credentials (worldmates.club)
+        private const val TURN_SECRET = "ad8a76d057d6ba0d6fd79bbc84504e320c8538b92db5c9b84fc3bd18d1c511b9"
+        private const val TURN_REALM = "worldmates.club"
+        private const val TURN_IP_1 = "195.22.131.11"
+        private const val TURN_IP_2 = "46.232.232.38"
+
+        /**
+         * 🔐 Генерирует TURN credentials используя HMAC-SHA1
+         * Время-ограниченные credentials для безопасности
+         */
+        private fun generateTurnCredentials(userId: String = "android_user"): Pair<String, String> {
+            val timestamp = (System.currentTimeMillis() / 1000) + 86400 // +24 часа
+            val username = "$timestamp:$userId"
+
+            // HMAC-SHA1 для credential
+            val credential = try {
+                val mac = javax.crypto.Mac.getInstance("HmacSHA1")
+                val secretKey = javax.crypto.spec.SecretKeySpec(TURN_SECRET.toByteArray(), "HmacSHA1")
+                mac.init(secretKey)
+                val hash = mac.doFinal(username.toByteArray())
+                android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to generate TURN credential", e)
+                ""
+            }
+
+            return Pair(username, credential)
+        }
+
+        /**
+         * 📡 Создает ICE серверы по умолчанию включая TURN
+         */
+        private fun createDefaultIceServers(): List<PeerConnection.IceServer> {
+            val servers = mutableListOf<PeerConnection.IceServer>()
+
+            // 1. STUN серверы Google (бесплатные, для NAT traversal)
+            servers.add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
+            servers.add(PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer())
+            servers.add(PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer())
+
+            // 2. TURN серверы WorldMates (с credentials для relay)
+            val (username, credential) = generateTurnCredentials()
+
+            if (credential.isNotEmpty()) {
+                // TURN UDP (основной - порт 3478)
+                servers.add(
+                    PeerConnection.IceServer.builder("turn:$TURN_IP_1:3478?transport=udp")
+                        .setUsername(username)
+                        .setPassword(credential)
+                        .createIceServer()
+                )
+                servers.add(
+                    PeerConnection.IceServer.builder("turn:$TURN_IP_2:3478?transport=udp")
+                        .setUsername(username)
+                        .setPassword(credential)
+                        .createIceServer()
+                )
+
+                // TURN TCP (fallback для строгих файрволов)
+                servers.add(
+                    PeerConnection.IceServer.builder("turn:$TURN_IP_1:3478?transport=tcp")
+                        .setUsername(username)
+                        .setPassword(credential)
+                        .createIceServer()
+                )
+                servers.add(
+                    PeerConnection.IceServer.builder("turn:$TURN_IP_2:3478?transport=tcp")
+                        .setUsername(username)
+                        .setPassword(credential)
+                        .createIceServer()
+                )
+
+                // TURNS TLS (безопасный - порт 5349)
+                servers.add(
+                    PeerConnection.IceServer.builder("turns:$TURN_IP_1:5349?transport=tcp")
+                        .setUsername(username)
+                        .setPassword(credential)
+                        .createIceServer()
+                )
+                servers.add(
+                    PeerConnection.IceServer.builder("turns:$TURN_IP_2:5349?transport=tcp")
+                        .setUsername(username)
+                        .setPassword(credential)
+                        .createIceServer()
+                )
+
+                Log.d(TAG, "✅ Created ${servers.size} ICE servers (including TURN with credentials)")
+            } else {
+                Log.w(TAG, "⚠️ TURN credentials generation failed, using STUN only")
+            }
+
+            return servers
+        }
+
+        /**
+         * Получить EGL контекст для инициализации SurfaceViewRenderer
+         * Публичная функция для доступа из других классов
+         */
+        fun getEglContext(): EglBase.Context {
+            return EglBaseProvider.context
+        }
+
+        // Помощник для инициализации EGL контекста
+        object EglBaseProvider {
+            private var eglBase: EglBase? = null
+
+            val context: EglBase.Context
+                get() {
+                    if (eglBase == null) {
+                        eglBase = EglBase.create()
+                    }
+                    return eglBase!!.eglBaseContext
+                }
+
+            fun release() {
+                eglBase?.release()
+                eglBase = null
+            }
+        }
+    }
 
     /**
      * Установить ICE servers (включая TURN с credentials от сервера)
@@ -70,7 +190,55 @@ class WebRTCManager(private val context: Context) {
                     .createInitializationOptions()
             )
 
-            val audioDeviceModule = JavaAudioDeviceModule.builder(context).createAudioDeviceModule()
+            // ✅ УЛУЧШЕННАЯ аудио конфигурация для надёжной работы на Android 11+
+            val audioDeviceModule = JavaAudioDeviceModule.builder(context)
+                .setUseHardwareAcousticEchoCanceler(true)  // ✅ Аппаратное эхоподавление
+                .setUseHardwareNoiseSuppressor(true)       // ✅ Аппаратное шумоподавление
+                .setAudioRecordErrorCallback(object : JavaAudioDeviceModule.AudioRecordErrorCallback {
+                    override fun onWebRtcAudioRecordInitError(errorMessage: String?) {
+                        Log.e(TAG, "🎤 Audio record init error: $errorMessage")
+                    }
+                    override fun onWebRtcAudioRecordStartError(
+                        errorCode: JavaAudioDeviceModule.AudioRecordStartErrorCode?,
+                        errorMessage: String?
+                    ) {
+                        Log.e(TAG, "🎤 Audio record start error [$errorCode]: $errorMessage")
+                    }
+                    override fun onWebRtcAudioRecordError(errorMessage: String?) {
+                        Log.e(TAG, "🎤 Audio record error: $errorMessage")
+                    }
+                })
+                .setAudioTrackErrorCallback(object : JavaAudioDeviceModule.AudioTrackErrorCallback {
+                    override fun onWebRtcAudioTrackInitError(errorMessage: String?) {
+                        Log.e(TAG, "🔊 Audio track init error: $errorMessage")
+                    }
+                    override fun onWebRtcAudioTrackStartError(
+                        errorCode: JavaAudioDeviceModule.AudioTrackStartErrorCode?,
+                        errorMessage: String?
+                    ) {
+                        Log.e(TAG, "🔊 Audio track start error [$errorCode]: $errorMessage")
+                    }
+                    override fun onWebRtcAudioTrackError(errorMessage: String?) {
+                        Log.e(TAG, "🔊 Audio track error: $errorMessage")
+                    }
+                })
+                .setAudioRecordStateCallback(object : JavaAudioDeviceModule.AudioRecordStateCallback {
+                    override fun onWebRtcAudioRecordStart() {
+                        Log.d(TAG, "🎤 Audio recording started")
+                    }
+                    override fun onWebRtcAudioRecordStop() {
+                        Log.d(TAG, "🎤 Audio recording stopped")
+                    }
+                })
+                .setAudioTrackStateCallback(object : JavaAudioDeviceModule.AudioTrackStateCallback {
+                    override fun onWebRtcAudioTrackStart() {
+                        Log.d(TAG, "🔊 Audio playback started")
+                    }
+                    override fun onWebRtcAudioTrackStop() {
+                        Log.d(TAG, "🔊 Audio playback stopped")
+                    }
+                })
+                .createAudioDeviceModule()
 
             peerConnectionFactory = PeerConnectionFactory.builder()
                 .setAudioDeviceModule(audioDeviceModule)
@@ -82,9 +250,9 @@ class WebRTCManager(private val context: Context) {
                 })
                 .createPeerConnectionFactory()
 
-            Log.d("WebRTCManager", "PeerConnectionFactory initialized successfully")
+            Log.d(TAG, "✅ PeerConnectionFactory initialized successfully with enhanced audio")
         } catch (e: Exception) {
-            Log.e("WebRTCManager", "Failed to initialize PeerConnectionFactory", e)
+            Log.e(TAG, "Failed to initialize PeerConnectionFactory", e)
         }
     }
 
@@ -92,10 +260,23 @@ class WebRTCManager(private val context: Context) {
      * Создать PeerConnection для вызова
      */
     fun createPeerConnection(): PeerConnection? {
+        // ✅ Обновить TURN credentials перед каждым звонком
+        iceServers = createDefaultIceServers()
+        Log.d(TAG, "📡 ICE servers refreshed: ${iceServers.size} servers configured")
+
         return try {
             val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
                 sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
                 continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+                // ✅ КРИТИЧНО для надёжного соединения через NAT
+                iceTransportsType = PeerConnection.IceTransportsType.ALL  // STUN + TURN
+                bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
+                rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
+                tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.ENABLED  // ✅ TCP fallback
+                candidateNetworkPolicy = PeerConnection.CandidateNetworkPolicy.ALL
+                // ✅ Увеличенные таймауты для медленных сетей
+                iceConnectionReceivingTimeout = 10000  // 10 секунд
+                iceBackupCandidatePairPingInterval = 5000  // 5 секунд
             }
 
             peerConnection = peerConnectionFactory.createPeerConnection(
@@ -648,33 +829,4 @@ class WebRTCManager(private val context: Context) {
         }
     }
 
-    companion object {
-        private const val TAG = "WebRTCManager"
-
-        /**
-         * Получить EGL контекст для инициализации SurfaceViewRenderer
-         * Публичная функция для доступа из других классов
-         */
-        fun getEglContext(): EglBase.Context {
-            return EglBaseProvider.context
-        }
-
-        // Помощник для инициализации EGL контекста
-        object EglBaseProvider {
-            private var eglBase: EglBase? = null
-
-            val context: EglBase.Context
-                get() {
-                    if (eglBase == null) {
-                        eglBase = EglBase.create()
-                    }
-                    return eglBase!!.eglBaseContext
-                }
-
-            fun release() {
-                eglBase?.release()
-                eglBase = null
-            }
-        }
-    }
 }

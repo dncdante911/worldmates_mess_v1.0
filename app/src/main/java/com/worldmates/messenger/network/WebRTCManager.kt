@@ -17,10 +17,10 @@ enum class VideoQuality(
     val maxBitrate: Int,  // Кбит/с
     val label: String
 ) {
-    LOW(320, 240, 15, 150, 300, "Низкое (240p)"),             // Для очень медленного интернета
-    MEDIUM(640, 480, 24, 500, 1000, "Среднее (480p)"),        // Для мобильного интернета
-    HIGH(1280, 720, 30, 1500, 2500, "Высокое (720p)"),        // Стандартное качество (как Viber)
-    FULL_HD(1920, 1080, 30, 2500, 4500, "Full HD (1080p)")    // Для быстрого WiFi (как Telegram)
+    LOW(320, 240, 15, 100, 200, "Низкое (240p)"),             // Для очень медленного интернета
+    MEDIUM(640, 480, 24, 300, 600, "Среднее (480p)"),         // Для мобильного интернета
+    HIGH(1280, 720, 30, 800, 1500, "Высокое (720p)"),         // Стандартное качество (стабильное)
+    FULL_HD(1920, 1080, 30, 1500, 2500, "Full HD (1080p)")    // Для быстрого WiFi
 }
 
 /**
@@ -249,17 +249,61 @@ class WebRTCManager(private val context: Context) {
                 })
                 .createAudioDeviceModule()
 
+            // ✅ Создаём encoder factory с приоритетом H.264 (аппаратное ускорение)
+            // H.264 поддерживается на 99% устройств и использует GPU
+            val hwEncoderFactory = HardwareVideoEncoderFactory(
+                EglBaseProvider.context,
+                true,  // enableIntelVp8Encoder
+                true   // enableH264HighProfile - ключевой параметр для качества!
+            )
+            val swEncoderFactory = SoftwareVideoEncoderFactory()
+
+            // Комбинируем: сначала H.264 (HW), потом VP8/VP9 (SW как fallback)
+            val encoderFactory = object : VideoEncoderFactory {
+                override fun createEncoder(info: VideoCodecInfo): VideoEncoder? {
+                    // Сначала пробуем аппаратный кодек (H.264)
+                    val hwEncoder = hwEncoderFactory.createEncoder(info)
+                    if (hwEncoder != null) {
+                        Log.d(TAG, "🎬 Using HARDWARE encoder for ${info.name}")
+                        return hwEncoder
+                    }
+                    // Fallback на программный
+                    Log.d(TAG, "🎬 Using SOFTWARE encoder for ${info.name}")
+                    return swEncoderFactory.createEncoder(info)
+                }
+
+                override fun getSupportedCodecs(): Array<VideoCodecInfo> {
+                    val hwCodecs = hwEncoderFactory.supportedCodecs.toMutableList()
+                    val swCodecs = swEncoderFactory.supportedCodecs.toList()
+
+                    // ✅ H.264 должен быть ПЕРВЫМ в списке для приоритета
+                    val sortedCodecs = hwCodecs.sortedByDescending {
+                        it.name.equals("H264", ignoreCase = true)
+                    }.toMutableList()
+
+                    // Добавляем SW кодеки которых нет в HW
+                    swCodecs.forEach { swCodec ->
+                        if (sortedCodecs.none { it.name == swCodec.name }) {
+                            sortedCodecs.add(swCodec)
+                        }
+                    }
+
+                    Log.d(TAG, "🎬 Supported codecs (prioritized): ${sortedCodecs.map { it.name }}")
+                    return sortedCodecs.toTypedArray()
+                }
+            }
+
             peerConnectionFactory = PeerConnectionFactory.builder()
                 .setAudioDeviceModule(audioDeviceModule)
                 .setVideoDecoderFactory(DefaultVideoDecoderFactory(EglBaseProvider.context))
-                .setVideoEncoderFactory(DefaultVideoEncoderFactory(EglBaseProvider.context, true, true))
+                .setVideoEncoderFactory(encoderFactory)
                 .setOptions(PeerConnectionFactory.Options().apply {
                     disableEncryption = false
                     networkIgnoreMask = 0
                 })
                 .createPeerConnectionFactory()
 
-            Log.d(TAG, "✅ PeerConnectionFactory initialized successfully with enhanced audio")
+            Log.d(TAG, "✅ PeerConnectionFactory initialized with H.264 priority encoder")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize PeerConnectionFactory", e)
         }

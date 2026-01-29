@@ -1,15 +1,18 @@
 package com.worldmates.messenger.ui.messages
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.Build
+import android.provider.MediaStore
 import android.util.Log
 import android.view.ViewGroup
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
+import androidx.camera.video.VideoCapture
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -39,12 +42,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.PermissionChecker
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.delay
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.Executor
+
+private const val TAG = "VideoMessageRecorder"
 
 /**
  * 🎬 Стилі рамок для відеоповідомлень
@@ -80,12 +86,12 @@ fun saveVideoMessageFrameStyle(context: Context, style: VideoMessageFrameStyle) 
 }
 
 /**
- * 🎬 Компонент для запису відеоповідомлень
+ * 🎬 Компонент для запису відеоповідомлень з реальним записом через CameraX
  */
 @Composable
 fun VideoMessageRecorder(
     maxDurationSeconds: Int = 120,  // 2 хвилини за замовчуванням
-    isPremiumUser: Boolean = false,  // Прему|м користувачі мають 5 хвилин
+    isPremiumUser: Boolean = false,  // Преміум користувачі мають 5 хвилин
     onVideoRecorded: (File) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -101,6 +107,13 @@ fun VideoMessageRecorder(
     var isFrontCamera by remember { mutableStateOf(true) }
     var videoFile by remember { mutableStateOf<File?>(null) }
 
+    // ✅ CameraX Video Recording state
+    var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
+    var recording by remember { mutableStateOf<Recording?>(null) }
+    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    var preview by remember { mutableStateOf<Preview?>(null) }
+    var previewView by remember { mutableStateOf<PreviewView?>(null) }
+
     // Таймер для відліку часу запису
     LaunchedEffect(isRecording) {
         if (isRecording) {
@@ -110,6 +123,8 @@ fun VideoMessageRecorder(
                 recordingDuration++
                 // Автоматично зупинити при досягненні ліміту
                 if (recordingDuration >= actualMaxDuration) {
+                    Log.d(TAG, "⏱️ Max duration reached, stopping recording")
+                    recording?.stop()
                     isRecording = false
                 }
             }
@@ -119,16 +134,168 @@ fun VideoMessageRecorder(
     // Стиль рамки
     val frameStyle = remember { getSavedVideoMessageFrameStyle(context) }
 
+    // ✅ Функція для початку запису
+    fun startRecording() {
+        val videoCapt = videoCapture ?: run {
+            Log.e(TAG, "❌ VideoCapture is null, cannot start recording")
+            return
+        }
+
+        // Створити файл для відео
+        val file = createVideoFile(context)
+        videoFile = file
+        Log.d(TAG, "📹 Starting video recording to: ${file.absolutePath}")
+
+        val outputOptions = FileOutputOptions.Builder(file).build()
+
+        recording = videoCapt.output
+            .prepareRecording(context, outputOptions)
+            .apply {
+                // ✅ Записувати аудіо якщо є дозвіл
+                if (PermissionChecker.checkSelfPermission(
+                        context,
+                        Manifest.permission.RECORD_AUDIO
+                    ) == PermissionChecker.PERMISSION_GRANTED
+                ) {
+                    withAudioEnabled()
+                }
+            }
+            .start(ContextCompat.getMainExecutor(context)) { event ->
+                when (event) {
+                    is VideoRecordEvent.Start -> {
+                        Log.d(TAG, "✅ Recording started")
+                        isRecording = true
+                    }
+                    is VideoRecordEvent.Finalize -> {
+                        if (!event.hasError()) {
+                            Log.d(TAG, "✅ Recording finished successfully: ${file.absolutePath}")
+                            Log.d(TAG, "📊 File size: ${file.length()} bytes")
+                            if (file.exists() && file.length() > 0) {
+                                onVideoRecorded(file)
+                            } else {
+                                Log.e(TAG, "❌ Video file is empty or doesn't exist")
+                            }
+                        } else {
+                            Log.e(TAG, "❌ Recording error: ${event.error}, cause: ${event.cause?.message}")
+                            file.delete()
+                        }
+                        isRecording = false
+                        recording = null
+                    }
+                    is VideoRecordEvent.Status -> {
+                        // Оновлення статусу запису
+                    }
+                    is VideoRecordEvent.Pause -> {
+                        Log.d(TAG, "⏸️ Recording paused")
+                    }
+                    is VideoRecordEvent.Resume -> {
+                        Log.d(TAG, "▶️ Recording resumed")
+                    }
+                }
+            }
+    }
+
+    // ✅ Функція для зупинки запису
+    fun stopRecording() {
+        Log.d(TAG, "⏹️ Stopping recording...")
+        recording?.stop()
+    }
+
+    // ✅ Функція для ініціалізації камери з VideoCapture
+    fun bindCameraUseCases(
+        camProvider: ProcessCameraProvider,
+        lifecycleOwner: LifecycleOwner,
+        previewViewInstance: PreviewView,
+        useFrontCamera: Boolean
+    ) {
+        Log.d(TAG, "📷 Binding camera use cases, front camera: $useFrontCamera")
+
+        // Відв'язати попередні use cases
+        camProvider.unbindAll()
+
+        // Camera selector
+        val cameraSelector = if (useFrontCamera) {
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        } else {
+            CameraSelector.DEFAULT_BACK_CAMERA
+        }
+
+        // Preview
+        val newPreview = Preview.Builder()
+            .build()
+            .also {
+                it.setSurfaceProvider(previewViewInstance.surfaceProvider)
+            }
+        preview = newPreview
+
+        // ✅ Recorder для відео з аудіо
+        val recorder = Recorder.Builder()
+            .setQualitySelector(QualitySelector.from(Quality.HD))  // 720p
+            .build()
+
+        val newVideoCapture = VideoCapture.withOutput(recorder)
+        videoCapture = newVideoCapture
+
+        try {
+            camProvider.bindToLifecycle(
+                lifecycleOwner,
+                cameraSelector,
+                newPreview,
+                newVideoCapture
+            )
+            Log.d(TAG, "✅ Camera bound successfully with Preview + VideoCapture")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to bind camera use cases", e)
+        }
+    }
+
+    // ✅ Ініціалізація камери при mount
+    DisposableEffect(lifecycleOwner, isFrontCamera) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        cameraProviderFuture.addListener({
+            val provider = cameraProviderFuture.get()
+            cameraProvider = provider
+            previewView?.let { pv ->
+                bindCameraUseCases(provider, lifecycleOwner, pv, isFrontCamera)
+            }
+        }, ContextCompat.getMainExecutor(context))
+
+        onDispose {
+            Log.d(TAG, "🧹 Disposing camera resources")
+            recording?.stop()
+            cameraProvider?.unbindAll()
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Camera Preview з рамкою
-        VideoMessageCameraPreview(
-            isFrontCamera = isFrontCamera,
+        // ✅ Camera Preview з VideoCapture
+        AndroidView(
+            factory = { ctx ->
+                PreviewView(ctx).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                    previewView = this
+
+                    // Bind camera коли PreviewView готовий
+                    cameraProvider?.let { provider ->
+                        bindCameraUseCases(provider, lifecycleOwner, this, isFrontCamera)
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Накладення рамки
+        VideoMessageFrameOverlay(
+            style = frameStyle,
             isRecording = isRecording,
-            frameStyle = frameStyle,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -143,7 +310,12 @@ fun VideoMessageRecorder(
         ) {
             // Кнопка закриття
             IconButton(
-                onClick = onCancel,
+                onClick = {
+                    if (isRecording) {
+                        recording?.stop()
+                    }
+                    onCancel()
+                },
                 modifier = Modifier
                     .size(40.dp)
                     .background(Color.Black.copy(alpha = 0.5f), CircleShape)
@@ -196,17 +368,25 @@ fun VideoMessageRecorder(
                 }
             }
 
-            // Кнопка перемикання камери
+            // Кнопка перемикання камери (тільки коли не записуємо)
             IconButton(
-                onClick = { isFrontCamera = !isFrontCamera },
+                onClick = {
+                    if (!isRecording) {
+                        isFrontCamera = !isFrontCamera
+                    }
+                },
+                enabled = !isRecording,
                 modifier = Modifier
                     .size(40.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    .background(
+                        if (isRecording) Color.Gray.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.5f),
+                        CircleShape
+                    )
             ) {
                 Icon(
                     imageVector = Icons.Default.Cameraswitch,
                     contentDescription = "Перемкнути камеру",
-                    tint = Color.White
+                    tint = if (isRecording) Color.Gray else Color.White
                 )
             }
         }
@@ -239,13 +419,11 @@ fun VideoMessageRecorder(
                     .background(if (isRecording) Color.Red else Color.White)
                     .clickable {
                         if (isRecording) {
-                            // Зупинити запис
-                            isRecording = false
-                            videoFile?.let { onVideoRecorded(it) }
+                            // ✅ Зупинити запис
+                            stopRecording()
                         } else {
-                            // Почати запис
-                            isRecording = true
-                            videoFile = createVideoFile(context)
+                            // ✅ Почати запис
+                            startRecording()
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -263,72 +441,7 @@ fun VideoMessageRecorder(
     }
 }
 
-/**
- * 🎥 Camera Preview для відеоповідомлень
- */
-@Composable
-fun VideoMessageCameraPreview(
-    isFrontCamera: Boolean,
-    isRecording: Boolean,
-    frameStyle: VideoMessageFrameStyle,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        // Camera Preview
-        AndroidView(
-            factory = { ctx ->
-                PreviewView(ctx).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    scaleType = PreviewView.ScaleType.FILL_CENTER
-                }
-            },
-            update = { previewView ->
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-
-                    val preview = Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
-                    }
-
-                    val cameraSelector = if (isFrontCamera) {
-                        CameraSelector.DEFAULT_FRONT_CAMERA
-                    } else {
-                        CameraSelector.DEFAULT_BACK_CAMERA
-                    }
-
-                    try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview
-                        )
-                    } catch (e: Exception) {
-                        Log.e("VideoMessageRecorder", "Camera binding failed", e)
-                    }
-                }, ContextCompat.getMainExecutor(context))
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Накладення рамки
-        VideoMessageFrameOverlay(
-            style = frameStyle,
-            isRecording = isRecording,
-            modifier = Modifier.fillMaxSize()
-        )
-    }
-}
+// VideoMessageCameraPreview видалено - тепер preview інтегровано в VideoMessageRecorder
 
 /**
  * 🎨 Накладення рамки на відеоповідомлення

@@ -100,7 +100,8 @@ if ($error_code == 0) {
                             $data = array(
                                 'api_status' => 200,
                                 'message' => 'Avatar uploaded successfully',
-                                'avatar_url' => $avatar_url
+                                'url' => $avatar_url,
+                                'avatar_url' => $avatar_url  // For backward compatibility
                             );
 
                             error_log("📡 Channel {$channel_id}: User {$user_id} uploaded avatar: {$avatar_url}");

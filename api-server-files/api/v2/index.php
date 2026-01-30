@@ -2,9 +2,15 @@
 /**
  * API v2 Router
  * Routes requests based on 'type' parameter to appropriate endpoint files
+ *
+ * This router works alongside WoWonder's api-v2.php:
+ * - api-v2.php requires server_key (used by official WoWonder app)
+ * - This index.php works with access_token only (used by WorldMates messenger)
  */
 
-// Load API v2 configuration (initializes WoWonder framework and validates access_token)
+header('Content-Type: application/json; charset=UTF-8');
+
+// Load API v2 configuration (sets up $db, $sqlConnect, $wo, WoWonder functions)
 require_once(__DIR__ . '/config.php');
 
 // Get request type
@@ -16,18 +22,49 @@ $public_endpoints = [
     'send_verification_code',
     'verify_code',
     'get_site_settings',
+    'get-site-settings',
     'test_init'
 ];
 
-// Check authentication for protected endpoints
+// Validate access_token for protected endpoints
 if (!in_array($type, $public_endpoints)) {
-    if (empty($wo['user']) || empty($wo['user']['user_id'])) {
+    $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+
+    if (empty($access_token)) {
         http_response_code(401);
         echo json_encode([
             'api_status' => 401,
-            'error_message' => 'Invalid or missing access_token'
+            'error_message' => 'access_token is required'
         ]);
         exit;
+    }
+
+    // Validate token using config.php's validateAccessToken function
+    $user_id = validateAccessToken($db, $access_token);
+
+    if (!$user_id) {
+        http_response_code(401);
+        echo json_encode([
+            'api_status' => 401,
+            'error_message' => 'Invalid or expired access_token'
+        ]);
+        exit;
+    }
+
+    // Get full user data using WoWonder function
+    if (function_exists('Wo_UserData')) {
+        $user_data = Wo_UserData($user_id);
+        if (!empty($user_data)) {
+            $wo['user'] = $user_data;
+            $wo['loggedin'] = true;
+        }
+    } else {
+        // Fallback: set minimal user data
+        $wo['user'] = [
+            'user_id' => $user_id,
+            'id' => $user_id
+        ];
+        $wo['loggedin'] = true;
     }
 }
 

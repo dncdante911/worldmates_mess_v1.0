@@ -1,16 +1,21 @@
 <?php
 /**
  * Test endpoint to debug API initialization
+ * URL: /api/v2/?type=test_init
  */
-
-header('Content-Type: application/json');
 
 $debug = [];
 $debug['step'] = 'start';
+$debug['router'] = 'index.php';  // Confirms we're going through our router
 
 try {
+    // Check database connections
+    $debug['db_pdo_isset'] = isset($db);
+    $debug['sqlConnect_isset'] = isset($sqlConnect);
+
     // Check if $wo is set
     $debug['wo_isset'] = isset($wo);
+    $debug['wo_loggedin'] = $wo['loggedin'] ?? false;
     $debug['wo_user_isset'] = isset($wo['user']);
 
     if (isset($wo['user'])) {
@@ -18,22 +23,28 @@ try {
         $debug['username'] = $wo['user']['username'] ?? 'not set';
     }
 
-    // Check if $sqlConnect is set
-    $debug['sqlConnect_isset'] = isset($sqlConnect);
-
     // Check if functions exist
-    $debug['Wo_Secure_exists'] = function_exists('Wo_Secure');
-    $debug['Wo_UserData_exists'] = function_exists('Wo_UserData');
-    $debug['Wo_ShareFile_exists'] = function_exists('Wo_ShareFile');
-    $debug['Wo_GetMedia_exists'] = function_exists('Wo_GetMedia');
+    $debug['functions'] = [
+        'validateAccessToken' => function_exists('validateAccessToken'),
+        'Wo_Secure' => function_exists('Wo_Secure'),
+        'Wo_UserData' => function_exists('Wo_UserData'),
+        'Wo_ShareFile' => function_exists('Wo_ShareFile'),
+        'Wo_GetMedia' => function_exists('Wo_GetMedia'),
+    ];
 
     // Check if table constants exist
-    $debug['T_APP_SESSIONS_defined'] = defined('T_APP_SESSIONS');
-    $debug['T_CHANNELS_defined'] = defined('T_CHANNELS');
-    $debug['T_USERS_defined'] = defined('T_USERS');
+    $debug['tables'] = [
+        'T_APP_SESSIONS' => defined('T_APP_SESSIONS'),
+        'T_USERS' => defined('T_USERS'),
+        'T_GROUPCHAT' => defined('T_GROUPCHAT'),
+    ];
+
+    // Check site URL
+    $debug['site_url'] = $wo['site_url'] ?? 'not set';
 
     $debug['step'] = 'complete';
     $debug['api_status'] = 200;
+    $debug['message'] = 'API v2 initialized successfully via index.php router';
 
 } catch (Exception $e) {
     $debug['error'] = $e->getMessage();

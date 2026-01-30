@@ -566,7 +566,7 @@ fun ChannelDetailsScreen(
                 currentUserId = UserSession.userId ?: 0L,
                 isAdmin = channel?.isAdmin ?: false,
                 onDismiss = { showCommentsSheet = false },
-                onAddComment = { text: String ->
+                onAddComment = { text ->
                     selectedPost?.let { post ->
                         detailsViewModel.addComment(
                             postId = post.id,
@@ -574,13 +574,13 @@ fun ChannelDetailsScreen(
                             onSuccess = {
                                 Toast.makeText(context, "Коментар додано!", Toast.LENGTH_SHORT).show()
                             },
-                            onError = { error: String ->
+                            onError = { error ->
                                 Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
                 },
-                onDeleteComment = { commentId: Long ->
+                onDeleteComment = { commentId ->
                     selectedPost?.let { post ->
                         detailsViewModel.deleteComment(
                             commentId = commentId,
@@ -588,20 +588,20 @@ fun ChannelDetailsScreen(
                             onSuccess = {
                                 Toast.makeText(context, "Коментар видалено", Toast.LENGTH_SHORT).show()
                             },
-                            onError = { error: String ->
+                            onError = { error ->
                                 Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
                 },
-                onCommentReaction = { commentId: Long, emoji: String ->
+                onCommentReaction = { commentId, emoji ->
                     detailsViewModel.addCommentReaction(
                         commentId = commentId,
                         emoji = emoji,
                         onSuccess = {
                             Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
                         },
-                        onError = { error: String ->
+                        onError = { error ->
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                         }
                     )
@@ -618,7 +618,7 @@ fun ChannelDetailsScreen(
                 currentUserId = UserSession.userId ?: 0L,
                 isAdmin = channel?.isAdmin ?: false,
                 onDismiss = { showPostDetailDialog = false },
-                onReactionClick = { emoji: String ->
+                onReactionClick = { emoji ->
                     selectedPostForDetail?.let { post ->
                         detailsViewModel.addPostReaction(
                             postId = post.id,
@@ -627,13 +627,13 @@ fun ChannelDetailsScreen(
                                 Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
                                 detailsViewModel.loadChannelPosts(channelId)
                             },
-                            onError = { error: String ->
+                            onError = { error ->
                                 Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
                 },
-                onAddComment = { text: String ->
+                onAddComment = { text ->
                     selectedPostForDetail?.let { post ->
                         detailsViewModel.addComment(
                             postId = post.id,
@@ -642,13 +642,13 @@ fun ChannelDetailsScreen(
                                 Toast.makeText(context, "Коментар додано!", Toast.LENGTH_SHORT).show()
                                 detailsViewModel.loadComments(post.id)
                             },
-                            onError = { error: String ->
+                            onError = { error ->
                                 Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
                 },
-                onDeleteComment = { commentId: Long ->
+                onDeleteComment = { commentId ->
                     selectedPostForDetail?.let { post ->
                         detailsViewModel.deleteComment(
                             commentId = commentId,
@@ -657,20 +657,20 @@ fun ChannelDetailsScreen(
                                 Toast.makeText(context, "Коментар видалено", Toast.LENGTH_SHORT).show()
                                 detailsViewModel.loadComments(post.id)
                             },
-                            onError = { error: String ->
+                            onError = { error ->
                                 Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
                 },
-                onCommentReaction = { commentId: Long, emoji: String ->
+                onCommentReaction = { commentId, emoji ->
                     detailsViewModel.addCommentReaction(
                         commentId = commentId,
                         emoji = emoji,
                         onSuccess = {
                             Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
                         },
-                        onError = { error: String ->
+                        onError = { error ->
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                         }
                     )
@@ -725,7 +725,7 @@ fun ChannelDetailsScreen(
                     showEditPostDialog = false
                     selectedPostForOptions = null
                 },
-                onSave = { newText: String ->
+                onSave = { newText ->
                     selectedPostForOptions?.let { post ->
                         detailsViewModel.updatePost(
                             postId = post.id,
@@ -735,7 +735,7 @@ fun ChannelDetailsScreen(
                                 showEditPostDialog = false
                                 selectedPostForOptions = null
                             },
-                            onError = { error: String ->
+                            onError = { error ->
                                 Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                             }
                         )
@@ -757,7 +757,7 @@ fun ChannelDetailsScreen(
             ManageAdminsDialog(
                 admins = admins,
                 onDismiss = { showAdminsDialog = false },
-                onAddAdmin = { searchText: String, role: String ->
+                onAddAdmin = { searchText, role ->
                     detailsViewModel.addChannelAdmin(
                         channelId = channelId,
                         userSearch = searchText,
@@ -766,12 +766,12 @@ fun ChannelDetailsScreen(
                             Toast.makeText(context, "Адміністратора додано!", Toast.LENGTH_SHORT).show()
                             detailsViewModel.loadChannelDetails(channelId)
                         },
-                        onError = { error: String ->
+                        onError = { error ->
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                         }
                     )
                 },
-                onRemoveAdmin = { userId: Long ->
+                onRemoveAdmin = { userId ->
                     detailsViewModel.removeChannelAdmin(
                         channelId = channelId,
                         userId = userId,
@@ -779,7 +779,7 @@ fun ChannelDetailsScreen(
                             Toast.makeText(context, "Адміністратора видалено", Toast.LENGTH_SHORT).show()
                             detailsViewModel.loadChannelDetails(channelId)
                         },
-                        onError = { error: String ->
+                        onError = { error ->
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
                         }
                     )
@@ -894,7 +894,7 @@ fun ChannelDetailsScreen(
             EditChannelInfoDialog(
                 channel = channel,
                 onDismiss = { showEditChannelDialog = false },
-                onSave = { name: String, description: String, username: String ->
+                onSave = { name, description, username ->
                     detailsViewModel.updateChannel(
                         channelId = channelId,
                         name = name,
@@ -905,7 +905,7 @@ fun ChannelDetailsScreen(
                             showEditChannelDialog = false
                             detailsViewModel.loadChannelDetails(channelId)
                         },
-                        onError = { error: String ->
+                        onError = { error ->
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_LONG).show()
                         }
                     )
@@ -918,7 +918,7 @@ fun ChannelDetailsScreen(
             ChannelSettingsDialog(
                 currentSettings = channel.settings,
                 onDismiss = { showChannelSettingsDialog = false },
-                onSave = { settings: com.worldmates.messenger.data.model.ChannelSettings ->
+                onSave = { settings ->
                     detailsViewModel.updateChannelSettings(
                         channelId = channelId,
                         settings = settings,
@@ -927,7 +927,7 @@ fun ChannelDetailsScreen(
                             showChannelSettingsDialog = false
                             detailsViewModel.loadChannelDetails(channelId)
                         },
-                        onError = { error: String ->
+                        onError = { error ->
                             Toast.makeText(context, "Помилка: $error", Toast.LENGTH_LONG).show()
                         }
                     )

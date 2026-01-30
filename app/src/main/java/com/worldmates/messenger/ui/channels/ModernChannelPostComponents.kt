@@ -1,10 +1,7 @@
 package com.worldmates.messenger.ui.channels
 import com.worldmates.messenger.util.toFullMediaUrl
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,12 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ripple
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -37,30 +29,8 @@ import com.worldmates.messenger.data.model.*
 import java.text.SimpleDateFormat
 import java.util.*
 
-// ==================== UTILITY FUNCTIONS ====================
-
-fun formatPostTime(timestamp: Long): String {
-    val timestampMs = if (timestamp < 10000000000L) timestamp * 1000 else timestamp
-    val now = System.currentTimeMillis()
-    val diff = now - timestampMs
-
-    return when {
-        diff < 60_000 -> "Щойно"
-        diff < 3_600_000 -> "${diff / 60_000} хв"
-        diff < 86_400_000 -> "${diff / 3_600_000} год"
-        diff < 604_800_000 -> "${diff / 86_400_000} д"
-        else -> {
-            val sdf = SimpleDateFormat("dd MMM", Locale("uk"))
-            sdf.format(Date(timestampMs))
-        }
-    }
-}
-
 // ==================== CHANNEL POST CARD ====================
 
-/**
- * Потрясающая карточка поста с современным дизайном и анимациями
- */
 @Composable
 fun ChannelPostCard(
     post: ChannelPost,
@@ -72,42 +42,19 @@ fun ChannelPostCard(
     canEdit: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "post_scale"
-    )
-
-    val elevation by animateDpAsState(
-        targetValue = if (isPressed) 2.dp else 6.dp,
-        animationSpec = tween(200),
-        label = "post_elevation"
-    )
-
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                onPostClick()
-            },
-        shape = RoundedCornerShape(24.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clickable(onClick = onPostClick),
+        shape = RoundedCornerShape(20.dp), // Современные rounded corners
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = elevation
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp,
+            hoveredElevation = 6.dp
         )
     ) {
         Column(
@@ -246,16 +193,11 @@ fun ChannelPostCard(
                 }
             }
 
-            // Улучшенный Pinned indicator с градиентом и анимацией
-            AnimatedVisibility(
-                visible = post.isPinned,
-                enter = slideInVertically() + fadeIn(),
-                exit = slideOutVertically() + fadeOut()
-            ) {
-                Column {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
+            // Pinned indicator - стильный badge
+            if (post.isPinned) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.tertiaryContainer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -417,172 +359,110 @@ fun ChannelPostCard(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 14.dp)
+            Divider(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                thickness = 1.dp
             )
 
-            // Потрясающие Quick Reactions с анимацией и эффектами
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Quick Reactions - стильные кнопки
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                listOf("👍", "❤️", "🔥", "😂", "😮", "🎉").forEach { emoji ->
-                    var isReactionPressed by remember { mutableStateOf(false) }
-                    val reactionScale by animateFloatAsState(
-                        targetValue = if (isReactionPressed) 1.2f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessHigh
-                        ),
-                        label = "reaction_scale"
-                    )
-
+                listOf("👍", "❤️", "🔥", "😂", "😮", "😢").forEach { emoji ->
                     Surface(
-                        onClick = {
-                            isReactionPressed = true
-                            onReactionClick(emoji)
-                        },
+                        onClick = { onReactionClick(emoji) },
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                        shadowElevation = if (isReactionPressed) 4.dp else 2.dp,
-                        tonalElevation = 1.dp,
-                        modifier = Modifier
-                            .size(46.dp)
-                            .graphicsLayer {
-                                scaleX = reactionScale
-                                scaleY = reactionScale
-                            }
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
+                        Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = emoji,
-                                fontSize = 24.sp
+                                fontSize = 22.sp
                             )
-                        }
-                    }
-
-                    LaunchedEffect(isReactionPressed) {
-                        if (isReactionPressed) {
-                            kotlinx.coroutines.delay(200)
-                            isReactionPressed = false
                         }
                     }
                 }
             }
 
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 14.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Divider(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                thickness = 1.dp
             )
 
-            // Улучшенные Action Buttons с градиентами и анимацией
+            // Action Buttons - стильные современные кнопки
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Улучшенная Comments button
-                var isCommentsHovered by remember { mutableStateOf(false) }
+                // Comments button
                 Surface(
-                    onClick = {
-                        isCommentsHovered = true
-                        onCommentsClick()
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.Transparent,
-                    shadowElevation = 3.dp,
+                    onClick = onCommentsClick,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-                                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
-                                    )
-                                )
-                            )
-                            .padding(vertical = 12.dp)
+                    Row(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Comment,
-                                contentDescription = "Comments",
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(20.dp)
+                        Icon(
+                            Icons.Default.Comment,
+                            contentDescription = "Comments",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        if (post.commentsCount > 0) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = formatCount(post.commentsCount),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
-                            if (post.commentsCount > 0) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = formatCount(post.commentsCount),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    letterSpacing = 0.3.sp
-                                )
-                            } else {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Коментарі",
+                        } else {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Коментарі",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     }
-                    }
                 }
 
-                // Улучшенная Share button
+                // Share button
                 Surface(
                     onClick = onShareClick,
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.Transparent,
-                    shadowElevation = 3.dp,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
-                                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
-                                    )
-                                )
-                            )
-                            .padding(vertical = 12.dp)
+                    Row(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Share,
-                                contentDescription = "Share",
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Поділитись",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                letterSpacing = 0.3.sp
-                            )
-                        }
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Поділитись",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
                     }
                 }
             }
@@ -1001,7 +881,26 @@ fun ActionButton(
     }
 }
 
-// ==================== ADDITIONAL UTILITY FUNCTIONS ====================
+// ==================== UTILITY FUNCTIONS ====================
+
+fun formatPostTime(timestamp: Long): String {
+    // Конвертуємо timestamp з секунд в мілісекунди, якщо потрібно
+    val timestampMs = if (timestamp < 10000000000L) timestamp * 1000 else timestamp
+
+    val now = System.currentTimeMillis()
+    val diff = now - timestampMs
+
+    return when {
+        diff < 60_000 -> "Щойно"
+        diff < 3_600_000 -> "${diff / 60_000} хв"
+        diff < 86_400_000 -> "${diff / 3_600_000} год"
+        diff < 604_800_000 -> "${diff / 86_400_000} д"
+        else -> {
+            val sdf = SimpleDateFormat("dd MMM", Locale("uk"))
+            sdf.format(Date(timestampMs))
+        }
+    }
+}
 
 fun formatDuration(seconds: Long): String {
     val minutes = seconds / 60

@@ -1301,3 +1301,193 @@ fun formatCount(count: Int): String {
         else -> count.toString()
     }
 }
+
+// ==================== USER RATING/KARMA COMPONENT ====================
+
+/**
+ * Компонент для відображення рейтингу/карми користувача
+ * Показує trust level, score і статистику лайків/дислайків
+ */
+@Composable
+fun UserRatingBadge(
+    userRating: com.worldmates.messenger.data.model.UserRating?,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
+) {
+    if (userRating == null) return
+
+    val trustLevelColor = try {
+        Color(android.graphics.Color.parseColor(userRating.trustLevelColor))
+    } catch (e: Exception) {
+        MaterialTheme.colorScheme.primary
+    }
+
+    if (compact) {
+        // Компактная версия для постов
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(10.dp),
+            color = trustLevelColor.copy(alpha = 0.15f),
+            shadowElevation = 1.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Emoji trust level
+                Text(
+                    text = userRating.trustLevelEmoji,
+                    fontSize = 14.sp
+                )
+
+                // Score
+                if (userRating.score > 0) {
+                    Text(
+                        text = String.format("%.1f", userRating.score),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = trustLevelColor
+                    )
+                }
+
+                // Like percentage
+                if (userRating.totalRatings > 0) {
+                    Text(
+                        text = "${userRating.likePercentage.toInt()}%",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+    } else {
+        // Полная версия для профилей
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(16.dp),
+            color = trustLevelColor.copy(alpha = 0.12f),
+            shadowElevation = 2.dp,
+            tonalElevation = 1.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Header с emoji и trust level
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Trust level emoji в круге
+                    Surface(
+                        shape = CircleShape,
+                        color = trustLevelColor.copy(alpha = 0.25f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Text(
+                                text = userRating.trustLevelEmoji,
+                                fontSize = 22.sp
+                            )
+                        }
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = userRating.trustLevelLabel,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = trustLevelColor
+                        )
+                        if (userRating.score > 0) {
+                            Text(
+                                text = "Рейтинг: ${String.format("%.1f", userRating.score)}",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+
+                // Статистика лайків/дислайків
+                if (userRating.totalRatings > 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Likes
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF4CAF50).copy(alpha = 0.15f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = "👍", fontSize = 14.sp)
+                                Column {
+                                    Text(
+                                        text = formatCount(userRating.likes),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                    Text(
+                                        text = "${userRating.likePercentage.toInt()}%",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Dislikes
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFF44336).copy(alpha = 0.15f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = "👎", fontSize = 14.sp)
+                                Column {
+                                    Text(
+                                        text = formatCount(userRating.dislikes),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFF44336)
+                                    )
+                                    Text(
+                                        text = "${userRating.dislikePercentage.toInt()}%",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Total ratings
+                    Text(
+                        text = "Всього оцінок: ${formatCount(userRating.totalRatings)}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                }
+            }
+        }
+    }
+}

@@ -3,14 +3,33 @@
 // | 📡 CHANNELS: Завантаження аватара каналу
 // +------------------------------------------------------------------------+
 
+// Load config if not already loaded (for direct access to this file)
+if (!isset($db) || !isset($sqlConnect)) {
+    require_once(__DIR__ . '/../config.php');
+}
+
+header('Content-Type: application/json; charset=UTF-8');
+
 // Initialize response
 $error_code = 0;
 $error_message = '';
 $data = [];
 
-// Access token is already validated by api-v2.php router
-// We can get user_id from the global $wo['user']['user_id']
+// Get user_id - either from router or validate access_token directly
 $user_id = $wo['user']['user_id'] ?? 0;
+
+// If not set by router, validate access_token ourselves
+if (empty($user_id) || $user_id < 1) {
+    $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+    if (!empty($access_token) && isset($db)) {
+        $user_id = validateAccessToken($db, $access_token);
+        if ($user_id) {
+            // Update $wo for compatibility
+            $wo['user']['user_id'] = $user_id;
+            $wo['loggedin'] = true;
+        }
+    }
+}
 
 if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
     $error_code    = 4;

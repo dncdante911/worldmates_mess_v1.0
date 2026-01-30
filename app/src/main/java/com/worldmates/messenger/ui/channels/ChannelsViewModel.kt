@@ -720,11 +720,17 @@ class ChannelsViewModel : ViewModel() {
                     channelId.toString()
                 )
 
+                // Convert access token to RequestBody for multipart
+                val accessTokenBody = okhttp3.RequestBody.create(
+                    "text/plain".toMediaTypeOrNull(),
+                    token
+                )
+
                 Log.d("ChannelsViewModel", "📸 Uploading avatar for channel $channelId")
 
                 // Викликаємо API з правильними параметрами
                 val response = RetrofitClient.apiService.uploadChannelAvatar(
-                    accessToken = token,
+                    accessToken = accessTokenBody,
                     channelId = channelIdBody,
                     avatar = filePart
                 )

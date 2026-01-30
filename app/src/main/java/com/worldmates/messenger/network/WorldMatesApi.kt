@@ -608,22 +608,16 @@ interface WorldMatesApi {
         @Part file: MultipartBody.Part
     ): MediaUploadResponse
 
+    // 📸 Upload Channel Avatar - direct path to avoid router redirection issues
     @Multipart
-    @POST("?type=upload_group_avatar")
-    suspend fun uploadGroupAvatar(
-        @Query("access_token") accessToken: String,
-        @Part("group_id") groupId: RequestBody,
-        @Part file: MultipartBody.Part
-    ): MediaUploadResponse
-    // 📸 Upload Channel Avatar
-    @Multipart
-    @POST("?type=upload_channel_avatar")
+    @POST("/api/v2/endpoints/upload_channel_avatar.php")
     suspend fun uploadChannelAvatar(
-        @Query("access_token") accessToken: String,
+        @Part("access_token") accessToken: RequestBody,
         @Part("channel_id") channelId: RequestBody,
         @Part avatar: MultipartBody.Part
     ): MediaUploadResponse
 
+    // 📸 Upload User Avatar (DO NOT MODIFY - works correctly)
     @Multipart
     @POST("?type=upload_user_avatar")
     suspend fun uploadUserAvatar(

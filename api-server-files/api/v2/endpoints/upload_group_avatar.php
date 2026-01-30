@@ -101,7 +101,7 @@ if ($group_id < 1) {
 // Check group exists and user is admin
 // Groups are stored in Wo_GroupChat table (same as channels)
 try {
-    $stmt = $pdo->prepare("SELECT id, user_id, group_name FROM Wo_GroupChat WHERE id = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT group_id, user_id, group_name FROM Wo_GroupChat WHERE group_id = ? LIMIT 1");
     $stmt->execute([$group_id]);
     $group = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -207,7 +207,7 @@ log_msg("File saved successfully");
 
 // Update database
 try {
-    $stmt = $pdo->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE id = ?");
+    $stmt = $pdo->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE group_id = ?");
     $stmt->execute([$relative_path, $group_id]);
     log_msg("Database updated");
 } catch (PDOException $e) {

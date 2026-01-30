@@ -100,7 +100,7 @@ if ($channel_id < 1) {
 
 // Check channel exists and user is admin
 try {
-    $stmt = $pdo->prepare("SELECT id, user_id, group_name FROM Wo_GroupChat WHERE id = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT group_id, user_id, group_name FROM Wo_GroupChat WHERE group_id = ? LIMIT 1");
     $stmt->execute([$channel_id]);
     $channel = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -206,7 +206,7 @@ log_msg("File saved successfully");
 
 // Update database
 try {
-    $stmt = $pdo->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE id = ?");
+    $stmt = $pdo->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE group_id = ?");
     $stmt->execute([$relative_path, $channel_id]);
     log_msg("Database updated");
 } catch (PDOException $e) {

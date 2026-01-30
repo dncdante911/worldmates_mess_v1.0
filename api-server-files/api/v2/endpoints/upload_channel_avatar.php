@@ -1,161 +1,234 @@
 <?php
-// +------------------------------------------------------------------------+
-// | 📡 CHANNELS: Завантаження аватара каналу
-// +------------------------------------------------------------------------+
+/**
+ * Upload Channel Avatar - Standalone version
+ * Не зависит от WoWonder функций - работает автономно
+ */
 
-// Load config if not already loaded (for direct access to this file)
-if (!isset($db) || !isset($sqlConnect)) {
-    require_once(__DIR__ . '/../config.php');
-}
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
 header('Content-Type: application/json; charset=UTF-8');
 
-// Initialize response
-$error_code = 0;
-$error_message = '';
-$data = [];
-
-// Get user_id - either from router or validate access_token directly
-$user_id = $wo['user']['user_id'] ?? 0;
-
-// If not set by router, validate access_token ourselves
-if (empty($user_id) || $user_id < 1) {
-    $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
-    if (!empty($access_token) && isset($db)) {
-        $user_id = validateAccessToken($db, $access_token);
-        if ($user_id) {
-            // Update $wo for compatibility
-            $wo['user']['user_id'] = $user_id;
-            $wo['loggedin'] = true;
-        }
-    }
+// Логирование
+$log_file = '/var/www/www-root/data/www/worldmates.club/api/v2/logs/channel_avatar.log';
+function log_msg($msg) {
+    global $log_file;
+    $dir = dirname($log_file);
+    if (!is_dir($dir)) @mkdir($dir, 0755, true);
+    @file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] " . $msg . "\n", FILE_APPEND);
 }
 
-if (empty($user_id) || !is_numeric($user_id) || $user_id < 1) {
-    $error_code    = 4;
-    $error_message = 'Invalid access_token';
-    http_response_code(400);
+log_msg("========== NEW REQUEST ==========");
+log_msg("POST: " . json_encode($_POST));
+log_msg("FILES: " . json_encode(array_keys($_FILES)));
+
+// Database config - HARDCODED для надежности
+$db_config = [
+    'host' => 'localhost',
+    'name' => 'u2798186_wowd',
+    'user' => 'u2798186_wowd',
+    'pass' => 'u2798186_wowd'
+];
+
+// Попробуем загрузить из root config если есть
+$root_config = $_SERVER['DOCUMENT_ROOT'] . '/config.php';
+if (file_exists($root_config)) {
+    @include_once($root_config);
+    if (isset($sql_db_host)) $db_config['host'] = $sql_db_host;
+    if (isset($sql_db_name)) $db_config['name'] = $sql_db_name;
+    if (isset($sql_db_user)) $db_config['user'] = $sql_db_user;
+    if (isset($sql_db_pass)) $db_config['pass'] = $sql_db_pass;
 }
 
-if ($error_code == 0) {
-    $channel_id = (!empty($_POST['channel_id']) && is_numeric($_POST['channel_id'])) ? (int)$_POST['channel_id'] : 0;
-
-    if ($channel_id < 1) {
-        $error_code    = 5;
-        $error_message = 'channel_id is required';
-        http_response_code(400);
-    } else if (empty($_FILES['avatar'])) {
-        $error_code    = 6;
-        $error_message = 'avatar file is missing';
-        http_response_code(400);
-    } else {
-        // Channels are stored in T_GROUPCHAT table
-        $channel_query = mysqli_query($sqlConnect, "
-            SELECT g.id, g.user_id
-            FROM " . T_GROUPCHAT . " g
-            WHERE g.id = {$channel_id}
-        ");
-
-        if (mysqli_num_rows($channel_query) == 0) {
-            $error_code    = 7;
-            $error_message = 'Channel not found';
-            http_response_code(404);
-        } else {
-            $channel_data = mysqli_fetch_assoc($channel_query);
-
-            // Check if user is owner or admin
-            $is_admin = ($channel_data['user_id'] == $user_id);
-
-            if (!$is_admin) {
-                // Check if user is admin in group chat users table
-                $admin_query = mysqli_query($sqlConnect, "
-                    SELECT COUNT(*) as count
-                    FROM " . T_GROUPCHATUSERS . "
-                    WHERE group_id = {$channel_id}
-                    AND user_id = {$user_id}
-                    AND role IN ('owner', 'admin')
-                ");
-                
-                if ($admin_query) {
-                    $admin_data = mysqli_fetch_assoc($admin_query);
-                    $is_admin = ($admin_data['count'] > 0);
-                }
-            }
-
-            if (!$is_admin) {
-                $error_code    = 8;
-                $error_message = 'Only channel admins can upload avatar';
-                http_response_code(403);
-            } else {
-                // Check file size (max 5MB)
-                $max_file_size = 5 * 1024 * 1024; // 5MB in bytes
-                if ($_FILES['avatar']['size'] > $max_file_size) {
-                    $error_code    = 9;
-                    $error_message = 'File size exceeds maximum allowed (5MB)';
-                    http_response_code(400);
-                } else {
-                    // Upload file
-                    $file_info = array(
-                        'file' => $_FILES['avatar']['tmp_name'],
-                        'name' => $_FILES['avatar']['name'],
-                        'size' => $_FILES['avatar']['size'],
-                        'type' => $_FILES['avatar']['type'],
-                        'types' => 'jpg,png,jpeg,gif'
-                    );
-
-                    $media = Wo_ShareFile($file_info);
-
-                    if (!empty($media) && !empty($media['filename'])) {
-                        $avatar_url = $media['filename'];
-
-                        // Update avatar in database
-                        $update_query = mysqli_query($sqlConnect, "
-                            UPDATE " . T_GROUPCHAT . "
-                            SET avatar = '{$avatar_url}'
-                            WHERE id = {$channel_id}
-                        ");
-
-                        if ($update_query) {
-                            $data = array(
-                                'api_status' => 200,
-                                'message' => 'Avatar uploaded successfully',
-                                'url' => $avatar_url,
-                                'avatar_url' => $avatar_url  // For backward compatibility
-                            );
-
-                            error_log("📡 Channel {$channel_id}: User {$user_id} uploaded avatar: {$avatar_url}");
-                        } else {
-                            $error_code    = 10;
-                            $error_message = 'Failed to update avatar: ' . mysqli_error($sqlConnect);
-                            http_response_code(500);
-                        }
-                    } else {
-                        $error_code    = 11;
-                        $error_message = 'Failed to upload file';
-                        http_response_code(500);
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Send response
-if ($error_code > 0) {
-    echo json_encode([
-        'api_status' => http_response_code(),
-        'error_code' => $error_code,
-        'error_message' => $error_message
-    ]);
-} else if (!empty($data)) {
-    echo json_encode($data);
-} else {
+// Database connection
+try {
+    $pdo = new PDO(
+        "mysql:host={$db_config['host']};dbname={$db_config['name']};charset=utf8mb4",
+        $db_config['user'],
+        $db_config['pass'],
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    log_msg("DB connected OK");
+} catch (PDOException $e) {
+    log_msg("DB ERROR: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode([
-        'api_status' => 500,
-        'error_message' => 'Unknown error occurred'
-    ]);
+    echo json_encode(['api_status' => 500, 'error_message' => 'Database connection failed']);
+    exit;
 }
 
-exit();
-?>
+// Get access_token
+$access_token = $_POST['access_token'] ?? $_GET['access_token'] ?? '';
+log_msg("access_token: " . substr($access_token, 0, 20) . "...");
+
+if (empty($access_token)) {
+    http_response_code(401);
+    echo json_encode(['api_status' => 401, 'error_message' => 'access_token is required']);
+    exit;
+}
+
+// Validate token
+try {
+    $stmt = $pdo->prepare("SELECT user_id FROM Wo_AppsSessions WHERE session_id = ? LIMIT 1");
+    $stmt->execute([$access_token]);
+    $session = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$session) {
+        log_msg("Invalid token - no session found");
+        http_response_code(401);
+        echo json_encode(['api_status' => 401, 'error_message' => 'Invalid access_token']);
+        exit;
+    }
+    $user_id = (int)$session['user_id'];
+    log_msg("User ID: $user_id");
+} catch (PDOException $e) {
+    log_msg("Token validation error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['api_status' => 500, 'error_message' => 'Token validation failed']);
+    exit;
+}
+
+// Get channel_id
+$channel_id = isset($_POST['channel_id']) ? (int)$_POST['channel_id'] : 0;
+log_msg("Channel ID: $channel_id");
+
+if ($channel_id < 1) {
+    http_response_code(400);
+    echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+    exit;
+}
+
+// Check channel exists and user is admin
+try {
+    $stmt = $pdo->prepare("SELECT id, user_id, group_name FROM Wo_GroupChat WHERE id = ? LIMIT 1");
+    $stmt->execute([$channel_id]);
+    $channel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$channel) {
+        log_msg("Channel not found");
+        http_response_code(404);
+        echo json_encode(['api_status' => 404, 'error_message' => 'Channel not found']);
+        exit;
+    }
+
+    $is_owner = ($channel['user_id'] == $user_id);
+    log_msg("Is owner: " . ($is_owner ? "yes" : "no"));
+
+    if (!$is_owner) {
+        // Check admin in group chat users
+        $stmt = $pdo->prepare("SELECT user_id FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ? AND admin = '1' LIMIT 1");
+        $stmt->execute([$channel_id, $user_id]);
+        $is_admin = $stmt->fetch();
+
+        if (!$is_admin) {
+            log_msg("User is not admin");
+            http_response_code(403);
+            echo json_encode(['api_status' => 403, 'error_message' => 'Only channel admins can change avatar']);
+            exit;
+        }
+    }
+} catch (PDOException $e) {
+    log_msg("Channel check error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['api_status' => 500, 'error_message' => 'Database error']);
+    exit;
+}
+
+// Check file
+if (empty($_FILES['avatar']['tmp_name'])) {
+    log_msg("No file uploaded. FILES: " . print_r($_FILES, true));
+    http_response_code(400);
+    echo json_encode(['api_status' => 400, 'error_message' => 'avatar file is required']);
+    exit;
+}
+
+$file = $_FILES['avatar'];
+log_msg("File: name={$file['name']}, size={$file['size']}, type={$file['type']}, error={$file['error']}");
+
+// Validate file
+$allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+$max_size = 5 * 1024 * 1024; // 5MB
+
+if ($file['error'] !== UPLOAD_ERR_OK) {
+    log_msg("Upload error code: {$file['error']}");
+    http_response_code(400);
+    echo json_encode(['api_status' => 400, 'error_message' => 'File upload failed with error ' . $file['error']]);
+    exit;
+}
+
+if ($file['size'] > $max_size) {
+    http_response_code(400);
+    echo json_encode(['api_status' => 400, 'error_message' => 'File too large (max 5MB)']);
+    exit;
+}
+
+// Check file type by content
+$finfo = finfo_open(FILEINFO_MIME_TYPE);
+$mime_type = finfo_file($finfo, $file['tmp_name']);
+finfo_close($finfo);
+log_msg("Detected MIME: $mime_type");
+
+if (!in_array($mime_type, $allowed_types)) {
+    http_response_code(400);
+    echo json_encode(['api_status' => 400, 'error_message' => 'Invalid file type. Allowed: jpg, png, gif, webp']);
+    exit;
+}
+
+// Generate filename
+$ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'jpg';
+$filename = 'channel_' . $channel_id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+
+// Upload directory
+$upload_base = $_SERVER['DOCUMENT_ROOT'] . '/upload/photos/' . date('Y') . '/' . date('m') . '/';
+if (!is_dir($upload_base)) {
+    if (!@mkdir($upload_base, 0755, true)) {
+        log_msg("Failed to create directory: $upload_base");
+        http_response_code(500);
+        echo json_encode(['api_status' => 500, 'error_message' => 'Failed to create upload directory']);
+        exit;
+    }
+}
+
+$upload_path = $upload_base . $filename;
+$relative_path = 'upload/photos/' . date('Y') . '/' . date('m') . '/' . $filename;
+
+log_msg("Saving to: $upload_path");
+
+// Move file
+if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
+    log_msg("Failed to move uploaded file");
+    http_response_code(500);
+    echo json_encode(['api_status' => 500, 'error_message' => 'Failed to save file']);
+    exit;
+}
+
+log_msg("File saved successfully");
+
+// Update database
+try {
+    $stmt = $pdo->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE id = ?");
+    $stmt->execute([$relative_path, $channel_id]);
+    log_msg("Database updated");
+} catch (PDOException $e) {
+    log_msg("DB update error: " . $e->getMessage());
+    // File was uploaded, but DB failed - still return partial success
+}
+
+// Get site URL
+$site_url = 'https://worldmates.club/';
+if (isset($GLOBALS['site_url'])) {
+    $site_url = rtrim($GLOBALS['site_url'], '/') . '/';
+}
+
+$full_url = $site_url . $relative_path;
+
+log_msg("SUCCESS: $full_url");
+log_msg("========== REQUEST COMPLETED ==========");
+
+echo json_encode([
+    'api_status' => 200,
+    'message' => 'Avatar uploaded successfully',
+    'url' => $relative_path,
+    'avatar_url' => $full_url
+]);
+exit;

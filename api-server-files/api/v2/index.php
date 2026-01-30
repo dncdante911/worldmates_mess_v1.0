@@ -4,11 +4,11 @@
  * Routes requests based on 'type' parameter to appropriate endpoint files
  */
 
-// Load WoWonder framework initialization (from phone API)
-require_once(__DIR__ . '/../phone/api_init.php');
+// Load API v2 configuration (initializes WoWonder framework and validates access_token)
+require_once(__DIR__ . '/config.php');
 
-// Validate access token and set up $wo['user']
-$access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+// Get request type
+$type = $_GET['type'] ?? $_POST['type'] ?? '';
 
 // List of endpoints that don't require authentication
 $public_endpoints = [
@@ -16,61 +16,22 @@ $public_endpoints = [
     'send_verification_code',
     'verify_code',
     'get_site_settings',
-    'test_init'  // Debug endpoint
+    'test_init'
 ];
 
-// Get type early to check if it's a public endpoint
-$type = $_GET['type'] ?? $_POST['type'] ?? '';
-
-// Validate access token for protected endpoints
+// Check authentication for protected endpoints
 if (!in_array($type, $public_endpoints)) {
-    if (empty($access_token)) {
+    if (empty($wo['user']) || empty($wo['user']['user_id'])) {
         http_response_code(401);
         echo json_encode([
             'api_status' => 401,
-            'error_message' => 'Missing access_token'
+            'error_message' => 'Invalid or missing access_token'
         ]);
         exit;
     }
-
-    // Validate token by looking up in T_APP_SESSIONS table
-    $access_token_secure = Wo_Secure($access_token);
-    $session_query = mysqli_query($sqlConnect, "
-        SELECT s.user_id, s.session_id, s.platform, s.time
-        FROM " . T_APP_SESSIONS . " s
-        WHERE s.session_id = '{$access_token_secure}'
-        LIMIT 1
-    ");
-
-    if (!$session_query || mysqli_num_rows($session_query) == 0) {
-        http_response_code(401);
-        echo json_encode([
-            'api_status' => 401,
-            'error_message' => 'Invalid or expired access_token'
-        ]);
-        exit;
-    }
-
-    $session_data = mysqli_fetch_assoc($session_query);
-    $user_id = (int)$session_data['user_id'];
-
-    // Get full user data using WoWonder function
-    $user_data = Wo_UserData($user_id);
-    if (empty($user_data) || !isset($user_data['user_id'])) {
-        http_response_code(401);
-        echo json_encode([
-            'api_status' => 401,
-            'error_message' => 'User not found'
-        ]);
-        exit;
-    }
-
-    // Set up global $wo['user'] for endpoint files
-    $wo['user'] = $user_data;
-    $wo['loggedin'] = true;
 }
 
-// Type already retrieved above, check if empty
+// Check if type is provided
 if (empty($type)) {
     http_response_code(400);
     echo json_encode([

@@ -9,25 +9,17 @@ $error_code = 0;
 $error_message = '';
 $data = [];
 
-// Get access token from POST or GET (Android sends via URL query param)
-$access_token = $_POST['access_token'] ?? $_GET['access_token'] ?? '';
+// User is already authenticated by config.php
+$rater_id = $wo['user']['user_id'] ?? 0;
 
-// Validate access token
-if (empty($access_token)) {
-    $error_code = 3;
-    $error_message = 'access_token is missing';
-    http_response_code(400);
+if (empty($rater_id) || !is_numeric($rater_id) || $rater_id < 1) {
+    $error_code = 4;
+    $error_message = 'Invalid access_token';
+    http_response_code(401);
 }
 
 if ($error_code == 0) {
-    $rater_id = Wo_ValidateAccessToken($access_token);
-
-    if (empty($rater_id) || !is_numeric($rater_id) || $rater_id < 1) {
-        $error_code = 4;
-        $error_message = 'Invalid access_token';
-        http_response_code(401);
-    } else {
-        // Get parameters
+    // Get parameters
         $rated_user_id = (!empty($_POST['user_id']) && is_numeric($_POST['user_id'])) ? (int)$_POST['user_id'] : 0;
         $rating_type = (!empty($_POST['rating_type']) && in_array($_POST['rating_type'], ['like', 'dislike'])) ? $_POST['rating_type'] : '';
         $comment = isset($_POST['comment']) ? Wo_Secure($_POST['comment']) : null;

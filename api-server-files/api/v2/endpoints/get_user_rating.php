@@ -9,25 +9,17 @@ $error_code = 0;
 $error_message = '';
 $data = [];
 
-// Get access token from POST or GET (Android sends via URL query param)
-$access_token = $_POST['access_token'] ?? $_GET['access_token'] ?? '';
+// User is already authenticated by config.php
+$requester_id = $wo['user']['user_id'] ?? 0;
 
-// Validate access token
-if (empty($access_token)) {
-    $error_code = 3;
-    $error_message = 'access_token is missing';
-    http_response_code(400);
+if (empty($requester_id) || !is_numeric($requester_id) || $requester_id < 1) {
+    $error_code = 4;
+    $error_message = 'Invalid access_token';
+    http_response_code(401);
 }
 
 if ($error_code == 0) {
-    $requester_id = Wo_ValidateAccessToken($access_token);
-
-    if (empty($requester_id) || !is_numeric($requester_id) || $requester_id < 1) {
-        $error_code = 4;
-        $error_message = 'Invalid access_token';
-        http_response_code(401);
-    } else {
-        // Get user_id parameter
+    // Get user_id parameter
         $user_id = (!empty($_POST['user_id']) && is_numeric($_POST['user_id'])) ? (int)$_POST['user_id'] : 0;
         $include_details = (!empty($_POST['include_details']) && $_POST['include_details'] == '1');
 

@@ -2,6 +2,8 @@ package com.worldmates.messenger.ui.channels
 import androidx.compose.material.icons.filled.CameraAlt
 import com.worldmates.messenger.util.toFullMediaUrl
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -13,8 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,11 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Channel
+import kotlinx.coroutines.delay
 
 // ==================== TELEGRAM-STYLE CHANNEL ITEM ====================
 
 /**
- * Класичний мінімалістичний стиль для каналів з підтримкою тем
+ * Улучшенный современный стиль для каналів з анімацією та покращеним дизайном
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -35,142 +42,286 @@ fun TelegramChannelItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
-        // Аватар (маленький, круглий)
-        if (channel.avatarUrl.isNotBlank()) {
-            AsyncImage(
-                model = channel.avatarUrl.toFullMediaUrl(),
-                contentDescription = channel.name,
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            // Placeholder з gradient
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.secondary
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = rememberRipple(color = MaterialTheme.colorScheme.primary)
+                ) {
+                    onClick()
+                }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Аватар з градієнтним обрамленням та анімацією
+            Box {
+                // Глоу ефект для аватара
+                if (channel.isVerified || channel.isAdmin) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                            .blur(8.dp)
+                    )
+                }
+
+                // Градиентное обрамление
+                Box(
+                    modifier = Modifier
+                        .size(58.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f),
+                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
+                                )
                             )
                         )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = channel.name.take(1).uppercase(),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Інформація про канал
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = channel.name,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                if (channel.isVerified) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        Icons.Default.Verified,
-                        contentDescription = "Verified",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                        .padding(2.dp)
+                ) {
+                    if (channel.avatarUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = channel.avatarUrl.toFullMediaUrl(),
+                            contentDescription = channel.name,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        // Улучшенный placeholder с радиальным градиентом
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.secondary,
+                                            MaterialTheme.colorScheme.tertiary
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = channel.name.take(1).uppercase(),
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(3.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
-            // Опис або статистика
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // Інформація про канал з покращеною типографікою
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = "${formatCount(channel.subscribersCount)} підписників",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (channel.postsCount > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Text(
-                        text = "•",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                    Text(
-                        text = "${formatCount(channel.postsCount)} постів",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        text = channel.name,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 17.sp,
+                            letterSpacing = 0.15.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
+
+                    // Улучшенный verified badge
+                    AnimatedVisibility(
+                        visible = channel.isVerified,
+                        enter = scaleIn() + fadeIn(),
+                        exit = scaleOut() + fadeOut()
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    Icons.Default.Verified,
+                                    contentDescription = "Verified",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Улучшенная статистика с иконками
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Подписчики с иконкой
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.PeopleAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = formatCount(channel.subscribersCount),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    if (channel.postsCount > 0) {
+                        // Разделитель
+                        Box(
+                            modifier = Modifier
+                                .size(3.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                        )
+
+                        // Посты с иконкой
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Article,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f)
+                            )
+                            Text(
+                                text = formatCount(channel.postsCount),
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
-        // Індикатор статусу
-        if (channel.isAdmin) {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Text(
-                    text = "Адмін",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+            // Улучшенный індикатор статусу
+            if (channel.isAdmin) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                    shadowElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "Адмін",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            letterSpacing = 0.3.sp
+                        )
+                    }
+                }
+            } else if (channel.isPrivate) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = "Private",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
-        } else if (channel.isPrivate) {
-            Icon(
-                Icons.Default.Lock,
-                contentDescription = "Private",
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                modifier = Modifier.size(18.dp)
-            )
         }
     }
 
-    Divider(
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-        modifier = Modifier.padding(start = 76.dp)
+    // Улучшенный divider
+    HorizontalDivider(
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        thickness = 0.5.dp,
+        modifier = Modifier.padding(start = 88.dp)
     )
 }
 
 // ==================== CHANNEL CARD ====================
 
+/**
+ * Улучшенная карточка канала с современным дизайном и анимациями
+ */
 @Composable
 fun ChannelCard(
     channel: Channel,
@@ -178,16 +329,41 @@ fun ChannelCard(
     onSubscribeToggle: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "card_scale"
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 1.dp else 4.dp,
+        animationSpec = tween(200),
+        label = "card_elevation"
+    )
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                onClick()
+            },
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+            defaultElevation = elevation
         )
     ) {
         Row(
@@ -477,6 +653,9 @@ fun AdminBadge(modifier: Modifier = Modifier) {
 
 // ==================== CHANNEL HEADER ====================
 
+/**
+ * Потрясающий header канала с современным дизайном и эффектами
+ */
 @Composable
 fun ChannelHeader(
     channel: Channel,
@@ -487,141 +666,247 @@ fun ChannelHeader(
     onAddMembersClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                        MaterialTheme.colorScheme.surface
+    // Анимированный градиент
+    val infiniteTransition = rememberInfiniteTransition(label = "gradient")
+    val gradientOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(8000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "gradient_offset"
+    )
+
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        // Фоновый градиент с анимацией
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(420.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
+                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                            MaterialTheme.colorScheme.surface
+                        ),
+                        startY = gradientOffset * 100,
+                        endY = 1000f + gradientOffset * 200
                     )
                 )
-            )
-    ) {
-        // Top bar with back and settings - стильные кнопки
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                onClick = onBackClick,
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                shadowElevation = 2.dp,
-                modifier = Modifier.size(42.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
+        )
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Кнопка додавання учасників (тільки для адмінів)
-                if (onAddMembersClick != null && channel.isAdmin) {
-                    Surface(
-                        onClick = onAddMembersClick,
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                        shadowElevation = 2.dp,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.PersonAdd,
-                                contentDescription = "Додати учасників",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Кнопка налаштувань (тільки для адмінів)
-                if (onSettingsClick != null && channel.isAdmin) {
-                    Surface(
-                        onClick = onSettingsClick,
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                        shadowElevation = 2.dp,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Channel info - улучшенный дизайн
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Аватар с градиентным ring
-            Box {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary
-                                )
-                            )
-                        )
-                        .padding(3.dp)
+            // Top bar - улучшенные glass morphism кнопки
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Glass morphism back button
+                Surface(
+                    onClick = onBackClick,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                    shadowElevation = 6.dp,
+                    tonalElevation = 2.dp,
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    ChannelAvatar(
-                        avatarUrl = channel.avatarUrl,
-                        channelName = channel.name,
-                        size = 90.dp,
-                        isVerified = false,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                // Кнопка редагування аватара (тільки для адмінів)
-                if (onAvatarClick != null) {
-                    IconButton(
-                        onClick = onAvatarClick,
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(32.dp)
+                            .fillMaxSize()
                             .background(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = CircleShape
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                                    )
+                                )
                             )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Змінити аватар",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(18.dp)
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Glass morphism кнопка додавання учасників
+                    if (onAddMembersClick != null && channel.isAdmin) {
+                        Surface(
+                            onClick = onAddMembersClick,
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                            shadowElevation = 6.dp,
+                            tonalElevation = 2.dp,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                            )
+                                        )
+                                    )
+                            ) {
+                                Icon(
+                                    Icons.Default.PersonAdd,
+                                    contentDescription = "Додати учасників",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Glass morphism кнопка налаштувань
+                    if (onSettingsClick != null && channel.isAdmin) {
+                        Surface(
+                            onClick = onSettingsClick,
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                            shadowElevation = 6.dp,
+                            tonalElevation = 2.dp,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                                            )
+                                        )
+                                    )
+                            ) {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = "Settings",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
+
+            // Channel info - улучшенный дизайн
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Потрясающий аватар с анимированным градиентным ring и glow эффектом
+                Box {
+                    // Glow эффект под аватаром
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                            .blur(16.dp)
+                    )
+
+                    // Анимированный градиентный ring
+                    val infiniteRingTransition = rememberInfiniteTransition(label = "ring")
+                    val ringRotation by infiniteRingTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(6000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        ),
+                        label = "ring_rotation"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(112.dp)
+                            .graphicsLayer {
+                                rotationZ = ringRotation
+                            }
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.sweepGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary,
+                                        MaterialTheme.colorScheme.tertiary,
+                                        MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            )
+                            .padding(3.dp)
+                    ) {
+                        ChannelAvatar(
+                            avatarUrl = channel.avatarUrl,
+                            channelName = channel.name,
+                            size = 106.dp,
+                            isVerified = false,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+
+                    // Улучшенная кнопка редагування аватара
+                    if (onAvatarClick != null) {
+                        Surface(
+                            onClick = onAvatarClick,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = 4.dp, y = 4.dp)
+                                .size(38.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shadowElevation = 6.dp,
+                            tonalElevation = 3.dp
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Змінити аватар",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -679,101 +964,145 @@ fun ChannelHeader(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            // Stats row - стильные карточки
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Surface(
-                    onClick = onSubscribersClick ?: {},
-                    enabled = onSubscribersClick != null,
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                    modifier = Modifier.weight(1f)
+                // Потрясающие stats cards с градиентами и анимацией
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(vertical = 16.dp)
+                    // Карточка подписчиков
+                    Surface(
+                        onClick = onSubscribersClick ?: {},
+                        enabled = onSubscribersClick != null,
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.Transparent,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
-                            modifier = Modifier.size(40.dp)
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                                        )
+                                    )
+                                )
+                                .padding(vertical = 18.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.PeopleAlt,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(22.dp)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(48.dp),
+                                    shadowElevation = 2.dp
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            Icons.Default.PeopleAlt,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.size(26.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = formatCount(channel.subscribersCount),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = "Підписників",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.3.sp
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = formatCount(channel.subscribersCount),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        Text(
-                            text = "Підписників",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Medium
-                        )
                     }
-                }
 
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(vertical = 16.dp)
+                    // Карточка постов
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.Transparent,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
-                            modifier = Modifier.size(40.dp)
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                                        )
+                                    )
+                                )
+                                .padding(vertical = 18.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.Article,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.size(22.dp)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(48.dp),
+                                    shadowElevation = 2.dp
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Article,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier.size(26.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = formatCount(channel.postsCount),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = "Постів",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.3.sp
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = formatCount(channel.postsCount),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                        Text(
-                            text = "Постів",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Medium
-                        )
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Улучшенный divider
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                thickness = 1.dp
+            )
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Divider(
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-            thickness = 0.5.dp
-        )
     }
 }
 

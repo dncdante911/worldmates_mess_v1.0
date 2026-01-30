@@ -4,13 +4,32 @@
  * Отримання рейтингу користувача та історії оцінок
  */
 
+// Load config if not already loaded (for direct access to this file)
+if (!isset($db) || !isset($sqlConnect)) {
+    require_once(__DIR__ . '/../config.php');
+}
+
+header('Content-Type: application/json; charset=UTF-8');
+
 // Initialize response
 $error_code = 0;
 $error_message = '';
 $data = [];
 
-// User is already authenticated by config.php
+// Get user_id - either from router or validate access_token directly
 $requester_id = $wo['user']['user_id'] ?? 0;
+
+// If not set by router, validate access_token ourselves
+if (empty($requester_id) || $requester_id < 1) {
+    $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+    if (!empty($access_token) && isset($db)) {
+        $requester_id = validateAccessToken($db, $access_token);
+        if ($requester_id) {
+            $wo['user']['user_id'] = $requester_id;
+            $wo['loggedin'] = true;
+        }
+    }
+}
 
 if (empty($requester_id) || !is_numeric($requester_id) || $requester_id < 1) {
     $error_code = 4;
@@ -143,7 +162,6 @@ if ($error_code == 0) {
                 }
             }
         }
-    }
 }
 
 // Send response

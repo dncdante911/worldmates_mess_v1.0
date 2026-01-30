@@ -12,7 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.ripple
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
@@ -36,6 +36,25 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.*
 import java.text.SimpleDateFormat
 import java.util.*
+
+// ==================== UTILITY FUNCTIONS ====================
+
+fun formatPostTime(timestamp: Long): String {
+    val timestampMs = if (timestamp < 10000000000L) timestamp * 1000 else timestamp
+    val now = System.currentTimeMillis()
+    val diff = now - timestampMs
+
+    return when {
+        diff < 60_000 -> "Щойно"
+        diff < 3_600_000 -> "${diff / 60_000} хв"
+        diff < 86_400_000 -> "${diff / 3_600_000} год"
+        diff < 604_800_000 -> "${diff / 86_400_000} д"
+        else -> {
+            val sdf = SimpleDateFormat("dd MMM", Locale("uk"))
+            sdf.format(Date(timestampMs))
+        }
+    }
+}
 
 // ==================== CHANNEL POST CARD ====================
 
@@ -982,26 +1001,7 @@ fun ActionButton(
     }
 }
 
-// ==================== UTILITY FUNCTIONS ====================
-
-fun formatPostTime(timestamp: Long): String {
-    // Конвертуємо timestamp з секунд в мілісекунди, якщо потрібно
-    val timestampMs = if (timestamp < 10000000000L) timestamp * 1000 else timestamp
-
-    val now = System.currentTimeMillis()
-    val diff = now - timestampMs
-
-    return when {
-        diff < 60_000 -> "Щойно"
-        diff < 3_600_000 -> "${diff / 60_000} хв"
-        diff < 86_400_000 -> "${diff / 3_600_000} год"
-        diff < 604_800_000 -> "${diff / 86_400_000} д"
-        else -> {
-            val sdf = SimpleDateFormat("dd MMM", Locale("uk"))
-            sdf.format(Date(timestampMs))
-        }
-    }
-}
+// ==================== ADDITIONAL UTILITY FUNCTIONS ====================
 
 fun formatDuration(seconds: Long): String {
     val minutes = seconds / 60

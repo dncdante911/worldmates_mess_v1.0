@@ -1,910 +1,1763 @@
 <?php
 /**
- * 📢 Channels API Endpoint
- * Handles all channel-related operations
+ * WorldMates Messenger - Channels API Endpoint
+ * Версія: 2.0 (адаптована до існуючої БД Wondertage/WO)
  *
- * Supported actions/types:
- * - get_channel_details: Get channel info
- * - get_channel_posts: Get posts in a channel
- * - create_post: Create a new post
- * - update_post: Update existing post
- * - delete_post: Delete a post
- * - pin_post/unpin_post: Pin/unpin post
- * - get_comments: Get comments on a post
- * - add_comment: Add comment to post
- * - delete_comment: Delete a comment
- * - add_post_reaction/remove_post_reaction: React to posts
- * - add_comment_reaction: React to comments
- * - register_post_view: Register view on post
- * - get_channel_statistics: Get channel stats
- * - get_channel_subscribers: Get subscriber list
- * - add_channel_admin/remove_channel_admin: Manage admins
- * - update_settings: Update channel settings
- * - subscribe_channel/unsubscribe_channel: Subscribe/unsubscribe
+ * Використовує існуючі таблиці:
+ * - Wo_GroupChat (type='channel')
+ * - Wo_GroupChatUsers (підписники)
+ * - Wo_Messages (пости)
+ * - wo_reactions (реакції)
+ * - Wo_MessageComments (коментарі)
  */
 
-header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
-// Load configuration
 require_once(__DIR__ . '/config.php');
+require_once(__DIR__ . '/crypto_helper.php');
 
-// Get action/type (support both for backward compatibility)
-$action = $_POST['action'] ?? $_GET['action'] ?? $_POST['type'] ?? $_GET['type'] ?? '';
+// Налаштування логування
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', '/var/www/www-root/data/www/worldmates.club/api/v2/logs/php_errors.log');
 
-// Get access token
-$access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+// Функція логування для каналів
+if (!function_exists('logChannelMessage')) {
+    function logChannelMessage($message, $level = 'INFO') {
+        $log_file = '/var/www/www-root/data/www/worldmates.club/api/v2/logs/channels.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[{$timestamp}] [{$level}] {$message}\n";
+        @file_put_contents($log_file, $log_entry, FILE_APPEND);
+    }
+}
 
-if (empty($access_token)) {
-    echo json_encode([
-        'api_status' => 401,
-        'error_message' => 'Access token is required'
-    ]);
+header('Content-Type: application/json');
+
+// Отримуємо дані запиту
+$request_method = $_SERVER['REQUEST_METHOD'];
+
+// Підтримка як JSON, так і form-encoded даних
+$content_type = $_SERVER['CONTENT_TYPE'] ?? '';
+if (strpos($content_type, 'application/json') !== false) {
+    $data = json_decode(file_get_contents('php://input'), true) ?? [];
+} else {
+    // Для application/x-www-form-urlencoded використовуємо $_POST
+    $data = $_POST;
+}
+
+// Access token для автентифікації
+// Для multipart/form-data access_token може бути в $_POST
+$access_token = $data['access_token'] ?? $_GET['access_token'] ?? $_POST['access_token'] ?? null;
+
+if (!$access_token) {
+    echo json_encode(['api_status' => 400, 'error_message' => 'Access token is required']);
     exit;
 }
 
-// Validate token
+// Валідація токену та отримання user_id
 $user_id = validateAccessToken($db, $access_token);
-
 if (!$user_id) {
-    echo json_encode([
-        'api_status' => 401,
-        'error_message' => 'Invalid or expired access token'
-    ]);
+    logChannelMessage("Invalid access token attempt", 'WARNING');
+    echo json_encode(['api_status' => 401, 'error_message' => 'Invalid access token']);
     exit;
 }
 
-// Helper function to get user info
-function getChannelUserInfo($db, $userId) {
-    $stmt = $db->prepare("SELECT user_id, username, first_name, last_name, avatar FROM Wo_Users WHERE user_id = ?");
-    $stmt->execute([$userId]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($user) {
-        return [
-            'id' => (int)$user['user_id'],
-            'username' => $user['username'],
-            'name' => trim($user['first_name'] . ' ' . $user['last_name']),
-            'avatar' => $user['avatar']
-        ];
-    }
-    return null;
+// Роутинг методів
+// Android клієнт надсилає 'type', веб клієнт може надсилати 'action'
+$action = $data['type'] ?? $data['action'] ?? $_GET['type'] ?? $_GET['action'] ?? '';
+
+logChannelMessage("User $user_id: action=$action", 'INFO');
+
+// Мапінг старих type на нові action для сумісності з Android
+$type_mapping = [
+    'get_subscribed' => 'get_channels',
+    'get_list' => 'get_channels',
+    'get_all' => 'get_channels',
+];
+
+// Якщо є маппінг, використовуємо його
+$mapped_action = $type_mapping[$action] ?? $action;
+
+// Якщо використовується get_subscribed, додаємо filter
+if ($action === 'get_subscribed') {
+    $data['filter'] = 'subscribed';
+} elseif ($action === 'get_list' || $action === 'get_all') {
+    $data['filter'] = 'all';
 }
 
-// Helper function to check if user is channel admin
-function isChannelAdmin($db, $userId, $channelId) {
-    // Check if user is owner
-    $stmt = $db->prepare("SELECT user_id FROM Wo_Pages WHERE page_id = ?");
-    $stmt->execute([$channelId]);
-    $channel = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($channel && (int)$channel['user_id'] === (int)$userId) {
-        return 'owner';
-    }
+try {
+    switch ($mapped_action) {
+        // ============================================
+        // CRUD операції з каналами
+        // ============================================
+        case 'get_channels':
+            echo json_encode(getChannels($db, $user_id, $data));
+            break;
 
-    // Check if user is admin
-    $stmt = $db->prepare("SELECT role FROM page_admins WHERE page_id = ? AND user_id = ?");
-    $stmt->execute([$channelId, $userId]);
-    $admin = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($admin) {
-        return $admin['role'] ?? 'admin';
-    }
+        case 'search':
+            // Пошук каналів за назвою/описом
+            echo json_encode(searchChannels($db, $user_id, $data));
+            break;
 
-    return false;
+        case 'get_channel_details':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(getChannelDetails($db, $user_id, $channel_id));
+            break;
+
+        case 'create_channel':
+            echo json_encode(createChannel($db, $user_id, $data));
+            break;
+
+        case 'update_channel':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(updateChannel($db, $user_id, $channel_id, $data));
+            break;
+
+        case 'delete_channel':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(deleteChannel($db, $user_id, $channel_id));
+            break;
+
+        // ============================================
+        // Підписки
+        // ============================================
+        case 'subscribe_channel':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(subscribeChannel($db, $user_id, $channel_id));
+            break;
+
+        case 'unsubscribe_channel':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(unsubscribeChannel($db, $user_id, $channel_id));
+            break;
+
+        case 'get_channel_subscribers':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(getChannelSubscribers($db, $user_id, $channel_id));
+            break;
+
+        // ============================================
+        // Пости
+        // ============================================
+        case 'get_channel_posts':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(getChannelPosts($db, $user_id, $channel_id, $data));
+            break;
+
+        case 'create_post':
+            echo json_encode(createPost($db, $user_id, $data));
+            break;
+
+        case 'update_post':
+            $post_id = $data['post_id'] ?? null;
+            if (!$post_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
+                exit;
+            }
+            echo json_encode(updatePost($db, $user_id, $post_id, $data));
+            break;
+
+        case 'delete_post':
+            $post_id = $data['post_id'] ?? null;
+            if (!$post_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
+                exit;
+            }
+            echo json_encode(deletePost($db, $user_id, $post_id));
+            break;
+
+        case 'pin_post':
+            $post_id = $data['post_id'] ?? null;
+            if (!$post_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
+                exit;
+            }
+            echo json_encode(pinPost($db, $user_id, $post_id, true));
+            break;
+
+        case 'unpin_post':
+            $post_id = $data['post_id'] ?? null;
+            if (!$post_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
+                exit;
+            }
+            echo json_encode(pinPost($db, $user_id, $post_id, false));
+            break;
+
+        // ============================================
+        // Коментарі
+        // ============================================
+        case 'get_comments':
+            $post_id = $data['post_id'] ?? null;
+            if (!$post_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
+                exit;
+            }
+            echo json_encode(getComments($db, $user_id, $post_id));
+            break;
+
+        case 'add_comment':
+            echo json_encode(addComment($db, $user_id, $data));
+            break;
+
+        case 'delete_comment':
+            $comment_id = $data['comment_id'] ?? null;
+            if (!$comment_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'comment_id is required']);
+                exit;
+            }
+            echo json_encode(deleteComment($db, $user_id, $comment_id));
+            break;
+
+        // ============================================
+        // Реакції
+        // ============================================
+        case 'add_post_reaction':
+            echo json_encode(addPostReaction($db, $user_id, $data));
+            break;
+
+        case 'remove_post_reaction':
+            echo json_encode(removePostReaction($db, $user_id, $data));
+            break;
+
+        case 'add_comment_reaction':
+            echo json_encode(addCommentReaction($db, $user_id, $data));
+            break;
+
+        case 'register_post_view':
+            $post_id = $data['post_id'] ?? null;
+            if (!$post_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
+                exit;
+            }
+            echo json_encode(registerPostView($db, $user_id, $post_id));
+            break;
+
+        // ============================================
+        // Адміністрування
+        // ============================================
+        case 'add_channel_admin':
+            echo json_encode(addChannelAdmin($db, $user_id, $data));
+            break;
+
+        case 'remove_channel_admin':
+            echo json_encode(removeChannelAdmin($db, $user_id, $data));
+            break;
+
+        case 'add_channel_member':
+            // Додавання учасника до каналу (тільки для адмінів)
+            $channel_id = $data['channel_id'] ?? null;
+            $target_user_id = $data['user_id'] ?? null;
+
+            if (!$channel_id || !$target_user_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id and user_id are required']);
+                exit;
+            }
+
+            echo json_encode(addChannelMember($db, $user_id, $channel_id, $target_user_id));
+            break;
+
+        // ============================================
+        // Налаштування та статистика
+        // ============================================
+        case 'update_channel_settings':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(updateChannelSettings($db, $user_id, $channel_id, $data));
+            break;
+
+        case 'get_channel_statistics':
+            $channel_id = $data['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(getChannelStatistics($db, $user_id, $channel_id));
+            break;
+
+        case 'upload_channel_avatar':
+            // Для multipart/form-data channel_id може бути в $_POST
+            $channel_id = $data['channel_id'] ?? $_POST['channel_id'] ?? null;
+            if (!$channel_id) {
+                echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
+                exit;
+            }
+            echo json_encode(uploadChannelAvatar($db, $user_id, $channel_id, $_FILES));
+            break;
+
+        default:
+            echo json_encode(['api_status' => 400, 'error_message' => 'Invalid action']);
+    }
+} catch (Exception $e) {
+    echo json_encode([
+        'api_status' => 500,
+        'error_message' => 'Internal server error: ' . $e->getMessage()
+    ]);
 }
 
-// Helper: Format channel post
-function formatChannelPost($row, $db, $currentUserId) {
-    $media = [];
-    if (!empty($row['postFile'])) {
-        $media[] = [
-            'url' => $row['postFile'],
-            'type' => strpos($row['postFile'], '.mp4') !== false || strpos($row['postFile'], '.webm') !== false ? 'video' : 'image'
-        ];
-    }
-    if (!empty($row['postPhoto'])) {
-        $media[] = [
-            'url' => $row['postPhoto'],
-            'type' => 'image'
-        ];
+// ============================================
+// ФУНКЦІЇ
+// ============================================
+// Функція validateAccessToken оголошена в config.php
+
+/**
+ * Отримати список каналів
+ */
+function getChannels($db, $user_id, $data) {
+    $filter = $data['filter'] ?? 'all'; // 'all', 'subscribed', 'owned'
+    $limit = isset($data['limit']) ? (int)$data['limit'] : 20;
+    $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
+    $query = isset($data['query']) ? trim($data['query']) : '';
+
+    $where = "WHERE type = 'channel'";
+    $params = [];
+
+    if ($filter === 'subscribed') {
+        $where .= " AND group_id IN (SELECT group_id FROM Wo_GroupChatUsers WHERE user_id = ?)";
+        $params[] = $user_id;
+    } elseif ($filter === 'owned') {
+        $where .= " AND user_id = ?";
+        $params[] = $user_id;
     }
 
-    // Get user info
-    $user = getChannelUserInfo($db, $row['user_id']);
+    // Пошук по назві або username
+    if (!empty($query)) {
+        $where .= " AND (g.group_name LIKE ? OR g.username LIKE ? OR g.description LIKE ?)";
+        $searchTerm = "%{$query}%";
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+    }
+
+    $stmt = $db->prepare("
+        SELECT
+            g.group_id AS id,
+            g.group_name AS name,
+            g.username,
+            g.description,
+            g.avatar AS avatar_url,
+            g.user_id AS owner_id,
+            g.is_private,
+            g.is_verified,
+            g.subscribers_count,
+            g.posts_count,
+            g.category,
+            g.settings,
+            g.time AS created_time,
+            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_subscribed,
+            (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS user_role
+        FROM Wo_GroupChat g
+        $where
+        ORDER BY g.subscribers_count DESC, g.group_id DESC
+        LIMIT ? OFFSET ?
+    ");
+
+    $params = array_merge([$user_id, $user_id], $params, [$limit, $offset]);
+    $stmt->execute($params);
+    $channels = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Парсимо settings
+    foreach ($channels as &$channel) {
+        $channel['is_subscribed'] = (bool)$channel['is_subscribed'];
+        $channel['is_verified'] = (bool)$channel['is_verified'];
+        $channel['is_admin'] = in_array($channel['user_role'], ['owner', 'admin', 'moderator']);
+        $channel['settings'] = json_decode($channel['settings'] ?? '{}', true);
+        unset($channel['user_role']);
+    }
 
     return [
-        'id' => (int)$row['id'],
-        'channel_id' => (int)$row['page_id'],
-        'author_id' => (int)$row['user_id'],
-        'author_username' => $user ? $user['username'] : 'Unknown',
-        'author_name' => $user ? $user['name'] : 'Unknown',
-        'author_avatar' => $user ? $user['avatar'] : '',
-        'text' => $row['postText'] ?? '',
-        'media' => $media,
-        'created_time' => (int)($row['time'] ?? time()),
-        'is_pinned' => (bool)($row['pinned'] ?? false),
-        'views_count' => (int)($row['post_views'] ?? 0),
-        'comments_count' => (int)($row['comments'] ?? 0),
-        'reactions_count' => (int)($row['reaction'] ?? 0),
-        'shares_count' => (int)($row['shares'] ?? 0)
+        'api_status' => 200,
+        'channels' => $channels,
+        'total' => count($channels)
     ];
 }
 
-// Handle different actions
-switch ($action) {
-    // ======================== GET CHANNEL DETAILS ========================
-    case 'get_channel_details':
-        $channel_id = (int)($_POST['channel_id'] ?? $_GET['channel_id'] ?? 0);
+/**
+ * Пошук каналів за назвою/описом
+ * Обгортка над getChannels() для сумісності з Android
+ */
+function searchChannels($db, $user_id, $data) {
+    // Просто викликаємо getChannels() з параметром query
+    // getChannels() вже має логіку пошуку (lines 354-360)
+    return getChannels($db, $user_id, $data);
+}
 
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
+/**
+ * Отримати деталі каналу
+ */
+function getChannelDetails($db, $user_id, $channel_id) {
+    $stmt = $db->prepare("
+        SELECT
+            g.group_id AS id,
+            g.group_name AS name,
+            g.username,
+            g.description,
+            g.avatar AS avatar_url,
+            g.user_id AS owner_id,
+            g.is_private,
+            g.is_verified,
+            g.subscribers_count,
+            g.posts_count,
+            g.category,
+            g.settings,
+            g.time AS created_time,
+            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_subscribed,
+            (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS user_role
+        FROM Wo_GroupChat g
+        WHERE g.group_id = ? AND g.type = 'channel'
+    ");
+    $stmt->execute([$user_id, $user_id, $channel_id]);
+    $channel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$channel) {
+        return ['api_status' => 404, 'error_message' => 'Channel not found'];
+    }
+
+    // Парсимо settings
+    $channel['is_subscribed'] = (bool)$channel['is_subscribed'];
+    $channel['is_verified'] = (bool)$channel['is_verified'];
+    $channel['is_admin'] = in_array($channel['user_role'], ['owner', 'admin', 'moderator']);
+    $channel['settings'] = json_decode($channel['settings'] ?? '{}', true);
+    unset($channel['user_role']);
+
+    return [
+        'api_status' => 200,
+        'channel' => $channel
+    ];
+}
+
+/**
+ * Створити новий канал
+ */
+function createChannel($db, $user_id, $data) {
+    $name = trim($data['name'] ?? '');
+    $username = trim($data['username'] ?? '');
+    $description = trim($data['description'] ?? '');
+    $is_private = isset($data['is_private']) ? ($data['is_private'] ? '1' : '0') : '0';
+    $category = trim($data['category'] ?? '');
+
+    // Валідація
+    if (empty($name)) {
+        return ['api_status' => 400, 'error_message' => 'Channel name is required'];
+    }
+
+    if ($is_private === '0' && empty($username)) {
+        return ['api_status' => 400, 'error_message' => 'Username is required for public channels'];
+    }
+
+    // Перевірка унікальності username
+    if (!empty($username)) {
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
+            return ['api_status' => 400, 'error_message' => 'Username can only contain letters, numbers and underscore'];
         }
 
-        $stmt = $db->prepare("SELECT * FROM Wo_Pages WHERE page_id = ?");
-        $stmt->execute([$channel_id]);
-        $channel = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$channel) {
-            echo json_encode(['api_status' => 404, 'error_message' => 'Channel not found']);
-            exit;
+        $stmt = $db->prepare("SELECT group_id FROM Wo_GroupChat WHERE username = ?");
+        $stmt->execute([$username]);
+        if ($stmt->fetch()) {
+            return ['api_status' => 400, 'error_message' => 'Username already taken'];
         }
+    }
 
-        // Get subscriber count
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM Wo_Pages_Likes WHERE page_id = ?");
-        $stmt->execute([$channel_id]);
-        $subCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'] ?? 0;
+    // Дефолтні налаштування
+    $settings = json_encode([
+        'allow_comments' => true,
+        'allow_reactions' => true,
+        'allow_shares' => true,
+        'show_statistics' => true,
+        'notify_subscribers_new_post' => true,
+        'auto_delete_posts_days' => null,
+        'signature_enabled' => false,
+        'comments_moderation' => false,
+        'slow_mode_seconds' => 0
+    ]);
 
-        // Get posts count
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM Wo_Posts WHERE page_id = ? AND active = 1");
-        $stmt->execute([$channel_id]);
-        $postsCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'] ?? 0;
+    try {
+        $db->beginTransaction();
 
-        // Check if user is subscribed
-        $stmt = $db->prepare("SELECT * FROM Wo_Pages_Likes WHERE page_id = ? AND user_id = ?");
-        $stmt->execute([$channel_id, $user_id]);
-        $isSubscribed = $stmt->fetch() !== false;
-
-        // Check if user is admin
-        $adminRole = isChannelAdmin($db, $user_id, $channel_id);
-
-        // Get admins list
+        // Створюємо канал
         $stmt = $db->prepare("
-            SELECT u.user_id, u.username, u.first_name, u.last_name, u.avatar, pa.role
-            FROM page_admins pa
-            JOIN Wo_Users u ON pa.user_id = u.user_id
-            WHERE pa.page_id = ?
+            INSERT INTO Wo_GroupChat
+            (user_id, group_name, username, description, is_private, category, type, settings, time, subscribers_count, posts_count, is_verified)
+            VALUES (?, ?, ?, ?, ?, ?, 'channel', ?, ?, 0, 0, 0)
         ");
+
+        $time = time();
+        $stmt->execute([
+            $user_id,
+            $name,
+            $username ?: null,
+            $description ?: null,
+            $is_private,
+            $category ?: null,
+            $settings,
+            $time
+        ]);
+
+        $channel_id = $db->lastInsertId();
+
+        // Автоматично підписуємо власника як owner
+        $stmt_sub = $db->prepare("
+            INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, active, last_seen)
+            VALUES (?, ?, 'owner', '1', ?)
+        ");
+        $stmt_sub->execute([$user_id, $channel_id, $time]);
+
+        $db->commit();
+
+        logChannelMessage("User $user_id created channel $channel_id: $name (private=$is_private)", 'INFO');
+
+        // Повертаємо створений канал
+        return getChannelDetails($db, $user_id, $channel_id);
+
+    } catch (Exception $e) {
+        $db->rollBack();
+        logChannelMessage("Failed to create channel for user $user_id: " . $e->getMessage(), 'ERROR');
+        return ['api_status' => 500, 'error_message' => 'Failed to create channel: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * Оновити канал
+ */
+function updateChannel($db, $user_id, $channel_id, $data) {
+    // Перевіряємо права
+    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $user_id]);
+    $role = $stmt->fetchColumn();
+
+    if (!in_array($role, ['owner', 'admin'])) {
+        return ['api_status' => 403, 'error_message' => 'You do not have permission to edit this channel'];
+    }
+
+    $updates = [];
+    $params = [];
+
+    if (isset($data['name'])) {
+        $updates[] = "group_name = ?";
+        $params[] = trim($data['name']);
+    }
+
+    if (isset($data['description'])) {
+        $updates[] = "description = ?";
+        $params[] = trim($data['description']);
+    }
+
+    if (isset($data['username'])) {
+        $username = trim($data['username']);
+        if (!empty($username) && !preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
+            return ['api_status' => 400, 'error_message' => 'Invalid username format'];
+        }
+
+        // Перевіряємо унікальність
+        $stmt = $db->prepare("SELECT group_id FROM Wo_GroupChat WHERE username = ? AND group_id != ?");
+        $stmt->execute([$username, $channel_id]);
+        if ($stmt->fetch()) {
+            return ['api_status' => 400, 'error_message' => 'Username already taken'];
+        }
+
+        $updates[] = "username = ?";
+        $params[] = $username ?: null;
+    }
+
+    if (isset($data['category'])) {
+        $updates[] = "category = ?";
+        $params[] = trim($data['category']);
+    }
+
+    if (empty($updates)) {
+        return ['api_status' => 400, 'error_message' => 'Nothing to update'];
+    }
+
+    $params[] = $channel_id;
+
+    $stmt = $db->prepare("UPDATE Wo_GroupChat SET " . implode(', ', $updates) . " WHERE group_id = ? AND type = 'channel'");
+    $stmt->execute($params);
+
+    return getChannelDetails($db, $user_id, $channel_id);
+}
+
+/**
+ * Видалити канал
+ */
+function deleteChannel($db, $user_id, $channel_id) {
+    // Перевіряємо права (тільки owner)
+    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $user_id]);
+    $role = $stmt->fetchColumn();
+
+    if ($role !== 'owner') {
+        return ['api_status' => 403, 'error_message' => 'Only channel owner can delete the channel'];
+    }
+
+    try {
+        $db->beginTransaction();
+
+        // Видаляємо всі повідомлення
+        $stmt = $db->prepare("DELETE FROM Wo_Messages WHERE group_id = ?");
         $stmt->execute([$channel_id]);
-        $admins = [];
-        while ($admin = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $admins[] = [
-                'id' => (int)$admin['user_id'],
-                'username' => $admin['username'],
-                'name' => trim($admin['first_name'] . ' ' . $admin['last_name']),
-                'avatar' => $admin['avatar'],
-                'role' => $admin['role']
-            ];
+
+        // Видаляємо всіх підписників
+        $stmt = $db->prepare("DELETE FROM Wo_GroupChatUsers WHERE group_id = ?");
+        $stmt->execute([$channel_id]);
+
+        // Видаляємо канал
+        $stmt = $db->prepare("DELETE FROM Wo_GroupChat WHERE group_id = ? AND type = 'channel'");
+        $stmt->execute([$channel_id]);
+
+        $db->commit();
+
+        return ['api_status' => 200, 'message' => 'Channel deleted successfully'];
+    } catch (Exception $e) {
+        $db->rollBack();
+        return ['api_status' => 500, 'error_message' => 'Failed to delete channel: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * Підписатися на канал
+ */
+function subscribeChannel($db, $user_id, $channel_id) {
+    // Перевіряємо чи існує канал
+    $stmt = $db->prepare("SELECT group_id, is_private FROM Wo_GroupChat WHERE group_id = ? AND type = 'channel'");
+    $stmt->execute([$channel_id]);
+    $channel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$channel) {
+        return ['api_status' => 404, 'error_message' => 'Channel not found'];
+    }
+
+    // Перевіряємо чи вже підписаний
+    $stmt = $db->prepare("SELECT id FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $user_id]);
+    if ($stmt->fetch()) {
+        return ['api_status' => 400, 'error_message' => 'Already subscribed'];
+    }
+
+    // Підписуємося
+    $stmt = $db->prepare("
+        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, active, last_seen)
+        VALUES (?, ?, 'member', '1', ?)
+    ");
+    $stmt->execute([$user_id, $channel_id, time()]);
+
+    return ['api_status' => 200, 'message' => 'Subscribed successfully'];
+}
+
+/**
+ * Відписатися від каналу
+ */
+function unsubscribeChannel($db, $user_id, $channel_id) {
+    $stmt = $db->prepare("DELETE FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ? AND role != 'owner'");
+    $stmt->execute([$channel_id, $user_id]);
+
+    if ($stmt->rowCount() === 0) {
+        return ['api_status' => 400, 'error_message' => 'Not subscribed or cannot unsubscribe (you are owner)'];
+    }
+
+    return ['api_status' => 200, 'message' => 'Unsubscribed successfully'];
+}
+
+/**
+ * Отримати підписників каналу
+ */
+function getChannelSubscribers($db, $user_id, $channel_id) {
+    // Перевіряємо чи є адміном
+    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $user_id]);
+    $role = $stmt->fetchColumn();
+
+    if (!in_array($role, ['owner', 'admin'])) {
+        return ['api_status' => 403, 'error_message' => 'Only admins can view subscribers'];
+    }
+
+    $stmt = $db->prepare("
+        SELECT
+            gcu.user_id AS id,
+            u.username,
+            CONCAT(u.first_name, ' ', u.last_name) AS name,
+            u.avatar,
+            gcu.role,
+            gcu.last_seen
+        FROM Wo_GroupChatUsers gcu
+        LEFT JOIN Wo_Users u ON u.user_id = gcu.user_id
+        WHERE gcu.group_id = ?
+        ORDER BY
+            CASE gcu.role
+                WHEN 'owner' THEN 1
+                WHEN 'admin' THEN 2
+                WHEN 'moderator' THEN 3
+                ELSE 4
+            END,
+            gcu.id ASC
+    ");
+    $stmt->execute([$channel_id]);
+    $subscribers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return [
+        'api_status' => 200,
+        'subscribers' => $subscribers,
+        'total' => count($subscribers)
+    ];
+}
+
+/**
+ * Отримати пости каналу
+ */
+function getChannelPosts($db, $user_id, $channel_id, $data) {
+    $limit = isset($data['limit']) ? (int)$data['limit'] : 20;
+    $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
+
+    // Перевіряємо чи підписаний на канал або це публічний канал
+    $stmt = $db->prepare("
+        SELECT is_private,
+               (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?) AS is_subscribed
+        FROM Wo_GroupChat
+        WHERE group_id = ? AND type = 'channel'
+    ");
+    $stmt->execute([$channel_id, $user_id, $channel_id]);
+    $channel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$channel) {
+        return ['api_status' => 404, 'error_message' => 'Channel not found'];
+    }
+
+    if ($channel['is_private'] === '1' && $channel['is_subscribed'] == 0) {
+        return ['api_status' => 403, 'error_message' => 'Subscribe to view posts'];
+    }
+
+    // Отримуємо пости з інформацією про автора
+    $stmt = $db->prepare("
+        SELECT
+            m.id,
+            m.from_id AS author_id,
+            u.username AS author_username,
+            CONCAT(u.first_name, ' ', u.last_name) AS author_name,
+            u.avatar AS author_avatar,
+            m.text,
+            m.iv,
+            m.tag,
+            m.media,
+            m.mediaFileName,
+            m.time AS created_time,
+            m.type_two AS is_pinned,
+            (SELECT COUNT(*) FROM wo_reactions WHERE message_id = m.id) AS reactions_count,
+            (SELECT COUNT(*) FROM Wo_MessageComments WHERE message_id = m.id) AS comments_count,
+            (SELECT COUNT(*) FROM Wo_MessageViews WHERE message_id = m.id) AS views_count
+        FROM Wo_Messages m
+        LEFT JOIN Wo_Users u ON u.user_id = m.from_id
+        WHERE m.group_id = ?
+        ORDER BY
+            CASE WHEN m.type_two = 'pinned' THEN 0 ELSE 1 END,
+            m.time DESC
+        LIMIT ? OFFSET ?
+    ");
+    $stmt->execute([$channel_id, $limit, $offset]);
+    $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Форматуємо пости
+    foreach ($posts as &$post) {
+        $post['is_pinned'] = ($post['is_pinned'] === 'pinned');
+        $post['is_edited'] = false; // TODO: додати підтримку edited_time
+
+        // Дешифруємо текст для приватних каналів
+        if ($channel['is_private'] === '1' && !empty($post['iv']) && !empty($post['tag'])) {
+            $decrypted = CryptoHelper::decryptGCM(
+                $post['text'],
+                $post['created_time'],
+                $post['iv'],
+                $post['tag']
+            );
+            if ($decrypted !== false) {
+                $post['text'] = $decrypted;
+            }
         }
 
-        // Add owner to admins
-        $owner = getChannelUserInfo($db, $channel['user_id']);
-        if ($owner) {
-            array_unshift($admins, [
-                'id' => $owner['id'],
-                'username' => $owner['username'],
-                'name' => $owner['name'],
-                'avatar' => $owner['avatar'],
-                'role' => 'owner'
-            ]);
+        // Видаляємо технічні поля
+        unset($post['iv'], $post['tag']);
+
+        // Перетворюємо media у масив
+        if (!empty($post['media'])) {
+            $post['media'] = [[
+                'url' => $post['media'],
+                'type' => 'image',
+                'filename' => $post['mediaFileName']
+            ]];
+        } else {
+            $post['media'] = [];
+        }
+        unset($post['mediaFileName']);
+
+        // Отримуємо реакції до поста з інформацією про користувачів
+        $stmt = $db->prepare("
+            SELECT
+                r.reaction AS emoji,
+                r.user_id,
+                u.username,
+                u.avatar
+            FROM wo_reactions r
+            LEFT JOIN Wo_Users u ON u.user_id = r.user_id
+            WHERE r.message_id = ?
+            ORDER BY r.id ASC
+        ");
+        $stmt->execute([$post['id']]);
+        $all_reactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Групуємо реакції по емодзі
+        $reactions_grouped = [];
+        foreach ($all_reactions as $reaction) {
+            $emoji = $reaction['emoji'];
+            if (!isset($reactions_grouped[$emoji])) {
+                $reactions_grouped[$emoji] = [
+                    'emoji' => $emoji,
+                    'count' => 0,
+                    'user_reacted' => false,
+                    'recent_users' => []
+                ];
+            }
+            $reactions_grouped[$emoji]['count']++;
+
+            // Перевіряємо чи поточний користувач поставив цю реакцію
+            if ($reaction['user_id'] == $user_id) {
+                $reactions_grouped[$emoji]['user_reacted'] = true;
+            }
+
+            // Додаємо перших 3 користувачів
+            if (count($reactions_grouped[$emoji]['recent_users']) < 3) {
+                $reactions_grouped[$emoji]['recent_users'][] = [
+                    'user_id' => $reaction['user_id'],
+                    'username' => $reaction['username'],
+                    'avatar' => $reaction['avatar']
+                ];
+            }
         }
 
-        echo json_encode([
-            'api_status' => 200,
-            'channel' => [
-                'id' => (int)$channel['page_id'],
-                'name' => $channel['page_name'],
-                'username' => $channel['page_name'],
-                'description' => $channel['page_description'] ?? '',
-                'avatar_url' => $channel['avatar'] ?? '',
-                'cover_url' => $channel['cover'] ?? '',
-                'subscribers_count' => (int)$subCount,
-                'posts_count' => (int)$postsCount,
-                'is_subscribed' => $isSubscribed,
-                'is_admin' => $adminRole !== false,
-                'admin_role' => $adminRole ?: null,
-                'created_time' => (int)($channel['registered'] ?? time()),
-                'settings' => [
-                    'allow_comments' => true,
-                    'allow_reactions' => true,
-                    'notify_on_post' => true
-                ]
-            ],
-            'admins' => $admins
-        ]);
-        break;
+        $post['reactions'] = array_values($reactions_grouped);
+    }
 
-    // ======================== GET CHANNEL POSTS ========================
-    case 'get_channel_posts':
-        $channel_id = (int)($_POST['channel_id'] ?? $_GET['channel_id'] ?? 0);
-        $limit = (int)($_POST['limit'] ?? $_GET['limit'] ?? 20);
-        $before_post_id = (int)($_POST['before_post_id'] ?? $_GET['before_post_id'] ?? 0);
+    return [
+        'api_status' => 200,
+        'posts' => $posts,
+        'total' => count($posts)
+    ];
+}
 
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
+/**
+ * Створити пост у каналі
+ */
+function createPost($db, $user_id, $data) {
+    $channel_id = $data['channel_id'] ?? null;
+    $text = trim($data['text'] ?? '');
+    $media_url = trim($data['media_url'] ?? '');
+
+    if (!$channel_id) {
+        return ['api_status' => 400, 'error_message' => 'channel_id is required'];
+    }
+
+    if (empty($text) && empty($media_url)) {
+        return ['api_status' => 400, 'error_message' => 'Post text or media is required'];
+    }
+
+    // Перевіряємо права на публікацію та чи канал приватний
+    $stmt = $db->prepare("
+        SELECT gcu.role, gc.is_private
+        FROM Wo_GroupChatUsers gcu
+        JOIN Wo_GroupChat gc ON gc.group_id = gcu.group_id
+        WHERE gcu.group_id = ? AND gcu.user_id = ?
+    ");
+    $stmt->execute([$channel_id, $user_id]);
+    $channel_info = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$channel_info || !in_array($channel_info['role'], ['owner', 'admin', 'moderator'])) {
+        logChannelMessage("User $user_id attempted to post in channel $channel_id without permission", 'WARNING');
+        return ['api_status' => 403, 'error_message' => 'You do not have permission to post in this channel'];
+    }
+
+    $time = time();
+    $encrypted_text = $text;
+    $iv = '';
+    $tag = '';
+
+    // Шифруємо текст для приватних каналів
+    if ($channel_info['is_private'] === '1' && !empty($text)) {
+        $encryption_result = CryptoHelper::encryptGCM($text, $time);
+        if ($encryption_result) {
+            $encrypted_text = $encryption_result['ciphertext'];
+            $iv = $encryption_result['iv'];
+            $tag = $encryption_result['tag'];
+            logChannelMessage("Post text encrypted for private channel $channel_id", 'DEBUG');
+        }
+    }
+
+    // Створюємо пост
+    $stmt = $db->prepare("
+        INSERT INTO Wo_Messages
+        (from_id, group_id, text, media, mediaFileName, time, seen, sent_push, iv, tag)
+        VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+    ");
+
+    $filename = $media_url ? basename($media_url) : '';
+
+    $stmt->execute([
+        $user_id,
+        $channel_id,
+        $encrypted_text,
+        $media_url ?: '',
+        $filename,
+        $time,
+        $iv,
+        $tag
+    ]);
+
+    logChannelMessage("User $user_id created post in channel $channel_id (private=" . $channel_info['is_private'] . ")", 'INFO');
+
+    $post_id = $db->lastInsertId();
+
+    // Оновлюємо лічильник постів в каналі
+    $stmt = $db->prepare("UPDATE Wo_GroupChat SET posts_count = posts_count + 1 WHERE group_id = ?");
+    $stmt->execute([$channel_id]);
+
+    // Повертаємо створений пост з повними даними
+    $stmt = $db->prepare("
+        SELECT
+            m.id,
+            m.from_id AS author_id,
+            u.username AS author_username,
+            CONCAT(u.first_name, ' ', u.last_name) AS author_name,
+            u.avatar AS author_avatar,
+            m.text,
+            m.media,
+            m.mediaFileName,
+            m.time AS created_time,
+            m.type_two AS is_pinned,
+            0 AS reactions_count,
+            0 AS comments_count,
+            0 AS views_count
+        FROM Wo_Messages m
+        LEFT JOIN Wo_Users u ON u.user_id = m.from_id
+        WHERE m.id = ?
+    ");
+    $stmt->execute([$post_id]);
+    $post = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($post) {
+        $post['is_pinned'] = ($post['is_pinned'] === 'pinned');
+        $post['is_edited'] = false;
+
+        // Форматуємо media
+        if (!empty($post['media'])) {
+            $post['media'] = [[
+                'url' => $post['media'],
+                'type' => 'image',
+                'filename' => $post['mediaFileName']
+            ]];
+        } else {
+            $post['media'] = [];
+        }
+        unset($post['mediaFileName']);
+    }
+
+    return [
+        'api_status' => 200,
+        'message' => 'Post created successfully',
+        'post_id' => $post_id,
+        'post' => $post
+    ];
+}
+
+/**
+ * Оновити пост
+ */
+function updatePost($db, $user_id, $post_id, $data) {
+    // Перевіряємо права
+    $stmt = $db->prepare("
+        SELECT m.from_id, m.group_id, gcu.role
+        FROM Wo_Messages m
+        LEFT JOIN Wo_GroupChatUsers gcu ON gcu.group_id = m.group_id AND gcu.user_id = ?
+        WHERE m.id = ?
+    ");
+    $stmt->execute([$user_id, $post_id]);
+    $post = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$post) {
+        return ['api_status' => 404, 'error_message' => 'Post not found'];
+    }
+
+    if ($post['from_id'] != $user_id && !in_array($post['role'], ['owner', 'admin'])) {
+        return ['api_status' => 403, 'error_message' => 'You do not have permission to edit this post'];
+    }
+
+    $updates = [];
+    $params = [];
+
+    if (isset($data['text'])) {
+        $updates[] = "text = ?";
+        $params[] = trim($data['text']);
+    }
+
+    if (empty($updates)) {
+        return ['api_status' => 400, 'error_message' => 'Nothing to update'];
+    }
+
+    $params[] = $post_id;
+
+    $stmt = $db->prepare("UPDATE Wo_Messages SET " . implode(', ', $updates) . " WHERE id = ?");
+    $stmt->execute($params);
+
+    return ['api_status' => 200, 'message' => 'Post updated successfully'];
+}
+
+/**
+ * Видалити пост
+ */
+function deletePost($db, $user_id, $post_id) {
+    // Перевіряємо права
+    $stmt = $db->prepare("
+        SELECT m.from_id, m.group_id, gcu.role
+        FROM Wo_Messages m
+        LEFT JOIN Wo_GroupChatUsers gcu ON gcu.group_id = m.group_id AND gcu.user_id = ?
+        WHERE m.id = ?
+    ");
+    $stmt->execute([$user_id, $post_id]);
+    $post = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$post) {
+        return ['api_status' => 404, 'error_message' => 'Post not found'];
+    }
+
+    if ($post['from_id'] != $user_id && !in_array($post['role'], ['owner', 'admin'])) {
+        return ['api_status' => 403, 'error_message' => 'You do not have permission to delete this post'];
+    }
+
+    $stmt = $db->prepare("DELETE FROM Wo_Messages WHERE id = ?");
+    $stmt->execute([$post_id]);
+
+    return ['api_status' => 200, 'message' => 'Post deleted successfully'];
+}
+
+/**
+ * Закріпити/відкріпити пост
+ */
+function pinPost($db, $user_id, $post_id, $pin = true) {
+    // Перевіряємо права
+    $stmt = $db->prepare("
+        SELECT m.group_id, gcu.role
+        FROM Wo_Messages m
+        LEFT JOIN Wo_GroupChatUsers gcu ON gcu.group_id = m.group_id AND gcu.user_id = ?
+        WHERE m.id = ?
+    ");
+    $stmt->execute([$user_id, $post_id]);
+    $post = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$post) {
+        return ['api_status' => 404, 'error_message' => 'Post not found'];
+    }
+
+    if (!in_array($post['role'], ['owner', 'admin', 'moderator'])) {
+        return ['api_status' => 403, 'error_message' => 'You do not have permission to pin posts'];
+    }
+
+    $type_two = $pin ? 'pinned' : '';
+
+    $stmt = $db->prepare("UPDATE Wo_Messages SET type_two = ? WHERE id = ?");
+    $stmt->execute([$type_two, $post_id]);
+
+    return [
+        'api_status' => 200,
+        'message' => $pin ? 'Post pinned successfully' : 'Post unpinned successfully'
+    ];
+}
+
+/**
+ * Отримати коментарі до поста
+ */
+function getComments($db, $user_id, $post_id) {
+    $stmt = $db->prepare("
+        SELECT
+            mc.id,
+            mc.user_id,
+            u.username,
+            CONCAT(u.first_name, ' ', u.last_name) AS user_name,
+            u.avatar AS user_avatar,
+            mc.text,
+            mc.time,
+            mc.edited_time,
+            mc.reply_to_comment_id,
+            (SELECT COUNT(*) FROM Wo_MessageCommentReactions WHERE comment_id = mc.id) AS reactions_count
+        FROM Wo_MessageComments mc
+        LEFT JOIN Wo_Users u ON u.user_id = mc.user_id
+        WHERE mc.message_id = ?
+        ORDER BY mc.time ASC
+    ");
+    $stmt->execute([$post_id]);
+    $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return [
+        'api_status' => 200,
+        'comments' => $comments,
+        'total' => count($comments)
+    ];
+}
+
+/**
+ * Додати коментар до поста
+ */
+function addComment($db, $user_id, $data) {
+    $post_id = $data['post_id'] ?? null;
+    $text = trim($data['text'] ?? '');
+    $reply_to = $data['reply_to_comment_id'] ?? null;
+
+    if (!$post_id || empty($text)) {
+        return ['api_status' => 400, 'error_message' => 'post_id and text are required'];
+    }
+
+    // Перевіряємо чи існує пост і чи дозволені коментарі
+    $stmt = $db->prepare("
+        SELECT m.group_id, g.settings
+        FROM Wo_Messages m
+        JOIN Wo_GroupChat g ON g.group_id = m.group_id
+        WHERE m.id = ? AND g.type = 'channel'
+    ");
+    $stmt->execute([$post_id]);
+    $post = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$post) {
+        return ['api_status' => 404, 'error_message' => 'Post not found'];
+    }
+
+    $settings = json_decode($post['settings'] ?? '{}', true);
+    if (isset($settings['allow_comments']) && !$settings['allow_comments']) {
+        return ['api_status' => 403, 'error_message' => 'Comments are disabled for this channel'];
+    }
+
+    // Додаємо коментар
+    $stmt = $db->prepare("
+        INSERT INTO Wo_MessageComments (message_id, user_id, text, time, reply_to_comment_id)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([$post_id, $user_id, $text, time(), $reply_to]);
+
+    return [
+        'api_status' => 200,
+        'message' => 'Comment added successfully',
+        'comment_id' => $db->lastInsertId()
+    ];
+}
+
+/**
+ * Видалити коментар
+ */
+function deleteComment($db, $user_id, $comment_id) {
+    // Перевіряємо права
+    $stmt = $db->prepare("
+        SELECT mc.user_id, m.group_id, gcu.role
+        FROM Wo_MessageComments mc
+        JOIN Wo_Messages m ON m.id = mc.message_id
+        LEFT JOIN Wo_GroupChatUsers gcu ON gcu.group_id = m.group_id AND gcu.user_id = ?
+        WHERE mc.id = ?
+    ");
+    $stmt->execute([$user_id, $comment_id]);
+    $comment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$comment) {
+        return ['api_status' => 404, 'error_message' => 'Comment not found'];
+    }
+
+    if ($comment['user_id'] != $user_id && !in_array($comment['role'], ['owner', 'admin', 'moderator'])) {
+        return ['api_status' => 403, 'error_message' => 'You do not have permission to delete this comment'];
+    }
+
+    $stmt = $db->prepare("DELETE FROM Wo_MessageComments WHERE id = ?");
+    $stmt->execute([$comment_id]);
+
+    return ['api_status' => 200, 'message' => 'Comment deleted successfully'];
+}
+
+/**
+ * Додати реакцію на пост
+ */
+function addPostReaction($db, $user_id, $data) {
+    $post_id = $data['post_id'] ?? null;
+    $reaction = trim($data['reaction'] ?? '');
+
+    if (!$post_id || empty($reaction)) {
+        return ['api_status' => 400, 'error_message' => 'post_id and reaction are required'];
+    }
+
+    // Перевіряємо чи дозволені реакції
+    $stmt = $db->prepare("
+        SELECT g.settings
+        FROM Wo_Messages m
+        JOIN Wo_GroupChat g ON g.group_id = m.group_id
+        WHERE m.id = ? AND g.type = 'channel'
+    ");
+    $stmt->execute([$post_id]);
+    $post = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$post) {
+        return ['api_status' => 404, 'error_message' => 'Post not found'];
+    }
+
+    $settings = json_decode($post['settings'] ?? '{}', true);
+    if (isset($settings['allow_reactions']) && !$settings['allow_reactions']) {
+        return ['api_status' => 403, 'error_message' => 'Reactions are disabled for this channel'];
+    }
+
+    // Видаляємо попередню реакцію цього користувача
+    $stmt = $db->prepare("DELETE FROM wo_reactions WHERE message_id = ? AND user_id = ?");
+    $stmt->execute([$post_id, $user_id]);
+
+    // Додаємо нову реакцію
+    $stmt = $db->prepare("
+        INSERT INTO wo_reactions (user_id, message_id, reaction)
+        VALUES (?, ?, ?)
+    ");
+    $stmt->execute([$user_id, $post_id, $reaction]);
+
+    return ['api_status' => 200, 'message' => 'Reaction added successfully'];
+}
+
+/**
+ * Видалити реакцію з поста
+ */
+function removePostReaction($db, $user_id, $data) {
+    $post_id = $data['post_id'] ?? null;
+
+    if (!$post_id) {
+        return ['api_status' => 400, 'error_message' => 'post_id is required'];
+    }
+
+    $stmt = $db->prepare("DELETE FROM wo_reactions WHERE message_id = ? AND user_id = ?");
+    $stmt->execute([$post_id, $user_id]);
+
+    return ['api_status' => 200, 'message' => 'Reaction removed successfully'];
+}
+
+/**
+ * Додати реакцію на коментар
+ */
+function addCommentReaction($db, $user_id, $data) {
+    $comment_id = $data['comment_id'] ?? null;
+    $reaction = trim($data['reaction'] ?? '');
+
+    if (!$comment_id || empty($reaction)) {
+        return ['api_status' => 400, 'error_message' => 'comment_id and reaction are required'];
+    }
+
+    // Видаляємо попередню реакцію
+    $stmt = $db->prepare("DELETE FROM Wo_MessageCommentReactions WHERE comment_id = ? AND user_id = ?");
+    $stmt->execute([$comment_id, $user_id]);
+
+    // Додаємо нову
+    $stmt = $db->prepare("
+        INSERT INTO Wo_MessageCommentReactions (comment_id, user_id, reaction, time)
+        VALUES (?, ?, ?, ?)
+    ");
+    $stmt->execute([$comment_id, $user_id, $reaction, time()]);
+
+    return ['api_status' => 200, 'message' => 'Reaction added successfully'];
+}
+
+/**
+ * Зареєструвати перегляд поста
+ */
+function registerPostView($db, $user_id, $post_id) {
+    // Перевіряємо чи існує пост
+    $stmt = $db->prepare("SELECT id FROM Wo_Messages WHERE id = ?");
+    $stmt->execute([$post_id]);
+    if (!$stmt->fetch()) {
+        return ['api_status' => 404, 'error_message' => 'Post not found'];
+    }
+
+    // Перевіряємо чи вже є запис про перегляд від цього користувача
+    $stmt = $db->prepare("SELECT id FROM Wo_MessageViews WHERE message_id = ? AND user_id = ?");
+    $stmt->execute([$post_id, $user_id]);
+
+    if (!$stmt->fetch()) {
+        // Додаємо новий перегляд
+        $stmt = $db->prepare("
+            INSERT INTO Wo_MessageViews (message_id, user_id, time)
+            VALUES (?, ?, ?)
+        ");
+        $stmt->execute([$post_id, $user_id, time()]);
+
+        logChannelMessage("Post view registered: post_id=$post_id, user_id=$user_id", 'DEBUG');
+    }
+
+    // Повертаємо оновлену кількість переглядів
+    $stmt = $db->prepare("SELECT COUNT(*) as views_count FROM Wo_MessageViews WHERE message_id = ?");
+    $stmt->execute([$post_id]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return [
+        'api_status' => 200,
+        'message' => 'View registered',
+        'views_count' => $result['views_count'] ?? 0
+    ];
+}
+
+/**
+ * Додати адміністратора каналу
+ */
+function addChannelAdmin($db, $user_id, $data) {
+    $channel_id = $data['channel_id'] ?? null;
+    $admin_user_id = $data['user_id'] ?? null;
+    $user_search = $data['user_search'] ?? null; // ID, username або ім'я
+    $role = $data['role'] ?? 'admin'; // admin, moderator
+
+    if (!$channel_id) {
+        return ['api_status' => 400, 'error_message' => 'channel_id is required'];
+    }
+
+    // Якщо передано user_search замість user_id, шукаємо користувача
+    if (!$admin_user_id && $user_search) {
+        $search_term = trim($user_search);
+
+        // Спочатку пробуємо як ID
+        if (is_numeric($search_term)) {
+            $stmt = $db->prepare("SELECT user_id FROM Wo_Users WHERE user_id = ?");
+            $stmt->execute([$search_term]);
+            $admin_user_id = $stmt->fetchColumn();
         }
 
-        $limit = min(max($limit, 1), 50);
-
-        $sql = "SELECT * FROM Wo_Posts WHERE page_id = ? AND active = 1";
-        $params = [$channel_id];
-
-        if ($before_post_id > 0) {
-            $sql .= " AND id < ?";
-            $params[] = $before_post_id;
+        // Якщо не знайдено, шукаємо по username
+        if (!$admin_user_id) {
+            // Видаляємо @ якщо є
+            $username = ltrim($search_term, '@');
+            $stmt = $db->prepare("SELECT user_id FROM Wo_Users WHERE username = ?");
+            $stmt->execute([$username]);
+            $admin_user_id = $stmt->fetchColumn();
         }
 
-        $sql .= " ORDER BY pinned DESC, time DESC LIMIT ?";
-        $params[] = $limit;
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-
-        $posts = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $posts[] = formatChannelPost($row, $db, $user_id);
+        // Якщо не знайдено, шукаємо по імені
+        if (!$admin_user_id) {
+            $stmt = $db->prepare("
+                SELECT user_id FROM Wo_Users
+                WHERE CONCAT(first_name, ' ', last_name) LIKE ?
+                   OR first_name LIKE ?
+                   OR last_name LIKE ?
+                LIMIT 1
+            ");
+            $like_term = "%{$search_term}%";
+            $stmt->execute([$like_term, $like_term, $like_term]);
+            $admin_user_id = $stmt->fetchColumn();
         }
 
-        echo json_encode([
-            'api_status' => 200,
-            'posts' => $posts
-        ]);
-        break;
+        if (!$admin_user_id) {
+            return ['api_status' => 404, 'error_message' => 'User not found'];
+        }
+    }
 
-    // ======================== CREATE POST ========================
-    case 'create_post':
-        $channel_id = (int)($_POST['channel_id'] ?? 0);
-        $text = trim($_POST['text'] ?? '');
-        $media_urls = $_POST['media_urls'] ?? null;
-        $disable_comments = (int)($_POST['disable_comments'] ?? 0);
+    if (!$admin_user_id) {
+        return ['api_status' => 400, 'error_message' => 'user_id or user_search is required'];
+    }
 
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
+    if (!in_array($role, ['admin', 'moderator'])) {
+        return ['api_status' => 400, 'error_message' => 'Invalid role'];
+    }
+
+    // Перевіряємо права (тільки owner)
+    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $user_id]);
+    $current_role = $stmt->fetchColumn();
+
+    if ($current_role !== 'owner') {
+        return ['api_status' => 403, 'error_message' => 'Only channel owner can add admins'];
+    }
+
+    // Оновлюємо роль користувача
+    $stmt = $db->prepare("
+        UPDATE Wo_GroupChatUsers
+        SET role = ?
+        WHERE group_id = ? AND user_id = ?
+    ");
+    $stmt->execute([$role, $channel_id, $admin_user_id]);
+
+    if ($stmt->rowCount() === 0) {
+        return ['api_status' => 404, 'error_message' => 'User is not a member of this channel'];
+    }
+
+    return ['api_status' => 200, 'message' => 'Admin added successfully'];
+}
+
+/**
+ * Додати учасника до каналу (для адмінів/модераторів)
+ */
+function addChannelMember($db, $admin_user_id, $channel_id, $target_user_id) {
+    // Перевіряємо чи існує канал
+    $stmt = $db->prepare("SELECT group_id, is_private FROM Wo_GroupChat WHERE group_id = ? AND type = 'channel'");
+    $stmt->execute([$channel_id]);
+    $channel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$channel) {
+        return ['api_status' => 404, 'error_message' => 'Channel not found'];
+    }
+
+    // Перевіряємо права поточного користувача (admin, moderator, або owner)
+    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $admin_user_id]);
+    $admin_role = $stmt->fetchColumn();
+
+    if (!in_array($admin_role, ['owner', 'admin', 'moderator'])) {
+        return ['api_status' => 403, 'error_message' => 'Only channel admins can add members'];
+    }
+
+    // Перевіряємо чи користувач існує
+    $stmt = $db->prepare("SELECT user_id, username FROM Wo_Users WHERE user_id = ?");
+    $stmt->execute([$target_user_id]);
+    $target_user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$target_user) {
+        return ['api_status' => 404, 'error_message' => 'User not found'];
+    }
+
+    // Перевіряємо чи вже є учасником
+    $stmt = $db->prepare("SELECT id FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $target_user_id]);
+    if ($stmt->fetch()) {
+        return ['api_status' => 400, 'error_message' => 'User is already a member of this channel'];
+    }
+
+    // Додаємо користувача як member
+    $stmt = $db->prepare("
+        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, active, last_seen)
+        VALUES (?, ?, 'member', '1', ?)
+    ");
+    $stmt->execute([$target_user_id, $channel_id, time()]);
+
+    logChannelMessage("Admin $admin_user_id added user $target_user_id to channel $channel_id", 'INFO');
+
+    return [
+        'api_status' => 200,
+        'message' => 'Member added successfully',
+        'user' => [
+            'user_id' => $target_user['user_id'],
+            'username' => $target_user['username']
+        ]
+    ];
+}
+
+/**
+ * Видалити адміністратора каналу
+ */
+function removeChannelAdmin($db, $user_id, $data) {
+    $channel_id = $data['channel_id'] ?? null;
+    $admin_user_id = $data['user_id'] ?? null;
+
+    if (!$channel_id || !$admin_user_id) {
+        return ['api_status' => 400, 'error_message' => 'channel_id and user_id are required'];
+    }
+
+    // Перевіряємо права (тільки owner)
+    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $user_id]);
+    $current_role = $stmt->fetchColumn();
+
+    if ($current_role !== 'owner') {
+        return ['api_status' => 403, 'error_message' => 'Only channel owner can remove admins'];
+    }
+
+    // Змінюємо роль на member
+    $stmt = $db->prepare("
+        UPDATE Wo_GroupChatUsers
+        SET role = 'member'
+        WHERE group_id = ? AND user_id = ? AND role != 'owner'
+    ");
+    $stmt->execute([$channel_id, $admin_user_id]);
+
+    if ($stmt->rowCount() === 0) {
+        return ['api_status' => 404, 'error_message' => 'Admin not found or cannot remove owner'];
+    }
+
+    return ['api_status' => 200, 'message' => 'Admin removed successfully'];
+}
+
+/**
+ * Оновити налаштування каналу
+ */
+function updateChannelSettings($db, $user_id, $channel_id, $data) {
+    // Перевіряємо права
+    $stmt = $db->prepare("SELECT role, settings FROM Wo_GroupChatUsers gcu JOIN Wo_GroupChat g ON g.group_id = gcu.group_id WHERE gcu.group_id = ? AND gcu.user_id = ?");
+    $stmt->execute([$channel_id, $user_id]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$result || !in_array($result['role'], ['owner', 'admin'])) {
+        return ['api_status' => 403, 'error_message' => 'You do not have permission to change settings'];
+    }
+
+    // Отримуємо поточні налаштування
+    $current_settings = json_decode($result['settings'] ?? '{}', true);
+
+    // Якщо надіслано JSON налаштувань
+    if (isset($data['settings_json'])) {
+        $new_settings = json_decode($data['settings_json'], true);
+        if ($new_settings !== null) {
+            // Оновлюємо існуючі налаштування новими
+            $current_settings = array_merge($current_settings, $new_settings);
+        }
+    } else {
+        // Підтримка старого формату (окремі параметри)
+        $settings_to_update = [
+            'allow_comments',
+            'allow_reactions',
+            'allow_shares',
+            'show_statistics',
+            'notify_subscribers_new_post',
+            'auto_delete_posts_days',
+            'signature_enabled',
+            'comments_moderation',
+            'slow_mode_seconds'
+        ];
+
+        foreach ($settings_to_update as $key) {
+            if (isset($data[$key])) {
+                $current_settings[$key] = $data[$key];
+            }
+        }
+    }
+
+    $stmt = $db->prepare("UPDATE Wo_GroupChat SET settings = ? WHERE group_id = ?");
+    $stmt->execute([json_encode($current_settings), $channel_id]);
+
+    return ['api_status' => 200, 'message' => 'Settings updated successfully'];
+}
+
+/**
+ * Отримати статистику каналу
+ */
+function getChannelStatistics($db, $user_id, $channel_id) {
+    // Перевіряємо права
+    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+    $stmt->execute([$channel_id, $user_id]);
+    $role = $stmt->fetchColumn();
+
+    if (!in_array($role, ['owner', 'admin'])) {
+        return ['api_status' => 403, 'error_message' => 'Only admins can view statistics'];
+    }
+
+    // Загальна статистика
+    $stmt = $db->prepare("
+        SELECT
+            subscribers_count,
+            posts_count,
+            (SELECT COUNT(*) FROM Wo_Messages WHERE group_id = ? AND time > UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 7 DAY))) AS posts_last_week,
+            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = ? AND last_seen > UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 1 DAY))) AS active_subscribers_24h
+        FROM Wo_GroupChat
+        WHERE group_id = ?
+    ");
+    $stmt->execute([$channel_id, $channel_id, $channel_id]);
+    $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Топ-3 поста за переглядами
+    $stmt = $db->prepare("
+        SELECT
+            m.id,
+            m.text,
+            (SELECT COUNT(*) FROM Wo_MessageViews WHERE message_id = m.id) AS views
+        FROM Wo_Messages m
+        WHERE m.group_id = ?
+        ORDER BY views DESC
+        LIMIT 3
+    ");
+    $stmt->execute([$channel_id]);
+    $top_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return [
+        'api_status' => 200,
+        'statistics' => [
+            'subscribers_count' => $stats['subscribers_count'],
+            'posts_count' => $stats['posts_count'],
+            'posts_last_week' => $stats['posts_last_week'],
+            'active_subscribers_24h' => $stats['active_subscribers_24h'],
+            'top_posts' => $top_posts
+        ]
+    ];
+}
+
+/**
+ * Завантажити аватар каналу
+ */
+function uploadChannelAvatar($db, $user_id, $channel_id, $files) {
+    global $sqlConnect, $wo;
+
+    try {
+        logChannelMessage("Upload avatar request: channel_id=$channel_id, user_id=$user_id", 'INFO');
+
+        // Перевіряємо права
+        $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+        $stmt->execute([$channel_id, $user_id]);
+        $role = $stmt->fetchColumn();
+
+        logChannelMessage("User role: $role", 'DEBUG');
+
+        if (!in_array($role, ['owner', 'admin'])) {
+            return ['api_status' => 403, 'error_message' => 'You do not have permission to change avatar'];
         }
 
-        // Check admin rights
-        if (!isChannelAdmin($db, $user_id, $channel_id)) {
-            echo json_encode(['api_status' => 403, 'error_message' => 'Only admins can create posts']);
-            exit;
+        // Перевіряємо чи є файл
+        if (empty($files['avatar']) || !isset($files['avatar']['tmp_name'])) {
+            logChannelMessage("Avatar file missing in upload", 'ERROR');
+            return ['api_status' => 400, 'error_message' => 'Avatar file is required'];
         }
 
-        if (empty($text) && empty($media_urls)) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'Post must have text or media']);
-            exit;
-        }
+        logChannelMessage("File received: " . $files['avatar']['name'] . ", size: " . $files['avatar']['size'], 'DEBUG');
 
-        // Parse media
-        $postFile = '';
-        $postPhoto = '';
-        if ($media_urls) {
-            $mediaArray = json_decode($media_urls, true);
-            if (is_array($mediaArray) && !empty($mediaArray)) {
-                foreach ($mediaArray as $media) {
-                    $url = $media['url'] ?? '';
-                    $type = $media['type'] ?? 'image';
-                    if ($type === 'video') {
-                        $postFile = $url;
-                    } else {
-                        $postPhoto = $url;
-                    }
+        // CRITICAL: Set $wo['user'] with actual user data for Wo_ShareFile()
+        // Wo_ShareFile() checks $wo['user']['user_id'] and other fields
+        // Wo_IsAdmin() (called by Wo_ShareFile on line 5477) checks $wo['user']['admin'] (line 5729)
+        $wo['user'] = [
+            'user_id' => $user_id,
+            'username' => 'channel_admin',
+            'active' => '1',
+            'admin' => 0  // Required by Wo_IsAdmin()
+        ];
+
+        // Визначаємо реальний MIME type файлу (Android може надсилати generic "image/*")
+        $real_mime_type = $files['avatar']['type'];
+
+        // Якщо MIME type generic (image/*, application/*) або некоректний, визначаємо його з файлу
+        if (strpos($real_mime_type, '*') !== false || empty($real_mime_type)) {
+            if (function_exists('mime_content_type')) {
+                $detected_mime = mime_content_type($files['avatar']['tmp_name']);
+                if ($detected_mime) {
+                    $real_mime_type = $detected_mime;
+                    logChannelMessage("Detected MIME type from file: $detected_mime", 'DEBUG');
+                }
+            } elseif (function_exists('finfo_open')) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $detected_mime = finfo_file($finfo, $files['avatar']['tmp_name']);
+                finfo_close($finfo);
+                if ($detected_mime) {
+                    $real_mime_type = $detected_mime;
+                    logChannelMessage("Detected MIME type from finfo: $detected_mime", 'DEBUG');
+                }
+            } else {
+                // Fallback: визначаємо по розширенню файлу
+                $extension = strtolower(pathinfo($files['avatar']['name'], PATHINFO_EXTENSION));
+                $mime_map = [
+                    'jpg' => 'image/jpeg',
+                    'jpeg' => 'image/jpeg',
+                    'png' => 'image/png',
+                    'gif' => 'image/gif',
+                    'webp' => 'image/webp'
+                ];
+                if (isset($mime_map[$extension])) {
+                    $real_mime_type = $mime_map[$extension];
+                    logChannelMessage("Detected MIME type from extension: $real_mime_type", 'DEBUG');
                 }
             }
         }
 
-        // Generate unique post hash
-        $postHash = md5($user_id . time() . rand(1000, 9999));
+        logChannelMessage("Original MIME: {$files['avatar']['type']}, Real MIME: $real_mime_type", 'DEBUG');
 
-        // Insert post
-        $stmt = $db->prepare("
-            INSERT INTO Wo_Posts (user_id, page_id, postText, postFile, postPhoto, time, active, post_type, postHash)
-            VALUES (?, ?, ?, ?, ?, ?, 1, 'page', ?)
-        ");
-        $stmt->execute([$user_id, $channel_id, $text, $postFile, $postPhoto, time(), $postHash]);
+        // Підготовка файлу для завантаження
+        $file_info = array(
+            'file' => $files['avatar']['tmp_name'],
+            'name' => $files['avatar']['name'],
+            'size' => $files['avatar']['size'],
+            'type' => $real_mime_type,  // Використовуємо реальний MIME type
+            'types' => 'jpg,png,jpeg,gif,webp'
+        );
 
-        $postId = $db->lastInsertId();
-
-        // Get created post
-        $stmt = $db->prepare("SELECT * FROM Wo_Posts WHERE id = ?");
-        $stmt->execute([$postId]);
-        $post = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        echo json_encode([
-            'api_status' => 200,
-            'message' => 'Post created successfully',
-            'post' => formatChannelPost($post, $db, $user_id)
-        ]);
-        break;
-
-    // ======================== UPDATE POST ========================
-    case 'update_post':
-        $post_id = (int)($_POST['post_id'] ?? 0);
-        $text = trim($_POST['text'] ?? '');
-
-        if (!$post_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
-            exit;
+        // Перевіряємо чи функція Wo_ShareFile доступна
+        if (!function_exists('Wo_ShareFile')) {
+            logChannelMessage("Wo_ShareFile function not loaded", 'ERROR');
+            return ['api_status' => 500, 'error_message' => 'Server configuration error: upload function not available'];
         }
 
-        // Get post and check permissions
-        $stmt = $db->prepare("SELECT * FROM Wo_Posts WHERE id = ?");
-        $stmt->execute([$post_id]);
-        $post = $stmt->fetch(PDO::FETCH_ASSOC);
+        // ============================================
+        // DEBUGGING: Log all parameters for Wo_ShareFile()
+        // ============================================
+        logChannelMessage("=== Wo_ShareFile() Debug Info ===", 'DEBUG');
+        logChannelMessage("User ID: $user_id", 'DEBUG');
+        logChannelMessage("File info: " . json_encode($file_info), 'DEBUG');
+        logChannelMessage("\$wo['user']: " . json_encode($wo['user']), 'DEBUG');
+        logChannelMessage("\$wo['loggedin']: " . ($wo['loggedin'] ? 'true' : 'false'), 'DEBUG');
 
-        if (!$post) {
-            echo json_encode(['api_status' => 404, 'error_message' => 'Post not found']);
-            exit;
-        }
-
-        $channel_id = (int)$post['page_id'];
-        if (!isChannelAdmin($db, $user_id, $channel_id) && (int)$post['user_id'] !== $user_id) {
-            echo json_encode(['api_status' => 403, 'error_message' => 'No permission to edit this post']);
-            exit;
-        }
-
-        $stmt = $db->prepare("UPDATE Wo_Posts SET postText = ? WHERE id = ?");
-        $stmt->execute([$text, $post_id]);
-
-        // Get updated post
-        $stmt = $db->prepare("SELECT * FROM Wo_Posts WHERE id = ?");
-        $stmt->execute([$post_id]);
-        $post = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        echo json_encode([
-            'api_status' => 200,
-            'message' => 'Post updated',
-            'post' => formatChannelPost($post, $db, $user_id)
-        ]);
-        break;
-
-    // ======================== DELETE POST ========================
-    case 'delete_post':
-        $post_id = (int)($_POST['post_id'] ?? 0);
-
-        if (!$post_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
-            exit;
-        }
-
-        // Get post
-        $stmt = $db->prepare("SELECT * FROM Wo_Posts WHERE id = ?");
-        $stmt->execute([$post_id]);
-        $post = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$post) {
-            echo json_encode(['api_status' => 404, 'error_message' => 'Post not found']);
-            exit;
-        }
-
-        $channel_id = (int)$post['page_id'];
-        if (!isChannelAdmin($db, $user_id, $channel_id) && (int)$post['user_id'] !== $user_id) {
-            echo json_encode(['api_status' => 403, 'error_message' => 'No permission to delete this post']);
-            exit;
-        }
-
-        $stmt = $db->prepare("DELETE FROM Wo_Posts WHERE id = ?");
-        $stmt->execute([$post_id]);
-
-        echo json_encode([
-            'api_status' => 200,
-            'message' => 'Post deleted'
-        ]);
-        break;
-
-    // ======================== PIN/UNPIN POST ========================
-    case 'pin_post':
-    case 'unpin_post':
-        $post_id = (int)($_POST['post_id'] ?? 0);
-        $isPinning = $action === 'pin_post';
-
-        if (!$post_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
-            exit;
-        }
-
-        $stmt = $db->prepare("SELECT page_id FROM Wo_Posts WHERE id = ?");
-        $stmt->execute([$post_id]);
-        $post = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$post) {
-            echo json_encode(['api_status' => 404, 'error_message' => 'Post not found']);
-            exit;
-        }
-
-        if (!isChannelAdmin($db, $user_id, $post['page_id'])) {
-            echo json_encode(['api_status' => 403, 'error_message' => 'Only admins can pin/unpin posts']);
-            exit;
-        }
-
-        // If pinning, first unpin all other posts
-        if ($isPinning) {
-            $stmt = $db->prepare("UPDATE Wo_Posts SET pinned = 0 WHERE page_id = ?");
-            $stmt->execute([$post['page_id']]);
-        }
-
-        $stmt = $db->prepare("UPDATE Wo_Posts SET pinned = ? WHERE id = ?");
-        $stmt->execute([$isPinning ? 1 : 0, $post_id]);
-
-        echo json_encode([
-            'api_status' => 200,
-            'message' => $isPinning ? 'Post pinned' : 'Post unpinned'
-        ]);
-        break;
-
-    // ======================== GET COMMENTS ========================
-    case 'get_comments':
-        $post_id = (int)($_POST['post_id'] ?? $_GET['post_id'] ?? 0);
-        $limit = (int)($_POST['limit'] ?? $_GET['limit'] ?? 50);
-        $offset = (int)($_POST['offset'] ?? $_GET['offset'] ?? 0);
-
-        if (!$post_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
-            exit;
-        }
-
-        $stmt = $db->prepare("
-            SELECT c.*, u.username, u.first_name, u.last_name, u.avatar
-            FROM Wo_Comments c
-            JOIN Wo_Users u ON c.user_id = u.user_id
-            WHERE c.post_id = ?
-            ORDER BY c.time ASC
-            LIMIT ? OFFSET ?
-        ");
-        $stmt->execute([$post_id, $limit, $offset]);
-
-        $comments = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $comments[] = [
-                'id' => (int)$row['id'],
-                'post_id' => (int)$row['post_id'],
-                'user_id' => (int)$row['user_id'],
-                'username' => $row['username'],
-                'user_name' => trim($row['first_name'] . ' ' . $row['last_name']),
-                'user_avatar' => $row['avatar'],
-                'text' => $row['text'],
-                'created_time' => (int)$row['time'],
-                'reactions_count' => (int)($row['reaction'] ?? 0)
-            ];
-        }
-
-        echo json_encode([
-            'api_status' => 200,
-            'comments' => $comments
-        ]);
-        break;
-
-    // ======================== ADD COMMENT ========================
-    case 'add_comment':
-        $post_id = (int)($_POST['post_id'] ?? 0);
-        $text = trim($_POST['text'] ?? '');
-        $reply_to_id = (int)($_POST['reply_to_id'] ?? 0);
-
-        if (!$post_id || empty($text)) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'post_id and text are required']);
-            exit;
-        }
-
-        // Check if post exists
-        $stmt = $db->prepare("SELECT * FROM Wo_Posts WHERE id = ?");
-        $stmt->execute([$post_id]);
-        if (!$stmt->fetch()) {
-            echo json_encode(['api_status' => 404, 'error_message' => 'Post not found']);
-            exit;
-        }
-
-        $stmt = $db->prepare("
-            INSERT INTO Wo_Comments (user_id, post_id, text, time)
-            VALUES (?, ?, ?, ?)
-        ");
-        $stmt->execute([$user_id, $post_id, $text, time()]);
-
-        // Update comments count
-        $stmt = $db->prepare("UPDATE Wo_Posts SET comments = comments + 1 WHERE id = ?");
-        $stmt->execute([$post_id]);
-
-        echo json_encode([
-            'api_status' => 200,
-            'message' => 'Comment added'
-        ]);
-        break;
-
-    // ======================== DELETE COMMENT ========================
-    case 'delete_comment':
-        $comment_id = (int)($_POST['comment_id'] ?? 0);
-
-        if (!$comment_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'comment_id is required']);
-            exit;
-        }
-
-        // Get comment
-        $stmt = $db->prepare("SELECT c.*, p.page_id FROM Wo_Comments c JOIN Wo_Posts p ON c.post_id = p.id WHERE c.id = ?");
-        $stmt->execute([$comment_id]);
-        $comment = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$comment) {
-            echo json_encode(['api_status' => 404, 'error_message' => 'Comment not found']);
-            exit;
-        }
-
-        // Check permission (comment owner or channel admin)
-        if ((int)$comment['user_id'] !== $user_id && !isChannelAdmin($db, $user_id, $comment['page_id'])) {
-            echo json_encode(['api_status' => 403, 'error_message' => 'No permission to delete this comment']);
-            exit;
-        }
-
-        $stmt = $db->prepare("DELETE FROM Wo_Comments WHERE id = ?");
-        $stmt->execute([$comment_id]);
-
-        // Update comments count
-        $stmt = $db->prepare("UPDATE Wo_Posts SET comments = comments - 1 WHERE id = ? AND comments > 0");
-        $stmt->execute([$comment['post_id']]);
-
-        echo json_encode([
-            'api_status' => 200,
-            'message' => 'Comment deleted'
-        ]);
-        break;
-
-    // ======================== REACTIONS ========================
-    case 'add_post_reaction':
-    case 'remove_post_reaction':
-        $post_id = (int)($_POST['post_id'] ?? 0);
-        $emoji = trim($_POST['reaction'] ?? $_POST['emoji'] ?? '👍');
-
-        if (!$post_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
-            exit;
-        }
-
-        // Check if reaction exists
-        $stmt = $db->prepare("SELECT * FROM Wo_Post_Reactions WHERE post_id = ? AND user_id = ?");
-        $stmt->execute([$post_id, $user_id]);
-        $existing = $stmt->fetch();
-
-        if ($action === 'add_post_reaction') {
-            if ($existing) {
-                // Update reaction
-                $stmt = $db->prepare("UPDATE Wo_Post_Reactions SET reaction = ? WHERE post_id = ? AND user_id = ?");
-                $stmt->execute([$emoji, $post_id, $user_id]);
-            } else {
-                // Insert new reaction
-                $stmt = $db->prepare("INSERT INTO Wo_Post_Reactions (post_id, user_id, reaction, time) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$post_id, $user_id, $emoji, time()]);
-
-                // Update reaction count
-                $stmt = $db->prepare("UPDATE Wo_Posts SET reaction = reaction + 1 WHERE id = ?");
-                $stmt->execute([$post_id]);
-            }
-            echo json_encode(['api_status' => 200, 'message' => 'Reaction added']);
+        // Log critical config values that Wo_ShareFile() checks
+        if (isset($wo['config'])) {
+            logChannelMessage("Config loaded: YES", 'DEBUG');
+            logChannelMessage("fileSharing: " . ($wo['config']['fileSharing'] ?? 'NOT SET'), 'DEBUG');
+            logChannelMessage("maxUpload: " . ($wo['config']['maxUpload'] ?? 'NOT SET'), 'DEBUG');
+            logChannelMessage("allowedExtenstion: " . ($wo['config']['allowedExtenstion'] ?? 'NOT SET'), 'DEBUG');
+            logChannelMessage("mime_types: " . ($wo['config']['mime_types'] ?? 'NOT SET'), 'DEBUG');
         } else {
-            if ($existing) {
-                $stmt = $db->prepare("DELETE FROM Wo_Post_Reactions WHERE post_id = ? AND user_id = ?");
-                $stmt->execute([$post_id, $user_id]);
-
-                $stmt = $db->prepare("UPDATE Wo_Posts SET reaction = reaction - 1 WHERE id = ? AND reaction > 0");
-                $stmt->execute([$post_id]);
-            }
-            echo json_encode(['api_status' => 200, 'message' => 'Reaction removed']);
-        }
-        break;
-
-    case 'add_comment_reaction':
-        $comment_id = (int)($_POST['comment_id'] ?? 0);
-        $emoji = trim($_POST['reaction'] ?? '👍');
-
-        if (!$comment_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'comment_id is required']);
-            exit;
+            logChannelMessage("Config loaded: NO - \$wo['config'] is not set!", 'ERROR');
         }
 
-        // Simple implementation - just update reaction count
-        $stmt = $db->prepare("UPDATE Wo_Comments SET reaction = reaction + 1 WHERE id = ?");
-        $stmt->execute([$comment_id]);
+        // Check file exists and is readable
+        if (!file_exists($file_info['file'])) {
+            logChannelMessage("ERROR: Temp file does not exist: " . $file_info['file'], 'ERROR');
+        } else {
+            logChannelMessage("Temp file exists: " . $file_info['file'], 'DEBUG');
+            logChannelMessage("Temp file size: " . filesize($file_info['file']) . " bytes", 'DEBUG');
+        }
+        logChannelMessage("=== End Debug Info ===", 'DEBUG');
 
-        echo json_encode(['api_status' => 200, 'message' => 'Reaction added']);
-        break;
+        // Використовуємо функцію WoWonder для завантаження
+        $upload = Wo_ShareFile($file_info);
 
-    // ======================== REGISTER POST VIEW ========================
-    case 'register_post_view':
-        $post_id = (int)($_POST['post_id'] ?? 0);
+        logChannelMessage("Wo_ShareFile() returned: " . json_encode($upload), 'DEBUG');
 
-        if (!$post_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'post_id is required']);
-            exit;
+        if (empty($upload) || empty($upload['filename'])) {
+            logChannelMessage("Wo_ShareFile failed: " . json_encode($upload), 'ERROR');
+            return ['api_status' => 500, 'error_message' => 'Failed to upload avatar'];
         }
 
-        $stmt = $db->prepare("UPDATE Wo_Posts SET post_views = post_views + 1 WHERE id = ?");
-        $stmt->execute([$post_id]);
+        $avatar_url = $upload['filename'];
+        logChannelMessage("File uploaded successfully: $avatar_url", 'INFO');
 
-        echo json_encode(['api_status' => 200, 'message' => 'View registered']);
-        break;
-
-    // ======================== GET CHANNEL STATISTICS ========================
-    case 'get_channel_statistics':
-        $channel_id = (int)($_POST['channel_id'] ?? $_GET['channel_id'] ?? 0);
-
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
+        // Оновлюємо аватар в БД
+        // NOTE: Wo_GroupChat uses 'group_id' as PRIMARY KEY, not 'id'
+        $stmt = $db->prepare("UPDATE Wo_GroupChat SET avatar = ? WHERE group_id = ?");
+        if (!$stmt->execute([$avatar_url, $channel_id])) {
+            logChannelMessage("Database update failed", 'ERROR');
+            return ['api_status' => 500, 'error_message' => 'Failed to update avatar in database'];
         }
 
-        if (!isChannelAdmin($db, $user_id, $channel_id)) {
-            echo json_encode(['api_status' => 403, 'error_message' => 'Only admins can view statistics']);
-            exit;
-        }
+        logChannelMessage("User $user_id uploaded avatar for channel $channel_id: $avatar_url", 'INFO');
 
-        // Get subscribers count
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM Wo_Pages_Likes WHERE page_id = ?");
-        $stmt->execute([$channel_id]);
-        $subscribersCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'] ?? 0;
-
-        // Get total posts
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM Wo_Posts WHERE page_id = ? AND active = 1");
-        $stmt->execute([$channel_id]);
-        $postsCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'] ?? 0;
-
-        // Get total views
-        $stmt = $db->prepare("SELECT SUM(post_views) as total FROM Wo_Posts WHERE page_id = ?");
-        $stmt->execute([$channel_id]);
-        $totalViews = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
-
-        // Get total reactions
-        $stmt = $db->prepare("SELECT SUM(reaction) as total FROM Wo_Posts WHERE page_id = ?");
-        $stmt->execute([$channel_id]);
-        $totalReactions = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
-
-        echo json_encode([
+        return [
             'api_status' => 200,
-            'statistics' => [
-                'subscribers_count' => (int)$subscribersCount,
-                'posts_count' => (int)$postsCount,
-                'total_views' => (int)$totalViews,
-                'total_reactions' => (int)$totalReactions,
-                'avg_views_per_post' => $postsCount > 0 ? round($totalViews / $postsCount, 1) : 0
-            ]
-        ]);
-        break;
-
-    // ======================== GET CHANNEL SUBSCRIBERS ========================
-    case 'get_channel_subscribers':
-        $channel_id = (int)($_POST['channel_id'] ?? $_GET['channel_id'] ?? 0);
-        $limit = (int)($_POST['limit'] ?? $_GET['limit'] ?? 100);
-        $offset = (int)($_POST['offset'] ?? $_GET['offset'] ?? 0);
-
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
-        }
-
-        $stmt = $db->prepare("
-            SELECT u.user_id, u.username, u.first_name, u.last_name, u.avatar
-            FROM Wo_Pages_Likes pl
-            JOIN Wo_Users u ON pl.user_id = u.user_id
-            WHERE pl.page_id = ?
-            ORDER BY pl.id DESC
-            LIMIT ? OFFSET ?
-        ");
-        $stmt->execute([$channel_id, $limit, $offset]);
-
-        $subscribers = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $subscribers[] = [
-                'id' => (int)$row['user_id'],
-                'user_id' => (int)$row['user_id'],
-                'username' => $row['username'],
-                'name' => trim($row['first_name'] . ' ' . $row['last_name']),
-                'avatar_url' => $row['avatar']
-            ];
-        }
-
-        echo json_encode([
-            'api_status' => 200,
-            'subscribers' => $subscribers
-        ]);
-        break;
-
-    // ======================== SUBSCRIBE/UNSUBSCRIBE ========================
-    case 'subscribe_channel':
-        $channel_id = (int)($_POST['channel_id'] ?? 0);
-
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
-        }
-
-        // Check if already subscribed
-        $stmt = $db->prepare("SELECT * FROM Wo_Pages_Likes WHERE page_id = ? AND user_id = ?");
-        $stmt->execute([$channel_id, $user_id]);
-        if ($stmt->fetch()) {
-            echo json_encode(['api_status' => 200, 'message' => 'Already subscribed']);
-            exit;
-        }
-
-        $stmt = $db->prepare("INSERT INTO Wo_Pages_Likes (page_id, user_id, time) VALUES (?, ?, ?)");
-        $stmt->execute([$channel_id, $user_id, time()]);
-
-        echo json_encode(['api_status' => 200, 'message' => 'Subscribed successfully']);
-        break;
-
-    case 'unsubscribe_channel':
-        $channel_id = (int)($_POST['channel_id'] ?? 0);
-
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
-        }
-
-        $stmt = $db->prepare("DELETE FROM Wo_Pages_Likes WHERE page_id = ? AND user_id = ?");
-        $stmt->execute([$channel_id, $user_id]);
-
-        echo json_encode(['api_status' => 200, 'message' => 'Unsubscribed successfully']);
-        break;
-
-    // ======================== UPDATE CHANNEL ========================
-    case 'update_channel':
-        $channel_id = (int)($_POST['channel_id'] ?? 0);
-        $name = trim($_POST['name'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $username = trim($_POST['username'] ?? '');
-
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
-        }
-
-        if (!isChannelAdmin($db, $user_id, $channel_id)) {
-            echo json_encode(['api_status' => 403, 'error_message' => 'Only admins can update channel']);
-            exit;
-        }
-
-        $updates = [];
-        $params = [];
-
-        if (!empty($name)) {
-            $updates[] = "page_name = ?";
-            $params[] = $name;
-        }
-        if (!empty($description)) {
-            $updates[] = "page_description = ?";
-            $params[] = $description;
-        }
-
-        if (!empty($updates)) {
-            $params[] = $channel_id;
-            $stmt = $db->prepare("UPDATE Wo_Pages SET " . implode(', ', $updates) . " WHERE page_id = ?");
-            $stmt->execute($params);
-        }
-
-        // Get updated channel
-        $stmt = $db->prepare("SELECT * FROM Wo_Pages WHERE page_id = ?");
-        $stmt->execute([$channel_id]);
-        $channel = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        echo json_encode([
-            'api_status' => 200,
-            'message' => 'Channel updated',
-            'channel' => [
-                'id' => (int)$channel['page_id'],
-                'name' => $channel['page_name'],
-                'description' => $channel['page_description'] ?? '',
-                'avatar_url' => $channel['avatar'] ?? ''
-            ]
-        ]);
-        break;
-
-    // ======================== UPDATE SETTINGS ========================
-    case 'update_settings':
-        $channel_id = (int)($_POST['channel_id'] ?? 0);
-        $settings_json = $_POST['settings_json'] ?? '{}';
-
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
-        }
-
-        if (!isChannelAdmin($db, $user_id, $channel_id)) {
-            echo json_encode(['api_status' => 403, 'error_message' => 'Only admins can update settings']);
-            exit;
-        }
-
-        // For now, just acknowledge - settings can be stored in a separate table if needed
-        echo json_encode(['api_status' => 200, 'message' => 'Settings updated']);
-        break;
-
-    // ======================== ADMIN MANAGEMENT ========================
-    case 'add_channel_admin':
-        $channel_id = (int)($_POST['channel_id'] ?? 0);
-        $target_user_id = (int)($_POST['user_id'] ?? 0);
-        $user_search = trim($_POST['user_search'] ?? '');
-        $role = trim($_POST['role'] ?? 'admin');
-
-        if (!$channel_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id is required']);
-            exit;
-        }
-
-        // Only owner can add admins
-        if (isChannelAdmin($db, $user_id, $channel_id) !== 'owner') {
-            echo json_encode(['api_status' => 403, 'error_message' => 'Only owner can add admins']);
-            exit;
-        }
-
-        // Find user by search
-        if (empty($target_user_id) && !empty($user_search)) {
-            $stmt = $db->prepare("SELECT user_id FROM Wo_Users WHERE username = ? OR email = ?");
-            $stmt->execute([$user_search, $user_search]);
-            $found = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($found) {
-                $target_user_id = (int)$found['user_id'];
-            }
-        }
-
-        if (!$target_user_id) {
-            echo json_encode(['api_status' => 404, 'error_message' => 'User not found']);
-            exit;
-        }
-
-        // Check if already admin
-        $stmt = $db->prepare("SELECT * FROM page_admins WHERE page_id = ? AND user_id = ?");
-        $stmt->execute([$channel_id, $target_user_id]);
-        if ($stmt->fetch()) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'User is already an admin']);
-            exit;
-        }
-
-        $stmt = $db->prepare("INSERT INTO page_admins (page_id, user_id, role) VALUES (?, ?, ?)");
-        $stmt->execute([$channel_id, $target_user_id, $role]);
-
-        echo json_encode(['api_status' => 200, 'message' => 'Admin added']);
-        break;
-
-    case 'remove_channel_admin':
-        $channel_id = (int)($_POST['channel_id'] ?? 0);
-        $target_user_id = (int)($_POST['user_id'] ?? 0);
-
-        if (!$channel_id || !$target_user_id) {
-            echo json_encode(['api_status' => 400, 'error_message' => 'channel_id and user_id are required']);
-            exit;
-        }
-
-        if (isChannelAdmin($db, $user_id, $channel_id) !== 'owner') {
-            echo json_encode(['api_status' => 403, 'error_message' => 'Only owner can remove admins']);
-            exit;
-        }
-
-        $stmt = $db->prepare("DELETE FROM page_admins WHERE page_id = ? AND user_id = ?");
-        $stmt->execute([$channel_id, $target_user_id]);
-
-        echo json_encode(['api_status' => 200, 'message' => 'Admin removed']);
-        break;
-
-    // ======================== DEFAULT / UNKNOWN ACTION ========================
-    default:
-        echo json_encode([
-            'api_status' => 404,
-            'errors' => [
-                'error_id' => '1',
-                'error_text' => 'Error: 404 API Type Not Found'
-            ],
-            'error_message' => "Unknown action: $action"
-        ]);
-        break;
+            'message' => 'Avatar uploaded successfully',
+            'avatar_url' => $avatar_url
+        ];
+    } catch (Exception $e) {
+        logChannelMessage("Exception in uploadChannelAvatar: " . $e->getMessage(), 'ERROR');
+        return [
+            'api_status' => 500,
+            'error_message' => 'Server error: ' . $e->getMessage()
+        ];
+    }
 }
+
 ?>

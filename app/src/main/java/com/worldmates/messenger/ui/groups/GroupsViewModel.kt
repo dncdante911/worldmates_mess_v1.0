@@ -394,6 +394,9 @@ class GroupsViewModel : ViewModel() {
         }
     }
 
+    /**
+     * 📸 Завантаження аватара групи через Uri (використовується з EditGroupDialog)
+     */
     fun uploadGroupAvatar(groupId: Long, imageUri: android.net.Uri, context: android.content.Context) {
         if (UserSession.accessToken == null) {
             _error.value = "Користувач не авторизований"
@@ -405,44 +408,48 @@ class GroupsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // Конвертуємо Uri в File
-                val file = java.io.File(context.cacheDir, "avatar_${System.currentTimeMillis()}.jpg")
+                val file = java.io.File(context.cacheDir, "group_avatar_${System.currentTimeMillis()}.jpg")
                 context.contentResolver.openInputStream(imageUri)?.use { input ->
                     file.outputStream().use { output ->
                         input.copyTo(output)
                     }
                 }
 
-                // Створюємо RequestBody для groupId (параметр називається "id", не "group_id")
+                // Використовуємо спеціалізований endpoint upload_group_avatar.php
+                val accessTokenBody = okhttp3.RequestBody.create(
+                    "text/plain".toMediaType(),
+                    UserSession.accessToken!!
+                )
                 val groupIdBody = okhttp3.RequestBody.create(
                     "text/plain".toMediaType(),
                     groupId.toString()
                 )
-
-                // Створюємо MultipartBody.Part для аватарки
                 val requestFile = okhttp3.RequestBody.create(
                     "image/*".toMediaType(),
                     file
                 )
                 val avatarPart = okhttp3.MultipartBody.Part.createFormData(
-                    "avatar",  // Правильний API /api/v2/group_chat_v2.php очікує "avatar"
+                    "avatar",
                     file.name,
                     requestFile
                 )
 
-                // Відправляємо запит через /api/v2/group_chat_v2.php?type=upload_avatar
-                val response = RetrofitClient.apiService.uploadGroupAvatar(
-                    accessToken = UserSession.accessToken!!,
-                    type = "upload_avatar",  // Явно вказуємо тип
-                    groupId = groupIdBody,  // Параметр "id"
-                    avatar = avatarPart  // Параметр "avatar"
+                // Викликаємо правильний endpoint
+                val response = RetrofitClient.apiService.uploadGroupAvatarDedicated(
+                    accessToken = accessTokenBody,
+                    groupId = groupIdBody,
+                    avatar = avatarPart
                 )
 
                 if (response.apiStatus == 200) {
                     _error.value = null
                     fetchGroups() // Оновлюємо список груп
-                    Log.d("GroupsViewModel", "Аватарка завантажена успішно")
+                    // Також оновлюємо деталі групи
+                    fetchGroupDetails(groupId)
+                    Log.d("GroupsViewModel", "📸 Аватарка групи $groupId успішно завантажена: ${response.avatarUrl}")
                 } else {
-                    _error.value = response.errorMessage ?: "Не вдалося завантажити аватарку"
+                    _error.value = response.message ?: response.errorMessage ?: "Не вдалося завантажити аватарку"
+                    Log.e("GroupsViewModel", "❌ Помилка завантаження аватарки: ${response.message}")
                 }
 
                 // Видаляємо тимчасовий файл
@@ -452,7 +459,7 @@ class GroupsViewModel : ViewModel() {
             } catch (e: Exception) {
                 _error.value = "Помилка: ${e.localizedMessage}"
                 _isLoading.value = false
-                Log.e("GroupsViewModel", "Помилка завантаження аватарки", e)
+                Log.e("GroupsViewModel", "❌ Помилка завантаження аватарки", e)
             }
         }
     }
@@ -572,7 +579,7 @@ class GroupsViewModel : ViewModel() {
     }
 
     /**
-     * 📸 Загрузить аватар группы
+     * 📸 Завантаження аватара групи через File (використовується з галереї)
      */
     fun uploadGroupAvatar(
         groupId: Long,
@@ -589,18 +596,18 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Создаем RequestBody для файла
+                // Створюємо RequestBody для файла
                 val requestFile = okhttp3.RequestBody.create(
                     "image/*".toMediaType(),
                     imageFile
                 )
-                val body = okhttp3.MultipartBody.Part.createFormData(
+                val avatarPart = okhttp3.MultipartBody.Part.createFormData(
                     "avatar",
                     imageFile.name,
                     requestFile
                 )
 
-                // Создаем RequestBody для других параметров
+                // Створюємо RequestBody для параметрів
                 val accessTokenBody = okhttp3.RequestBody.create(
                     "text/plain".toMediaType(),
                     UserSession.accessToken!!
@@ -610,29 +617,31 @@ class GroupsViewModel : ViewModel() {
                     groupId.toString()
                 )
 
-                val response = RetrofitClient.apiService.uploadGroupAvatar(
+                // Використовуємо спеціалізований endpoint
+                val response = RetrofitClient.apiService.uploadGroupAvatarDedicated(
                     accessToken = accessTokenBody,
                     groupId = groupIdBody,
-                    avatar = body
+                    avatar = avatarPart
                 )
 
                 if (response.apiStatus == 200 && response.avatarUrl != null) {
                     _error.value = null
-                    // Обновляем детали группы
+                    // Оновлюємо деталі групи та список груп
                     fetchGroupDetails(groupId)
+                    fetchGroups()
                     onSuccess(response.avatarUrl)
-                    Log.d("GroupsViewModel", "📸 Group $groupId avatar uploaded: ${response.avatarUrl}")
+                    Log.d("GroupsViewModel", "📸 Аватарка групи $groupId завантажена: ${response.avatarUrl}")
                 } else {
-                    val errorMsg = response.message ?: "Не вдалося завантажити аватар"
+                    val errorMsg = response.message ?: response.errorMessage ?: "Не вдалося завантажити аватар"
                     _error.value = errorMsg
                     onError(errorMsg)
-                    Log.e("GroupsViewModel", "❌ Failed to upload avatar: ${response.message}")
+                    Log.e("GroupsViewModel", "❌ Помилка завантаження аватара: ${response.message}")
                 }
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 _error.value = errorMsg
                 onError(errorMsg)
-                Log.e("GroupsViewModel", "❌ Error uploading avatar", e)
+                Log.e("GroupsViewModel", "❌ Помилка завантаження аватара", e)
             } finally {
                 _isLoading.value = false
             }

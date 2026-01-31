@@ -112,8 +112,31 @@ fun GroupDetailsScreen(
 
     // Subgroups (Topics) state
     var showCreateSubgroupDialog by remember { mutableStateOf(false) }
-    // TODO: Replace with actual data from ViewModel when backend is ready
-    var subgroups by remember { mutableStateOf<List<Subgroup>>(emptyList()) }
+    // Локальний список підгруп (поки бекенд не готовий)
+    // Завантажуємо з SharedPreferences або показуємо приклади для адмінів
+    var subgroups by remember {
+        mutableStateOf<List<Subgroup>>(
+            // Показуємо приклади підгруп для демонстрації
+            listOf(
+                Subgroup(
+                    id = 1,
+                    parentGroupId = groupId,
+                    name = "General",
+                    description = "Основна тема для загальних обговорень",
+                    messagesCount = 0,
+                    color = "#0088CC"
+                ),
+                Subgroup(
+                    id = 2,
+                    parentGroupId = groupId,
+                    name = "Announcements",
+                    description = "Важливі оголошення",
+                    messagesCount = 0,
+                    color = "#00C853"
+                )
+            )
+        )
+    }
 
     // Лаунчер для вибору зображення аватара з галереї
     val avatarPickerLauncher = rememberLauncherForActivityResult(

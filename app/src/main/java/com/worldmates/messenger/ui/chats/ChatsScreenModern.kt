@@ -390,11 +390,23 @@ fun ChatsScreenModern(
                 )
             },
             onUploadAvatar = { uri ->
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = "Завантаження аватарок буде реалізовано пізніше",
-                        duration = SnackbarDuration.Short
-                    )
+                // Отримуємо ID вибраної групи
+                val selectedGroup = groupsViewModel.selectedGroup.value
+                if (selectedGroup != null) {
+                    groupsViewModel.uploadGroupAvatar(selectedGroup.id, uri, context)
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Завантаження аватарки...",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                } else {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Оберіть групу для зміни аватарки",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
             },
             isLoading = groupsViewModel.isLoading.collectAsState().value

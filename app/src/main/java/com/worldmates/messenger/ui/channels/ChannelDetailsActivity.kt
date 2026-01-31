@@ -267,8 +267,8 @@ fun ChannelDetailsScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                if (channel == null) {
-                    // Канал не знайдено
+                if (channel == null && !isLoadingPosts) {
+                    // Канал не знайдено (показуємо тільки після завантаження)
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -285,7 +285,17 @@ fun ChannelDetailsScreen(
                             Text("Повернутися")
                         }
                     }
-                } else {
+                } else if (channel == null && isLoadingPosts) {
+                    // Показуємо індикатор завантаження поки завантажується канал
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = PremiumColors.TelegramBlue
+                        )
+                    }
+                } else if (channel != null) {
                     // Відображаємо канал
                     LazyColumn(
                         modifier = Modifier

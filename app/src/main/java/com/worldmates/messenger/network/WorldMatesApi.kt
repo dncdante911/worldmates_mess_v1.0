@@ -404,7 +404,16 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): SearchMessagesResponse
 
-    // 📸 Upload Group Avatar
+    // 📸 Upload Group Avatar - Dedicated Endpoint (Recommended)
+    @Multipart
+    @POST("/api/v2/endpoints/upload_group_avatar.php")
+    suspend fun uploadGroupAvatarDedicated(
+        @Part("access_token") accessToken: RequestBody,
+        @Part("group_id") groupId: RequestBody,
+        @Part avatar: MultipartBody.Part
+    ): UploadAvatarResponse
+
+    // 📸 Upload Group Avatar - Legacy (via group_chat_v2)
     @Multipart
     @POST("/api/v2/endpoints/upload_group_avatar.php")
     suspend fun uploadGroupAvatar(
@@ -1330,8 +1339,10 @@ data class SearchMessagesResponse(
  */
 data class UploadAvatarResponse(
     @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("message") val message: String?,
-    @SerializedName("avatar_url") val avatarUrl: String? = null
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("error_message") val errorMessage: String? = null,
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
+    @SerializedName("url") val url: String? = null // Alternative URL field from server
 )
 
 /**

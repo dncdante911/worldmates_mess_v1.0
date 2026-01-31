@@ -38,6 +38,10 @@ import com.worldmates.messenger.data.model.GroupMember
 import com.worldmates.messenger.ui.groups.components.ChangeAvatarDialog
 import com.worldmates.messenger.ui.groups.components.GroupQrDialog
 import com.worldmates.messenger.ui.groups.components.JoinGroupByQrDialog
+import com.worldmates.messenger.ui.groups.components.ModernInviteMembersDialog
+import com.worldmates.messenger.ui.groups.components.SubgroupsSection
+import com.worldmates.messenger.ui.groups.components.Subgroup
+import com.worldmates.messenger.ui.groups.components.CreateSubgroupDialog
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import java.text.SimpleDateFormat
@@ -105,6 +109,11 @@ fun GroupDetailsScreen(
     var showGroupQrDialog by remember { mutableStateOf(false) }
     var groupQrCode by remember { mutableStateOf<String?>(null) }
     var groupJoinUrl by remember { mutableStateOf<String?>(null) }
+
+    // Subgroups (Topics) state
+    var showCreateSubgroupDialog by remember { mutableStateOf(false) }
+    // TODO: Replace with actual data from ViewModel when backend is ready
+    var subgroups by remember { mutableStateOf<List<Subgroup>>(emptyList()) }
 
     // Лаунчер для вибору зображення аватара з галереї
     val avatarPickerLauncher = rememberLauncherForActivityResult(
@@ -271,6 +280,26 @@ fun GroupDetailsScreen(
                 }
             }
 
+            // Subgroups (Topics) Section - like Telegram
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                SubgroupsSection(
+                    subgroups = subgroups,
+                    canCreateSubgroup = group.isAdmin,
+                    onSubgroupClick = { subgroup ->
+                        // TODO: Navigate to subgroup chat when backend is ready
+                        android.widget.Toast.makeText(
+                            context,
+                            "Topic: ${subgroup.name} - Coming soon!",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    onCreateSubgroupClick = {
+                        showCreateSubgroupDialog = true
+                    }
+                )
+            }
+
             // Members Section
             item {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -280,7 +309,7 @@ fun GroupDetailsScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Учасники • ${members.size}",
+                            text = "Members • ${members.size}",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Gray,
@@ -341,15 +370,50 @@ fun GroupDetailsScreen(
             )
         }
 
-        // Add Member Dialog
+        // Modern Add Member Dialog with search, selection, and invite link
         if (showAddMemberDialog) {
-            AddMemberDialog(
-                availableUsers = availableUsers.filter { user ->
-                    members.none { it.userId == user.userId }
-                },
+            ModernInviteMembersDialog(
+                groupName = group.name,
+                availableUsers = availableUsers,
+                existingMemberIds = members.map { it.userId },
                 onDismiss = { showAddMemberDialog = false },
-                onAddMember = { userId ->
-                    viewModel.addGroupMember(group.id, userId)
+                onInviteUsers = { userIds ->
+                    // Add each selected user to the group
+                    userIds.forEach { userId ->
+                        viewModel.addGroupMember(group.id, userId)
+                    }
+                    android.widget.Toast.makeText(
+                        context,
+                        "Invited ${userIds.size} user(s) to the group",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onSearchUsers = { query ->
+                    // Search for users when query changes
+                    viewModel.loadAvailableUsers()
+                },
+                isSearching = isLoading,
+                inviteLink = groupJoinUrl,
+                onShareLink = { url ->
+                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, "Join \"${group.name}\" group:\n$url")
+                    }
+                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share invite link"))
+                },
+                onGenerateQr = {
+                    viewModel.generateGroupQr(
+                        groupId = group.id,
+                        onSuccess = { qrCode, joinUrl ->
+                            groupQrCode = qrCode
+                            groupJoinUrl = joinUrl
+                            showGroupQrDialog = true
+                            showAddMemberDialog = false
+                        },
+                        onError = { error ->
+                            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             )
         }
@@ -461,6 +525,36 @@ fun GroupDetailsScreen(
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "Поділитися посиланням"))
                 }
+            )
+        }
+
+        // Create Subgroup (Topic) Dialog
+        if (showCreateSubgroupDialog) {
+            CreateSubgroupDialog(
+                onDismiss = { showCreateSubgroupDialog = false },
+                onCreate = { name, description, isPrivate, color ->
+                    // TODO: Connect to backend when ready
+                    // For now, add locally to demonstrate UI
+                    val newSubgroup = Subgroup(
+                        id = System.currentTimeMillis(),
+                        parentGroupId = group.id,
+                        name = name,
+                        description = description,
+                        isPrivate = isPrivate,
+                        color = color,
+                        membersCount = 1,
+                        messagesCount = 0
+                    )
+                    subgroups = subgroups + newSubgroup
+
+                    android.widget.Toast.makeText(
+                        context,
+                        "Topic \"$name\" created! (Backend integration pending)",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    showCreateSubgroupDialog = false
+                },
+                isLoading = isLoading
             )
         }
     }

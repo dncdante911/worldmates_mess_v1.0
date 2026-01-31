@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.outlined.Article
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import androidx.lifecycle.ViewModelProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -253,19 +254,11 @@ fun ChannelDetailsScreen(
         Scaffold(
             containerColor = Color.Transparent, // Прозорий фон щоб був видно BackgroundImage
             floatingActionButton = {
-                // FAB для створення поста (тільки для адмінів)
+                // Premium FAB для створення поста (тільки для адмінів)
                 if (channel?.isAdmin == true) {
-                    FloatingActionButton(
-                        onClick = { showCreatePostDialog = true },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Створити пост",
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    PremiumFAB(
+                        onClick = { showCreatePostDialog = true }
+                    )
                 }
             }
         ) { paddingValues ->
@@ -299,9 +292,9 @@ fun ChannelDetailsScreen(
                             .fillMaxSize()
                             .pullRefresh(pullRefreshState)
                     ) {
-                        // Шапка каналу
+                        // Шапка каналу - Premium UI
                         item {
-                            ChannelHeader(
+                            PremiumChannelHeader(
                                 channel = channel,
                                 onBackClick = onBackPressed,
                                 onSettingsClick = if (channel.isAdmin) {
@@ -320,16 +313,15 @@ fun ChannelDetailsScreen(
                             )
                         }
 
-                        // Кнопка підписки (якщо не адмін)
+                        // Кнопка підписки (якщо не адмін) - Premium UI
                         if (!channel.isAdmin) {
                             item {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(MaterialTheme.colorScheme.surface)
-                                        .padding(16.dp)
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
-                                    SubscribeButton(
+                                    PremiumSubscribeButton(
                                         isSubscribed = channel.isSubscribed,
                                         onToggle = {
                                             if (channel.isSubscribed) {
@@ -361,68 +353,53 @@ fun ChannelDetailsScreen(
                             }
                         }
 
-                        // Заголовок секції постів
+                        // Заголовок секції постів - Premium UI
                         item {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.surface
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Пости • ${posts.size}",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                        modifier = Modifier.padding(16.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
+                            PremiumSectionHeader(
+                                title = "Posts",
+                                count = posts.size
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
 
-                        // Список постів
+                        // Список постів - Premium UI
                         if (posts.isEmpty() && !isLoadingPosts) {
                             item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(64.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = "Поки що немає постів",
-                                            fontSize = 16.sp,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        if (channel.isAdmin) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            Text(
-                                                text = "Створіть перший пост!",
-                                                fontSize = 14.sp,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                            )
+                                PremiumEmptyState(
+                                    icon = Icons.Outlined.Article,
+                                    title = "No posts yet",
+                                    subtitle = if (channel.isAdmin) "Create your first post!" else null,
+                                    action = if (channel.isAdmin) {
+                                        {
+                                            Button(
+                                                onClick = { showCreatePostDialog = true },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = PremiumColors.TelegramBlue
+                                                )
+                                            ) {
+                                                Icon(Icons.Default.Add, contentDescription = null)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Create Post")
+                                            }
                                         }
-                                    }
-                                }
+                                    } else null
+                                )
                             }
                         } else {
                             items(
                                 items = posts.sortedByDescending { it.createdTime },
                                 key = { it.id }
                             ) { post ->
-                                ChannelPostCard(
+                                // Premium Post Card
+                                PremiumPostCard(
                                     post = post,
                                     onPostClick = {
                                         selectedPostForDetail = post
                                         detailsViewModel.loadComments(post.id)
                                         detailsViewModel.registerPostView(
                                             postId = post.id,
-                                            onSuccess = { /* Просмотр зареєстровано */ },
-                                            onError = { /* Помилка реєстрації, але не показуємо користувачу */ }
+                                            onSuccess = { /* View registered */ },
+                                            onError = { /* Silent fail */ }
                                         )
                                         showPostDetailDialog = true
                                     },
@@ -431,10 +408,10 @@ fun ChannelDetailsScreen(
                                             postId = post.id,
                                             emoji = emoji,
                                             onSuccess = {
-                                                Toast.makeText(context, "Реакцію додано!", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "Reaction added!", Toast.LENGTH_SHORT).show()
                                             },
                                             onError = { error ->
-                                                Toast.makeText(context, "Помилка: $error", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
                                             }
                                         )
                                     },
@@ -443,13 +420,12 @@ fun ChannelDetailsScreen(
                                         showCommentsSheet = true
                                     },
                                     onShareClick = {
-                                        // Використовуємо Android Share Intent для поширення поста
                                         val shareText = buildString {
                                             append(post.text)
                                             append("\n\n")
-                                            append("Від: ${post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}"}")
+                                            append("By: ${post.authorName ?: post.authorUsername ?: "User #${post.authorId}"}")
                                             append("\n")
-                                            append("Канал: ${channel?.name ?: "WorldMates Channel"}")
+                                            append("Channel: ${channel?.name ?: "WorldMates Channel"}")
                                         }
 
                                         val sendIntent = android.content.Intent().apply {
@@ -458,7 +434,7 @@ fun ChannelDetailsScreen(
                                             type = "text/plain"
                                         }
 
-                                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Поділитися постом")
+                                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Share post")
                                         context.startActivity(shareIntent)
                                     },
                                     onMoreClick = {
@@ -466,14 +442,12 @@ fun ChannelDetailsScreen(
                                         showPostOptions = true
                                     },
                                     canEdit = channel.isAdmin,
-                                    modifier = Modifier
-                                        .padding(horizontal = 0.dp, vertical = 0.dp)
-                                        .animateItem()
+                                    modifier = Modifier.animateItem()
                                 )
                             }
                         }
 
-                        // Індикатор завантаження
+                        // Premium Loading Indicator
                         if (isLoadingPosts && posts.isNotEmpty()) {
                             item {
                                 Box(
@@ -484,7 +458,7 @@ fun ChannelDetailsScreen(
                                 ) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(32.dp),
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = PremiumColors.TelegramBlue
                                     )
                                 }
                             }

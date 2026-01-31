@@ -1,7 +1,10 @@
 package com.worldmates.messenger.ui.channels
-import com.worldmates.messenger.util.toFullMediaUrl
 
+import com.worldmates.messenger.util.toFullMediaUrl
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,15 +12,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -40,23 +49,63 @@ fun ChannelPostCard(
     onShareClick: () -> Unit = {},
     onMoreClick: () -> Unit = {},
     canEdit: Boolean = false,
+    userKarmaScore: Float? = null,
+    userTrustLevel: String? = null,
     modifier: Modifier = Modifier
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "post_scale"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 6.dp,
+        animationSpec = tween(200),
+        label = "post_elevation"
+    )
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .clickable(onClick = onPostClick),
-        shape = RoundedCornerShape(20.dp), // Современные rounded corners
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onPostClick
+            ),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp,
-            pressedElevation = 8.dp,
-            hoveredElevation = 6.dp
+            defaultElevation = elevation,
+            pressedElevation = 2.dp,
+            hoveredElevation = 8.dp
         )
     ) {
+        // Gradient accent line at top
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.tertiary,
+                            MaterialTheme.colorScheme.secondary
+                        )
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -139,13 +188,25 @@ fun ChannelPostCard(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
-                        Text(
-                            text = post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            letterSpacing = 0.15.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = post.authorName ?: post.authorUsername ?: "User #${post.authorId}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                letterSpacing = 0.15.sp
+                            )
+                            // User karma/trust badge
+                            if (userKarmaScore != null && userKarmaScore > 0) {
+                                KarmaMiniBadge(score = userKarmaScore)
+                            }
+                            if (userTrustLevel != null) {
+                                TrustMiniBadge(trustLevel = userTrustLevel)
+                            }
+                        }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -2361,3 +2422,79 @@ fun PostDetailDialog(
         }
     )
 }
+
+// ==================== KARMA & TRUST BADGES ====================
+
+/**
+ * Мини-badge для отображения кармы пользователя в постах
+ */
+@Composable
+fun KarmaMiniBadge(
+    score: Float,
+    modifier: Modifier = Modifier
+) {
+    val scoreColor = when {
+        score >= 4.0f -> Color(0xFF00C851)
+        score >= 3.0f -> Color(0xFF00BCD4)
+        score >= 2.0f -> Color(0xFFFFBB33)
+        else -> Color(0xFFFF4444)
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(6.dp),
+        color = scoreColor.copy(alpha = 0.15f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Icon(
+                Icons.Default.Star,
+                contentDescription = null,
+                tint = scoreColor,
+                modifier = Modifier.size(10.dp)
+            )
+            Text(
+                text = String.format("%.1f", score),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = scoreColor
+            )
+        }
+    }
+}
+
+/**
+ * Мини-badge для отображения уровня доверия
+ */
+@Composable
+fun TrustMiniBadge(
+    trustLevel: String,
+    modifier: Modifier = Modifier
+) {
+    val (color, icon) = when (trustLevel.lowercase()) {
+        "verified" -> Pair(Color(0xFF00C851), Icons.Default.Verified)
+        "trusted" -> Pair(Color(0xFF0A84FF), Icons.Default.ThumbUp)
+        "neutral" -> Pair(Color(0xFF8E8E93), Icons.Default.Person)
+        "untrusted" -> Pair(Color(0xFFFF4444), Icons.Default.Warning)
+        else -> Pair(Color(0xFF8E8E93), Icons.Default.Person)
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(6.dp),
+        color = color.copy(alpha = 0.15f)
+    ) {
+        Icon(
+            icon,
+            contentDescription = trustLevel,
+            tint = color,
+            modifier = Modifier
+                .padding(3.dp)
+                .size(12.dp)
+        )
+    }
+}
+

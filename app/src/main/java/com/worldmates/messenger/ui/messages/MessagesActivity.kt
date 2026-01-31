@@ -63,13 +63,6 @@ class MessagesActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🚨🚨🚨 КРИТИЧНИЙ ТЕСТ - МАЄ З'ЯВИТИСЬ ПРИ ВІДКРИТТІ ЧАТУ! 🚨🚨🚨
-        android.widget.Toast.makeText(
-            this,
-            "🚨 НОВИЙ КОД ПРАЦЮЄ! Версія: 2.0 🚨",
-            android.widget.Toast.LENGTH_LONG
-        ).show()
-
         // Дозволяємо Compose керувати window insets (клавіатура, навігація)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 

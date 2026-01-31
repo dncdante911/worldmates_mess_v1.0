@@ -58,6 +58,9 @@ import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.network.NetworkQualityMonitor
 import com.worldmates.messenger.ui.theme.rememberThemeState
 import com.worldmates.messenger.ui.theme.PresetBackground
+import com.worldmates.messenger.ui.components.UserProfileMenuSheet
+import com.worldmates.messenger.ui.components.UserMenuData
+import com.worldmates.messenger.ui.components.UserMenuAction
 import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
 import com.worldmates.messenger.ui.preferences.rememberQuickReaction
 import com.worldmates.messenger.ui.preferences.rememberUIStyle
@@ -167,6 +170,10 @@ fun MessagesScreen(
             viewModel.loadForwardGroups()
         }
     }
+
+    // 👤 Меню профілю користувача (при кліку на ім'я в групі)
+    var showUserProfileMenu by remember { mutableStateOf(false) }
+    var selectedUserForMenu by remember { mutableStateOf<UserMenuData?>(null) }
 
     // ❤️ Быстрая реакция при двойном тапе
     var showQuickReaction by remember { mutableStateOf(false) }
@@ -705,12 +712,17 @@ fun MessagesScreen(
                             // 👤 Параметри для відображення імені в групових чатах
                             isGroup = isGroup,
                             onSenderNameClick = { senderId ->
-                                // Відкриваємо профіль відправника
-                                context.startActivity(
-                                    android.content.Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java).apply {
-                                        putExtra("user_id", senderId)
-                                    }
+                                // Шукаємо повідомлення з цим відправником для отримання даних
+                                val senderMessage = messages.find { it.fromId == senderId }
+                                selectedUserForMenu = UserMenuData(
+                                    userId = senderId,
+                                    username = senderMessage?.senderName ?: "User",
+                                    name = senderMessage?.senderName,
+                                    avatar = senderMessage?.senderAvatar,
+                                    isVerified = false,
+                                    isOnline = false
                                 )
+                                showUserProfileMenu = true
                             }
                         )
                     }  // Закриття AnimatedVisibility
@@ -806,6 +818,51 @@ fun MessagesScreen(
                         showContextMenu = false
                         selectedMessage = null
                     }
+                )
+            }
+
+            // 👤 User Profile Menu (при кліку на ім'я в групі)
+            if (showUserProfileMenu && selectedUserForMenu != null) {
+                UserProfileMenuSheet(
+                    user = selectedUserForMenu!!,
+                    onDismiss = {
+                        showUserProfileMenu = false
+                        selectedUserForMenu = null
+                    },
+                    onAction = { action ->
+                        when (action) {
+                            is UserMenuAction.ViewProfile -> {
+                                // Відкриваємо повний профіль
+                                context.startActivity(
+                                    android.content.Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java).apply {
+                                        putExtra("user_id", selectedUserForMenu?.userId)
+                                    }
+                                )
+                            }
+                            is UserMenuAction.SendMessage -> {
+                                // Відкриваємо приватний чат з користувачем
+                                context.startActivity(
+                                    android.content.Intent(context, com.worldmates.messenger.ui.messages.MessagesActivity::class.java).apply {
+                                        putExtra("recipient_id", selectedUserForMenu?.userId)
+                                        putExtra("recipient_name", selectedUserForMenu?.name ?: selectedUserForMenu?.username)
+                                        putExtra("recipient_avatar", selectedUserForMenu?.avatar ?: "")
+                                    }
+                                )
+                            }
+                            is UserMenuAction.CopyUsername -> {
+                                // Копіюємо username
+                                clipboardManager.setText(AnnotatedString("@${selectedUserForMenu?.username}"))
+                                android.widget.Toast.makeText(context, "Username скопійовано", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            else -> {
+                                // Інші дії - показуємо toast
+                                android.widget.Toast.makeText(context, "Дія: $action", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        showUserProfileMenu = false
+                        selectedUserForMenu = null
+                    },
+                    showChatOptions = false
                 )
             }
 

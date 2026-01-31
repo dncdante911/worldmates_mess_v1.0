@@ -570,9 +570,9 @@ fun ChatsScreen(
                 },
                 onUploadAvatar = { uri ->
                     // Завантаження нової аватарки групи
-                    val selectedGroup = groupsViewModel.selectedGroup.value
-                    if (selectedGroup != null) {
-                        groupsViewModel.uploadGroupAvatar(selectedGroup.id, uri, this@ChatsActivity)
+                    val currentGroup = groupsViewModel.selectedGroup.value
+                    if (currentGroup != null) {
+                        groupsViewModel.uploadGroupAvatar(currentGroup.id, uri, context)
                         scope.launch {
                             snackbarHostState.showSnackbar(
                                 message = "Завантаження аватарки...",

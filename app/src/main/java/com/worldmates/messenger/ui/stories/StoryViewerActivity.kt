@@ -415,7 +415,7 @@ fun StoryViewerScreen(
 
     // Bottom sheets - они должны быть вне HorizontalPager
     if (showComments) {
-        CommentsBottomSheet(
+        StoryCommentsBottomSheet(
             comments = comments,
             onDismiss = { showComments = false },
             onAddComment = { text ->
@@ -741,7 +741,7 @@ fun StoryActionButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CommentsBottomSheet(
+fun StoryCommentsBottomSheet(
     comments: List<StoryComment>,
     onDismiss: () -> Unit,
     onAddComment: (String) -> Unit,
@@ -785,7 +785,7 @@ fun CommentsBottomSheet(
                     items = comments,
                     key = { comment -> comment.id }
                 ) { comment ->
-                    CommentItem(
+                    StoryCommentItem(
                         comment = comment,
                         onDelete = { onDeleteComment(comment.id) },
                         uiStyle = uiStyle
@@ -835,7 +835,7 @@ fun CommentsBottomSheet(
 }
 
 @Composable
-fun CommentItem(
+fun StoryCommentItem(
     comment: StoryComment,
     onDelete: () -> Unit,
     uiStyle: UIStyle = UIStyle.WORLDMATES

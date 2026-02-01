@@ -31,7 +31,7 @@ import com.worldmates.messenger.network.SearchUser
 fun CreateGroupDialog(
     onDismiss: () -> Unit,
     availableUsers: List<SearchUser>,
-    onCreateGroup: (name: String, description: String, selectedUserIds: List<Long>, isPrivate: Boolean) -> Unit,
+    onCreateGroup: (name: String, description: String, selectedUserIds: List<Long>, isPrivate: Boolean, avatarUri: Uri?) -> Unit,
     isLoading: Boolean = false
 ) {
     var groupName by remember { mutableStateOf("") }
@@ -100,7 +100,8 @@ fun CreateGroupDialog(
                                                 groupName.trim(),
                                                 groupDescription.trim(),
                                                 selectedUsers.toList(),
-                                                isPrivate
+                                                isPrivate,
+                                                selectedAvatarUri
                                             )
                                         }
                                     }

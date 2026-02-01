@@ -1313,7 +1313,7 @@ fun UserSearchDialog(
 }
 
 /**
- * Контекстне меню для контактів (Перейменувати, Видалити)
+ * Контекстне меню для контактів (Профіль, Перейменувати, Видалити)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1322,7 +1322,8 @@ fun ContactContextMenu(
     onDismiss: () -> Unit,
     onRename: (Chat) -> Unit,
     onDelete: (Chat) -> Unit,
-    nicknameRepository: ContactNicknameRepository
+    nicknameRepository: ContactNicknameRepository,
+    onViewProfile: ((Chat) -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState()
     val colorScheme = MaterialTheme.colorScheme
@@ -1347,6 +1348,42 @@ fun ContactContextMenu(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 color = colorScheme.onSurface
             )
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // View Profile
+            val context = LocalContext.current
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onDismiss()
+                        if (onViewProfile != null) {
+                            onViewProfile(chat)
+                        } else {
+                            // Відкриваємо профіль користувача
+                            val intent = android.content.Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java).apply {
+                                putExtra("user_id", chat.userId)
+                            }
+                            context.startActivity(intent)
+                        }
+                    }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Профіль",
+                    tint = colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Переглянути профіль",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colorScheme.onSurface
+                )
+            }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 

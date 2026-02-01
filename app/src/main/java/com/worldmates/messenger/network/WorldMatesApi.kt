@@ -1342,7 +1342,8 @@ data class VerificationResponse(
  */
 data class GenericResponse(
     @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("message") val message: String?
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
 )
 
 /**

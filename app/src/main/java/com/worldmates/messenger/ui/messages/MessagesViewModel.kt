@@ -1668,7 +1668,7 @@ class MessagesViewModel(application: Application) :
                     onSuccess()
                     Log.d(TAG, "🗑️ Chat history cleared")
                 } else {
-                    val errorMsg = response.errorMessage ?: "Не вдалося очистити історію"
+                    val errorMsg = response.message ?: "Не вдалося очистити історію"
                     onError(errorMsg)
                     Log.e(TAG, "❌ Failed to clear chat history: $errorMsg")
                 }

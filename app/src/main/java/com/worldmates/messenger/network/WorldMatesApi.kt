@@ -785,7 +785,7 @@ interface WorldMatesApi {
     suspend fun clearChatHistory(
         @Query("access_token") accessToken: String,
         @Field("user_id") userId: Long
-    ): GenericApiResponse
+    ): GenericResponse
 
     /**
      * Очистити історію групового чату
@@ -795,7 +795,7 @@ interface WorldMatesApi {
     suspend fun clearGroupChatHistory(
         @Query("access_token") accessToken: String,
         @Field("group_id") groupId: Long
-    ): GenericApiResponse
+    ): GenericResponse
 
     // ==================== USER BLOCKING ====================
 

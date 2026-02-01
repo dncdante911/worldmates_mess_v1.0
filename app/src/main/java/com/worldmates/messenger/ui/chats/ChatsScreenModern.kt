@@ -337,15 +337,18 @@ fun ChatsScreenModern(
     // Діалоги
     // Create Group Dialog
     if (showCreateGroupDialog) {
+        val context = LocalContext.current
         com.worldmates.messenger.ui.groups.CreateGroupDialog(
             onDismiss = { showCreateGroupDialog = false },
             availableUsers = availableUsers,
-            onCreateGroup = { name, description, memberIds, isPrivate ->
+            onCreateGroup = { name, description, memberIds, isPrivate, avatarUri ->
                 groupsViewModel.createGroup(
                     name = name,
                     description = description,
                     memberIds = memberIds,
                     isPrivate = isPrivate,
+                    avatarUri = avatarUri,
+                    context = context,
                     onSuccess = {
                         showCreateGroupDialog = false
                     }

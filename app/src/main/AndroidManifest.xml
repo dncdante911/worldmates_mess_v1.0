@@ -154,6 +154,14 @@
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.chats.ChatsActivity" />
 
+        <!-- Theme Settings Activity -->
+        <activity
+            android:name=".ui.theme.ThemeSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:parentActivityName=".ui.messages.MessagesActivity" />
+
         <!-- User Profile Activity -->
         <activity
             android:name=".ui.profile.UserProfileActivity"

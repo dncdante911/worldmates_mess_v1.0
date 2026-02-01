@@ -7,16 +7,16 @@ import com.google.gson.annotations.SerializedName
  */
 data class UserRating(
     @SerializedName("user_id")
-    val userId: Long,
+    val userId: Long = 0,
 
     @SerializedName("username")
-    val username: String,
+    val username: String? = null,
 
     @SerializedName("name")
-    val name: String,
+    val name: String? = null,
 
     @SerializedName("avatar")
-    val avatar: String?,
+    val avatar: String? = null,
 
     @SerializedName("likes")
     val likes: Int = 0,
@@ -57,13 +57,13 @@ data class UserRating(
  */
 data class MyRating(
     @SerializedName("type")
-    val type: String, // "like" or "dislike"
+    val type: String? = null, // "like" or "dislike"
 
     @SerializedName("comment")
-    val comment: String?,
+    val comment: String? = null,
 
     @SerializedName("created_at")
-    val createdAt: String
+    val createdAt: String? = null
 )
 
 /**

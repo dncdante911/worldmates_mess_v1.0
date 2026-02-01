@@ -1065,33 +1065,74 @@ fun CommentsBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Add comment field
+            // Add comment field - redesigned for better UX
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
             ) {
+                // Main input row with TextField and Send button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    TextField(
+                    // Text input field - takes most of the space
+                    OutlinedTextField(
                         value = commentText,
                         onValueChange = { commentText = it },
                         modifier = Modifier
                             .weight(1f)
-                            .padding(end = 8.dp),
-                        placeholder = { Text("Додати коментар...") },
-                        maxLines = 3,
-                        shape = RoundedCornerShape(24.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
+                            .heightIn(min = 56.dp, max = 150.dp),
+                        placeholder = { Text("Напишіть коментар...") },
+                        maxLines = 5,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Send button - prominent
+                    Surface(
+                        onClick = {
+                            if (commentText.isNotBlank()) {
+                                onAddComment(commentText)
+                                commentText = ""
+                            }
+                        },
+                        enabled = commentText.isNotBlank(),
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = if (commentText.isNotBlank())
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "Надіслати",
+                                tint = if (commentText.isNotBlank())
+                                    MaterialTheme.colorScheme.onPrimary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Quick action buttons row (stickers, emoji, GIF)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     // Strapi Stickers button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             showStrapiPicker = !showStrapiPicker
                             if (showStrapiPicker) {
@@ -1102,14 +1143,22 @@ fun CommentsBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.InsertEmoticon,
-                            contentDescription = "Стікери",
+                            contentDescription = null,
                             tint = if (showStrapiPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Стікери",
+                            fontSize = 12.sp,
+                            color = if (showStrapiPicker) MaterialTheme.colorScheme.primary
                                    else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     // Emoji button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             showEmojiPicker = !showEmojiPicker
                             if (showEmojiPicker) {
@@ -1120,14 +1169,22 @@ fun CommentsBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.EmojiEmotions,
-                            contentDescription = "Емоджі",
+                            contentDescription = null,
                             tint = if (showEmojiPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Емодзі",
+                            fontSize = 12.sp,
+                            color = if (showEmojiPicker) MaterialTheme.colorScheme.primary
                                    else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     // GIF button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             showGifPicker = !showGifPicker
                             if (showGifPicker) {
@@ -1138,29 +1195,17 @@ fun CommentsBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Gif,
-                            contentDescription = "GIF",
+                            contentDescription = null,
                             tint = if (showGifPicker) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
-                    }
-
-                    // Send button
-                    IconButton(
-                        onClick = {
-                            if (commentText.isNotBlank()) {
-                                onAddComment(commentText)
-                                commentText = ""
-                            }
-                        },
-                        enabled = commentText.isNotBlank()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = "Надіслати",
-                            tint = if (commentText.isNotBlank())
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "GIF",
+                            fontSize = 12.sp,
+                            color = if (showGifPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

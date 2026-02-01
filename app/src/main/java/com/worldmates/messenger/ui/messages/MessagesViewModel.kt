@@ -1632,6 +1632,91 @@ class MessagesViewModel(application: Application) :
 
     // ==================== END MEDIA LOADING ====================
 
+    // ==================== CHAT ACTIONS ====================
+
+    /**
+     * 🗑️ Очистити історію чату
+     */
+    fun clearChatHistory(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Не авторизовано")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = if (groupId != 0L) {
+                    // Очищення для групи
+                    RetrofitClient.apiService.clearGroupChatHistory(
+                        accessToken = UserSession.accessToken!!,
+                        groupId = groupId
+                    )
+                } else {
+                    // Очищення для приватного чату
+                    RetrofitClient.apiService.clearChatHistory(
+                        accessToken = UserSession.accessToken!!,
+                        userId = recipientId
+                    )
+                }
+
+                if (response.apiStatus == 200) {
+                    // Очищаємо локальний список повідомлень
+                    _messages.value = emptyList()
+                    onSuccess()
+                    Log.d(TAG, "🗑️ Chat history cleared")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося очистити історію"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to clear chat history: $errorMsg")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error clearing chat history", e)
+            }
+        }
+    }
+
+    /**
+     * 🚫 Заблокувати користувача
+     */
+    fun blockUser(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || recipientId == 0L) {
+            onError("Не авторизовано або невірний користувач")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.blockUser(
+                    accessToken = UserSession.accessToken!!,
+                    userId = recipientId
+                )
+
+                if (response.apiStatus == 200) {
+                    onSuccess()
+                    Log.d(TAG, "🚫 User $recipientId blocked")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося заблокувати користувача"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to block user: $errorMsg")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error blocking user", e)
+            }
+        }
+    }
+
+    // ==================== END CHAT ACTIONS ====================
+
     override fun onCleared() {
         super.onCleared()
 

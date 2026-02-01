@@ -117,7 +117,13 @@ try {
 
     if (!$is_owner) {
         // Check admin in group chat users
-        $stmt = $pdo->prepare("SELECT user_id FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ? AND admin = '1' LIMIT 1");
+        // Support both legacy (admin='1') and new (role='admin'/'owner') fields
+        $stmt = $pdo->prepare("
+            SELECT user_id FROM Wo_GroupChatUsers
+            WHERE group_id = ? AND user_id = ?
+            AND (admin = '1' OR role IN ('admin', 'owner', 'moderator'))
+            LIMIT 1
+        ");
         $stmt->execute([$group_id, $user_id]);
         $is_admin = $stmt->fetch();
 

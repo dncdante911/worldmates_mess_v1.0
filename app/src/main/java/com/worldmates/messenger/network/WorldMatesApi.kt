@@ -775,6 +775,28 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): GroupListResponse
 
+    // ==================== CHAT HISTORY ====================
+
+    /**
+     * Очистити історію приватного чату
+     */
+    @FormUrlEncoded
+    @POST("?type=delete_chat")
+    suspend fun clearChatHistory(
+        @Query("access_token") accessToken: String,
+        @Field("user_id") userId: Long
+    ): GenericApiResponse
+
+    /**
+     * Очистити історію групового чату
+     */
+    @FormUrlEncoded
+    @POST("?type=delete_group_chat")
+    suspend fun clearGroupChatHistory(
+        @Query("access_token") accessToken: String,
+        @Field("group_id") groupId: Long
+    ): GenericApiResponse
+
     // ==================== USER BLOCKING ====================
 
     /**

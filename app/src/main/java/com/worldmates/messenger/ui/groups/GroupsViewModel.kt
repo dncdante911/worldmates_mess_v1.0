@@ -40,12 +40,10 @@ class GroupsViewModel : ViewModel() {
     val error: StateFlow<String?> = _error
 
     init {
-        // Добавляем задержку перед первым запросом
-        // чтобы токен успел активироваться на сервере
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(2500) // 2.5 секунды задержка (чуть больше чем в ChatsViewModel)
-            fetchGroups()
-        }
+        // Загружаем группы сразу при инициализации
+        // isLoading = true покажет индикатор загрузки вместо "групи не знайдено"
+        _isLoading.value = true
+        fetchGroups()
     }
 
     fun fetchGroups() {
@@ -144,6 +142,8 @@ class GroupsViewModel : ViewModel() {
         description: String,
         memberIds: List<Long>,
         isPrivate: Boolean,
+        avatarUri: android.net.Uri? = null,
+        context: android.content.Context? = null,
         onSuccess: () -> Unit
     ) {
         if (UserSession.accessToken == null) {
@@ -181,9 +181,19 @@ class GroupsViewModel : ViewModel() {
                     Log.e("GroupsViewModel", "Response is null!")
                 } else if (response.apiStatus == 200) {
                     _error.value = null
+
+                    // Отримуємо group_id з відповіді для завантаження аватара
+                    val groupId = response.groupId ?: response.group?.id
+
+                    // 📸 Завантажуємо аватар якщо він був вибраний
+                    if (avatarUri != null && context != null && groupId != null) {
+                        Log.d("GroupsViewModel", "📸 Завантажуємо аватар для групи $groupId")
+                        uploadGroupAvatar(groupId, avatarUri, context)
+                    }
+
                     fetchGroups()
                     onSuccess()
-                    Log.d("GroupsViewModel", "Група створена успішно")
+                    Log.d("GroupsViewModel", "Група створена успішно, id=$groupId")
                 } else {
                     _error.value = response.errorMessage ?: "Не вдалося створити групу (код: ${response.apiStatus})"
                     Log.e("GroupsViewModel", "API error: ${response.errorMessage}, code: ${response.errorCode}")

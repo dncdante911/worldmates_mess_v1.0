@@ -389,8 +389,19 @@ fun MessagesScreen(
                 onBackPressed = onBackPressed,
                 onUserProfileClick = {
                     Log.d("MessagesScreen", "Відкриваю профіль користувача: $recipientName")
-                    // TODO: Відкрити повний профіль користувача
-                    android.widget.Toast.makeText(context, "Профіль: $recipientName", android.widget.Toast.LENGTH_SHORT).show()
+                    // Відкриваємо профіль користувача
+                    if (!isGroup) {
+                        val intent = android.content.Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java).apply {
+                            putExtra("user_id", viewModel.getRecipientId())
+                        }
+                        context.startActivity(intent)
+                    } else {
+                        // Для груп - відкриваємо деталі групи
+                        val intent = android.content.Intent(context, com.worldmates.messenger.ui.groups.GroupDetailsActivity::class.java).apply {
+                            putExtra("group_id", viewModel.getGroupId())
+                        }
+                        context.startActivity(intent)
+                    }
                 },
                 onCallClick = {
                     // 📞 Аудіо дзвінок
@@ -465,8 +476,14 @@ fun MessagesScreen(
                 },
                 onClearHistoryClick = {
                     Log.d("MessagesScreen", "Очищення історії чату")
-                    // TODO: Реалізувати viewModel.clearChatHistory() в MessagesViewModel
-                    android.widget.Toast.makeText(context, "Очищення історії поки недоступне", android.widget.Toast.LENGTH_SHORT).show()
+                    viewModel.clearChatHistory(
+                        onSuccess = {
+                            android.widget.Toast.makeText(context, "Історію очищено", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        onError = { error ->
+                            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 },
                 onChangeWallpaperClick = {
                     Log.d("MessagesScreen", "Зміна фону чату")

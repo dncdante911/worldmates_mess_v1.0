@@ -486,10 +486,12 @@ fun MessagesScreen(
                     )
                 },
                 onChangeWallpaperClick = {
-                    Log.d("MessagesScreen", "Зміна фону чату")
-                    // TODO: Відкрити вибір фону
-                    android.widget.Toast.makeText(context, "Вибір фону поки недоступний", android.widget.Toast.LENGTH_SHORT).show()
+                    Log.d("MessagesScreen", "Відкриваю налаштування теми для зміни фону")
+                    // Відкриваємо налаштування теми для вибору фону
+                    val intent = android.content.Intent(context, com.worldmates.messenger.ui.theme.ThemeSettingsActivity::class.java)
+                    context.startActivity(intent)
                 },
+                isMuted = if (isGroup) currentGroup?.isMuted == true else false,
                 // 🔥 Параметри режиму вибору
                 isSelectionMode = isSelectionMode,
                 selectedCount = selectedMessages.size,
@@ -1203,6 +1205,7 @@ fun MessagesHeaderBar(
     onChangeWallpaperClick: () -> Unit = {},
     onBlockClick: () -> Unit = {},
     isUserBlocked: Boolean = false,
+    isMuted: Boolean = false,
     // 🔥 Параметри для режиму вибору
     isSelectionMode: Boolean = false,
     selectedCount: Int = 0,
@@ -1359,13 +1362,19 @@ fun MessagesHeaderBar(
                         )
                         Divider()
                         DropdownMenuItem(
-                            text = { Text("Вимкнути сповіщення") },
+                            text = {
+                                Text(if (isMuted) "Увімкнути сповіщення" else "Вимкнути сповіщення")
+                            },
                             onClick = {
                                 showUserMenu = false
                                 onMuteClick()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.Notifications, contentDescription = null)
+                                Icon(
+                                    if (isMuted) Icons.Default.NotificationsOff else Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = if (isMuted) Color(0xFFF44336) else LocalContentColor.current
+                                )
                             }
                         )
                         DropdownMenuItem(

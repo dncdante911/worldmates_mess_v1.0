@@ -336,10 +336,10 @@ function createGroup($db, $user_id, $data) {
 
         // Додаємо власника як owner
         $stmt = $db->prepare("
-            INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time)
-            VALUES (?, ?, 'owner', ?)
+            INSERT INTO Wo_GroupChatUsers (user_id, group_id, role)
+            VALUES (?, ?, 'owner')
         ");
-        $stmt->execute([$user_id, $group_id, $time]);
+        $stmt->execute([$user_id, $group_id]);
 
         // Додаємо інших учасників
         if (!empty($parts)) {
@@ -347,10 +347,10 @@ function createGroup($db, $user_id, $data) {
             foreach ($member_ids as $member_id) {
                 if ($member_id != $user_id) {
                     $stmt = $db->prepare("
-                        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time)
-                        VALUES (?, ?, 'member', ?)
+                        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role)
+                        VALUES (?, ?, 'member')
                     ");
-                    $stmt->execute([$member_id, $group_id, $time]);
+                    $stmt->execute([$member_id, $group_id]);
                 }
             }
         }
@@ -533,10 +533,10 @@ function addGroupMembers($db, $user_id, $group_id, $parts) {
 
         if (!$stmt->fetch()) {
             $stmt = $db->prepare("
-                INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time)
-                VALUES (?, ?, 'member', ?)
+                INSERT INTO Wo_GroupChatUsers (user_id, group_id, role)
+                VALUES (?, ?, 'member')
             ");
-            $stmt->execute([$member_id, $group_id, $time]);
+            $stmt->execute([$member_id, $group_id]);
             $added++;
         }
     }

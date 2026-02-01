@@ -102,6 +102,12 @@ $routes = [
     'send_message' => 'endpoints/send-message.php',
     'delete_message' => 'endpoints/delete_message.php',
     'read_chats' => 'endpoints/read_chats.php',
+    'delete_chat' => 'endpoints/delete_chat.php',
+    'delete_group_chat' => 'endpoints/delete_group_chat.php',
+
+    // User actions
+    'block_user' => 'endpoints/block_user.php',
+    'unblock_user' => 'endpoints/unblock_user.php',
 
     // Groups
     'join_group' => 'endpoints/join-group.php',

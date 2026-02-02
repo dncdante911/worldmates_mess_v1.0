@@ -441,7 +441,7 @@ fun GroupDetailsScreen(
                 },
                 onSearchUsers = { query ->
                     // Search for users when query changes
-                    viewModel.loadAvailableUsers()
+                    viewModel.searchUsers(query)
                 },
                 isSearching = isLoading,
                 inviteLink = groupJoinUrl,

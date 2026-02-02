@@ -210,19 +210,20 @@ function getGroups($db, $user_id, $data) {
     $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
 
     // КРИТИЧНО: Додаємо фільтр type='group' або type IS NULL (для старих записів)
+    // ВАЖЛИВО: Поля повертаються у snake_case для Android (admin_id, is_private, etc)
     $stmt = $db->prepare("
         SELECT
             g.group_id AS id,
             g.group_name AS name,
             g.description,
-            g.avatar AS avatarUrl,
-            g.user_id AS adminId,
-            g.is_private AS isPrivate,
-            g.time AS createdTime,
+            g.avatar,
+            g.user_id AS admin_id,
+            g.is_private,
+            g.time AS created_time,
             g.type,
-            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id) AS membersCount,
+            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id) AS members_count,
             (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS userRole,
-            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS isMember
+            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_member
         FROM Wo_GroupChat g
         WHERE g.group_id IN (SELECT group_id FROM Wo_GroupChatUsers WHERE user_id = ?)
           AND (g.type = 'group' OR g.type IS NULL OR g.type = '')
@@ -233,19 +234,19 @@ function getGroups($db, $user_id, $data) {
     $stmt->execute([$user_id, $user_id, $user_id, $limit, $offset]);
     $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Форматуємо результат
+    // Форматуємо результат - використовуємо snake_case для Android
     $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
     foreach ($groups as &$group) {
-        $group['isPrivate'] = (bool)$group['isPrivate'];
-        $group['isMember'] = (bool)$group['isMember'];
-        $group['isAdmin'] = in_array($group['userRole'], ['owner', 'admin']);
-        $group['isModerator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
-        $group['membersCount'] = (int)$group['membersCount'];
+        $group['is_private'] = (bool)$group['is_private'];
+        $group['is_member'] = (bool)$group['is_member'];
+        $group['is_admin'] = in_array($group['userRole'], ['owner', 'admin']);
+        $group['is_moderator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
+        $group['members_count'] = (int)$group['members_count'];
         unset($group['userRole']);
 
-        // Конвертуємо avatarUrl у повний URL якщо це відносний шлях
-        if (!empty($group['avatarUrl']) && strpos($group['avatarUrl'], 'http') !== 0) {
-            $group['avatarUrl'] = rtrim($site_url, '/') . '/' . ltrim($group['avatarUrl'], '/');
+        // Конвертуємо avatar у повний URL якщо це відносний шлях
+        if (!empty($group['avatar']) && strpos($group['avatar'], 'http') !== 0) {
+            $group['avatar'] = rtrim($site_url, '/') . '/' . ltrim($group['avatar'], '/');
         }
     }
 
@@ -260,21 +261,22 @@ function getGroups($db, $user_id, $data) {
  * Отримати деталі групи
  */
 function getGroupDetails($db, $user_id, $group_id) {
+    // ВАЖЛИВО: Поля повертаються у snake_case для Android
     $stmt = $db->prepare("
         SELECT
             g.group_id AS id,
             g.group_name AS name,
             g.description,
-            g.avatar AS avatarUrl,
-            g.user_id AS adminId,
-            g.is_private AS isPrivate,
-            g.time AS createdTime,
+            g.avatar,
+            g.user_id AS admin_id,
+            g.is_private,
+            g.time AS created_time,
             g.type,
-            g.pinned_message_id AS pinnedMessageId,
-            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id) AS membersCount,
+            g.pinned_message_id,
+            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id) AS members_count,
             (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS userRole,
-            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS isMember,
-            (SELECT muted FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS isMuted
+            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_member,
+            (SELECT muted FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_muted
         FROM Wo_GroupChat g
         WHERE g.group_id = ?
           AND (g.type = 'group' OR g.type IS NULL OR g.type = '')
@@ -286,27 +288,27 @@ function getGroupDetails($db, $user_id, $group_id) {
         return ['api_status' => 404, 'error_message' => 'Group not found'];
     }
 
-    // Форматуємо
-    $group['isPrivate'] = (bool)$group['isPrivate'];
-    $group['isMember'] = (bool)$group['isMember'];
-    $group['isMuted'] = (bool)$group['isMuted'];
-    $group['isAdmin'] = in_array($group['userRole'], ['owner', 'admin']);
-    $group['isModerator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
-    $group['membersCount'] = (int)$group['membersCount'];
+    // Форматуємо - використовуємо snake_case для Android
+    $group['is_private'] = (bool)$group['is_private'];
+    $group['is_member'] = (bool)$group['is_member'];
+    $group['is_muted'] = (bool)$group['is_muted'];
+    $group['is_admin'] = in_array($group['userRole'], ['owner', 'admin']);
+    $group['is_moderator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
+    $group['members_count'] = (int)$group['members_count'];
     unset($group['userRole']);
 
-    // Конвертуємо avatarUrl у повний URL якщо це відносний шлях
-    if (!empty($group['avatarUrl']) && strpos($group['avatarUrl'], 'http') !== 0) {
+    // Конвертуємо avatar у повний URL якщо це відносний шлях
+    if (!empty($group['avatar']) && strpos($group['avatar'], 'http') !== 0) {
         $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
-        $group['avatarUrl'] = rtrim($site_url, '/') . '/' . ltrim($group['avatarUrl'], '/');
+        $group['avatar'] = rtrim($site_url, '/') . '/' . ltrim($group['avatar'], '/');
     }
 
     // Отримуємо закріплене повідомлення якщо є
-    if (!empty($group['pinnedMessageId'])) {
+    if (!empty($group['pinned_message_id'])) {
         $stmt = $db->prepare("SELECT id, text, time FROM Wo_Messages WHERE id = ?");
-        $stmt->execute([$group['pinnedMessageId']]);
+        $stmt->execute([$group['pinned_message_id']]);
         $pinnedMessage = $stmt->fetch(PDO::FETCH_ASSOC);
-        $group['pinnedMessage'] = $pinnedMessage ?: null;
+        $group['pinned_message'] = $pinnedMessage ?: null;
     }
 
     return [
@@ -348,12 +350,12 @@ function createGroup($db, $user_id, $data) {
         $stmt->execute([$user_id, $name, $time]);
         $group_id = $db->lastInsertId();
 
-        // Додаємо власника як owner
+        // Додаємо власника як owner (з часом та admin='1' для сумісності)
         $stmt = $db->prepare("
-            INSERT INTO Wo_GroupChatUsers (user_id, group_id, role)
-            VALUES (?, ?, 'owner')
+            INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time)
+            VALUES (?, ?, 'owner', '1', ?)
         ");
-        $stmt->execute([$user_id, $group_id]);
+        $stmt->execute([$user_id, $group_id, $time]);
 
         // Додаємо інших учасників
         if (!empty($parts)) {
@@ -361,10 +363,10 @@ function createGroup($db, $user_id, $data) {
             foreach ($member_ids as $member_id) {
                 if ($member_id != $user_id) {
                     $stmt = $db->prepare("
-                        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role)
-                        VALUES (?, ?, 'member')
+                        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time)
+                        VALUES (?, ?, 'member', '0', ?)
                     ");
-                    $stmt->execute([$member_id, $group_id]);
+                    $stmt->execute([$member_id, $group_id, $time]);
                 }
             }
         }
@@ -510,14 +512,15 @@ function getGroupMembers($db, $user_id, $group_id, $data) {
     $limit = isset($data['limit']) ? (int)$data['limit'] : 100;
     $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
 
+    // ВАЖЛИВО: Поля повертаються у snake_case для Android
     $stmt = $db->prepare("
         SELECT
-            gcu.user_id AS id,
+            gcu.user_id,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS name,
             u.avatar,
             gcu.role,
-            gcu.time AS joinedTime
+            gcu.time AS joined_time
         FROM Wo_GroupChatUsers gcu
         LEFT JOIN Wo_Users u ON u.user_id = gcu.user_id
         WHERE gcu.group_id = ?
@@ -533,6 +536,14 @@ function getGroupMembers($db, $user_id, $group_id, $data) {
     ");
     $stmt->execute([$group_id, $limit, $offset]);
     $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Форматуємо URL аватарів
+    $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
+    foreach ($members as &$member) {
+        if (!empty($member['avatar']) && strpos($member['avatar'], 'http') !== 0) {
+            $member['avatar'] = rtrim($site_url, '/') . '/' . ltrim($member['avatar'], '/');
+        }
+    }
 
     return [
         'api_status' => 200,
@@ -565,17 +576,18 @@ function addGroupMembers($db, $user_id, $group_id, $parts) {
 
         if (!$stmt->fetch()) {
             $stmt = $db->prepare("
-                INSERT INTO Wo_GroupChatUsers (user_id, group_id, role)
-                VALUES (?, ?, 'member')
+                INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time)
+                VALUES (?, ?, 'member', '0', ?)
             ");
-            $stmt->execute([$member_id, $group_id]);
+            $stmt->execute([$member_id, $group_id, $time]);
             $added++;
         }
     }
 
     logGroupMessage("User $user_id added $added members to group $group_id", 'INFO');
 
-    return ['api_status' => 200, 'message' => "Added $added members successfully"];
+    // Повертаємо оновлений список учасників
+    return getGroupMembers($db, $user_id, $group_id, ['limit' => 100]);
 }
 
 /**

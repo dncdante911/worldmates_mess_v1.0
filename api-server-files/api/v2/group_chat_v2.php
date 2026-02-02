@@ -234,6 +234,7 @@ function getGroups($db, $user_id, $data) {
     $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Форматуємо результат
+    $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
     foreach ($groups as &$group) {
         $group['isPrivate'] = (bool)$group['isPrivate'];
         $group['isMember'] = (bool)$group['isMember'];
@@ -241,6 +242,11 @@ function getGroups($db, $user_id, $data) {
         $group['isModerator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
         $group['membersCount'] = (int)$group['membersCount'];
         unset($group['userRole']);
+
+        // Конвертуємо avatarUrl у повний URL якщо це відносний шлях
+        if (!empty($group['avatarUrl']) && strpos($group['avatarUrl'], 'http') !== 0) {
+            $group['avatarUrl'] = rtrim($site_url, '/') . '/' . ltrim($group['avatarUrl'], '/');
+        }
     }
 
     return [
@@ -288,6 +294,12 @@ function getGroupDetails($db, $user_id, $group_id) {
     $group['isModerator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
     $group['membersCount'] = (int)$group['membersCount'];
     unset($group['userRole']);
+
+    // Конвертуємо avatarUrl у повний URL якщо це відносний шлях
+    if (!empty($group['avatarUrl']) && strpos($group['avatarUrl'], 'http') !== 0) {
+        $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
+        $group['avatarUrl'] = rtrim($site_url, '/') . '/' . ltrim($group['avatarUrl'], '/');
+    }
 
     // Отримуємо закріплене повідомлення якщо є
     if (!empty($group['pinnedMessageId'])) {

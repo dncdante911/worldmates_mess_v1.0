@@ -1,6 +1,11 @@
 package com.worldmates.messenger.ui.calls
 
 import android.app.Application
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
@@ -55,6 +60,14 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     private var isInitiator = false
     private var pendingCallInitiation: (() -> Unit)? = null  // ✅ Очікуючий вихідний виклик
     private var pendingCallAcceptance: (() -> Unit)? = null  // ✅ Очікуюче прийняття вхідного виклику
+
+    // 🔊 Audio management
+    private val audioManager: AudioManager by lazy {
+        getApplication<Application>().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var savedAudioMode: Int = AudioManager.MODE_NORMAL
+    private var savedIsSpeakerphoneOn: Boolean = false
 
     init {
         socketManager.connect()
@@ -334,6 +347,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         Log.d("CallsViewModel", "📞 Initiating call to $recipientName (ID: $recipientId), type: $callType")
 
         val callLogic: () -> Unit = {
+            // 🔊 CRITICAL: Setup audio for calls BEFORE creating WebRTC connection
+            setupCallAudio(isVideoCall = callType == "video")
+
             viewModelScope.launch {
                 try {
                     Log.d("CallsViewModel", "🔧 Fetching ICE servers before creating PeerConnection...")
@@ -435,6 +451,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      */
     fun initiateGroupCall(groupId: Int, groupName: String, callType: String = "audio") {
         val callLogic: () -> Unit = {
+            // 🔊 CRITICAL: Setup audio for calls BEFORE creating WebRTC connection
+            setupCallAudio(isVideoCall = callType == "video")
+
             viewModelScope.launch {
                 try {
                     // ✅ Fetch ICE servers from API FIRST
@@ -507,6 +526,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         Log.d("CallsViewModel", "📞 acceptCall() called for room: ${callData.roomName}")
 
         val acceptLogic: () -> Unit = {
+            // 🔊 CRITICAL: Setup audio for calls BEFORE creating WebRTC connection
+            setupCallAudio(isVideoCall = callData.callType == "video")
+
             viewModelScope.launch {
                 try {
                     currentCallData = callData
@@ -627,6 +649,10 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         }
 
         webRTCManager.close()
+
+        // 🔊 Release audio after call ends
+        releaseCallAudio()
+
         callEnded.postValue(true)
         currentCallData = null
     }
@@ -666,10 +692,96 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      * 🔊 Увімкнути/вимкнути громку зв'язок (speaker)
      */
     fun toggleSpeaker(enabled: Boolean) {
-        // TODO: Implement AudioManager logic for speaker
-        val audioManager = getApplication<Application>().getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
         audioManager.isSpeakerphoneOn = enabled
         Log.d("CallsViewModel", "Speaker ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * 🔊 Setup audio for call - CRITICAL for hearing the other party
+     * This requests audio focus and sets the audio mode to MODE_IN_COMMUNICATION
+     */
+    private fun setupCallAudio(isVideoCall: Boolean = false) {
+        try {
+            // Save current state to restore later
+            savedAudioMode = audioManager.mode
+            savedIsSpeakerphoneOn = audioManager.isSpeakerphoneOn
+
+            // Request audio focus for voice call
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+
+                audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(audioAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener { focusChange ->
+                        Log.d("CallsViewModel", "🔊 Audio focus changed: $focusChange")
+                    }
+                    .build()
+
+                val result = audioManager.requestAudioFocus(audioFocusRequest!!)
+                Log.d("CallsViewModel", "🔊 Audio focus request result: $result")
+            } else {
+                @Suppress("DEPRECATION")
+                val result = audioManager.requestAudioFocus(
+                    { focusChange -> Log.d("CallsViewModel", "🔊 Audio focus changed: $focusChange") },
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                )
+                Log.d("CallsViewModel", "🔊 Audio focus request result: $result")
+            }
+
+            // ✅ CRITICAL: Set audio mode to MODE_IN_COMMUNICATION for WebRTC
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+
+            // Enable speakerphone for video calls by default, earpiece for audio calls
+            audioManager.isSpeakerphoneOn = isVideoCall
+
+            // ✅ Enable Bluetooth SCO if headset is connected
+            if (audioManager.isBluetoothScoAvailableOffCall) {
+                audioManager.startBluetoothSco()
+                audioManager.isBluetoothScoOn = true
+                Log.d("CallsViewModel", "🔊 Bluetooth SCO started")
+            }
+
+            Log.d("CallsViewModel", "🔊 Call audio setup complete - mode: MODE_IN_COMMUNICATION, speaker: $isVideoCall")
+        } catch (e: Exception) {
+            Log.e("CallsViewModel", "🔊 Error setting up call audio", e)
+        }
+    }
+
+    /**
+     * 🔊 Release audio after call ends
+     */
+    private fun releaseCallAudio() {
+        try {
+            // Stop Bluetooth SCO
+            if (audioManager.isBluetoothScoOn) {
+                audioManager.stopBluetoothSco()
+                audioManager.isBluetoothScoOn = false
+                Log.d("CallsViewModel", "🔊 Bluetooth SCO stopped")
+            }
+
+            // Abandon audio focus
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let {
+                    audioManager.abandonAudioFocusRequest(it)
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.abandonAudioFocus(null)
+            }
+
+            // Restore previous audio state
+            audioManager.mode = savedAudioMode
+            audioManager.isSpeakerphoneOn = savedIsSpeakerphoneOn
+
+            Log.d("CallsViewModel", "🔊 Call audio released, mode restored to: $savedAudioMode")
+        } catch (e: Exception) {
+            Log.e("CallsViewModel", "🔊 Error releasing call audio", e)
+        }
     }
 
     /**

@@ -140,15 +140,44 @@ if ($error_code == 0) {
 
                 // Якщо операція успішна, отримуємо оновлений рейтинг
                 if (!empty($data) && $error_code == 0) {
-                    // Get updated rating info
-                    $updated_user = Wo_UserData($rated_user_id);
+                    // Calculate counts from database directly
+                    $likes_query = mysqli_query($sqlConnect, "
+                        SELECT COUNT(*) as cnt FROM Wo_UserRatings
+                        WHERE rated_user_id = {$rated_user_id} AND rating_type = 'like'
+                    ");
+                    $likes_count = mysqli_fetch_assoc($likes_query)['cnt'] ?? 0;
+
+                    $dislikes_query = mysqli_query($sqlConnect, "
+                        SELECT COUNT(*) as cnt FROM Wo_UserRatings
+                        WHERE rated_user_id = {$rated_user_id} AND rating_type = 'dislike'
+                    ");
+                    $dislikes_count = mysqli_fetch_assoc($dislikes_query)['cnt'] ?? 0;
+
+                    $total_ratings = $likes_count + $dislikes_count;
+                    $score = $total_ratings > 0 ? ($likes_count / $total_ratings) * 5.0 : 0;
+
+                    // Determine trust level based on score
+                    $trust_level = 'neutral';
+                    if ($total_ratings >= 5) {
+                        if ($score >= 4.0) $trust_level = 'trusted';
+                        else if ($score >= 3.0) $trust_level = 'neutral';
+                        else $trust_level = 'untrusted';
+                    }
+
+                    // Build user_rating response with my_rating included
                     $data['user_rating'] = [
                         'user_id' => $rated_user_id,
-                        'likes' => (int)($updated_user['rating_likes'] ?? 0),
-                        'dislikes' => (int)($updated_user['rating_dislikes'] ?? 0),
-                        'score' => (float)($updated_user['rating_score'] ?? 0),
-                        'trust_level' => $updated_user['trust_level'] ?? 'neutral',
-                        'total_ratings' => ((int)($updated_user['rating_likes'] ?? 0) + (int)($updated_user['rating_dislikes'] ?? 0))
+                        'likes' => (int)$likes_count,
+                        'dislikes' => (int)$dislikes_count,
+                        'score' => (float)$score,
+                        'trust_level' => $trust_level,
+                        'total_ratings' => (int)$total_ratings,
+                        // Include my_rating so UI knows the current user's rating state
+                        'my_rating' => ($data['action'] === 'removed') ? null : [
+                            'type' => $data['rating_type'],
+                            'comment' => $comment,
+                            'created_at' => date('Y-m-d H:i:s')
+                        ]
                     ];
                 }
             }

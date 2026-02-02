@@ -234,6 +234,7 @@ function getGroups($db, $user_id, $data) {
     $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Форматуємо результат
+    $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
     foreach ($groups as &$group) {
         $group['isPrivate'] = (bool)$group['isPrivate'];
         $group['isMember'] = (bool)$group['isMember'];
@@ -241,6 +242,11 @@ function getGroups($db, $user_id, $data) {
         $group['isModerator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
         $group['membersCount'] = (int)$group['membersCount'];
         unset($group['userRole']);
+
+        // Конвертуємо avatarUrl у повний URL якщо це відносний шлях
+        if (!empty($group['avatarUrl']) && strpos($group['avatarUrl'], 'http') !== 0) {
+            $group['avatarUrl'] = rtrim($site_url, '/') . '/' . ltrim($group['avatarUrl'], '/');
+        }
     }
 
     return [
@@ -289,6 +295,12 @@ function getGroupDetails($db, $user_id, $group_id) {
     $group['membersCount'] = (int)$group['membersCount'];
     unset($group['userRole']);
 
+    // Конвертуємо avatarUrl у повний URL якщо це відносний шлях
+    if (!empty($group['avatarUrl']) && strpos($group['avatarUrl'], 'http') !== 0) {
+        $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
+        $group['avatarUrl'] = rtrim($site_url, '/') . '/' . ltrim($group['avatarUrl'], '/');
+    }
+
     // Отримуємо закріплене повідомлення якщо є
     if (!empty($group['pinnedMessageId'])) {
         $stmt = $db->prepare("SELECT id, text, time FROM Wo_Messages WHERE id = ?");
@@ -320,6 +332,8 @@ function createGroup($db, $user_id, $data) {
     if ($group_type !== 'group') {
         $group_type = 'group';
     }
+
+    $group_id = null;
 
     try {
         $db->beginTransaction();
@@ -359,12 +373,30 @@ function createGroup($db, $user_id, $data) {
 
         logGroupMessage("User $user_id created group $group_id: $name (type=group)", 'INFO');
 
-        return getGroupDetails($db, $user_id, $group_id);
-
     } catch (Exception $e) {
-        $db->rollBack();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         logGroupMessage("Failed to create group for user $user_id: " . $e->getMessage(), 'ERROR');
         return ['api_status' => 500, 'error_message' => 'Failed to create group: ' . $e->getMessage()];
+    }
+
+    // Отримуємо деталі групи ПІСЛЯ успішного коміту (поза транзакцією)
+    try {
+        return getGroupDetails($db, $user_id, $group_id);
+    } catch (Exception $e) {
+        logGroupMessage("Group $group_id created but failed to get details: " . $e->getMessage(), 'WARNING');
+        // Група створена успішно, просто повертаємо базову інформацію
+        return [
+            'api_status' => 200,
+            'group' => [
+                'id' => $group_id,
+                'name' => $name,
+                'membersCount' => 1,
+                'isAdmin' => true,
+                'isMember' => true
+            ]
+        ];
     }
 }
 

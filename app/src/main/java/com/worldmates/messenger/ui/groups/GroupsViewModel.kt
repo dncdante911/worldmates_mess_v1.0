@@ -112,27 +112,47 @@ class GroupsViewModel : ViewModel() {
     }
 
     fun loadAvailableUsers() {
+        // Don't load all users at once - wait for search query
+        // This improves performance and user experience
+        _availableUsers.value = emptyList()
+    }
+
+    /**
+     * Search users by query (supports Russian names, usernames, first/last names)
+     */
+    fun searchUsers(query: String) {
         if (UserSession.accessToken == null) {
             _error.value = "Користувач не авторизований"
             return
         }
 
+        // Don't search for empty or very short queries
+        if (query.isBlank() || query.length < 2) {
+            _availableUsers.value = emptyList()
+            return
+        }
+
+        _isLoading.value = true
+
         viewModelScope.launch {
             try {
-                // Використовуємо searchUsers з порожнім запитом для отримання всіх користувачів
                 val response = RetrofitClient.apiService.searchUsers(
                     accessToken = UserSession.accessToken!!,
-                    query = "",
-                    limit = 1000
+                    query = query,
+                    limit = 50
                 )
 
                 if (response.apiStatus == 200 && response.users != null) {
                     _availableUsers.value = response.users!!
-                    Log.d("GroupsViewModel", "Завантажено ${response.users!!.size} користувачів")
+                    Log.d("GroupsViewModel", "🔍 Знайдено ${response.users!!.size} користувачів для запиту: $query")
+                } else {
+                    _availableUsers.value = emptyList()
                 }
             } catch (e: Exception) {
-                Log.e("GroupsViewModel", "Помилка завантаження користувачів", e)
-                // Не показуємо помилку користувачу, просто залишаємо список порожнім
+                Log.e("GroupsViewModel", "❌ Помилка пошуку користувачів", e)
+                _availableUsers.value = emptyList()
+            } finally {
+                _isLoading.value = false
             }
         }
     }

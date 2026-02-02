@@ -1717,6 +1717,27 @@ class MessagesViewModel(application: Application) :
 
     // ==================== END CHAT ACTIONS ====================
 
+    // ==================== TEXT FORMATTING ====================
+
+    /**
+     * Застосовує форматування до тексту
+     * Обгортає весь текст у вказані маркери форматування
+     *
+     * @param text Текст для форматування
+     * @param prefix Маркер на початку (наприклад, "**" для жирного)
+     * @param suffix Маркер в кінці (наприклад, "**" для жирного)
+     * @return Відформатований текст
+     */
+    fun applyFormatting(text: String, prefix: String, suffix: String): String {
+        return if (text.isNotEmpty()) {
+            "$prefix$text$suffix"
+        } else {
+            "$prefix$suffix" // Повертаємо порожні маркери, щоб користувач міг друкувати між ними
+        }
+    }
+
+    // ==================== END TEXT FORMATTING ====================
+
     override fun onCleared() {
         super.onCleared()
 

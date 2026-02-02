@@ -83,6 +83,12 @@ import com.worldmates.messenger.ui.groups.components.PinnedMessageBanner
 // 🔍 Імпорт компонента пошуку
 import com.worldmates.messenger.ui.messages.components.GroupSearchBar
 
+// 📝 Імпорти системи форматування тексту
+import com.worldmates.messenger.ui.components.formatting.FormattedText
+import com.worldmates.messenger.ui.components.formatting.FormattingSettings
+import com.worldmates.messenger.ui.components.formatting.FormattingToolbar
+import com.worldmates.messenger.ui.components.formatting.FormattedTextColors
+
 // 🎯 Enum для режимів введення (як в Telegram/Viber)
 enum class InputMode {
     TEXT,       // Звичайне текстове повідомлення
@@ -1819,13 +1825,12 @@ fun MessageBubbleComposable(
                                         contact = contact
                                     )
                                 } else {
-                                    // Если не удалось распарсить, показываем как обычный текст
-                                    Text(
+                                    // Если не удалось распарсить, показываем как обычный текст з форматуванням
+                                    FormattedText(
                                         text = message.decryptedText!!,
                                         color = textColor,
                                         fontSize = 15.sp,
-                                        lineHeight = 20.sp,
-                                        style = MaterialTheme.typography.bodyMedium
+                                        lineHeight = 20.sp
                                     )
                                 }
                             } else if (isEmojiMessage) {
@@ -1840,13 +1845,24 @@ fun MessageBubbleComposable(
                                         .padding(vertical = 4.dp)
                                 )
                             } else {
-                                // 💬 ТЕКСТ В БУЛЬБАШЦІ
-                                Text(
+                                // 💬 ТЕКСТ В БУЛЬБАШЦІ з форматуванням
+                                FormattedText(
                                     text = message.decryptedText!!,
                                     color = textColor,
                                     fontSize = 15.sp,
                                     lineHeight = 20.sp,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    onMentionClick = { username ->
+                                        // TODO: Навігація до профілю користувача по username
+                                        Log.d("FormattedText", "Клік на згадку: @$username")
+                                    },
+                                    onHashtagClick = { tag ->
+                                        // TODO: Пошук по хештегу
+                                        Log.d("FormattedText", "Клік на хештег: #$tag")
+                                    },
+                                    onLinkClick = { url ->
+                                        // TODO: Відкриття URL в браузері
+                                        Log.d("FormattedText", "Клік на посилання: $url")
+                                    }
                                 )
                             }
                         }
@@ -2370,6 +2386,63 @@ fun MessageInputBar(
                     )
                 }
 
+                // 📝 Панель форматування тексту (показується при фокусі на текстове поле)
+                var showFormattingToolbar by remember { mutableStateOf(false) }
+
+                FormattingToolbar(
+                    isVisible = showFormattingToolbar && currentInputMode == InputMode.TEXT,
+                    hasSelection = messageText.isNotEmpty(),
+                    onBoldClick = {
+                        viewModel?.applyFormatting(messageText, "**", "**")?.let { formatted ->
+                            onMessageChange(formatted)
+                        }
+                    },
+                    onItalicClick = {
+                        viewModel?.applyFormatting(messageText, "*", "*")?.let { formatted ->
+                            onMessageChange(formatted)
+                        }
+                    },
+                    onStrikethroughClick = {
+                        viewModel?.applyFormatting(messageText, "~~", "~~")?.let { formatted ->
+                            onMessageChange(formatted)
+                        }
+                    },
+                    onUnderlineClick = {
+                        viewModel?.applyFormatting(messageText, "<u>", "</u>")?.let { formatted ->
+                            onMessageChange(formatted)
+                        }
+                    },
+                    onCodeClick = {
+                        viewModel?.applyFormatting(messageText, "`", "`")?.let { formatted ->
+                            onMessageChange(formatted)
+                        }
+                    },
+                    onSpoilerClick = {
+                        viewModel?.applyFormatting(messageText, "||", "||")?.let { formatted ->
+                            onMessageChange(formatted)
+                        }
+                    },
+                    onQuoteClick = {
+                        // Додаємо > на початку тексту
+                        if (messageText.isNotEmpty()) {
+                            val lines = messageText.lines()
+                            val quoted = lines.joinToString("\n") { "> $it" }
+                            onMessageChange(quoted)
+                        }
+                    },
+                    onLinkClick = {
+                        // TODO: Показати діалог для вставки посилання
+                    },
+                    onMentionClick = {
+                        // Додаємо @ для початку згадки
+                        onMessageChange(messageText + "@")
+                    },
+                    onHashtagClick = {
+                        // Додаємо # для початку хештегу
+                        onMessageChange(messageText + "#")
+                    }
+                )
+
                 // Main input row
                 Row(
                     modifier = Modifier
@@ -2393,6 +2466,19 @@ fun MessageInputBar(
                     // Різний контент залежно від режиму
                     when (currentInputMode) {
                         InputMode.TEXT -> {
+                            // 📝 Кнопка форматування
+                            IconButton(
+                                onClick = { showFormattingToolbar = !showFormattingToolbar },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.TextFormat,
+                                    contentDescription = "Форматування",
+                                    tint = if (showFormattingToolbar) colorScheme.primary else colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
                             // Звичайне поле введення
                             TextField(
                                 value = messageText,

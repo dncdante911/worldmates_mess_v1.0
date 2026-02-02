@@ -51,6 +51,8 @@ class GroupDetailsActivity : AppCompatActivity() {
 
     private lateinit var viewModel: GroupsViewModel
     private var groupId: Long = 0
+    private var openAddMembers: Boolean = false
+    private var openCreateSubgroup: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +62,10 @@ class GroupDetailsActivity : AppCompatActivity() {
             finish()
             return
         }
+
+        // Check if we should open specific dialogs
+        openAddMembers = intent.getBooleanExtra("open_add_members", false)
+        openCreateSubgroup = intent.getBooleanExtra("open_create_subgroup", false)
 
         // Инициализируем ThemeManager
         ThemeManager.initialize(this)
@@ -75,7 +81,9 @@ class GroupDetailsActivity : AppCompatActivity() {
                     onNavigateToMessages = {
                         // Already in messages, just go back
                         finish()
-                    }
+                    },
+                    initialOpenAddMembers = openAddMembers,
+                    initialOpenCreateSubgroup = openCreateSubgroup
                 )
             }
         }
@@ -88,7 +96,9 @@ fun GroupDetailsScreen(
     groupId: Long,
     viewModel: GroupsViewModel,
     onBackPressed: () -> Unit,
-    onNavigateToMessages: () -> Unit
+    onNavigateToMessages: () -> Unit,
+    initialOpenAddMembers: Boolean = false,
+    initialOpenCreateSubgroup: Boolean = false
 ) {
     val groups by viewModel.groupList.collectAsState()
     val members by viewModel.groupMembers.collectAsState()
@@ -100,7 +110,7 @@ fun GroupDetailsScreen(
     val context = LocalContext.current
 
     var showEditDialog by remember { mutableStateOf(false) }
-    var showAddMemberDialog by remember { mutableStateOf(false) }
+    var showAddMemberDialog by remember { mutableStateOf(initialOpenAddMembers) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showLeaveConfirmation by remember { mutableStateOf(false) }
     var selectedMember by remember { mutableStateOf<GroupMember?>(null) }
@@ -111,7 +121,7 @@ fun GroupDetailsScreen(
     var groupJoinUrl by remember { mutableStateOf<String?>(null) }
 
     // Subgroups (Topics) state
-    var showCreateSubgroupDialog by remember { mutableStateOf(false) }
+    var showCreateSubgroupDialog by remember { mutableStateOf(initialOpenCreateSubgroup) }
     // Локальний список підгруп (поки бекенд не готовий)
     // Завантажуємо з SharedPreferences або показуємо приклади для адмінів
     var subgroups by remember {
@@ -274,8 +284,8 @@ fun GroupDetailsScreen(
                 )
             }
 
-            // Admin Controls Section (if user is admin)
-            if (group.isAdmin) {
+            // Admin Controls Section (if user is admin or owner)
+            if (group.isAdmin || group.isOwner) {
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     AdminControlsSection(
@@ -323,7 +333,7 @@ fun GroupDetailsScreen(
                 )
             }
 
-            // Members Section
+            // Members Section Header with Add Button
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
@@ -331,13 +341,31 @@ fun GroupDetailsScreen(
                     color = Color.White
                 ) {
                     Column {
-                        Text(
-                            text = "Members • ${members.size}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Members • ${members.size}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray
+                            )
+
+                            // ✅ ADD MEMBERS BUTTON - Always visible for easier access
+                            IconButton(
+                                onClick = { showAddMemberDialog = true }
+                            ) {
+                                Icon(
+                                    Icons.Default.PersonAdd,
+                                    contentDescription = "Add members",
+                                    tint = Color(0xFF0084FF)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -348,7 +376,7 @@ fun GroupDetailsScreen(
                     member = member,
                     isCurrentUser = member.userId == UserSession.userId,
                     onClick = {
-                        if (group.isAdmin && member.userId != UserSession.userId) {
+                        if ((group.isAdmin || group.isOwner) && member.userId != UserSession.userId) {
                             selectedMember = member
                             showMemberOptionsMenu = true
                         }
@@ -842,7 +870,7 @@ fun GroupActionsSection(
                 onClick = onLeaveClick
             )
 
-            if (group.isAdmin) {
+            if (group.isAdmin || group.isOwner) {
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(start = 56.dp))
                 SettingsItem(
                     icon = Icons.Default.Delete,

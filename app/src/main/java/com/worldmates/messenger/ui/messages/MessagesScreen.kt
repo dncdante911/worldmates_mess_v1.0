@@ -492,6 +492,34 @@ fun MessagesScreen(
                     context.startActivity(intent)
                 },
                 isMuted = if (isGroup) currentGroup?.isMuted == true else false,
+                // 🔥 Group-specific parameters
+                isGroup = isGroup,
+                isGroupAdmin = currentGroup?.isAdmin == true || (isGroup && currentGroup?.let {
+                    it.adminId == UserSession.userId
+                } == true),
+                onAddMembersClick = {
+                    // Open add members dialog in group details
+                    val intent = android.content.Intent(context, com.worldmates.messenger.ui.groups.GroupDetailsActivity::class.java).apply {
+                        putExtra("group_id", viewModel.getGroupId())
+                        putExtra("open_add_members", true)
+                    }
+                    context.startActivity(intent)
+                },
+                onCreateSubgroupClick = {
+                    // Open group details with create subgroup dialog
+                    val intent = android.content.Intent(context, com.worldmates.messenger.ui.groups.GroupDetailsActivity::class.java).apply {
+                        putExtra("group_id", viewModel.getGroupId())
+                        putExtra("open_create_subgroup", true)
+                    }
+                    context.startActivity(intent)
+                },
+                onGroupSettingsClick = {
+                    // Open group settings
+                    val intent = android.content.Intent(context, com.worldmates.messenger.ui.groups.GroupDetailsActivity::class.java).apply {
+                        putExtra("group_id", viewModel.getGroupId())
+                    }
+                    context.startActivity(intent)
+                },
                 // 🔥 Параметри режиму вибору
                 isSelectionMode = isSelectionMode,
                 selectedCount = selectedMessages.size,
@@ -1206,6 +1234,12 @@ fun MessagesHeaderBar(
     onBlockClick: () -> Unit = {},
     isUserBlocked: Boolean = false,
     isMuted: Boolean = false,
+    // 🔥 Group-specific parameters
+    isGroup: Boolean = false,
+    isGroupAdmin: Boolean = false,
+    onCreateSubgroupClick: () -> Unit = {},
+    onAddMembersClick: () -> Unit = {},
+    onGroupSettingsClick: () -> Unit = {},
     // 🔥 Параметри для режиму вибору
     isSelectionMode: Boolean = false,
     selectedCount: Int = 0,
@@ -1340,14 +1374,15 @@ fun MessagesHeaderBar(
                         expanded = showUserMenu,
                         onDismissRequest = { showUserMenu = false }
                     ) {
+                        // ✅ Common options for both groups and users
                         DropdownMenuItem(
-                            text = { Text("Переглянути профіль") },
+                            text = { Text(if (isGroup) "Деталі групи" else "Переглянути профіль") },
                             onClick = {
                                 showUserMenu = false
                                 onUserProfileClick()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.Person, contentDescription = null)
+                                Icon(if (isGroup) Icons.Default.Group else Icons.Default.Person, contentDescription = null)
                             }
                         )
                         DropdownMenuItem(
@@ -1360,6 +1395,49 @@ fun MessagesHeaderBar(
                                 Icon(Icons.Default.VideoCall, contentDescription = null)
                             }
                         )
+
+                        // ✅ GROUP-SPECIFIC OPTIONS
+                        if (isGroup) {
+                            Divider()
+                            // Add members option
+                            DropdownMenuItem(
+                                text = { Text("Додати учасників") },
+                                onClick = {
+                                    showUserMenu = false
+                                    onAddMembersClick()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.PersonAdd, contentDescription = null, tint = Color(0xFF0084FF))
+                                }
+                            )
+                            // Create subgroup/folder option (for admins)
+                            if (isGroupAdmin) {
+                                DropdownMenuItem(
+                                    text = { Text("Створити підгрупу/папку") },
+                                    onClick = {
+                                        showUserMenu = false
+                                        onCreateSubgroupClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.CreateNewFolder, contentDescription = null, tint = Color(0xFF4CAF50))
+                                    }
+                                )
+                            }
+                            // Group settings (for admins)
+                            if (isGroupAdmin) {
+                                DropdownMenuItem(
+                                    text = { Text("Налаштування групи") },
+                                    onClick = {
+                                        showUserMenu = false
+                                        onGroupSettingsClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Settings, contentDescription = null)
+                                    }
+                                )
+                            }
+                        }
+
                         Divider()
                         DropdownMenuItem(
                             text = {
@@ -1398,26 +1476,30 @@ fun MessagesHeaderBar(
                                 Icon(Icons.Default.Delete, contentDescription = null)
                             }
                         )
-                        Divider()
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = if (isUserBlocked) "Розблокувати користувача" else "Заблокувати користувача",
-                                    color = if (isUserBlocked) Color(0xFF4CAF50) else Color(0xFFF44336)
-                                )
-                            },
-                            onClick = {
-                                showUserMenu = false
-                                onBlockClick()
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    if (isUserBlocked) Icons.Default.LockOpen else Icons.Default.Block,
-                                    contentDescription = null,
-                                    tint = if (isUserBlocked) Color(0xFF4CAF50) else Color(0xFFF44336)
-                                )
-                            }
-                        )
+
+                        // ✅ User-only option: block user
+                        if (!isGroup) {
+                            Divider()
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = if (isUserBlocked) "Розблокувати користувача" else "Заблокувати користувача",
+                                        color = if (isUserBlocked) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                    )
+                                },
+                                onClick = {
+                                    showUserMenu = false
+                                    onBlockClick()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (isUserBlocked) Icons.Default.LockOpen else Icons.Default.Block,
+                                        contentDescription = null,
+                                        tint = if (isUserBlocked) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }

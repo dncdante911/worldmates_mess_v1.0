@@ -321,6 +321,8 @@ function createGroup($db, $user_id, $data) {
         $group_type = 'group';
     }
 
+    $group_id = null;
+
     try {
         $db->beginTransaction();
 
@@ -359,12 +361,30 @@ function createGroup($db, $user_id, $data) {
 
         logGroupMessage("User $user_id created group $group_id: $name (type=group)", 'INFO');
 
-        return getGroupDetails($db, $user_id, $group_id);
-
     } catch (Exception $e) {
-        $db->rollBack();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         logGroupMessage("Failed to create group for user $user_id: " . $e->getMessage(), 'ERROR');
         return ['api_status' => 500, 'error_message' => 'Failed to create group: ' . $e->getMessage()];
+    }
+
+    // Отримуємо деталі групи ПІСЛЯ успішного коміту (поза транзакцією)
+    try {
+        return getGroupDetails($db, $user_id, $group_id);
+    } catch (Exception $e) {
+        logGroupMessage("Group $group_id created but failed to get details: " . $e->getMessage(), 'WARNING');
+        // Група створена успішно, просто повертаємо базову інформацію
+        return [
+            'api_status' => 200,
+            'group' => [
+                'id' => $group_id,
+                'name' => $name,
+                'membersCount' => 1,
+                'isAdmin' => true,
+                'isMember' => true
+            ]
+        ];
     }
 }
 

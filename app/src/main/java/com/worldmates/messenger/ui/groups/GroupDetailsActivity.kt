@@ -128,6 +128,13 @@ fun GroupDetailsScreen(
         mutableStateOf(GroupFormattingPermissions()) // TODO: Load from group settings
     }
 
+    // 🔍 Search state
+    var showSearchBar by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    // 🔔 Notifications state
+    var notificationsEnabled by remember { mutableStateOf(true) } // TODO: Load from preferences
+
     // Subgroups (Topics) state
     var showCreateSubgroupDialog by remember { mutableStateOf(initialOpenCreateSubgroup) }
     // Локальний список підгруп (поки бекенд не готовий)
@@ -283,12 +290,69 @@ fun GroupDetailsScreen(
                 )
             }
 
+            // 🔍 Search Bar (if enabled)
+            if (showSearchBar) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        tonalElevation = 2.dp
+                    ) {
+                        TextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            placeholder = { Text("Пошук учасників...") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = "Search")
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            )
+                        )
+                    }
+                }
+            }
+
             // Action Buttons Row
             item {
                 GroupActionButtons(
-                    onSearchClick = { /* TODO: Implement search */ },
-                    onNotificationsClick = { /* TODO: Toggle notifications */ },
-                    onShareClick = { /* TODO: Share group */ }
+                    onSearchClick = {
+                        showSearchBar = !showSearchBar
+                        if (!showSearchBar) {
+                            searchQuery = ""
+                        }
+                    },
+                    onNotificationsClick = {
+                        notificationsEnabled = !notificationsEnabled
+                        android.widget.Toast.makeText(
+                            context,
+                            if (notificationsEnabled) "Сповіщення увімкнено" else "Сповіщення вимкнено",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        // TODO: Save to preferences
+                    },
+                    onShareClick = {
+                        // Share group via Intent
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Приєднуйтесь до групи ${group.name}")
+                            putExtra(Intent.EXTRA_TEXT, "Приєднуйтесь до групи \"${group.name}\" в WorldMates!\n\n${groupJoinUrl ?: "worldmates://group/${group.id}"}")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Поділитися групою"))
+                    }
                 )
             }
 
@@ -379,8 +443,17 @@ fun GroupDetailsScreen(
                 }
             }
 
-            // Members List
-            items(members.sortedByDescending { it.role == "admin" }) { member ->
+            // Members List (filtered by search query)
+            val filteredMembers = if (searchQuery.isNotEmpty()) {
+                members.filter { member ->
+                    member.username.contains(searchQuery, ignoreCase = true) ||
+                    member.userId.toString().contains(searchQuery)
+                }
+            } else {
+                members
+            }
+
+            items(filteredMembers.sortedByDescending { it.role == "admin" }) { member ->
                 ModernMemberCard(
                     member = member,
                     isCurrentUser = member.userId == UserSession.userId,

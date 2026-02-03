@@ -915,7 +915,7 @@ class ChannelDetailsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // Сохраняем в SharedPreferences локально
-                val prefs = com.worldmates.messenger.data.WMApplication.instance
+                val prefs = com.worldmates.messenger.WMApplication.instance
                     .getSharedPreferences("channel_formatting_prefs", android.content.Context.MODE_PRIVATE)
 
                 val json = com.google.gson.Gson().toJson(permissions)
@@ -939,7 +939,7 @@ class ChannelDetailsViewModel : ViewModel() {
      */
     fun loadFormattingPermissions(channelId: Long): com.worldmates.messenger.ui.groups.GroupFormattingPermissions {
         return try {
-            val prefs = com.worldmates.messenger.data.WMApplication.instance
+            val prefs = com.worldmates.messenger.WMApplication.instance
                 .getSharedPreferences("channel_formatting_prefs", android.content.Context.MODE_PRIVATE)
 
             val json = prefs.getString("formatting_$channelId", null)

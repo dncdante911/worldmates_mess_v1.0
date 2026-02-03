@@ -3464,51 +3464,6 @@ private fun isImageUrl(url: String): Boolean {
 }
 
 /**
- * Перевірка чи текст містить ТІЛЬКИ емодзі (1-3 емодзі без іншого тексту)
- */
-private fun isEmojiOnly(text: String): Boolean {
-    if (text.isBlank()) return false
-
-    // Видаляємо всі пробіли
-    val trimmed = text.trim()
-
-    // Видаляємо всі емодзі, Unicode символи та спецсимволи
-    val textWithoutEmoji = trimmed
-        .replace(Regex("[\uD83C-\uDBFF\uDC00-\uDFFF]+"), "")  // Emoji
-        .replace(Regex("[\\p{So}\\p{Sk}\\p{Cn}]"), "")        // Symbols
-        .replace(Regex("[\u200D\uFE0F\u200C]"), "")           // Zero-width chars
-        .trim()
-
-    // Якщо після видалення емодзі залишився текст - це не emoji-only
-    if (textWithoutEmoji.isNotEmpty()) {
-        Log.d("EmojiDetect", "Не emoji-only: '$text' -> залишок: '$textWithoutEmoji'")
-        return false
-    }
-
-    // Підраховуємо кількість емодзі (максимум 3 для великого відображення)
-    val emojiCount = trimmed.codePointCount(0, trimmed.length)
-    val isEmojiOnly = emojiCount in 1..5  // Дозволяємо до 5 емодзі
-
-    Log.d("EmojiDetect", "Текст: '$text', кількість: $emojiCount, emoji-only: $isEmojiOnly")
-    return isEmojiOnly
-}
-
-/**
- * Отримати розмір шрифту для емодзі залежно від кількості
- */
-private fun getEmojiSize(text: String): androidx.compose.ui.unit.TextUnit {
-    val emojiCount = text.trim().codePointCount(0, text.trim().length)
-    return when (emojiCount) {
-        1 -> 72.sp      // 1 емодзі - найбільший
-        2 -> 60.sp      // 2 емодзі - великий
-        3 -> 48.sp      // 3 емодзі - середній
-        4 -> 40.sp      // 4 емодзі - менший
-        5 -> 36.sp      // 5 емодзі - ще менший
-        else -> 16.sp   // Більше - звичайний
-    }
-}
-
-/**
  * 📳 Вібрація при активації режиму вибору
  */
 fun performSelectionVibration(context: Context) {

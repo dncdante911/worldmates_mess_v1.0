@@ -269,30 +269,6 @@ fun FormattingSettingsPanel(
 // ==================== COMPONENTS ====================
 
 @Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ) {
-            Column(modifier = Modifier.padding(8.dp)) {
-                content()
-            }
-        }
-    }
-}
-
-@Composable
 private fun FormattingToggle(
     icon: ImageVector,
     title: String,

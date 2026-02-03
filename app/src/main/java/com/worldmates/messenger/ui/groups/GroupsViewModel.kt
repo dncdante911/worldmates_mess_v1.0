@@ -871,30 +871,45 @@ class GroupsViewModel : ViewModel() {
      * 📊 Завантаження статистики групи
      */
     fun loadGroupStatistics(groupId: Long) {
+        if (UserSession.accessToken == null) return
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.getGroupStatistics(accessToken, groupId)
-
-                // Поки використовуємо демо-дані
-                _groupStatistics.value = com.worldmates.messenger.data.model.GroupStatistics(
-                    groupId = groupId,
-                    membersCount = _groupMembers.value.size,
-                    messagesCount = 1250,
-                    messagesToday = 45,
-                    messagesThisWeek = 320,
-                    messagesThisMonth = 1100,
-                    activeMembers24h = 12,
-                    activeMembersWeek = 28,
-                    mediaCount = 89,
-                    linksCount = 34,
-                    newMembersToday = 2,
-                    newMembersWeek = 8,
-                    leftMembersWeek = 1,
-                    growthRate = 5.2f,
-                    peakHours = listOf(10, 11, 14, 15, 19, 20, 21)
+                val response = RetrofitClient.apiService.getGroupStatistics(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
                 )
-                Log.d("GroupsViewModel", "📊 Statistics loaded for group $groupId")
+
+                if (response.apiStatus == 200 && response.statistics != null) {
+                    val stats = response.statistics
+                    _groupStatistics.value = com.worldmates.messenger.data.model.GroupStatistics(
+                        groupId = groupId,
+                        membersCount = stats.membersCount,
+                        messagesCount = stats.messagesCount,
+                        messagesToday = stats.messagesToday,
+                        messagesThisWeek = stats.messagesToday * 7, // Estimate
+                        messagesThisMonth = stats.messagesCount,
+                        activeMembers24h = stats.membersCount / 3, // Estimate
+                        activeMembersWeek = stats.membersCount / 2,
+                        mediaCount = 0,
+                        linksCount = 0,
+                        newMembersToday = 0,
+                        newMembersWeek = stats.newMembersWeek,
+                        leftMembersWeek = 0,
+                        growthRate = 0f,
+                        peakHours = listOf(10, 14, 19, 20, 21),
+                        topContributors = stats.topContributors?.map {
+                            com.worldmates.messenger.data.model.TopContributor(
+                                userId = it.userId,
+                                username = it.username,
+                                name = it.name,
+                                avatar = it.avatar,
+                                messagesCount = it.messagesCount
+                            )
+                        } ?: emptyList()
+                    )
+                    Log.d("GroupsViewModel", "📊 Statistics loaded for group $groupId")
+                }
             } catch (e: Exception) {
                 Log.e("GroupsViewModel", "❌ Error loading group statistics", e)
             }
@@ -910,14 +925,32 @@ class GroupsViewModel : ViewModel() {
      * 📝 Завантаження запитів на вступ до групи
      */
     fun loadJoinRequests(groupId: Long) {
+        if (UserSession.accessToken == null) return
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.getGroupJoinRequests(accessToken, groupId)
+                val response = RetrofitClient.apiService.getGroupJoinRequests(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
 
-                // Поки використовуємо пустий список (або демо-дані)
-                _joinRequests.value = emptyList()
-                Log.d("GroupsViewModel", "📝 Join requests loaded for group $groupId")
+                if (response.apiStatus == 200 && response.joinRequests != null) {
+                    _joinRequests.value = response.joinRequests.map { req ->
+                        com.worldmates.messenger.data.model.GroupJoinRequest(
+                            id = req.id,
+                            groupId = req.groupId,
+                            userId = req.userId,
+                            username = req.username,
+                            userAvatar = req.userAvatar,
+                            message = req.message,
+                            status = req.status,
+                            createdTime = req.createdTime
+                        )
+                    }
+                    Log.d("GroupsViewModel", "📝 Loaded ${response.joinRequests.size} join requests for group $groupId")
+                } else {
+                    _joinRequests.value = emptyList()
+                }
             } catch (e: Exception) {
                 Log.e("GroupsViewModel", "❌ Error loading join requests", e)
             }
@@ -932,17 +965,28 @@ class GroupsViewModel : ViewModel() {
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) {
+            onError("Не авторизовано")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.approveJoinRequest(accessToken, request.id)
+                val response = RetrofitClient.apiService.approveJoinRequest(
+                    accessToken = UserSession.accessToken!!,
+                    requestId = request.id
+                )
 
-                // Видаляємо з локального списку
-                _joinRequests.value = _joinRequests.value.filter { it.id != request.id }
-                // Оновлюємо список учасників
-                fetchGroupMembers(request.groupId)
-                onSuccess()
-                Log.d("GroupsViewModel", "✅ Approved join request from ${request.username}")
+                if (response.apiStatus == 200) {
+                    // Видаляємо з локального списку
+                    _joinRequests.value = _joinRequests.value.filter { it.id != request.id }
+                    // Оновлюємо список учасників
+                    fetchGroupMembers(request.groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "✅ Approved join request from ${request.username}")
+                } else {
+                    onError(response.errorMessage ?: "Помилка підтвердження запиту")
+                }
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)
@@ -959,15 +1003,26 @@ class GroupsViewModel : ViewModel() {
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) {
+            onError("Не авторизовано")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.rejectJoinRequest(accessToken, request.id)
+                val response = RetrofitClient.apiService.rejectJoinRequest(
+                    accessToken = UserSession.accessToken!!,
+                    requestId = request.id
+                )
 
-                // Видаляємо з локального списку
-                _joinRequests.value = _joinRequests.value.filter { it.id != request.id }
-                onSuccess()
-                Log.d("GroupsViewModel", "❌ Rejected join request from ${request.username}")
+                if (response.apiStatus == 200) {
+                    // Видаляємо з локального списку
+                    _joinRequests.value = _joinRequests.value.filter { it.id != request.id }
+                    onSuccess()
+                    Log.d("GroupsViewModel", "❌ Rejected join request from ${request.username}")
+                } else {
+                    onError(response.errorMessage ?: "Помилка відхилення запиту")
+                }
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)

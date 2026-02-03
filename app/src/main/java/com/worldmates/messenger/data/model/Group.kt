@@ -184,6 +184,7 @@ data class GroupStatistics(
 data class TopContributor(
     @SerializedName("user_id") val userId: Long,
     @SerializedName("username") val username: String,
+    @SerializedName("name") val name: String? = null,
     @SerializedName("avatar") val avatar: String? = null,
     @SerializedName("messages_count") val messagesCount: Int
 )

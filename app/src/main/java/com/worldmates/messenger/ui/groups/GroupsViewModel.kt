@@ -56,7 +56,7 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Використовуємо новий API group_chat_v2.php
+                // Використовуємо API group_chat.php
                 val response = RetrofitClient.apiService.getGroups(
                     accessToken = UserSession.accessToken!!,
                     limit = 100
@@ -370,7 +370,7 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.setGroupAdmin(
+                val response = RetrofitClient.apiService.setGroupMemberRole(
                     accessToken = UserSession.accessToken!!,
                     groupId = groupId,
                     userId = userId,
@@ -587,7 +587,7 @@ class GroupsViewModel : ViewModel() {
     /**
      * Обновить детали группы (для получения pinnedMessage)
      */
-    private fun fetchGroupDetails(groupId: Long) {
+    fun fetchGroupDetails(groupId: Long) {
         viewModelScope.launch {
             try {
                 val response = RetrofitClient.apiService.getGroupDetails(
@@ -1165,24 +1165,32 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.setGroupRole(
-                //     accessToken = UserSession.accessToken!!,
-                //     groupId = groupId,
-                //     userId = userId,
-                //     role = newRole
-                // )
+                // Call the API to update member role
+                val response = RetrofitClient.apiService.setGroupMemberRole(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    userId = userId,
+                    role = newRole
+                )
 
-                // Поки оновлюємо локально
-                _groupMembers.value = _groupMembers.value.map { member ->
-                    if (member.userId == userId) {
-                        member.copy(role = newRole)
-                    } else {
-                        member
+                if (response.apiStatus == 200) {
+                    // Оновлюємо локально після успішного API виклику
+                    _groupMembers.value = _groupMembers.value.map { member ->
+                        if (member.userId == userId) {
+                            member.copy(role = newRole)
+                        } else {
+                            member
+                        }
                     }
+                    // Перезавантажуємо учасників для синхронізації
+                    fetchGroupMembers(groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "👤 Updated role for user $userId to $newRole in group $groupId")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося змінити роль"
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ API error updating role: $errorMsg")
                 }
-                onSuccess()
-                Log.d("GroupsViewModel", "👤 Updated role for user $userId to $newRole in group $groupId")
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)

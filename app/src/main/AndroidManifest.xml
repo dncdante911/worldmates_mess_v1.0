@@ -130,6 +130,14 @@
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.groups.GroupsActivity" />
 
+        <!-- Group Admin Panel Activity -->
+        <activity
+            android:name=".ui.groups.GroupAdminPanelActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:parentActivityName=".ui.groups.GroupDetailsActivity" />
+
         <!-- Channel Details Activity -->
         <activity
             android:name=".ui.channels.ChannelDetailsActivity"

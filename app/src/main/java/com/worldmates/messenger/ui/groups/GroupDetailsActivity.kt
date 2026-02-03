@@ -125,7 +125,7 @@ fun GroupDetailsScreen(
     // 📝 Formatting settings panel state
     var showFormattingSettings by remember { mutableStateOf(false) }
     var formattingPermissions by remember {
-        mutableStateOf(GroupFormattingPermissions()) // TODO: Load from group settings
+        mutableStateOf(viewModel.loadFormattingPermissions(groupId))
     }
 
     // 🔍 Search state
@@ -133,7 +133,7 @@ fun GroupDetailsScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     // 🔔 Notifications state
-    var notificationsEnabled by remember { mutableStateOf(true) } // TODO: Load from preferences
+    var notificationsEnabled by remember { mutableStateOf(viewModel.loadNotificationSettings(groupId)) }
 
     // Subgroups (Topics) state
     var showCreateSubgroupDialog by remember { mutableStateOf(initialOpenCreateSubgroup) }
@@ -336,12 +336,13 @@ fun GroupDetailsScreen(
                     },
                     onNotificationsClick = {
                         notificationsEnabled = !notificationsEnabled
-                        android.widget.Toast.makeText(
-                            context,
-                            if (notificationsEnabled) "Сповіщення увімкнено" else "Сповіщення вимкнено",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                        // TODO: Save to preferences
+                        viewModel.saveNotificationSettings(groupId, notificationsEnabled) {
+                            android.widget.Toast.makeText(
+                                context,
+                                if (notificationsEnabled) "Сповіщення увімкнено" else "Сповіщення вимкнено",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     },
                     onShareClick = {
                         // Share group via Intent
@@ -698,12 +699,24 @@ fun GroupDetailsScreen(
                 isChannel = false,
                 onSettingsChange = { newSettings ->
                     formattingPermissions = newSettings
-                    // TODO: Save to backend when ready
-                    android.widget.Toast.makeText(
-                        context,
-                        "Налаштування форматування збережено",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+                    viewModel.saveFormattingPermissions(
+                        groupId = groupId,
+                        permissions = newSettings,
+                        onSuccess = {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Налаштування форматування збережено",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        onError = { error ->
+                            android.widget.Toast.makeText(
+                                context,
+                                "Помилка збереження: $error",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
                 },
                 onDismiss = { showFormattingSettings = false }
             )

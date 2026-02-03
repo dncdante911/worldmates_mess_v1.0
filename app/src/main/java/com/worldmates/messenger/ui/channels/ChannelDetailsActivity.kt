@@ -155,7 +155,7 @@ fun ChannelDetailsScreen(
     // 📝 Formatting settings panel state
     var showFormattingSettings by remember { mutableStateOf(false) }
     var formattingPermissions by remember {
-        mutableStateOf(GroupFormattingPermissions()) // TODO: Load from channel settings
+        mutableStateOf(detailsViewModel.loadFormattingPermissions(channelId))
     }
 
     // Завантажуємо підписників, коментарі, статистику, адмінів
@@ -968,12 +968,24 @@ fun ChannelDetailsScreen(
                 isChannel = true,
                 onSettingsChange = { newSettings ->
                     formattingPermissions = newSettings
-                    // TODO: Save to backend when ready
-                    Toast.makeText(
-                        context,
-                        "Налаштування форматування збережено",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    detailsViewModel.saveFormattingPermissions(
+                        channelId = channelId,
+                        permissions = newSettings,
+                        onSuccess = {
+                            Toast.makeText(
+                                context,
+                                "Налаштування форматування збережено",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        onError = { error ->
+                            Toast.makeText(
+                                context,
+                                "Помилка збереження: $error",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
                 },
                 onDismiss = { showFormattingSettings = false }
             )

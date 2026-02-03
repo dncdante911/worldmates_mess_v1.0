@@ -766,6 +766,102 @@ class GroupsViewModel : ViewModel() {
         }
     }
 
+    /**
+     * 📝 Сохранение настроек форматирования группы
+     */
+    fun saveFormattingPermissions(
+        groupId: Long,
+        permissions: GroupFormattingPermissions,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                // Сохраняем в SharedPreferences локально
+                val prefs = com.worldmates.messenger.data.WMApplication.instance
+                    .getSharedPreferences("group_formatting_prefs", android.content.Context.MODE_PRIVATE)
+
+                val json = com.google.gson.Gson().toJson(permissions)
+                prefs.edit().putString("formatting_$groupId", json).apply()
+
+                Log.d("GroupsViewModel", "💾 Saved formatting permissions for group $groupId")
+                onSuccess()
+
+                // TODO: В будущем добавить API вызов для сохранения на backend
+                // val response = RetrofitClient.apiService.updateGroupFormattingPermissions(...)
+            } catch (e: Exception) {
+                val errorMsg = "Помилка збереження: ${e.localizedMessage}"
+                Log.e("GroupsViewModel", "❌ Error saving formatting permissions", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * 📝 Загрузка настроек форматирования группы
+     */
+    fun loadFormattingPermissions(groupId: Long): GroupFormattingPermissions {
+        return try {
+            val prefs = com.worldmates.messenger.data.WMApplication.instance
+                .getSharedPreferences("group_formatting_prefs", android.content.Context.MODE_PRIVATE)
+
+            val json = prefs.getString("formatting_$groupId", null)
+            if (json != null) {
+                com.google.gson.Gson().fromJson(json, GroupFormattingPermissions::class.java)
+            } else {
+                GroupFormattingPermissions() // Default settings
+            }
+        } catch (e: Exception) {
+            Log.e("GroupsViewModel", "❌ Error loading formatting permissions", e)
+            GroupFormattingPermissions() // Default on error
+        }
+    }
+
+    /**
+     * 🔔 Сохранение настроек уведомлений группы
+     */
+    fun saveNotificationSettings(
+        groupId: Long,
+        enabled: Boolean,
+        onSuccess: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val prefs = com.worldmates.messenger.data.WMApplication.instance
+                    .getSharedPreferences("group_notification_prefs", android.content.Context.MODE_PRIVATE)
+
+                prefs.edit().putBoolean("notifications_$groupId", enabled).apply()
+                Log.d("GroupsViewModel", "🔔 Saved notification setting for group $groupId: $enabled")
+                onSuccess()
+
+                // TODO: В будущем добавить API вызов для сохранения на backend
+                // val response = RetrofitClient.apiService.updateGroupNotifications(...)
+            } catch (e: Exception) {
+                Log.e("GroupsViewModel", "❌ Error saving notification settings", e)
+            }
+        }
+    }
+
+    /**
+     * 🔔 Загрузка настроек уведомлений группы
+     */
+    fun loadNotificationSettings(groupId: Long): Boolean {
+        return try {
+            val prefs = com.worldmates.messenger.data.WMApplication.instance
+                .getSharedPreferences("group_notification_prefs", android.content.Context.MODE_PRIVATE)
+
+            prefs.getBoolean("notifications_$groupId", true) // По умолчанию включены
+        } catch (e: Exception) {
+            Log.e("GroupsViewModel", "❌ Error loading notification settings", e)
+            true // Default on error
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         Log.d("GroupsViewModel", "ViewModel очищена")

@@ -205,9 +205,21 @@ fun MessagesScreen(
     // Для груп/каналів - беремо з налаштувань групи (якщо admin) або з permissions
     val formattingSettings = remember(isGroup, currentGroup) {
         if (isGroup && currentGroup != null) {
-            // TODO: Отримати з currentGroup.formattingPermissions
-            // Поки що використовуємо дефолтні налаштування
-            FormattingSettings()
+            // Загружаем настройки из SharedPreferences
+            try {
+                val prefs = context.getSharedPreferences("group_formatting_prefs", android.content.Context.MODE_PRIVATE)
+                val json = prefs.getString("formatting_${currentGroup.id}", null)
+                if (json != null) {
+                    val permissions = com.google.gson.Gson().fromJson(json, com.worldmates.messenger.ui.groups.GroupFormattingPermissions::class.java)
+                    // Конвертируем GroupFormattingPermissions в FormattingSettings
+                    permissions.toFormattingSettings(currentGroup.isAdmin)
+                } else {
+                    FormattingSettings() // Default settings
+                }
+            } catch (e: Exception) {
+                Log.e("MessagesScreen", "Error loading formatting settings", e)
+                FormattingSettings() // Default on error
+            }
         } else {
             // Особисті чати - всі функції доступні
             FormattingSettings()

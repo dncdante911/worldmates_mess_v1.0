@@ -64,30 +64,30 @@ class GroupAdminPanelActivity : AppCompatActivity() {
                             viewModel.updateGroupPrivacy(groupId, isPrivate)
                         },
                         onApproveJoinRequest = { request ->
-                            viewModel.approveJoinRequest(groupId, request)
+                            viewModel.approveJoinRequest(request)
                         },
                         onRejectJoinRequest = { request ->
-                            viewModel.rejectJoinRequest(groupId, request)
+                            viewModel.rejectJoinRequest(request)
                         },
                         onRoleChange = { userId, newRole ->
                             viewModel.updateMemberRole(groupId, userId, newRole)
                         },
-                        onCreateScheduledPost = { content, scheduledTime, mediaUrl, postType, notifyMembers, pinAfterPosting ->
+                        onCreateScheduledPost = { text, scheduledTime, mediaUrl, repeatType, notifyMembers, isPinned ->
                             viewModel.createScheduledPost(
                                 groupId = groupId,
-                                content = content,
+                                text = text,
                                 scheduledTime = scheduledTime,
                                 mediaUrl = mediaUrl,
-                                postType = postType,
-                                notifyMembers = notifyMembers,
-                                pinAfterPosting = pinAfterPosting
+                                repeatType = repeatType,
+                                isPinned = isPinned,
+                                notifyMembers = notifyMembers
                             )
                         },
                         onDeleteScheduledPost = { post ->
-                            viewModel.deleteScheduledPost(groupId, post)
+                            viewModel.deleteScheduledPost(post)
                         },
                         onPublishScheduledPost = { post ->
-                            viewModel.publishScheduledPost(groupId, post)
+                            viewModel.publishScheduledPost(post)
                         },
                         onOpenStatistics = {
                             // Вже відкриті в адмін-панелі

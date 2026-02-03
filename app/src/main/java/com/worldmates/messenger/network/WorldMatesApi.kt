@@ -241,10 +241,10 @@ interface WorldMatesApi {
     ): ListBackupsResponse
 
     // ==================== GROUP CHATS (Messenger Groups) ====================
-    // Uses /api/v2/endpoints/group_chat.php - Backend API endpoint with 'type' parameter
+    // Uses /api/v2/group_chat_v2.php - Backend API endpoint with 'type' parameter
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun getGroups(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_list",
@@ -253,7 +253,7 @@ interface WorldMatesApi {
     ): GroupListResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun getGroupDetails(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_by_id",
@@ -261,7 +261,7 @@ interface WorldMatesApi {
     ): GroupDetailResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun createGroup(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "create",
@@ -271,7 +271,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse?
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun updateGroup(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "edit",
@@ -280,7 +280,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun deleteGroup(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "delete",
@@ -288,7 +288,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun addGroupMember(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "add_user",
@@ -297,7 +297,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun removeGroupMember(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "remove_user",
@@ -315,7 +315,7 @@ interface WorldMatesApi {
     ): GenericResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun leaveGroup(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "leave",
@@ -323,7 +323,7 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun getGroupMembers(
         @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_members",
@@ -333,10 +333,10 @@ interface WorldMatesApi {
     ): GroupDetailResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun getGroupMessages(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "fetch_messages",
+        @Field("type") type: String = "get_messages",
         @Field("id") groupId: Long,
         @Field("topic_id") topicId: Long = 0, // Topic/Subgroup filter
         @Field("limit") limit: Int = 50,
@@ -344,10 +344,10 @@ interface WorldMatesApi {
     ): MessageListResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun sendGroupMessage(
         @Query("access_token") accessToken: String,
-        @Field("type") type: String = "send",
+        @Field("type") type: String = "send_message",
         @Field("id") groupId: Long,
         @Field("topic_id") topicId: Long = 0, // Topic/Subgroup for message
         @Field("text") text: String,
@@ -355,7 +355,7 @@ interface WorldMatesApi {
     ): MessageResponse
 
     @Multipart
-    @POST("/api/v2/endpoints/group_chat.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun uploadGroupAvatar(
         @Query("access_token") accessToken: String,
         @Query("type") type: String = "upload_avatar",

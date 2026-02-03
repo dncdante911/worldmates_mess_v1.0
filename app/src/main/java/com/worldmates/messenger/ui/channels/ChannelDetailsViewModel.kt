@@ -897,4 +897,60 @@ class ChannelDetailsViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * 📝 Сохранение настроек форматирования канала
+     */
+    fun saveFormattingPermissions(
+        channelId: Long,
+        permissions: com.worldmates.messenger.ui.groups.GroupFormattingPermissions,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                // Сохраняем в SharedPreferences локально
+                val prefs = com.worldmates.messenger.data.WMApplication.instance
+                    .getSharedPreferences("channel_formatting_prefs", android.content.Context.MODE_PRIVATE)
+
+                val json = com.google.gson.Gson().toJson(permissions)
+                prefs.edit().putString("formatting_$channelId", json).apply()
+
+                Log.d("ChannelDetailsVM", "💾 Saved formatting permissions for channel $channelId")
+                onSuccess()
+
+                // TODO: В будущем добавить API вызов для сохранения на backend
+                // val response = RetrofitClient.apiService.updateChannelFormattingPermissions(...)
+            } catch (e: Exception) {
+                val errorMsg = "Помилка збереження: ${e.localizedMessage}"
+                Log.e("ChannelDetailsVM", "❌ Error saving formatting permissions", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
+    /**
+     * 📝 Загрузка настроек форматирования канала
+     */
+    fun loadFormattingPermissions(channelId: Long): com.worldmates.messenger.ui.groups.GroupFormattingPermissions {
+        return try {
+            val prefs = com.worldmates.messenger.data.WMApplication.instance
+                .getSharedPreferences("channel_formatting_prefs", android.content.Context.MODE_PRIVATE)
+
+            val json = prefs.getString("formatting_$channelId", null)
+            if (json != null) {
+                com.google.gson.Gson().fromJson(json, com.worldmates.messenger.ui.groups.GroupFormattingPermissions::class.java)
+            } else {
+                com.worldmates.messenger.ui.groups.GroupFormattingPermissions() // Default settings
+            }
+        } catch (e: Exception) {
+            Log.e("ChannelDetailsVM", "❌ Error loading formatting permissions", e)
+            com.worldmates.messenger.ui.groups.GroupFormattingPermissions() // Default on error
+        }
+    }
 }

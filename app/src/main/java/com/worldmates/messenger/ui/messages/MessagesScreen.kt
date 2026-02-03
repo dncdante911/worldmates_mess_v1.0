@@ -174,6 +174,7 @@ fun MessagesScreen(
 
     // 📤 Пересилання повідомлень
     var showForwardDialog by remember { mutableStateOf(false) }
+    var messageToForward by remember { mutableStateOf<Message?>(null) }
     val forwardContacts by viewModel.forwardContacts.collectAsState()
     val forwardGroups by viewModel.forwardGroups.collectAsState()
 
@@ -237,7 +238,11 @@ fun MessagesScreen(
             context.startActivity(intent)
         } catch (e: Exception) {
             Log.e("MessagesScreen", "Помилка відкриття URL: ${e.message}")
-            // TODO: Показати toast з помилкою
+            android.widget.Toast.makeText(
+                context,
+                "Не вдалося відкрити посилання",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -372,10 +377,17 @@ fun MessagesScreen(
         if (uris.isNotEmpty()) {
             if (uris.size > Constants.MAX_FILES_PER_MESSAGE) {
                 Log.w("MessagesScreen", "Вибрано занадто багато файлів: ${uris.size}, макс: ${Constants.MAX_FILES_PER_MESSAGE}")
-                // TODO: показать ошибку пользователю
+                android.widget.Toast.makeText(
+                    context,
+                    "Максимум ${Constants.MAX_FILES_PER_MESSAGE} файлів за раз",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             } else {
-                // TODO: обработать множественные файлы
-                Log.d("MessagesScreen", "Вибрано ${uris.size} файлів")
+                // Обробляємо множинні файли через viewModel
+                Log.d("MessagesScreen", "Вибрано ${uris.size} файлів для завантаження")
+                uris.forEach { uri ->
+                    viewModel.handleMediaSelection(uri)
+                }
             }
         }
     }
@@ -895,12 +907,9 @@ fun MessagesScreen(
                         selectedMessage = null
                     },
                     onForward = { message ->
-                        // TODO: Implement forward to another chat
-                        android.widget.Toast.makeText(
-                            context,
-                            "Переслання: ${message.decryptedText}",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                        // Відкриваємо діалог вибору чату для пересилання
+                        messageToForward = message
+                        showForwardDialog = true
                         showContextMenu = false
                         selectedMessage = null
                     },
@@ -2048,28 +2057,72 @@ fun MessageBubbleComposable(
     }  // Закриття Box зі свайпом
 
     // 📱 Меню для медіа файлів (показується при довгому натисканні на медіа)
+    var showDeleteMediaConfirmation by remember { mutableStateOf(false) }
+
     MediaActionMenu(
         visible = showMediaMenu,
         isOwnMessage = isOwn,
         onShare = {
-            // TODO: Реалізувати поділитися медіа
-            android.widget.Toast.makeText(
-                context,
-                "Поділитися медіа",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            // Поділитися медіа файлом через Intent
+            val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+            if (!mediaUrl.isNullOrEmpty()) {
+                try {
+                    val shareIntent = android.content.Intent().apply {
+                        action = android.content.Intent.ACTION_SEND
+                        type = when {
+                            mediaUrl.contains(".jpg", ignoreCase = true) ||
+                            mediaUrl.contains(".png", ignoreCase = true) ||
+                            mediaUrl.contains(".jpeg", ignoreCase = true) -> "image/*"
+                            mediaUrl.contains(".mp4", ignoreCase = true) ||
+                            mediaUrl.contains(".mov", ignoreCase = true) -> "video/*"
+                            else -> "*/*"
+                        }
+                        putExtra(android.content.Intent.EXTRA_TEXT, mediaUrl)
+                    }
+                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Поділитися медіа"))
+                    showMediaMenu = false
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Не вдалося поділитися медіа",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
         },
         onDelete = {
-            // Видаляємо повідомлення з медіа
-            // TODO: Додати підтвердження видалення
-            android.widget.Toast.makeText(
-                context,
-                "Медіа буде видалено",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            // Показуємо підтвердження видалення
+            showDeleteMediaConfirmation = true
+            showMediaMenu = false
         },
         onDismiss = { showMediaMenu = false }
     )
+
+    // 🗑️ Діалог підтвердження видалення медіа
+    if (showDeleteMediaConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteMediaConfirmation = false },
+            title = { androidx.compose.material3.Text("Видалити медіа?") },
+            text = { androidx.compose.material3.Text("Це повідомлення буде видалено назавжди") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        viewModel.deleteMessage(message.id)
+                        showDeleteMediaConfirmation = false
+                    }
+                ) {
+                    androidx.compose.material3.Text("Видалити", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showDeleteMediaConfirmation = false }
+                ) {
+                    androidx.compose.material3.Text("Скасувати")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -2419,6 +2472,7 @@ fun MessageInputBar(
 
                 // 📝 Панель форматування тексту (показується при фокусі на текстове поле)
                 var showFormattingToolbar by remember { mutableStateOf(false) }
+                var showLinkInsertDialog by remember { mutableStateOf(false) }
 
                 FormattingToolbar(
                     isVisible = showFormattingToolbar && currentInputMode == InputMode.TEXT,
@@ -2463,7 +2517,7 @@ fun MessageInputBar(
                         }
                     },
                     onLinkClick = {
-                        // TODO: Показати діалог для вставки посилання
+                        showLinkInsertDialog = true
                     },
                     onMentionClick = {
                         // Додаємо @ для початку згадки
@@ -2808,6 +2862,18 @@ fun MessageInputBar(
                     }
                 }
             }
+        }
+
+        // 🔗 Діалог вставки посилання
+        if (showLinkInsertDialog) {
+            com.worldmates.messenger.ui.components.formatting.LinkInsertDialog(
+                onDismiss = { showLinkInsertDialog = false },
+                onInsert = { text, url ->
+                    val linkMarkdown = "[$text]($url)"
+                    onMessageChange(messageText + linkMarkdown)
+                    showLinkInsertDialog = false
+                }
+            )
         }
     }
 }

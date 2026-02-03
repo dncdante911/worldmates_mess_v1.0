@@ -440,6 +440,71 @@ interface WorldMatesApi {
         @Field("qr_code") qrCode: String
     ): JoinGroupResponse
 
+    // ==================== GROUP MANAGEMENT ====================
+
+    // 📝 Get Join Requests
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_management.php")
+    suspend fun getGroupJoinRequests(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "get_join_requests",
+        @Field("group_id") groupId: Long
+    ): JoinRequestsResponse
+
+    // ✅ Approve Join Request
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_management.php")
+    suspend fun approveJoinRequest(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "approve_join_request",
+        @Field("request_id") requestId: Long
+    ): GenericResponse
+
+    // ❌ Reject Join Request
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_management.php")
+    suspend fun rejectJoinRequest(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "reject_join_request",
+        @Field("request_id") requestId: Long
+    ): GenericResponse
+
+    // ⚙️ Update Group Settings (slow mode, privacy, permissions)
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_management.php")
+    suspend fun updateGroupSettings(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "update_settings",
+        @Field("group_id") groupId: Long,
+        @Field("is_private") isPrivate: Int? = null,
+        @Field("slow_mode_seconds") slowModeSeconds: Int? = null,
+        @Field("history_visible") historyVisible: Int? = null,
+        @Field("anti_spam_enabled") antiSpamEnabled: Int? = null,
+        @Field("max_messages_per_minute") maxMessagesPerMinute: Int? = null,
+        @Field("allow_members_send_media") allowMedia: Int? = null,
+        @Field("allow_members_send_links") allowLinks: Int? = null,
+        @Field("allow_members_send_stickers") allowStickers: Int? = null,
+        @Field("allow_members_invite") allowInvite: Int? = null
+    ): GenericResponse
+
+    // ⚙️ Get Group Settings
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_management.php")
+    suspend fun getGroupSettings(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "get_settings",
+        @Field("group_id") groupId: Long
+    ): GroupSettingsResponse
+
+    // 📊 Get Group Statistics
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_management.php")
+    suspend fun getGroupStatistics(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "get_statistics",
+        @Field("group_id") groupId: Long
+    ): GroupStatisticsResponse
+
     // ==================== MESSAGES ====================
 
     @FormUrlEncoded
@@ -1398,4 +1463,73 @@ data class SubscribeChannelResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("message") val message: String?,
     @SerializedName("channel") val channel: com.worldmates.messenger.data.model.Channel? = null
+)
+
+/**
+ * 📝 Response for group join requests
+ */
+data class JoinRequestsResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("join_requests") val joinRequests: List<JoinRequestData>? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+data class JoinRequestData(
+    @SerializedName("id") val id: Long,
+    @SerializedName("group_id") val groupId: Long,
+    @SerializedName("user_id") val userId: Long,
+    @SerializedName("username") val username: String,
+    @SerializedName("user_name") val userName: String? = null,
+    @SerializedName("user_avatar") val userAvatar: String? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("status") val status: String = "pending",
+    @SerializedName("created_time") val createdTime: Long
+)
+
+/**
+ * ⚙️ Response for group settings
+ */
+data class GroupSettingsResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("settings") val settings: GroupSettingsData? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+data class GroupSettingsData(
+    @SerializedName("group_id") val groupId: Long,
+    @SerializedName("is_private") val isPrivate: Boolean = false,
+    @SerializedName("slow_mode_seconds") val slowModeSeconds: Int = 0,
+    @SerializedName("history_visible_for_new_members") val historyVisibleForNewMembers: Boolean = true,
+    @SerializedName("anti_spam_enabled") val antiSpamEnabled: Boolean = false,
+    @SerializedName("max_messages_per_minute") val maxMessagesPerMinute: Int = 20,
+    @SerializedName("allow_members_send_media") val allowMembersSendMedia: Boolean = true,
+    @SerializedName("allow_members_send_links") val allowMembersSendLinks: Boolean = true,
+    @SerializedName("allow_members_send_stickers") val allowMembersSendStickers: Boolean = true,
+    @SerializedName("allow_members_invite") val allowMembersInvite: Boolean = false
+)
+
+/**
+ * 📊 Response for group statistics
+ */
+data class GroupStatisticsResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("statistics") val statistics: GroupStatisticsData? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+data class GroupStatisticsData(
+    @SerializedName("members_count") val membersCount: Int = 0,
+    @SerializedName("messages_count") val messagesCount: Int = 0,
+    @SerializedName("messages_today") val messagesToday: Int = 0,
+    @SerializedName("new_members_week") val newMembersWeek: Int = 0,
+    @SerializedName("admins_count") val adminsCount: Int = 0,
+    @SerializedName("top_contributors") val topContributors: List<TopContributorData>? = null
+)
+
+data class TopContributorData(
+    @SerializedName("user_id") val userId: Long,
+    @SerializedName("username") val username: String,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("avatar") val avatar: String? = null,
+    @SerializedName("messages_count") val messagesCount: Int = 0
 )

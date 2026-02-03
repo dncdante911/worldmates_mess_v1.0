@@ -306,12 +306,13 @@ interface WorldMatesApi {
     ): CreateGroupResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/set_group_member_role.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun setGroupMemberRole(
         @Query("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
+        @Field("type") type: String = "set_admin",
+        @Field("id") groupId: Long,
         @Field("user_id") userId: Long,
-        @Field("role") role: String // admin, moderator, member
+        @Field("role") role: String = "admin" // admin, moderator, member
     ): GenericResponse
 
     @FormUrlEncoded

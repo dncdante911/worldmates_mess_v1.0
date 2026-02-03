@@ -883,7 +883,7 @@ fun ChannelDetailsScreen(
                                     horizontalArrangement = Arrangement.Start,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.TextFormat, contentDescription = null)
+                                    Icon(Icons.Default.Settings, contentDescription = null)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text("Форматування повідомлень")
                                 }

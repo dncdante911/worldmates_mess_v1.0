@@ -204,15 +204,32 @@ fun MessagesScreen(
     // Для особистих чатів - всі функції доступні
     // Для груп/каналів - беремо з налаштувань групи (якщо admin) або з permissions
     val formattingSettings = remember(isGroup, currentGroup) {
-        if (isGroup && currentGroup != null) {
+        val group = currentGroup  // Fix smart cast issue
+        if (isGroup && group != null) {
             // Загружаем настройки из SharedPreferences
             try {
                 val prefs = context.getSharedPreferences("group_formatting_prefs", android.content.Context.MODE_PRIVATE)
-                val json = prefs.getString("formatting_${currentGroup.id}", null)
+                val json = prefs.getString("formatting_${group.id}", null)
                 if (json != null) {
                     val permissions = com.google.gson.Gson().fromJson(json, com.worldmates.messenger.ui.groups.GroupFormattingPermissions::class.java)
                     // Конвертируем GroupFormattingPermissions в FormattingSettings
-                    permissions.toFormattingSettings(currentGroup.isAdmin)
+                    // Админы имеют все права, участники - только разрешенные
+                    if (group.isAdmin) {
+                        FormattingSettings() // All permissions for admins
+                    } else {
+                        FormattingSettings(
+                            allowMentions = permissions.membersCanUseMentions,
+                            allowHashtags = permissions.membersCanUseHashtags,
+                            allowBold = permissions.membersCanUseBold,
+                            allowItalic = permissions.membersCanUseItalic,
+                            allowCode = permissions.membersCanUseCode,
+                            allowStrikethrough = permissions.membersCanUseStrikethrough,
+                            allowUnderline = permissions.membersCanUseUnderline,
+                            allowSpoilers = permissions.membersCanUseSpoilers,
+                            allowQuotes = permissions.membersCanUseQuotes,
+                            allowLinks = permissions.membersCanUseLinks
+                        )
+                    }
                 } else {
                     FormattingSettings() // Default settings
                 }
@@ -238,7 +255,7 @@ fun MessagesScreen(
     val onHashtagClick: (String) -> Unit = { tag ->
         // Пошук повідомлень з цим хештегом
         Log.d("MessagesScreen", "Клік на хештег: #$tag")
-        viewModel.searchMessages(tag)
+        viewModel.setSearchQuery(tag)
         showSearchBar = true
     }
 
@@ -398,7 +415,12 @@ fun MessagesScreen(
                 // Обробляємо множинні файли через viewModel
                 Log.d("MessagesScreen", "Вибрано ${uris.size} файлів для завантаження")
                 uris.forEach { uri ->
-                    viewModel.handleMediaSelection(uri)
+                    val file = fileManager.copyUriToCache(uri)
+                    if (file != null) {
+                        viewModel.uploadAndSendMedia(file, "file")
+                    } else {
+                        Log.e("MessagesScreen", "Не вдалося скопіювати файл: $uri")
+                    }
                 }
             }
         }
@@ -850,7 +872,12 @@ fun MessagesScreen(
                                     isOnline = false
                                 )
                                 showUserProfileMenu = true
-                            }
+                            },
+                            // 📝 Параметри для форматування тексту
+                            formattingSettings = formattingSettings,
+                            onMentionClick = onMentionClick,
+                            onHashtagClick = onHashtagClick,
+                            onLinkClick = onLinkClick
                         )
                     }  // Закриття AnimatedVisibility
                 }
@@ -1607,7 +1634,12 @@ fun MessageBubbleComposable(
     onDoubleTap: (Long) -> Unit = {},
     // 👤 Параметри для відображення імені відправника в групових чатах
     isGroup: Boolean = false,
-    onSenderNameClick: (Long) -> Unit = {}
+    onSenderNameClick: (Long) -> Unit = {},
+    // 📝 Параметри для форматування тексту
+    formattingSettings: FormattingSettings = FormattingSettings(),
+    onMentionClick: (String) -> Unit = {},
+    onHashtagClick: (String) -> Unit = {},
+    onLinkClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val isOwn = message.fromId == UserSession.userId
@@ -2879,9 +2911,10 @@ fun MessageInputBar(
         // 🔗 Діалог вставки посилання
         if (showLinkInsertDialog) {
             com.worldmates.messenger.ui.components.formatting.LinkInsertDialog(
+                selectedText = "", // Empty or selected text
                 onDismiss = { showLinkInsertDialog = false },
-                onInsert = { text, url ->
-                    val linkMarkdown = "[$text]($url)"
+                onConfirm = { url ->
+                    val linkMarkdown = "[$url]($url)" // If no selectedText, use URL as text
                     onMessageChange(messageText + linkMarkdown)
                     showLinkInsertDialog = false
                 }

@@ -1529,6 +1529,14 @@ class MessagesViewModel(application: Application) :
         Log.d(TAG, "🔍 Search cleared")
     }
 
+    /**
+     * 🔍 Установить поисковый запрос
+     */
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+        Log.d(TAG, "🔍 Search query set to: $query")
+    }
+
     // ==================== MEDIA LOADING ====================
 
     /**

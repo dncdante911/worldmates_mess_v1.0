@@ -877,7 +877,8 @@ fun MessagesScreen(
                             formattingSettings = formattingSettings,
                             onMentionClick = onMentionClick,
                             onHashtagClick = onHashtagClick,
-                            onLinkClick = onLinkClick
+                            onLinkClick = onLinkClick,
+                            viewModel = viewModel
                         )
                     }  // Закриття AnimatedVisibility
                 }
@@ -1207,7 +1208,8 @@ fun MessagesScreen(
                     showStrapiPicker = showStrapiPicker,
                     onToggleStrapiPicker = { showStrapiPicker = !showStrapiPicker },
                     onRequestAudioPermission = onRequestAudioPermission,
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    formattingSettings = formattingSettings
                 )
 
                 // 💾 Draft saving indicator
@@ -1639,7 +1641,9 @@ fun MessageBubbleComposable(
     formattingSettings: FormattingSettings = FormattingSettings(),
     onMentionClick: (String) -> Unit = {},
     onHashtagClick: (String) -> Unit = {},
-    onLinkClick: (String) -> Unit = {}
+    onLinkClick: (String) -> Unit = {},
+    // 🗑️ ViewModel для видалення повідомлень
+    viewModel: MessagesViewModel? = null
 ) {
     val context = LocalContext.current
     val isOwn = message.fromId == UserSession.userId
@@ -2151,7 +2155,7 @@ fun MessageBubbleComposable(
             confirmButton = {
                 androidx.compose.material3.TextButton(
                     onClick = {
-                        viewModel.deleteMessage(message.id)
+                        viewModel?.deleteMessage(message.id)
                         showDeleteMediaConfirmation = false
                     }
                 ) {
@@ -2288,11 +2292,16 @@ fun MessageInputBar(
     showStrapiPicker: Boolean,  // Додано
     onToggleStrapiPicker: () -> Unit,  // Додано
     onRequestAudioPermission: () -> Boolean = { true },
-    viewModel: MessagesViewModel? = null
+    viewModel: MessagesViewModel? = null,
+    formattingSettings: FormattingSettings = FormattingSettings()
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     val context = LocalContext.current  // Додано для вібрації
+
+    // 📝 State для панелі форматування (перенесено на рівень функції)
+    var showFormattingToolbar by remember { mutableStateOf(false) }
+    var showLinkInsertDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -2515,9 +2524,6 @@ fun MessageInputBar(
                 }
 
                 // 📝 Панель форматування тексту (показується при фокусі на текстове поле)
-                var showFormattingToolbar by remember { mutableStateOf(false) }
-                var showLinkInsertDialog by remember { mutableStateOf(false) }
-
                 FormattingToolbar(
                     isVisible = showFormattingToolbar && currentInputMode == InputMode.TEXT,
                     hasSelection = messageText.isNotEmpty(),

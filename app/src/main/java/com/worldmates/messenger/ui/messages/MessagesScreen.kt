@@ -89,6 +89,14 @@ import com.worldmates.messenger.ui.components.formatting.FormattingSettings
 import com.worldmates.messenger.ui.components.formatting.FormattingToolbar
 import com.worldmates.messenger.ui.components.formatting.FormattedTextColors
 
+// 💬 Імпорти компонентів форматованих повідомлень
+import com.worldmates.messenger.ui.messages.FormattedMessageContent
+import com.worldmates.messenger.ui.messages.FormattedMessageText
+
+// 👆 Імпорт покращеного обробника дотиків
+import com.worldmates.messenger.ui.messages.MessageTouchWrapper
+import com.worldmates.messenger.ui.messages.MessageTouchConfig
+
 // 🎯 Enum для режимів введення (як в Telegram/Viber)
 enum class InputMode {
     TEXT,       // Звичайне текстове повідомлення
@@ -190,6 +198,48 @@ fun MessagesScreen(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val themeState = rememberThemeState()
+
+    // 📝 Налаштування форматування тексту
+    // Для особистих чатів - всі функції доступні
+    // Для груп/каналів - беремо з налаштувань групи (якщо admin) або з permissions
+    val formattingSettings = remember(isGroup, currentGroup) {
+        if (isGroup && currentGroup != null) {
+            // TODO: Отримати з currentGroup.formattingPermissions
+            // Поки що використовуємо дефолтні налаштування
+            FormattingSettings()
+        } else {
+            // Особисті чати - всі функції доступні
+            FormattingSettings()
+        }
+    }
+
+    // 🔗 Обробники кліків на форматування
+    val onMentionClick: (String) -> Unit = { username ->
+        // Навігація до профілю користувача
+        Log.d("MessagesScreen", "Клік на згадку: @$username")
+        // TODO: Відкрити профіль користувача або показати меню
+        // selectedUserForMenu = UserMenuData(username = username, ...)
+        // showUserProfileMenu = true
+    }
+
+    val onHashtagClick: (String) -> Unit = { tag ->
+        // Пошук повідомлень з цим хештегом
+        Log.d("MessagesScreen", "Клік на хештег: #$tag")
+        viewModel.searchMessages(tag)
+        showSearchBar = true
+    }
+
+    val onLinkClick: (String) -> Unit = { url ->
+        // Відкриття URL в браузері
+        Log.d("MessagesScreen", "Клік на посилання: $url")
+        try {
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("MessagesScreen", "Помилка відкриття URL: ${e.message}")
+            // TODO: Показати toast з помилкою
+        }
+    }
 
     // 📜 Auto-scroll для автоматичної прокрутки до нових повідомлень
     val listState = rememberLazyListState()
@@ -1826,43 +1876,24 @@ fun MessageBubbleComposable(
                                     )
                                 } else {
                                     // Если не удалось распарсить, показываем как обычный текст з форматуванням
-                                    FormattedText(
+                                    FormattedMessageText(
                                         text = message.decryptedText!!,
-                                        color = textColor,
-                                        fontSize = 15.sp,
-                                        lineHeight = 20.sp
+                                        textColor = textColor,
+                                        settings = formattingSettings,
+                                        onMentionClick = onMentionClick,
+                                        onHashtagClick = onHashtagClick,
+                                        onLinkClick = onLinkClick
                                     )
                                 }
-                            } else if (isEmojiMessage) {
-                                // 😊 ЕМОДЗІ БЕЗ БУЛЬБАШКИ - просто великі емодзі на прозорому фоні
-                                Text(
-                                    text = message.decryptedText!!,
-                                    fontSize = getEmojiSize(message.decryptedText!!),
-                                    lineHeight = (getEmojiSize(message.decryptedText!!).value + 4).sp,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .wrapContentWidth(Alignment.CenterHorizontally)
-                                        .padding(vertical = 4.dp)
-                                )
                             } else {
-                                // 💬 ТЕКСТ В БУЛЬБАШЦІ з форматуванням
-                                FormattedText(
-                                    text = message.decryptedText!!,
-                                    color = textColor,
-                                    fontSize = 15.sp,
-                                    lineHeight = 20.sp,
-                                    onMentionClick = { username ->
-                                        // TODO: Навігація до профілю користувача по username
-                                        Log.d("FormattedText", "Клік на згадку: @$username")
-                                    },
-                                    onHashtagClick = { tag ->
-                                        // TODO: Пошук по хештегу
-                                        Log.d("FormattedText", "Клік на хештег: #$tag")
-                                    },
-                                    onLinkClick = { url ->
-                                        // TODO: Відкриття URL в браузері
-                                        Log.d("FormattedText", "Клік на посилання: $url")
-                                    }
+                                // 💬 ТЕКСТ В БУЛЬБАШЦІ з форматуванням (emoji-only handled inside)
+                                FormattedMessageContent(
+                                    message = message,
+                                    textColor = textColor,
+                                    settings = formattingSettings,
+                                    onMentionClick = onMentionClick,
+                                    onHashtagClick = onHashtagClick,
+                                    onLinkClick = onLinkClick
                                 )
                             }
                         }
@@ -2392,6 +2423,7 @@ fun MessageInputBar(
                 FormattingToolbar(
                     isVisible = showFormattingToolbar && currentInputMode == InputMode.TEXT,
                     hasSelection = messageText.isNotEmpty(),
+                    settings = formattingSettings,
                     onBoldClick = {
                         viewModel?.applyFormatting(messageText, "**", "**")?.let { formatted ->
                             onMessageChange(formatted)

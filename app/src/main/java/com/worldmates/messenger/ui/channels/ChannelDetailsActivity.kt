@@ -58,6 +58,8 @@ import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.ui.theme.BackgroundImage
 import com.worldmates.messenger.ui.theme.rememberThemeState
+import com.worldmates.messenger.ui.groups.FormattingSettingsPanel
+import com.worldmates.messenger.ui.groups.GroupFormattingPermissions
 import com.worldmates.messenger.util.toFullMediaUrl
 
 /**
@@ -149,6 +151,12 @@ fun ChannelDetailsScreen(
     var selectedPostForOptions by remember { mutableStateOf<ChannelPost?>(null) }
     var selectedPostForDetail by remember { mutableStateOf<ChannelPost?>(null) }
     var refreshing by remember { mutableStateOf(false) }
+
+    // 📝 Formatting settings panel state
+    var showFormattingSettings by remember { mutableStateOf(false) }
+    var formattingPermissions by remember {
+        mutableStateOf(GroupFormattingPermissions()) // TODO: Load from channel settings
+    }
 
     // Завантажуємо підписників, коментарі, статистику, адмінів
     val subscribers by detailsViewModel.subscribers.collectAsState()
@@ -861,6 +869,25 @@ fun ChannelDetailsScreen(
                                     Text("Адміністратори")
                                 }
                             }
+
+                            // Налаштування форматування
+                            TextButton(
+                                onClick = {
+                                    showChannelMenuDialog = false
+                                    showFormattingSettings = true
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.TextFormat, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Форматування повідомлень")
+                                }
+                            }
                         }
                     }
                 },
@@ -931,6 +958,24 @@ fun ChannelDetailsScreen(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
                 }
+            )
+        }
+
+        // 📝 Formatting Settings Panel
+        if (showFormattingSettings) {
+            FormattingSettingsPanel(
+                currentSettings = formattingPermissions,
+                isChannel = true,
+                onSettingsChange = { newSettings ->
+                    formattingPermissions = newSettings
+                    // TODO: Save to backend when ready
+                    Toast.makeText(
+                        context,
+                        "Налаштування форматування збережено",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onDismiss = { showFormattingSettings = false }
             )
         }
     }

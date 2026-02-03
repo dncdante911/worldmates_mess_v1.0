@@ -42,6 +42,8 @@ import com.worldmates.messenger.ui.groups.components.ModernInviteMembersDialog
 import com.worldmates.messenger.ui.groups.components.SubgroupsSection
 import com.worldmates.messenger.ui.groups.components.Subgroup
 import com.worldmates.messenger.ui.groups.components.CreateSubgroupDialog
+import com.worldmates.messenger.ui.groups.FormattingSettingsPanel
+import com.worldmates.messenger.ui.groups.GroupFormattingPermissions
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import java.text.SimpleDateFormat
@@ -119,6 +121,12 @@ fun GroupDetailsScreen(
     var showGroupQrDialog by remember { mutableStateOf(false) }
     var groupQrCode by remember { mutableStateOf<String?>(null) }
     var groupJoinUrl by remember { mutableStateOf<String?>(null) }
+
+    // 📝 Formatting settings panel state
+    var showFormattingSettings by remember { mutableStateOf(false) }
+    var formattingPermissions by remember {
+        mutableStateOf(GroupFormattingPermissions()) // TODO: Load from group settings
+    }
 
     // Subgroups (Topics) state
     var showCreateSubgroupDialog by remember { mutableStateOf(initialOpenCreateSubgroup) }
@@ -308,7 +316,8 @@ fun GroupDetailsScreen(
                                     ).show()
                                 }
                             )
-                        }
+                        },
+                        onFormattingSettingsClick = { showFormattingSettings = true }
                     )
                 }
             }
@@ -608,6 +617,24 @@ fun GroupDetailsScreen(
                 isLoading = isLoading
             )
         }
+
+        // 📝 Formatting Settings Panel
+        if (showFormattingSettings) {
+            FormattingSettingsPanel(
+                currentSettings = formattingPermissions,
+                isChannel = false,
+                onSettingsChange = { newSettings ->
+                    formattingPermissions = newSettings
+                    // TODO: Save to backend when ready
+                    android.widget.Toast.makeText(
+                        context,
+                        "Налаштування форматування збережено",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onDismiss = { showFormattingSettings = false }
+            )
+        }
     }
 }
 
@@ -742,7 +769,8 @@ fun ActionButton(
 fun AdminControlsSection(
     onEditClick: () -> Unit,
     onAddMembersClick: () -> Unit,
-    onQrCodeClick: () -> Unit = {}
+    onQrCodeClick: () -> Unit = {},
+    onFormattingSettingsClick: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -765,6 +793,12 @@ fun AdminControlsSection(
                 icon = Icons.Default.QrCode,
                 title = "QR код групи",
                 onClick = onQrCodeClick
+            )
+            Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(start = 56.dp))
+            SettingsItem(
+                icon = Icons.Default.TextFormat,
+                title = "Налаштування форматування",
+                onClick = onFormattingSettingsClick
             )
         }
     }

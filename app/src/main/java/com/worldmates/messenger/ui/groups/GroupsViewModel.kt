@@ -783,7 +783,7 @@ class GroupsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // Сохраняем в SharedPreferences локально
-                val prefs = com.worldmates.messenger.data.WMApplication.instance
+                val prefs = com.worldmates.messenger.WMApplication.instance
                     .getSharedPreferences("group_formatting_prefs", android.content.Context.MODE_PRIVATE)
 
                 val json = com.google.gson.Gson().toJson(permissions)
@@ -807,7 +807,7 @@ class GroupsViewModel : ViewModel() {
      */
     fun loadFormattingPermissions(groupId: Long): GroupFormattingPermissions {
         return try {
-            val prefs = com.worldmates.messenger.data.WMApplication.instance
+            val prefs = com.worldmates.messenger.WMApplication.instance
                 .getSharedPreferences("group_formatting_prefs", android.content.Context.MODE_PRIVATE)
 
             val json = prefs.getString("formatting_$groupId", null)
@@ -832,7 +832,7 @@ class GroupsViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                val prefs = com.worldmates.messenger.data.WMApplication.instance
+                val prefs = com.worldmates.messenger.WMApplication.instance
                     .getSharedPreferences("group_notification_prefs", android.content.Context.MODE_PRIVATE)
 
                 prefs.edit().putBoolean("notifications_$groupId", enabled).apply()
@@ -852,7 +852,7 @@ class GroupsViewModel : ViewModel() {
      */
     fun loadNotificationSettings(groupId: Long): Boolean {
         return try {
-            val prefs = com.worldmates.messenger.data.WMApplication.instance
+            val prefs = com.worldmates.messenger.WMApplication.instance
                 .getSharedPreferences("group_notification_prefs", android.content.Context.MODE_PRIVATE)
 
             prefs.getBoolean("notifications_$groupId", true) // По умолчанию включены

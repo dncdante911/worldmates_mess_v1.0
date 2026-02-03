@@ -733,10 +733,10 @@ fun PremiumPostCard(
             ) {
                 // Reactions
                 PremiumActionButton(
-                    icon = if (post.reactions.isNotEmpty()) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
-                    label = if (post.reactions.isNotEmpty()) "${post.reactions.sumOf { it.count }}" else "Like",
+                    icon = if (post.reactions?.isNotEmpty() ?:false ) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
+                    label = if (post.reactions?.isNotEmpty() ?:false ) "${post.reactions.sumOf { it.count }}" else "Like",
                     onClick = { onReactionClick("\uD83D\uDC4D") },
-                    color = if (post.reactions.isNotEmpty()) PremiumColors.TelegramBlue else textSecondary,
+                    color = if (post.reactions?.isNotEmpty() ?:false ) PremiumColors.TelegramBlue else textSecondary,
                     isDarkTheme = isDarkTheme
                 )
 

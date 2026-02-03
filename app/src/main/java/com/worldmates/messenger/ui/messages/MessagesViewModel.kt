@@ -117,6 +117,7 @@ class MessagesViewModel(application: Application) :
 
     private var recipientId: Long = 0
     private var groupId: Long = 0
+    private var topicId: Long = 0 // 📁 Topic/Subgroup ID for topic-based filtering
     private var socketManager: SocketManager? = null
     private var mediaUploader: MediaUploader? = null
     private var fileManager: FileManager? = null
@@ -124,25 +125,32 @@ class MessagesViewModel(application: Application) :
     // 🎥 Публічні getters для відеодзвінків
     fun getRecipientId(): Long = recipientId
     fun getGroupId(): Long = groupId
+    fun getTopicId(): Long = topicId
 
     fun initialize(recipientId: Long) {
         Log.d("MessagesViewModel", "🔧 initialize() викликано для користувача $recipientId")
         this.recipientId = recipientId
         this.groupId = 0
+        this.topicId = 0
         fetchMessages()
         setupSocket()
         loadDraft() // Загружаем черновик
         Log.d("MessagesViewModel", "✅ Ініціалізація завершена для користувача $recipientId")
     }
 
-    fun initializeGroup(groupId: Long) {
+    fun initializeGroup(groupId: Long, topicId: Long = 0) {
         this.groupId = groupId
         this.recipientId = 0
+        this.topicId = topicId
         fetchGroupDetails(groupId) // 📌 Отримуємо деталі групи включаючи закріплене повідомлення
         fetchGroupMessages()
         setupSocket()
         loadDraft() // Загружаем черновик
-        Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
+        if (topicId != 0L) {
+            Log.d("MessagesViewModel", "Ініціалізація для групи $groupId, topic $topicId")
+        } else {
+            Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
+        }
     }
 
     /**
@@ -225,10 +233,11 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                // Використовуємо НОВИЙ API для групових повідомлень
+                // Використовуємо API для групових повідомлень (з опціональною фільтрацією по топіку)
                 val response = RetrofitClient.apiService.getGroupMessages(
                     accessToken = UserSession.accessToken!!,
                     groupId = groupId,
+                    topicId = topicId, // Фільтруємо по топіку якщо вказано
                     limit = Constants.MESSAGES_PAGE_SIZE,
                     beforeMessageId = beforeMessageId
                 )
@@ -244,7 +253,11 @@ class MessagesViewModel(application: Application) :
                     _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
 
                     _error.value = null
-                    Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень групи")
+                    if (topicId != 0L) {
+                        Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень топіку $topicId")
+                    } else {
+                        Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень групи")
+                    }
                 } else {
                     _error.value = response.errorMessage ?: "Помилка завантаження повідомлень"
                 }
@@ -274,10 +287,11 @@ class MessagesViewModel(application: Application) :
                 val messageHashId = System.currentTimeMillis().toString()
 
                 val response = if (groupId != 0L) {
-                    // Використовуємо НОВИЙ API для відправки в групу
+                    // Використовуємо API для відправки в групу (з опціональним топіком)
                     RetrofitClient.apiService.sendGroupMessage(
                         accessToken = UserSession.accessToken!!,
                         groupId = groupId,
+                        topicId = topicId, // Якщо є топік, повідомлення буде прив'язане до нього
                         text = text,
                         replyToId = replyToId
                     )

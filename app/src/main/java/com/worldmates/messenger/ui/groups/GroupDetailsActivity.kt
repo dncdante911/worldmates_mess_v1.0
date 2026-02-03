@@ -42,8 +42,10 @@ import com.worldmates.messenger.ui.groups.components.ModernInviteMembersDialog
 import com.worldmates.messenger.ui.groups.components.SubgroupsSection
 import com.worldmates.messenger.ui.groups.components.Subgroup
 import com.worldmates.messenger.ui.groups.components.CreateSubgroupDialog
+import com.worldmates.messenger.ui.groups.components.QuickAdminControlsCard
 import com.worldmates.messenger.ui.groups.FormattingSettingsPanel
 import com.worldmates.messenger.ui.groups.GroupFormattingPermissions
+import com.worldmates.messenger.ui.messages.MessagesActivity
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import java.text.SimpleDateFormat
@@ -107,6 +109,8 @@ fun GroupDetailsScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val availableUsers by viewModel.availableUsers.collectAsState()
+    val joinRequests by viewModel.joinRequests.collectAsState()
+    val scheduledPosts by viewModel.scheduledPosts.collectAsState()
 
     val group = groups.find { it.id == groupId }
     val context = LocalContext.current
@@ -361,7 +365,17 @@ fun GroupDetailsScreen(
             if (group.isAdmin || group.isOwner) {
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
-                    AdminControlsSection(
+                    QuickAdminControlsCard(
+                        group = group,
+                        joinRequestsCount = joinRequests.size,
+                        scheduledPostsCount = scheduledPosts.size,
+                        onOpenAdminPanel = {
+                            // Navigate to full admin panel
+                            val intent = Intent(context, GroupAdminPanelActivity::class.java).apply {
+                                putExtra("group_id", group.id)
+                            }
+                            context.startActivity(intent)
+                        },
                         onEditClick = { showEditDialog = true },
                         onAddMembersClick = { showAddMemberDialog = true },
                         onQrCodeClick = {
@@ -382,7 +396,7 @@ fun GroupDetailsScreen(
                                 }
                             )
                         },
-                        onFormattingSettingsClick = { showFormattingSettings = true }
+                        onFormattingClick = { showFormattingSettings = true }
                     )
                 }
             }
@@ -394,12 +408,16 @@ fun GroupDetailsScreen(
                     subgroups = subgroups,
                     canCreateSubgroup = group.isAdmin,
                     onSubgroupClick = { subgroup ->
-                        // TODO: Navigate to subgroup chat when backend is ready
-                        android.widget.Toast.makeText(
-                            context,
-                            "Topic: ${subgroup.name} - Coming soon!",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                        // Navigate to topic chat
+                        val intent = Intent(context, MessagesActivity::class.java).apply {
+                            putExtra("group_id", group.id)
+                            putExtra("topic_id", subgroup.id)
+                            putExtra("topic_name", subgroup.name)
+                            putExtra("recipient_name", "${group.name} > ${subgroup.name}")
+                            putExtra("recipient_avatar", group.avatar)
+                            putExtra("is_group", true)
+                        }
+                        context.startActivity(intent)
                     },
                     onCreateSubgroupClick = {
                         showCreateSubgroupDialog = true

@@ -940,7 +940,7 @@ class GroupsViewModel : ViewModel() {
                 // Видаляємо з локального списку
                 _joinRequests.value = _joinRequests.value.filter { it.id != request.id }
                 // Оновлюємо список учасників
-                loadGroupMembers(request.groupId)
+                fetchGroupMembers(request.groupId)
                 onSuccess()
                 Log.d("GroupsViewModel", "✅ Approved join request from ${request.username}")
             } catch (e: Exception) {
@@ -1165,22 +1165,24 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.setGroupRole(
-                    accessToken = UserSession.accessToken!!,
-                    groupId = groupId,
-                    userId = userId,
-                    role = newRole
-                )
+                // TODO: Implement API call when backend is ready
+                // val response = RetrofitClient.apiService.setGroupRole(
+                //     accessToken = UserSession.accessToken!!,
+                //     groupId = groupId,
+                //     userId = userId,
+                //     role = newRole
+                // )
 
-                if (response.apiStatus == 200) {
-                    // Оновлюємо список учасників
-                    loadGroupMembers(groupId)
-                    onSuccess()
-                    Log.d("GroupsViewModel", "👤 Updated role for user $userId to $newRole in group $groupId")
-                } else {
-                    val errorMsg = response.errorMessage ?: "Не вдалося змінити роль"
-                    onError(errorMsg)
+                // Поки оновлюємо локально
+                _groupMembers.value = _groupMembers.value.map { member ->
+                    if (member.userId == userId) {
+                        member.copy(role = newRole)
+                    } else {
+                        member
+                    }
                 }
+                onSuccess()
+                Log.d("GroupsViewModel", "👤 Updated role for user $userId to $newRole in group $groupId")
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)

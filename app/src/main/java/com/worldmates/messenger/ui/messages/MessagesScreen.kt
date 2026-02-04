@@ -1040,6 +1040,7 @@ fun MessagesScreen(
                 onCancelEdit = {
                     editingMessage = null
                     messageText = ""
+                    viewModel.updateDraftText("") // Явно очищаємо черновик
                 }
             )
 
@@ -1154,11 +1155,13 @@ fun MessagesScreen(
                                 // Редагуємо повідомлення
                                 viewModel.editMessage(editingMessage!!.id, messageText)
                                 messageText = ""
+                                viewModel.updateDraftText("") // Явно очищаємо черновик
                                 editingMessage = null
                             } else {
                                 // Надсилаємо нове повідомлення
                                 viewModel.sendMessage(messageText, replyToMessage?.id)
                                 messageText = ""
+                                viewModel.updateDraftText("") // Явно очищаємо черновик
                                 replyToMessage = null  // Очищаємо reply після відправки
                             }
                         }

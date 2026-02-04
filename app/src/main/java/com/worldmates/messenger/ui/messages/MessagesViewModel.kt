@@ -309,8 +309,9 @@ class MessagesViewModel(application: Application) :
 
                 if (response.apiStatus == 200) {
                     // Если API вернул сообщения, добавляем их в список
-                    if (response.messages != null && response.messages.isNotEmpty()) {
-                        val decryptedMessages = response.messages.map { msg ->
+                    val receivedMessages = response.allMessages
+                    if (receivedMessages != null && receivedMessages.isNotEmpty()) {
+                        val decryptedMessages = receivedMessages.map { msg ->
                             decryptMessageFully(msg)
                         }
 

@@ -1217,6 +1217,7 @@ data class MessageResponse(
     @SerializedName("api_version") val apiVersion: String?,
     @SerializedName("messages") val messages: List<Message>?,
     @SerializedName("message_data") val messageData: List<Message>?, // API иногда возвращает message_data
+    @SerializedName("message") val message: Message?, // Одиночное сообщение (для группових чатів)
     @SerializedName("message_id") val messageId: Long?,
     @SerializedName("errors") val errors: ErrorDetails?,
     @SerializedName("error_code") val errorCode: Int?,
@@ -1226,9 +1227,9 @@ data class MessageResponse(
     val apiStatus: Int
         get() = apiStatusString?.toIntOrNull() ?: 400
 
-    // Универсальный геттер для получения сообщений (из messages или message_data)
+    // Универсальный геттер для получения сообщений (из messages, message_data или message)
     val allMessages: List<Message>?
-        get() = messages ?: messageData
+        get() = messages ?: messageData ?: message?.let { listOf(it) }
 }
 
 data class ErrorDetails(

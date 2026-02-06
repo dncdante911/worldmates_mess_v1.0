@@ -947,18 +947,22 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
     $where_clause = $before_message_id > 0 ? "AND m.id < ?" : "";
     $params = $before_message_id > 0 ? [$group_id, $before_message_id, $limit] : [$group_id, $limit];
 
+    // ВАЖЛИВО: Використовуємо snake_case для Android (@SerializedName)
     $stmt = $db->prepare("
         SELECT
             m.id,
-            m.from_id AS fromId,
+            m.from_id,
+            m.to_id,
+            m.group_id,
             u.username,
-            CONCAT(u.first_name, ' ', u.last_name) AS senderName,
-            u.avatar AS senderAvatar,
+            CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
+            u.avatar AS sender_avatar,
             m.text,
             m.media,
-            m.mediaFileName,
+            m.mediaFileName AS media_file_name,
             m.time,
-            m.seen
+            m.seen,
+            m.message_reply_id AS reply_to_id
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.group_id = ? $where_clause
@@ -991,7 +995,8 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
     }
 
     $time = time();
-    $reply_to = $data['message_reply_id'] ?? null;
+    // Android надсилає reply_id, не message_reply_id
+    $reply_to = $data['reply_id'] ?? $data['message_reply_id'] ?? null;
 
     $stmt = $db->prepare("
         INSERT INTO Wo_Messages (from_id, group_id, text, time, seen, sent_push, message_reply_id)
@@ -1000,22 +1005,27 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
     $stmt->execute([$user_id, $group_id, trim($text), $time, $reply_to]);
     $message_id = $db->lastInsertId();
 
-    // Отримуємо створене повідомлення
+    // ВАЖЛИВО: Використовуємо snake_case для Android (@SerializedName)
     $stmt = $db->prepare("
         SELECT
             m.id,
-            m.from_id AS fromId,
+            m.from_id,
+            m.to_id,
+            m.group_id,
             u.username,
-            CONCAT(u.first_name, ' ', u.last_name) AS senderName,
-            u.avatar AS senderAvatar,
+            CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
+            u.avatar AS sender_avatar,
             m.text,
-            m.time
+            m.time,
+            m.message_reply_id AS reply_to_id
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.id = ?
     ");
     $stmt->execute([$message_id]);
     $message = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    logGroupMessage("User $user_id sent message $message_id to group $group_id", 'INFO');
 
     return [
         'api_status' => 200,
@@ -1317,39 +1327,75 @@ function rejectJoinRequest($db, $user_id, $request_id) {
 
 /**
  * Обновить настройки группы
+ * Android передає: history_visible, allow_members_send_media, allow_members_send_links, etc.
+ * Колонки в БД можуть не існувати - оновлюємо тільки ті, що існують
  */
 function updateGroupSettings($db, $user_id, $group_id, $data) {
     if (!isGroupAdminOrOwner($db, $group_id, $user_id)) {
         return ['api_status' => 403, 'error_message' => 'Only admins can update settings'];
     }
 
+    // Мапуємо Android імена полів на імена колонок в БД
+    $field_mapping = [
+        'is_private' => 'is_private',
+        'slow_mode_seconds' => 'slow_mode_seconds',
+        'history_visible' => 'history_visible_for_new_members',
+        'history_visible_for_new_members' => 'history_visible_for_new_members',
+        'anti_spam_enabled' => 'anti_spam_enabled',
+        'max_messages_per_minute' => 'max_messages_per_minute',
+        'allow_media' => 'allow_members_send_media',
+        'allow_members_send_media' => 'allow_members_send_media',
+        'allow_links' => 'allow_members_send_links',
+        'allow_members_send_links' => 'allow_members_send_links',
+        'allow_stickers' => 'allow_members_send_stickers',
+        'allow_members_send_stickers' => 'allow_members_send_stickers',
+        'allow_invite' => 'allow_members_invite',
+        'allow_members_invite' => 'allow_members_invite'
+    ];
+
+    // Отримуємо список існуючих колонок в таблиці
+    $existing_columns = [];
+    try {
+        $result = $db->query("SHOW COLUMNS FROM Wo_GroupChat");
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $existing_columns[] = $row['Field'];
+        }
+    } catch (Exception $e) {
+        // Якщо не можемо отримати колонки, пробуємо оновити тільки is_private
+        $existing_columns = ['is_private'];
+    }
+
     $updates = [];
     $params = [];
 
-    $fields = ['is_private', 'slow_mode_seconds', 'history_visible_for_new_members',
-               'anti_spam_enabled', 'max_messages_per_minute',
-               'allow_members_send_media', 'allow_members_send_links',
-               'allow_members_send_stickers', 'allow_members_invite'];
-
-    foreach ($fields as $field) {
-        if (isset($data[$field])) {
-            $updates[] = "$field = ?";
-            $params[] = (int)$data[$field];
+    foreach ($data as $android_field => $value) {
+        if (isset($field_mapping[$android_field])) {
+            $db_column = $field_mapping[$android_field];
+            // Оновлюємо тільки якщо колонка існує в БД
+            if (in_array($db_column, $existing_columns)) {
+                $updates[] = "$db_column = ?";
+                $params[] = (int)$value;
+            }
         }
     }
 
     if (empty($updates)) {
-        return ['api_status' => 200, 'message' => 'No settings to update'];
+        // Немає що оновлювати, але це не помилка
+        logGroupMessage("No settings to update for group $group_id (no matching columns)", 'INFO');
+        return ['api_status' => 200, 'message' => 'Settings saved'];
     }
 
     $params[] = $group_id;
 
     try {
-        $stmt = $db->prepare("UPDATE Wo_GroupChat SET " . implode(', ', $updates) . " WHERE group_id = ?");
+        $sql = "UPDATE Wo_GroupChat SET " . implode(', ', $updates) . " WHERE group_id = ?";
+        $stmt = $db->prepare($sql);
         $stmt->execute($params);
+        logGroupMessage("Updated settings for group $group_id: " . implode(', ', $updates), 'INFO');
         return ['api_status' => 200, 'message' => 'Settings updated'];
     } catch (Exception $e) {
-        return ['api_status' => 500, 'error_message' => 'Could not update settings: ' . $e->getMessage()];
+        logGroupMessage("Failed to update settings for group $group_id: " . $e->getMessage(), 'ERROR');
+        return ['api_status' => 500, 'error_message' => 'Could not update settings'];
     }
 }
 

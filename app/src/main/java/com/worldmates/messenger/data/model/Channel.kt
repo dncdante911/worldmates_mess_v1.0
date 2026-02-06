@@ -9,19 +9,19 @@ import com.google.gson.annotations.SerializedName
  * Тільки адміни можуть постити, підписники можуть тільки читати
  */
 data class Channel(
-    @SerializedName("id") val id: Long,
-    @SerializedName("name") val name: String,
-    @SerializedName("username") val username: String? = null, // @channel_name для пошуку
-    @SerializedName("avatar_url") val avatarUrl: String,
+    @SerializedName("id") val id: Long = 0,
+    @SerializedName("name") val name: String = "",
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("avatar_url") val avatarUrl: String = "",
     @SerializedName("description") val description: String? = null,
     @SerializedName("subscribers_count") val subscribersCount: Int = 0,
     @SerializedName("posts_count") val postsCount: Int = 0,
-    @SerializedName("owner_id") val ownerId: Long, // ID власника каналу
+    @SerializedName("owner_id") val ownerId: Long = 0,
     @SerializedName("is_private") val isPrivate: Boolean = false,
-    @SerializedName("is_verified") val isVerified: Boolean = false, // Верифікований канал
-    @SerializedName("is_admin") val isAdmin: Boolean = false, // Чи є користувач адміном/модератором
+    @SerializedName("is_verified") val isVerified: Boolean = false,
+    @SerializedName("is_admin") val isAdmin: Boolean = false,
     @SerializedName("is_subscribed") val isSubscribed: Boolean = false,
-    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("created_time") val createdTime: Long = 0,
     @SerializedName("settings") val settings: ChannelSettings? = null,
     @SerializedName("category") val category: String? = null // Категорія каналу
 )
@@ -30,14 +30,14 @@ data class Channel(
  * Пост у каналі (з таблиці Wo_Messages)
  */
 data class ChannelPost(
-    @SerializedName("id") val id: Long,
-    @SerializedName("author_id") val authorId: Long,
+    @SerializedName("id") val id: Long = 0,
+    @SerializedName("author_id") val authorId: Long = 0,
     @SerializedName("author_username") val authorUsername: String? = null,
     @SerializedName("author_name") val authorName: String? = null,
     @SerializedName("author_avatar") val authorAvatar: String? = null,
-    @SerializedName("text") val text: String,
+    @SerializedName("text") val text: String = "",
     @SerializedName("media") val media: List<PostMedia>? = null,
-    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("created_time") val createdTime: Long = 0,
     @SerializedName("is_edited") val isEdited: Boolean = false,
     @SerializedName("is_pinned") val isPinned: Boolean = false,
     @SerializedName("views_count") val viewsCount: Int = 0,

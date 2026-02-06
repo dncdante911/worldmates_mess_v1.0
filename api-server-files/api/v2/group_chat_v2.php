@@ -614,10 +614,10 @@ function createGroup($db, $user_id, $data) {
         $stmt->execute([$user_id, $name, $time]);
         $group_id = $db->lastInsertId();
 
-        // Додаємо власника як owner (з часом та admin='1' для сумісності)
+        // Додаємо власника як owner
         $stmt = $db->prepare("
-            INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time)
-            VALUES (?, ?, 'owner', '1', ?)
+            INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time)
+            VALUES (?, ?, 'owner', ?)
         ");
         $stmt->execute([$user_id, $group_id, $time]);
 
@@ -627,8 +627,8 @@ function createGroup($db, $user_id, $data) {
             foreach ($member_ids as $member_id) {
                 if ($member_id != $user_id) {
                     $stmt = $db->prepare("
-                        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time)
-                        VALUES (?, ?, 'member', '0', ?)
+                        INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time)
+                        VALUES (?, ?, 'member', ?)
                     ");
                     $stmt->execute([$member_id, $group_id, $time]);
                 }
@@ -840,8 +840,8 @@ function addGroupMembers($db, $user_id, $group_id, $parts) {
 
         if (!$stmt->fetch()) {
             $stmt = $db->prepare("
-                INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time)
-                VALUES (?, ?, 'member', '0', ?)
+                INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time)
+                VALUES (?, ?, 'member', ?)
             ");
             $stmt->execute([$member_id, $group_id, $time]);
             $added++;
@@ -1184,7 +1184,7 @@ function joinGroupByQr($db, $user_id, $qr_code) {
 
     // Добавляем пользователя
     $time = time();
-    $stmt = $db->prepare("INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time) VALUES (?, ?, 'member', '0', ?)");
+    $stmt = $db->prepare("INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time) VALUES (?, ?, 'member', ?)");
     $stmt->execute([$user_id, $group_id, $time]);
 
     logGroupMessage("User $user_id joined group $group_id via QR", 'INFO');
@@ -1226,7 +1226,7 @@ function joinGroup($db, $user_id, $group_id, $data) {
 
     // Публичная группа - добавляем сразу
     $time = time();
-    $stmt = $db->prepare("INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time) VALUES (?, ?, 'member', '0', ?)");
+    $stmt = $db->prepare("INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time) VALUES (?, ?, 'member', ?)");
     $stmt->execute([$user_id, $group_id, $time]);
 
     return getGroupDetails($db, $user_id, $group_id);
@@ -1281,7 +1281,7 @@ function approveJoinRequest($db, $user_id, $request_id) {
 
         // Добавляем пользователя в группу
         $time = time();
-        $stmt = $db->prepare("INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, admin, time) VALUES (?, ?, 'member', '0', ?)");
+        $stmt = $db->prepare("INSERT INTO Wo_GroupChatUsers (user_id, group_id, role, time) VALUES (?, ?, 'member', ?)");
         $stmt->execute([$request['user_id'], $request['group_id'], $time]);
 
         return ['api_status' => 200, 'message' => 'Request approved'];

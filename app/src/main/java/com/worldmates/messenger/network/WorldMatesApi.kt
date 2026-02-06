@@ -629,7 +629,7 @@ interface WorldMatesApi {
         @Field("user_id") recipientId: Long,
         @Field("text") text: String,
         @Field("message_hash_id") messageHashId: String,
-        @Field("message_reply_id") replyToId: Long? = null
+        @Field("reply_id") replyToId: Long? = null
     ): MessageResponse
 
     // Отправка сообщения с медиа-файлом

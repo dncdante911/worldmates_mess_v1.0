@@ -59,6 +59,83 @@ if (!$user_id) {
     exit;
 }
 
+// Автоміграція: додаємо відсутні колонки при першому запуску
+$migration_flag = sys_get_temp_dir() . '/wm_group_migration_v2_done';
+if (!file_exists($migration_flag)) {
+    try {
+        // Wo_GroupChat: додаємо колонки для налаштувань
+        $gc_columns = [];
+        $result = $db->query("SHOW COLUMNS FROM Wo_GroupChat");
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $gc_columns[] = $row['Field'];
+        }
+        $gc_migrations = [
+            'description' => "ALTER TABLE Wo_GroupChat ADD COLUMN `description` TEXT DEFAULT NULL",
+            'pinned_message_id' => "ALTER TABLE Wo_GroupChat ADD COLUMN `pinned_message_id` INT(11) DEFAULT NULL",
+            'qr_code' => "ALTER TABLE Wo_GroupChat ADD COLUMN `qr_code` VARCHAR(255) DEFAULT NULL",
+            'is_private' => "ALTER TABLE Wo_GroupChat ADD COLUMN `is_private` TINYINT(1) DEFAULT 0",
+            'slow_mode_seconds' => "ALTER TABLE Wo_GroupChat ADD COLUMN `slow_mode_seconds` INT(11) DEFAULT 0",
+            'history_visible_for_new_members' => "ALTER TABLE Wo_GroupChat ADD COLUMN `history_visible_for_new_members` TINYINT(1) DEFAULT 1",
+            'anti_spam_enabled' => "ALTER TABLE Wo_GroupChat ADD COLUMN `anti_spam_enabled` TINYINT(1) DEFAULT 0",
+            'max_messages_per_minute' => "ALTER TABLE Wo_GroupChat ADD COLUMN `max_messages_per_minute` INT(11) DEFAULT 20",
+            'allow_members_send_media' => "ALTER TABLE Wo_GroupChat ADD COLUMN `allow_members_send_media` TINYINT(1) DEFAULT 1",
+            'allow_members_send_links' => "ALTER TABLE Wo_GroupChat ADD COLUMN `allow_members_send_links` TINYINT(1) DEFAULT 1",
+            'allow_members_send_stickers' => "ALTER TABLE Wo_GroupChat ADD COLUMN `allow_members_send_stickers` TINYINT(1) DEFAULT 1",
+            'allow_members_invite' => "ALTER TABLE Wo_GroupChat ADD COLUMN `allow_members_invite` TINYINT(1) DEFAULT 0",
+        ];
+        foreach ($gc_migrations as $col => $sql) {
+            if (!in_array($col, $gc_columns)) {
+                try { $db->exec($sql); logGroupMessage("Auto-migration: added $col to Wo_GroupChat"); } catch (Exception $e) {}
+            }
+        }
+
+        // Wo_GroupChatUsers: додаємо колонку role
+        $gcu_columns = [];
+        $result = $db->query("SHOW COLUMNS FROM Wo_GroupChatUsers");
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $gcu_columns[] = $row['Field'];
+        }
+        if (!in_array('role', $gcu_columns)) {
+            try { $db->exec("ALTER TABLE Wo_GroupChatUsers ADD COLUMN `role` VARCHAR(20) DEFAULT 'member'"); logGroupMessage("Auto-migration: added role to Wo_GroupChatUsers"); } catch (Exception $e) {}
+        }
+
+        // Створюємо додаткові таблиці якщо відсутні
+        $db->exec("CREATE TABLE IF NOT EXISTS `Wo_GroupJoinRequests` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT, `group_id` INT(11) NOT NULL, `user_id` INT(11) NOT NULL,
+            `message` TEXT DEFAULT NULL, `status` ENUM('pending','approved','rejected') DEFAULT 'pending',
+            `created_time` INT(11) NOT NULL, `reviewed_by` INT(11) DEFAULT NULL, `reviewed_time` INT(11) DEFAULT NULL,
+            PRIMARY KEY (`id`), KEY `idx_group_status` (`group_id`,`status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $db->exec("CREATE TABLE IF NOT EXISTS `Wo_ScheduledPosts` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT, `group_id` INT(11) NOT NULL, `author_id` INT(11) NOT NULL,
+            `text` TEXT NOT NULL, `media_url` VARCHAR(500) DEFAULT NULL, `scheduled_time` INT(11) NOT NULL,
+            `created_time` INT(11) NOT NULL, `status` ENUM('scheduled','published','cancelled') DEFAULT 'scheduled',
+            `repeat_type` VARCHAR(20) DEFAULT 'none', `is_pinned` TINYINT(1) DEFAULT 0, `notify_members` TINYINT(1) DEFAULT 1,
+            PRIMARY KEY (`id`), KEY `idx_group_status` (`group_id`,`status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $db->exec("CREATE TABLE IF NOT EXISTS `Wo_Subgroups` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT, `parent_group_id` INT(11) NOT NULL,
+            `name` VARCHAR(255) NOT NULL, `description` TEXT DEFAULT NULL, `color` VARCHAR(20) DEFAULT '#2196F3',
+            `is_private` TINYINT(1) DEFAULT 0, `is_closed` TINYINT(1) DEFAULT 0,
+            `created_by` INT(11) NOT NULL, `created_time` INT(11) NOT NULL,
+            PRIMARY KEY (`id`), KEY `idx_parent_group` (`parent_group_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Встановлюємо role='owner' для засновників груп
+        $db->exec("UPDATE Wo_GroupChatUsers gcu
+            INNER JOIN Wo_GroupChat gc ON gc.group_id = gcu.group_id AND gc.user_id = gcu.user_id
+            SET gcu.role = 'owner'
+            WHERE gcu.role = 'member' OR gcu.role IS NULL OR gcu.role = ''");
+
+        @file_put_contents($migration_flag, date('Y-m-d H:i:s'));
+        logGroupMessage("Auto-migration completed successfully", 'INFO');
+    } catch (Exception $e) {
+        logGroupMessage("Auto-migration error: " . $e->getMessage(), 'ERROR');
+    }
+}
+
 // Роутинг методів
 $type = $data['type'] ?? $_GET['type'] ?? '';
 
@@ -981,7 +1058,7 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
             m.mediaFileName AS media_file_name,
             m.time,
             m.seen,
-            m.message_reply_id AS reply_to_id,
+            m.reply_id AS reply_to_id,
             m.iv,
             m.tag,
             m.cipher_version
@@ -1021,7 +1098,7 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
     $reply_to = $data['reply_id'] ?? $data['message_reply_id'] ?? null;
 
     $stmt = $db->prepare("
-        INSERT INTO Wo_Messages (from_id, group_id, text, time, seen, sent_push, message_reply_id)
+        INSERT INTO Wo_Messages (from_id, group_id, text, time, seen, sent_push, reply_id)
         VALUES (?, ?, ?, ?, 0, 0, ?)
     ");
     $stmt->execute([$user_id, $group_id, trim($text), $time, $reply_to]);
@@ -1040,7 +1117,7 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
             u.avatar AS sender_avatar,
             m.text,
             m.time,
-            m.message_reply_id AS reply_to_id
+            m.reply_id AS reply_to_id
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.id = ?

@@ -470,6 +470,7 @@ try {
  * ВАЖЛИВО: Фільтруємо ТІЛЬКИ групи (type='group'), НЕ канали
  */
 function getGroups($db, $user_id, $data) {
+    global $wo;
     $limit = isset($data['limit']) ? (int)$data['limit'] : 50;
     $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
 
@@ -482,6 +483,7 @@ function getGroups($db, $user_id, $data) {
             g.description,
             g.avatar,
             g.user_id AS admin_id,
+            COALESCE(CONCAT(admin_u.first_name, ' ', admin_u.last_name), admin_u.username, '') AS admin_name,
             g.is_private,
             g.time AS created_time,
             g.type,
@@ -489,6 +491,7 @@ function getGroups($db, $user_id, $data) {
             (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS userRole,
             (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_member
         FROM Wo_GroupChat g
+        LEFT JOIN Wo_Users admin_u ON admin_u.user_id = g.user_id
         WHERE g.group_id IN (SELECT group_id FROM Wo_GroupChatUsers WHERE user_id = ?)
           AND (g.type = 'group' OR g.type IS NULL OR g.type = '')
         ORDER BY g.time DESC
@@ -506,11 +509,16 @@ function getGroups($db, $user_id, $data) {
         $group['is_admin'] = in_array($group['userRole'], ['owner', 'admin']);
         $group['is_moderator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
         $group['members_count'] = (int)$group['members_count'];
+        $group['admin_name'] = $group['admin_name'] ?? '';
         unset($group['userRole']);
 
         // Конвертуємо avatar у повний URL якщо це відносний шлях
         if (!empty($group['avatar']) && strpos($group['avatar'], 'http') !== 0) {
             $group['avatar'] = rtrim($site_url, '/') . '/' . ltrim($group['avatar'], '/');
+        }
+        // Гарантуємо що avatar ніколи не null (Android очікує non-nullable String)
+        if (empty($group['avatar'])) {
+            $group['avatar'] = '';
         }
     }
 
@@ -525,6 +533,7 @@ function getGroups($db, $user_id, $data) {
  * Отримати деталі групи
  */
 function getGroupDetails($db, $user_id, $group_id) {
+    global $wo;
     // ВАЖЛИВО: Поля повертаються у snake_case для Android
     $stmt = $db->prepare("
         SELECT
@@ -533,6 +542,7 @@ function getGroupDetails($db, $user_id, $group_id) {
             g.description,
             g.avatar,
             g.user_id AS admin_id,
+            COALESCE(CONCAT(admin_u.first_name, ' ', admin_u.last_name), admin_u.username, '') AS admin_name,
             g.is_private,
             g.time AS created_time,
             g.type,
@@ -541,6 +551,7 @@ function getGroupDetails($db, $user_id, $group_id) {
             (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS userRole,
             (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_member
         FROM Wo_GroupChat g
+        LEFT JOIN Wo_Users admin_u ON admin_u.user_id = g.user_id
         WHERE g.group_id = ?
           AND (g.type = 'group' OR g.type IS NULL OR g.type = '')
     ");
@@ -552,18 +563,23 @@ function getGroupDetails($db, $user_id, $group_id) {
     }
 
     // Форматуємо - використовуємо snake_case для Android
+    $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
     $group['is_private'] = (bool)$group['is_private'];
     $group['is_member'] = (bool)$group['is_member'];
     $group['is_muted'] = false; // Колонка muted не існує в БД
     $group['is_admin'] = in_array($group['userRole'], ['owner', 'admin']);
     $group['is_moderator'] = in_array($group['userRole'], ['owner', 'admin', 'moderator']);
     $group['members_count'] = (int)$group['members_count'];
+    $group['admin_name'] = $group['admin_name'] ?? '';
     unset($group['userRole']);
 
     // Конвертуємо avatar у повний URL якщо це відносний шлях
     if (!empty($group['avatar']) && strpos($group['avatar'], 'http') !== 0) {
-        $site_url = $wo['site_url'] ?? 'https://worldmates.club/';
         $group['avatar'] = rtrim($site_url, '/') . '/' . ltrim($group['avatar'], '/');
+    }
+    // Гарантуємо що avatar ніколи не null
+    if (empty($group['avatar'])) {
+        $group['avatar'] = '';
     }
 
     // Отримуємо закріплене повідомлення якщо є
@@ -772,6 +788,7 @@ function deleteGroup($db, $user_id, $group_id) {
  * Отримати учасників групи
  */
 function getGroupMembers($db, $user_id, $group_id, $data) {
+    global $wo;
     $limit = isset($data['limit']) ? (int)$data['limit'] : 100;
     $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
 
@@ -948,11 +965,13 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
     $params = $before_message_id > 0 ? [$group_id, $before_message_id, $limit] : [$group_id, $limit];
 
     // ВАЖЛИВО: Використовуємо snake_case для Android (@SerializedName)
+    // Додаємо iv, tag, cipher_version для розшифровки старих повідомлень
+    // COALESCE(m.to_id, 0) - щоб to_id ніколи не був null (Android Long non-nullable)
     $stmt = $db->prepare("
         SELECT
             m.id,
             m.from_id,
-            m.to_id,
+            COALESCE(m.to_id, 0) AS to_id,
             m.group_id,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
@@ -962,7 +981,10 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
             m.mediaFileName AS media_file_name,
             m.time,
             m.seen,
-            m.message_reply_id AS reply_to_id
+            m.message_reply_id AS reply_to_id,
+            m.iv,
+            m.tag,
+            m.cipher_version
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.group_id = ? $where_clause
@@ -1006,11 +1028,12 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
     $message_id = $db->lastInsertId();
 
     // ВАЖЛИВО: Використовуємо snake_case для Android (@SerializedName)
+    // COALESCE(m.to_id, 0) - щоб to_id ніколи не був null
     $stmt = $db->prepare("
         SELECT
             m.id,
             m.from_id,
-            m.to_id,
+            COALESCE(m.to_id, 0) AS to_id,
             m.group_id,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS sender_name,

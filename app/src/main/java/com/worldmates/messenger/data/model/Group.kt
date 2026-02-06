@@ -85,17 +85,17 @@ data class Message(
 data class Group(
     @SerializedName("id") val id: Long,
     @SerializedName("name") val name: String,
-    @SerializedName("avatar") val avatarUrl: String,
+    @SerializedName("avatar") val avatarUrl: String = "",
     @SerializedName("description") val description: String? = null,
-    @SerializedName("members_count") val membersCount: Int,
-    @SerializedName("admin_id") val adminId: Long,
-    @SerializedName("admin_name") val adminName: String,
-    @SerializedName("is_private") val isPrivate: Boolean,
+    @SerializedName("members_count") val membersCount: Int = 0,
+    @SerializedName("admin_id") val adminId: Long = 0,
+    @SerializedName("admin_name") val adminName: String = "",
+    @SerializedName("is_private") val isPrivate: Boolean = false,
     @SerializedName("is_admin") val isAdmin: Boolean = false,
     @SerializedName("is_moderator") val isModerator: Boolean = false,
     @SerializedName("is_member") val isMember: Boolean = true,
-    @SerializedName("is_muted") val isMuted: Boolean = false, // 🔕 Вимкнено сповіщення для користувача
-    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("is_muted") val isMuted: Boolean = false,
+    @SerializedName("created_time") val createdTime: Long = 0,
     @SerializedName("updated_time") val updatedTime: Long? = null,
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
@@ -104,11 +104,11 @@ data class Group(
 )
 
 data class GroupMember(
-    @SerializedName("user_id") val userId: Long,
-    @SerializedName("username") val username: String,
-    @SerializedName("avatar") val avatarUrl: String,
-    @SerializedName("role") val role: String, // "admin", "moderator", "member"
-    @SerializedName("joined_time") val joinedTime: Long,
+    @SerializedName("user_id") val userId: Long = 0,
+    @SerializedName("username") val username: String = "",
+    @SerializedName("avatar") val avatarUrl: String = "",
+    @SerializedName("role") val role: String = "member",
+    @SerializedName("joined_time") val joinedTime: Long = 0,
     @SerializedName("is_muted") val isMuted: Boolean = false,
     @SerializedName("is_blocked") val isBlocked: Boolean = false,
     @SerializedName("permissions") val permissions: List<String>? = null

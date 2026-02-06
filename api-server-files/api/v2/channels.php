@@ -72,6 +72,7 @@ $type_mapping = [
     'get_subscribed' => 'get_channels',
     'get_list' => 'get_channels',
     'get_all' => 'get_channels',
+    'get_by_id' => 'get_channel_details',
 ];
 
 // Якщо є маппінг, використовуємо його
@@ -462,7 +463,6 @@ function getChannelDetails($db, $user_id, $channel_id) {
     $channel['subscribers_count'] = (int)$channel['subscribers_count'];
     $channel['posts_count'] = (int)$channel['posts_count'];
     $channel['settings'] = [];
-    $channel['settings'] = json_decode($channel['settings'] ?? '{}', true);
     unset($channel['user_role']);
 
     return [
@@ -1172,7 +1172,7 @@ function addComment($db, $user_id, $data) {
     // Коментарі дозволені за замовчуванням (settings колонка може не існувати)
     // if (isset($settings['allow_comments']) && !$settings['allow_comments']) {
     //     return ['api_status' => 403, 'error_message' => 'Comments are disabled for this channel'];
-    }
+    // }
 
     // Додаємо коментар
     $stmt = $db->prepare("

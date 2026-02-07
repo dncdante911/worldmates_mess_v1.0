@@ -382,6 +382,15 @@ class SocketManager(
         scope.cancel()
     }
 
+    /**
+     * Emit raw event to server (for channels, stories, etc.)
+     */
+    fun emitRaw(event: String, data: JSONObject) {
+        if (socket?.connected() == true) {
+            socket?.emit(event, data)
+        }
+    }
+
     // ==================== АДАПТИВНА ЧАСТИНА ====================
 
     /**

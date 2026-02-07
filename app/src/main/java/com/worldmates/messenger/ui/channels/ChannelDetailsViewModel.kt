@@ -2,6 +2,7 @@
 
 package com.worldmates.messenger.ui.channels
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,6 +15,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class ChannelDetailsViewModel : ViewModel() {
+
+    // Socket.IO handler for real-time updates
+    private var socketHandler: ChannelSocketHandler? = null
+    private var socketChannelId: Long = 0
 
     private val _channel = MutableStateFlow<Channel?>(null)
     val channel: StateFlow<Channel?> = _channel
@@ -174,6 +179,9 @@ class ChannelDetailsViewModel : ViewModel() {
                     Log.d("ChannelDetailsVM", "Пост створено")
                     onSuccess(newPost)
 
+                    // Broadcast via Socket.IO to other subscribers
+                    socketHandler?.emitNewPost(newPost)
+
                     // Оновлюємо кількість постів у каналі
                     _channel.value?.let { channel ->
                         _channel.value = channel.copy(
@@ -266,6 +274,9 @@ class ChannelDetailsViewModel : ViewModel() {
                     _error.value = null
                     Log.d("ChannelDetailsVM", "Пост видалено")
                     onSuccess()
+
+                    // Broadcast deletion via Socket.IO
+                    socketHandler?.emitPostDeleted(postId)
 
                     // Оновлюємо кількість постів
                     _channel.value?.let { channel ->
@@ -952,5 +963,89 @@ class ChannelDetailsViewModel : ViewModel() {
             Log.e("ChannelDetailsVM", "❌ Error loading formatting permissions", e)
             com.worldmates.messenger.ui.groups.GroupFormattingPermissions() // Default on error
         }
+    }
+
+    // ==================== SOCKET.IO REAL-TIME ====================
+
+    /**
+     * Initialize Socket.IO connection for real-time channel updates.
+     * Call this from Activity's onCreate/onResume.
+     */
+    fun connectSocket(context: Context, channelId: Long) {
+        if (socketHandler != null && socketChannelId == channelId) return // already connected
+
+        disconnectSocket()
+        socketChannelId = channelId
+
+        socketHandler = ChannelSocketHandler(context).apply {
+            onPostCreated = { post ->
+                // Don't duplicate own posts (already added via REST response)
+                if (post.authorId != UserSession.userId) {
+                    viewModelScope.launch {
+                        _posts.value = listOf(post) + _posts.value
+                        _channel.value?.let { ch ->
+                            _channel.value = ch.copy(postsCount = ch.postsCount + 1)
+                        }
+                        Log.d("ChannelDetailsVM", "RT: New post ${post.id} from user ${post.authorId}")
+                    }
+                }
+            }
+
+            onPostUpdated = { postId, text, _ ->
+                viewModelScope.launch {
+                    _posts.value = _posts.value.map { post ->
+                        if (post.id == postId && text != null) {
+                            post.copy(text = text, isEdited = true)
+                        } else post
+                    }
+                    Log.d("ChannelDetailsVM", "RT: Post $postId updated")
+                }
+            }
+
+            onPostDeleted = { postId ->
+                viewModelScope.launch {
+                    _posts.value = _posts.value.filter { it.id != postId }
+                    _channel.value?.let { ch ->
+                        _channel.value = ch.copy(postsCount = maxOf(0, ch.postsCount - 1))
+                    }
+                    Log.d("ChannelDetailsVM", "RT: Post $postId deleted")
+                }
+            }
+
+            onCommentAdded = { postId, comment ->
+                viewModelScope.launch {
+                    // If we're viewing this post's comments, add to the list
+                    if (_selectedPost.value?.id == postId && comment.userId != UserSession.userId) {
+                        _comments.value = _comments.value + comment
+                    }
+                    // Update comment count
+                    _posts.value = _posts.value.map { post ->
+                        if (post.id == postId) post.copy(commentsCount = post.commentsCount + 1) else post
+                    }
+                    Log.d("ChannelDetailsVM", "RT: New comment on post $postId")
+                }
+            }
+        }
+        socketHandler?.connect(channelId)
+        Log.d("ChannelDetailsVM", "Socket.IO connected for channel $channelId")
+    }
+
+    /**
+     * Disconnect Socket.IO. Call from Activity's onPause/onDestroy.
+     */
+    fun disconnectSocket() {
+        socketHandler?.disconnect()
+        socketHandler = null
+        socketChannelId = 0
+    }
+
+    /**
+     * Get socket handler for emitting events from Activity/UI
+     */
+    fun getSocketHandler(): ChannelSocketHandler? = socketHandler
+
+    override fun onCleared() {
+        super.onCleared()
+        disconnectSocket()
     }
 }

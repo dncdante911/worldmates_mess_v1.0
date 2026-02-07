@@ -1,34 +1,55 @@
-# Отчет по реализации Windows клиента
+# Отчет по итерации: media/groups/channels/stories/calls/auth/encryption
 
-## Цель
-С нуля сделать рабочую базу Windows 10/11 клиента, совместимую с текущим Android backend API.
+## Что добавлено
 
-## Подключенные API/события
+1. **Auth расширен**
+   - Login по username/password
+   - Login по phone/password
+   - Registration flow
 
-- `POST /api/v2/?type=auth`
-- `POST /api/v2/?type=get_chats&access_token=...`
-- `POST /api/v2/?type=get_user_messages&access_token=...`
-- `POST /api/v2/?type=send_message&access_token=...`
-- Socket.IO: `join`, `private_message`, `new_message`
+2. **Messaging + AES-256-GCM**
+   - Текстовые сообщения могут отправляться в AES-256-GCM формате
+   - Добавлена попытка расшифровки входящих/исторических сообщений
 
-## Что работает сейчас
+3. **Media upload/download**
+   - Attach file при отправке сообщения
+   - Поддержка image/video/docs
+   - Отрисовка ссылки на скачивание медиа
 
-- Логин по username/password
-- Загрузка чатов после входа
-- Открытие чата и загрузка сообщений
-- Отправка текстовых сообщений
-- Получение realtime входящих сообщений
-- UI с левой панелью чатов и правой панелью диалога
+4. **Groups/Channels/Stories**
+   - Загрузка списков
+   - Создание группы
+   - Создание канала
+   - Загрузка stories
+   - Upload story
 
-## Ограничения MVP
+5. **WebRTC calls (desktop foundation)**
+   - Интеграция peer connection
+   - Получение ICE servers из backend
+   - Fallback STUN/TURN конфиг из серверных исходников
+   - Отправка offer через socket `call_signal`
 
-- Без регистрации, 2FA, backup, групп/каналов/stories
-- Без мультимедиа отправки
-- Хранение сессии только в оперативной памяти
-- Не добавлен Windows installer packaging
+6. **UI/UX update**
+   - Многораздельная rail-навигация: chats/groups/channels/stories/calls
+   - Единый интерфейс для всех основных разделов
 
-## Технические заметки
+7. **Packaging**
+   - `.exe` + `.msi` + portable через electron-builder
+   - executableName: `WorldMatesMessenger`
 
-- Архитектура разделена на `api.ts`, `socket.ts`, `App.tsx`.
-- Все URL и endpoint вынесены в `config.ts`.
-- Electron preload добавлен с `contextIsolation=true` и без `nodeIntegration` для безопасной базовой конфигурации.
+## Ключевые файлы
+
+- `src/App.tsx`
+- `src/api.ts`
+- `src/crypto.ts`
+- `src/webrtc.ts`
+- `src/config.ts`
+- `src/styles.css`
+
+## Сборка
+
+```bash
+cd windows-messenger
+npm install
+npm run dist:win
+```

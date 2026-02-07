@@ -364,6 +364,71 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
         repository.clearViewers()
     }
 
+    // ==================== CHANNEL STORIES ====================
+
+    /** Stories каналів */
+    val channelStories: StateFlow<List<Story>> = repository.channelStories
+
+    /** Завантажити stories підписаних каналів */
+    fun loadChannelStories() {
+        viewModelScope.launch {
+            try {
+                repository.fetchSubscribedChannelStories().onSuccess {
+                    Log.d(TAG, "Channel stories loaded: ${it.size}")
+                }.onFailure { e ->
+                    Log.e(TAG, "Error loading channel stories", e)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception loading channel stories", e)
+            }
+        }
+    }
+
+    /** Створити story каналу */
+    fun createChannelStory(
+        channelId: Long,
+        mediaUri: Uri,
+        fileType: String,
+        title: String? = null,
+        description: String? = null
+    ) {
+        viewModelScope.launch {
+            try {
+                repository.createChannelStory(
+                    channelId = channelId,
+                    mediaUri = mediaUri,
+                    fileType = fileType,
+                    title = title,
+                    description = description
+                ).onSuccess {
+                    _success.value = "Story каналу створена!"
+                    Log.d(TAG, "Channel story created: ${it.storyId}")
+                }.onFailure { e ->
+                    _error.value = e.message
+                    Log.e(TAG, "Error creating channel story", e)
+                }
+            } catch (e: Exception) {
+                _error.value = e.message
+                Log.e(TAG, "Exception creating channel story", e)
+            }
+        }
+    }
+
+    /** Видалити story каналу */
+    fun deleteChannelStory(storyId: Long) {
+        viewModelScope.launch {
+            try {
+                repository.deleteChannelStory(storyId).onSuccess {
+                    _success.value = "Story каналу видалена"
+                }.onFailure { e ->
+                    _error.value = e.message
+                }
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         Log.d(TAG, "ViewModel cleared")

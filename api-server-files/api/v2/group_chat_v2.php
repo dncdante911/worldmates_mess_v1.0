@@ -1103,7 +1103,8 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
 
     $time = time();
     // Android надсилає reply_id, не message_reply_id
-    $reply_to = $data['reply_id'] ?? $data['message_reply_id'] ?? null;
+    // Використовуємо 0 замість NULL якщо reply_id не вказаний, щоб уникнути помилки БД
+    $reply_to = isset($data['reply_id']) && $data['reply_id'] > 0 ? $data['reply_id'] : (isset($data['message_reply_id']) && $data['message_reply_id'] > 0 ? $data['message_reply_id'] : 0);
 
     // ВАЖЛИВО: to_id = 0 для групових повідомлень (Android Long non-nullable)
     $stmt = $db->prepare("

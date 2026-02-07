@@ -305,11 +305,12 @@ class MessagesViewModel(application: Application) :
                     )
                 }
 
-                Log.d("MessagesViewModel", "API Response: status=${response.apiStatus}, messages=${response.messages?.size}, errors=${response.errors}")
+                Log.d("MessagesViewModel", "API Response: status=${response.apiStatus}, messages=${response.messages?.size}, message=${response.message}, allMessages=${response.allMessages?.size}, errors=${response.errors}")
 
                 if (response.apiStatus == 200) {
                     // Если API вернул сообщения, добавляем их в список
                     val receivedMessages = response.allMessages
+                    Log.d("MessagesViewModel", "receivedMessages: $receivedMessages")
                     if (receivedMessages != null && receivedMessages.isNotEmpty()) {
                         val decryptedMessages = receivedMessages.map { msg ->
                             decryptMessageFully(msg)

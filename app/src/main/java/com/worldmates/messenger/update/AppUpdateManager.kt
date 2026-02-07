@@ -6,6 +6,7 @@ import android.net.Uri
 import android.util.Log
 import com.worldmates.messenger.BuildConfig
 import com.worldmates.messenger.data.model.AppUpdateInfo
+import com.worldmates.messenger.data.model.AppUpdateResponse
 import com.worldmates.messenger.network.RetrofitClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +62,23 @@ object AppUpdateManager {
         }
 
         return try {
+            val apiResponse = fetchUpdateResponse()
+            val updateInfo = apiResponse.data
+
+            if (!apiResponse.success && updateInfo == null) {
+                return updateFailure(apiResponse.message ?: "Update endpoint returned invalid payload")
+            }
+
+            val isUpdateAvailable = updateInfo != null && isNewerVersion(updateInfo)
+            val isSnoozed = System.currentTimeMillis() < snoozedUntilMillis
+
+            val newState = UpdateState(
+                hasUpdate = isUpdateAvailable && !isSnoozed,
+                latestVersion = updateInfo?.latestVersion,
+                isMandatory = updateInfo?.isMandatory ?: false,
+                changelog = updateInfo?.changelog.orEmpty(),
+                apkUrl = updateInfo?.apkUrl,
+                publishedAt = updateInfo?.publishedAt,
             val response = runCatching {
                 RetrofitClient.apiService.checkMobileUpdate()
             }.getOrElse {
@@ -100,6 +118,33 @@ object AppUpdateManager {
             Log.d(TAG, "Update check complete: hasUpdate=${newState.hasUpdate}, latest=${newState.latestVersion}")
             newState
         } catch (e: Exception) {
+            updateFailure(e.message ?: "Unknown error while checking updates", e)
+        }
+    }
+
+    private suspend fun fetchUpdateResponse(): AppUpdateResponse {
+        return try {
+            RetrofitClient.apiService.checkMobileUpdate()
+        } catch (routerError: Exception) {
+            Log.w(TAG, "Router update endpoint failed, fallback to direct endpoint: ${routerError.message}")
+            RetrofitClient.apiService.checkMobileUpdateDirect()
+        }
+    }
+
+    private fun updateFailure(message: String, throwable: Throwable? = null): UpdateState {
+        val failed = _state.value.copy(
+            error = message,
+            checkedAtMillis = System.currentTimeMillis()
+        )
+        _state.value = failed
+
+        if (throwable != null) {
+            Log.e(TAG, "Update check failed", throwable)
+        } else {
+            Log.w(TAG, "Update check failed: $message")
+        }
+
+        return failed
             val failed = _state.value.copy(
                 error = e.message,
                 checkedAtMillis = System.currentTimeMillis()

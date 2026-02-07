@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.worldmates.messenger.ui.preferences.BubbleStyle
+import com.worldmates.messenger.ui.preferences.UIStyle
 import com.worldmates.messenger.ui.preferences.rememberBubbleStyle
 import com.worldmates.messenger.ui.preferences.UIStylePreferences
 
@@ -260,6 +261,11 @@ fun ThemeSettingsScreen(
             // Секція вибору швидкої реакції
             item {
                 QuickReactionSection()
+            }
+
+            // One-click готові набори інтерфейсу
+            item {
+                OneClickInterfacePacksSection(themeViewModel = themeViewModel)
             }
 
             // Секція додаткових ефектів та кастомізації
@@ -1256,6 +1262,119 @@ fun EmojiReactionCard(
                 text = emoji,
                 fontSize = 24.sp
             )
+        }
+    }
+}
+
+data class OneClickInterfacePack(
+    val name: String,
+    val emoji: String,
+    val description: String,
+    val themeVariant: ThemeVariant,
+    val presetBackgroundId: String,
+    val quickReaction: String,
+    val bubbleStyle: MessageBubbleStyle,
+    val animationStyle: MessageAnimationStyle,
+    val fontVariant: FontVariant,
+    val uiStyle: UIStyle
+)
+
+private val oneClickPacks = listOf(
+    OneClickInterfacePack(
+        name = "Creator Neon",
+        emoji = "⚡",
+        description = "Cyberpunk look + smooth effects",
+        themeVariant = ThemeVariant.DRACULA,
+        presetBackgroundId = PresetBackground.COSMIC.id,
+        quickReaction = "🔥",
+        bubbleStyle = MessageBubbleStyle.NEON,
+        animationStyle = MessageAnimationStyle.SLIDE,
+        fontVariant = FontVariant.FIRA_CODE,
+        uiStyle = UIStyle.WORLDMATES
+    ),
+    OneClickInterfacePack(
+        name = "Business Clean",
+        emoji = "💼",
+        description = "Minimal, calm and readable",
+        themeVariant = ThemeVariant.MONOCHROME,
+        presetBackgroundId = PresetBackground.LAVENDER.id,
+        quickReaction = "👍",
+        bubbleStyle = MessageBubbleStyle.MINIMAL,
+        animationStyle = MessageAnimationStyle.FADE,
+        fontVariant = FontVariant.OPEN_SANS,
+        uiStyle = UIStyle.TELEGRAM
+    ),
+    OneClickInterfacePack(
+        name = "Night Focus",
+        emoji = "🌙",
+        description = "Dark, contrast and low-distraction",
+        themeVariant = ThemeVariant.OCEAN,
+        presetBackgroundId = PresetBackground.MIDNIGHT.id,
+        quickReaction = "❤️",
+        bubbleStyle = MessageBubbleStyle.GLASS,
+        animationStyle = MessageAnimationStyle.SCALE,
+        fontVariant = FontVariant.POPPINS,
+        uiStyle = UIStyle.WORLDMATES
+    )
+)
+
+@Composable
+fun OneClickInterfacePacksSection(themeViewModel: ThemeViewModel) {
+    val context = LocalContext.current
+    val customizationViewModel = remember { CustomizationManager.getViewModel(context) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = "🚀 Готові рішення в один клік",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Повний пакет оформлення: тема + фон + реакція + стилі повідомлень",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(1),
+                modifier = Modifier.height(260.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(oneClickPacks) { pack ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            themeViewModel.setThemeVariant(pack.themeVariant)
+                            themeViewModel.setPresetBackgroundId(pack.presetBackgroundId)
+                            UIStylePreferences.setQuickReaction(context, pack.quickReaction)
+                            UIStylePreferences.setStyle(context, pack.uiStyle)
+                            customizationViewModel.setBubbleStyle(pack.bubbleStyle)
+                            customizationViewModel.setAnimationStyle(pack.animationStyle)
+                            customizationViewModel.setFontVariant(pack.fontVariant)
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(pack.emoji, fontSize = 26.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(pack.name, fontWeight = FontWeight.Bold)
+                                Text(pack.description, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

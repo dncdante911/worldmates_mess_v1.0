@@ -5,14 +5,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.worldmates.messenger.update.AppUpdateManager
+import com.worldmates.messenger.BuildConfig
 
 /**
  * Диалог "Про додаток" (About App)
@@ -23,11 +21,6 @@ import com.worldmates.messenger.update.AppUpdateManager
 fun AboutAppDialog(
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-    val versionName = remember {
-        AppUpdateManager(context).getCurrentVersionName()
-    }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
@@ -64,7 +57,7 @@ fun AboutAppDialog(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = versionName,
+                        text = BuildConfig.VERSION_NAME,
                         fontWeight = FontWeight.Bold
                     )
                 }

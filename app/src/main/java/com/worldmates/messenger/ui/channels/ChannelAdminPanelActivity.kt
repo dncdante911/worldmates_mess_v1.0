@@ -605,7 +605,7 @@ private fun AdminsTab(
     if (showAddDialog) {
         AddAdminDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { search, role ->
+            onAdd = { search: String, role: String ->
                 viewModel.addChannelAdmin(
                     channelId = channelId,
                     userSearch = search,
@@ -620,51 +620,6 @@ private fun AdminsTab(
             }
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddAdminDialog(
-    onDismiss: () -> Unit,
-    onAdd: (String, String) -> Unit
-) {
-    var searchText by remember { mutableStateOf("") }
-    var selectedRole by remember { mutableStateOf("admin") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Admin", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = { searchText = it },
-                    label = { Text("Username or email") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = selectedRole == "admin",
-                        onClick = { selectedRole = "admin" },
-                        label = { Text("Admin") }
-                    )
-                    FilterChip(
-                        selected = selectedRole == "moderator",
-                        onClick = { selectedRole = "moderator" },
-                        label = { Text("Moderator") }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onAdd(searchText, selectedRole) },
-                enabled = searchText.isNotBlank()
-            ) { Text("Add") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
 }
 
 // ==================== MEMBERS TAB ====================

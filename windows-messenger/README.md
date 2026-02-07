@@ -1,27 +1,34 @@
-# WorldMates Windows Messenger
+# WorldMates Windows Messenger (from scratch)
 
-Desktop клиент под **Windows 10/11** (Electron + React + TypeScript), который использует те же backend API, что Android-приложение.
+MVP desktop client for **Windows 10/11** built from zero using Electron + React + TypeScript, reusing the current Android backend contracts (`auth`, `get_chats`, `get_user_messages`, socket events).
 
-## Что реализовано в текущем состоянии
+## Что уже реализовано
 
-- Авторизация через `?type=auth`
-- Список чатов через `?type=get_chats`
-- История сообщений через `?type=get_user_messages`
-- Отправка текста через `?type=send_message`
-- Realtime через Socket.IO: `join`, `private_message`, `new_message`
-- UI в Telegram-подобной компоновке: rail + список чатов + область диалога
-- Локальное сохранение desktop-сессии (token/user)
-- Подготовлен packaging для `exe/msi/portable` через `electron-builder`
+- Авторизация через API `?type=auth`
+- Загрузка списка чатов через API `?type=get_chats`
+- Загрузка истории сообщений через API `?type=get_user_messages`
+- Отправка текстового сообщения через API `?type=send_message`
+- Realtime-подписка на Socket.IO события `join`, `private_message`, `new_message`
+- Desktop shell для Windows (Electron main/preload)
+- Базовый современный UI (dark theme, двухпанельный layout)
 
-## Технологии
+## Стек
 
-- Electron
-- React 18 + TypeScript
-- Vite
-- socket.io-client
-- electron-builder
+- **Electron** — desktop runtime для Windows
+- **React 18 + TypeScript** — интерфейс
+- **Vite** — сборка фронтенда
+- **socket.io-client** — realtime сообщения
 
-## Быстрый старт
+## Структура
+
+```text
+windows-messenger/
+  electron/         # Main/preload процессы Electron
+  src/              # React приложение (UI + API + socket)
+  package.json      # Scripts и зависимости
+```
+
+## Запуск в dev-режиме
 
 ```bash
 cd windows-messenger
@@ -29,32 +36,23 @@ npm install
 npm run dev
 ```
 
-## Сборка web-части
+Откроется Electron окно и подключится к локальному Vite dev server.
+
+## Сборка
 
 ```bash
-npm run build:web
+cd windows-messenger
+npm run build
 ```
 
-## Сборка инсталляторов Windows
+Сгенерирует production web bundle в `dist/`.
 
-```bash
-npm run dist:win
-```
+> Примечание: в этом коммите сделан рабочий MVP клиент. Для полноценного production installer (`.exe`) нужен следующий шаг с `electron-builder` (иконки, signing, auto-updater, installer pipeline).
 
-Результат будет в `windows-messenger/release/`:
-- `WorldMates Messenger-<version>-<arch>.exe` (NSIS installer)
-- `WorldMates Messenger-<version>-<arch>.msi`
-- portable вариант (если включен в target)
+## Что планируется в следующей итерации
 
-Главный запускаемый файл приложения внутри сборки:
-- `WorldMatesMessenger.exe`
-
-## Что нужно для 1:1 parity с Android
-
-Чтобы получить полную идентичность (звонки, stories, каналы, backup, security flows, media pipelines), нужен отдельный этап доработки desktop-клиента с переносом всего функционала и desktop-адаптацией UI/UX. Текущая версия — рабочая MVP-база, уже совместимая с существующим API-контуром.
-
-## Ресурсы для installer branding
-
-Положите иконку/ресурсы в `windows-messenger/build/`:
-- `icon.ico`
-- optional: `installerHeader.bmp`, `installerSidebar.bmp`
+1. Добавить media upload/download (фото/видео/доки)
+2. Добавить группы/каналы/истории
+3. Добавить звонки (WebRTC/Agora desktop integration)
+4. Добавить secure session storage + PIN/biometric equivalent for Windows Hello
+5. Добавить packaging pipeline для `.exe` (NSIS/MSI)

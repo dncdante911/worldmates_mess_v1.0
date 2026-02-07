@@ -253,7 +253,7 @@ export default function App() {
           <input
             value={newMessage}
             onChange={(event) => setNewMessage(event.target.value)}
-            placeholder="Message"
+            placeholder="Type a message"
           />
           <button type="submit">Send</button>
         </form>

@@ -1,19 +1,7 @@
-# Отчет по обновлению Windows-клиента
+# Отчет по реализации Windows клиента
 
-## Что изменено относительно прошлой версии
-
-1. UI переработан в более Telegram-подобный layout:
-   - левая navigation rail
-   - панель чатов с табами (All / Groups / Channels)
-   - поиск по чатам
-   - правый диалог с message composer
-2. Добавлено сохранение desktop-сессии в localStorage (автовход после перезапуска).
-3. Добавлен Logout.
-4. Подключен packaging pipeline под Windows:
-   - NSIS installer (`.exe`)
-   - MSI installer (`.msi`)
-   - Portable build
-5. Настроено имя запускаемого файла приложения: `WorldMatesMessenger.exe`.
+## Цель
+С нуля сделать рабочую базу Windows 10/11 клиента, совместимую с текущим Android backend API.
 
 ## Подключенные API/события
 
@@ -23,17 +11,24 @@
 - `POST /api/v2/?type=send_message&access_token=...`
 - Socket.IO: `join`, `private_message`, `new_message`
 
-## Команды для сборки Windows installer
+## Что работает сейчас
 
-```bash
-cd windows-messenger
-npm install
-npm run dist:win
-```
+- Логин по username/password
+- Загрузка чатов после входа
+- Открытие чата и загрузка сообщений
+- Отправка текстовых сообщений
+- Получение realtime входящих сообщений
+- UI с левой панелью чатов и правой панелью диалога
 
-Артефакты будут в папке `release/`.
+## Ограничения MVP
 
-## Важно по цели "1:1 с Android"
+- Без регистрации, 2FA, backup, групп/каналов/stories
+- Без мультимедиа отправки
+- Хранение сессии только в оперативной памяти
+- Не добавлен Windows installer packaging
 
-Текущий этап дает рабочую desktop основу (auth/chats/messages/realtime + installer).
-Для полного 1:1 parity необходимо поэтапно перенести весь функционал Android (calls, stories, channels moderation, media pipeline, security/2FA, backups, settings parity, etc.) и адаптировать его к desktop UX.
+## Технические заметки
+
+- Архитектура разделена на `api.ts`, `socket.ts`, `App.tsx`.
+- Все URL и endpoint вынесены в `config.ts`.
+- Electron preload добавлен с `contextIsolation=true` и без `nodeIntegration` для безопасной базовой конфигурации.

@@ -1,0 +1,235 @@
+:root {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #e7edf8;
+  background: #10171f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at top, #1f3147 0%, #10161d 70%);
+}
+
+.auth-card {
+  width: min(420px, 95vw);
+  background: #182533;
+  border: 1px solid #344a62;
+  border-radius: 20px;
+  padding: 28px;
+  display: grid;
+  gap: 12px;
+}
+
+.auth-card label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #b6c3d8;
+}
+
+.auth-card input,
+.search,
+.composer input {
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid #344a62;
+  background: #111d2a;
+  color: #eff4ff;
+  padding: 0 12px;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+}
+
+.auth-card button,
+.composer button {
+  height: 42px;
+  border-radius: 10px;
+  background: #5b91d3;
+  color: white;
+  font-weight: 600;
+}
+
+.layout {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 72px 360px 1fr;
+  background: #131c26;
+}
+
+.rail {
+  border-right: 1px solid #2f3f50;
+  background: #172330;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.rail-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: transparent;
+  color: #a3b5ca;
+  font-size: 18px;
+}
+
+.rail-btn.active {
+  background: #5b91d3;
+}
+
+.sidebar {
+  border-right: 1px solid #2f3f50;
+  background: #1f2c3a;
+  display: grid;
+  grid-template-rows: auto auto auto auto 1fr;
+}
+
+.sidebar-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid #2f3f50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logout-btn {
+  height: 34px;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #2c3f52;
+  color: #d3dfef;
+}
+
+.tabs {
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.tab {
+  flex: 1;
+  background: #223243;
+  color: #afc0d7;
+  border-radius: 8px;
+  height: 34px;
+}
+
+.tab.active {
+  background: #5b91d3;
+  color: white;
+}
+
+.search {
+  margin: 0 10px 10px;
+}
+
+.status {
+  margin: 0 10px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #a8d9b7;
+  background: #1d3a2e;
+}
+
+.chat-list {
+  overflow: auto;
+}
+
+.chat-item {
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin: 4px 10px;
+  background: transparent;
+  color: #dce7f8;
+  display: grid;
+  gap: 4px;
+}
+
+.chat-item span {
+  font-size: 12px;
+  color: #8da3be;
+}
+
+.chat-item.active {
+  background: #2c4158;
+}
+
+.chat-view {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #101820;
+}
+
+.chat-header {
+  border-bottom: 1px solid #2f3f50;
+  padding: 14px 18px;
+}
+
+.chat-header h3 {
+  margin: 0;
+}
+
+.chat-header p {
+  margin: 4px 0 0;
+  color: #97a9c2;
+  font-size: 12px;
+}
+
+.messages {
+  overflow: auto;
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 36px;
+}
+
+.bubble {
+  max-width: 620px;
+  background: #243648;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.bubble.own {
+  justify-self: end;
+  background: #2f6ea8;
+}
+
+.bubble p {
+  margin: 0;
+}
+
+.bubble time {
+  margin-top: 6px;
+  display: block;
+  font-size: 11px;
+  color: #acc1db;
+}
+
+.composer {
+  border-top: 1px solid #2f3f50;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.error {
+  color: #ff9f9f;
+}

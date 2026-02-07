@@ -107,6 +107,14 @@ class ChannelDetailsActivity : AppCompatActivity() {
         channelsViewModel.refreshChannel(channelId)
         detailsViewModel.loadChannelDetails(channelId)
         detailsViewModel.loadChannelPosts(channelId)
+        // Connect Socket.IO for real-time updates
+        detailsViewModel.connectSocket(this, channelId)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Disconnect Socket.IO when leaving
+        detailsViewModel.disconnectSocket()
     }
 }
 
@@ -240,11 +248,10 @@ fun ChannelDetailsScreen(
         }
     }
 
-    // Автоматичне оновлення контенту каналу кожні 15 секунд
+    // Fallback polling: Socket.IO handles real-time, REST polls less frequently as backup
     LaunchedEffect(channelId) {
         while (true) {
-            kotlinx.coroutines.delay(15000) // 15 секунд
-            // Тихе оновлення без показу індикатора завантаження
+            kotlinx.coroutines.delay(60000) // 60 seconds (Socket.IO provides real-time)
             detailsViewModel.loadChannelPosts(channelId)
         }
     }
@@ -886,6 +893,29 @@ fun ChannelDetailsScreen(
                                     Icon(Icons.Default.Settings, contentDescription = null)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text("Форматування повідомлень")
+                                }
+                            }
+
+                            // Адмін-панель (повна)
+                            TextButton(
+                                onClick = {
+                                    showChannelMenuDialog = false
+                                    context.startActivity(
+                                        Intent(context, ChannelAdminPanelActivity::class.java).apply {
+                                            putExtra("channel_id", channelId)
+                                        }
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Outlined.Article, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Адмін-панель")
                                 }
                             }
                         }

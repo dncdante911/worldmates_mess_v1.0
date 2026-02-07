@@ -147,15 +147,20 @@ export default function App() {
 
     Promise.all([
       loadChats(session.token, session.userId).then((response) => {
-        setChats(response.data ?? []);
-        if ((response.data ?? []).length > 0) {
-          setSelectedChatId(response.data?.[0].user_id ?? null);
+        const nextChats = response.data ?? [];
+        setChats(nextChats);
+        if (nextChats.length > 0) {
+          setSelectedChatId((current) => current ?? nextChats[0].user_id ?? null);
         }
       }),
       loadGroups(session.token).then((response) => setGroups(response.data ?? [])),
       loadChannels(session.token).then((response) => setChannels(response.data ?? [])),
       loadStories(session.token).then((response) => setStories(response.stories ?? response.data ?? []))
     ]).catch(() => setError('Failed loading initial data from API.'));
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
 
     const liveSocket = createChatSocket(session.token, {
       onStatus: setStatus,
@@ -390,7 +395,10 @@ export default function App() {
               <input value={newGroupName} onChange={(event) => setNewGroupName(event.target.value)} placeholder="New group" />
               <button type="submit">Create</button>
             </form>
-            <div className="list-panel">{groups.map((group, index) => <div key={`${group.id}-${index}`} className="list-item">{asText(group.group_name, 'Group')}</div>)}</div>
+            <div className="list-panel">
+              {groups.length === 0 ? <div className="list-item">No groups found</div> : null}
+              {groups.map((group, index) => <div key={`${group.id}-${index}`} className="list-item">{asText(group.group_name, 'Group')}</div>)}
+            </div>
           </>
         ) : null}
 
@@ -401,7 +409,10 @@ export default function App() {
               <input value={newChannelDescription} onChange={(event) => setNewChannelDescription(event.target.value)} placeholder="Description" />
               <button type="submit">Create</button>
             </form>
-            <div className="list-panel">{channels.map((channel, index) => <div key={`${channel.id}-${index}`} className="list-item">{asText(channel.name, 'Channel')}</div>)}</div>
+            <div className="list-panel">
+              {channels.length === 0 ? <div className="list-item">No channels found</div> : null}
+              {channels.map((channel, index) => <div key={`${channel.id}-${index}`} className="list-item">{asText(channel.name, 'Channel')}</div>)}
+            </div>
           </>
         ) : null}
 

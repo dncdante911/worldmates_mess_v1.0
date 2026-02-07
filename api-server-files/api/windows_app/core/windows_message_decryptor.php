@@ -79,8 +79,14 @@ if (!function_exists('wm_decrypt_message_auto')) {
             return null;
         }
 
-        $text = isset($message['text']) ? $message['text'] : '';
-        if (empty($text) || !is_string($text)) {
+        $text = '';
+        if (!empty($message['text_ecb']) && is_string($message['text_ecb'])) {
+            $text = $message['text_ecb'];
+        } else if (!empty($message['text']) && is_string($message['text'])) {
+            $text = $message['text'];
+        }
+
+        if (empty($text)) {
             return null;
         }
 

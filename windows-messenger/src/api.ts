@@ -151,6 +151,36 @@ function normalizeMessages(payload: any): MessagesResponse {
   return { api_status: String(payload.api_status ?? '200'), messages: [] };
 }
 
+
+function normalizeGroups(payload: any): GenericListResponse<GroupItem> {
+  const groupsRaw = payload.groups ?? payload.data ?? [];
+  const groups: GroupItem[] = Array.isArray(groupsRaw)
+    ? groupsRaw.map((group: any) => ({
+        id: Number(group.id ?? group.group_id),
+        group_name: toSafeText(group.group_name, toSafeText(group.name, 'Group')),
+        avatar: group.avatar,
+        members_count: Number(group.members_count ?? 0)
+      }))
+    : [];
+
+  return { api_status: String(payload.api_status ?? '200'), data: groups };
+}
+
+function normalizeChannels(payload: any): GenericListResponse<ChannelItem> {
+  const channelsRaw = payload.channels ?? payload.data ?? [];
+  const channels: ChannelItem[] = Array.isArray(channelsRaw)
+    ? channelsRaw.map((channel: any) => ({
+        id: Number(channel.id ?? channel.channel_id),
+        name: toSafeText(channel.name, 'Channel'),
+        username: channel.username,
+        avatar_url: channel.avatar_url ?? channel.avatar,
+        subscribers_count: Number(channel.subscribers_count ?? 0)
+      }))
+    : [];
+
+  return { api_status: String(payload.api_status ?? '200'), data: channels };
+}
+
 async function loginViaWindowsApi(username: string, password: string): Promise<AuthResponse> {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const response = await postForm<any>(
@@ -325,11 +355,12 @@ export async function sendMessageWithMedia(
   await postMultipart(windowsUrl(ENDPOINTS.windowsInsertMessage), fallbackForm);
 }
 
-export function loadGroups(token: string): Promise<GenericListResponse<GroupItem>> {
-  return postForm<GenericListResponse<GroupItem>>(
+export async function loadGroups(token: string): Promise<GenericListResponse<GroupItem>> {
+  const response = await postForm<any>(
     absoluteUrl(ENDPOINTS.groups, token),
     createFormBody({ type: 'get_list', limit: 50, offset: 0 })
   );
+  return normalizeGroups(response);
 }
 
 export function createGroup(token: string, groupName: string): Promise<unknown> {
@@ -339,11 +370,12 @@ export function createGroup(token: string, groupName: string): Promise<unknown> 
   );
 }
 
-export function loadChannels(token: string): Promise<GenericListResponse<ChannelItem>> {
-  return postForm<GenericListResponse<ChannelItem>>(
+export async function loadChannels(token: string): Promise<GenericListResponse<ChannelItem>> {
+  const response = await postForm<any>(
     absoluteUrl(ENDPOINTS.channels, token),
     createFormBody({ type: 'get_list', limit: 50, offset: 0 })
   );
+  return normalizeChannels(response);
 }
 
 export function createChannel(token: string, channelName: string, description: string): Promise<unknown> {

@@ -1,7 +1,23 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
+
+ipcMain.handle('wm:request', async (_event, payload) => {
+  const response = await fetch(payload.url, {
+    method: payload.method ?? 'GET',
+    headers: payload.headers ?? {},
+    body: payload.body
+  });
+
+  const text = await response.text();
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    text
+  };
+});
 
 function createWindow() {
   const window = new BrowserWindow({

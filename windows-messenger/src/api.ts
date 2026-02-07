@@ -20,9 +20,7 @@ function createFormBody(payload: Record<string, string | number>) {
 function withSecurityParams(url: string, accessToken?: string): string {
   const full = new URL(url);
   full.searchParams.set('s', SITE_ENCRYPT_KEY);
-  if (accessToken) {
-    full.searchParams.set('access_token', accessToken);
-  }
+  if (accessToken) full.searchParams.set('access_token', accessToken);
   return full.toString();
 }
 
@@ -34,39 +32,79 @@ function absoluteUrl(path: string, accessToken?: string): string {
   return withSecurityParams(`https://worldmates.club${path}`, accessToken);
 }
 
-async function parseJson<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`HTTP ${response.status}: ${body.slice(0, 300)}`);
+async function parseTextAsJson<T>(status: number, text: string, ok: boolean): Promise<T> {
+  let payload: T;
+  try {
+    payload = JSON.parse(text) as T;
+  } catch {
+    throw new Error(`HTTP ${status}: ${text.slice(0, 300) || 'Non-JSON response'}`);
   }
-  return response.json() as Promise<T>;
+
+  if (!ok) {
+    throw new Error(`HTTP ${status}: ${text.slice(0, 300)}`);
+  }
+
+  return payload;
 }
 
-export async function login(username: string, password: string): Promise<AuthResponse> {
-  const response = await fetch(v2Url(ENDPOINTS.auth), {
-    method: 'POST',
-    body: createFormBody({ username, password, device_type: 'windows' })
-  });
-  return parseJson<AuthResponse>(response);
+async function postForm<T>(url: string, body: URLSearchParams): Promise<T> {
+  const desktopRequest = window.desktopApp?.request;
+  if (desktopRequest) {
+    const result = await desktopRequest({
+      url,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      },
+      body: body.toString()
+    });
+
+    return parseTextAsJson<T>(result.status, result.text, result.ok);
+  }
+
+  const response = await fetch(url, { method: 'POST', body });
+  const text = await response.text();
+  return parseTextAsJson<T>(response.status, text, response.ok);
 }
 
-export async function loginByPhone(phone: string, password: string): Promise<AuthResponse> {
-  const response = await fetch(v2Url(ENDPOINTS.auth), {
-    method: 'POST',
-    body: createFormBody({ username: phone, phone_number: phone, password, device_type: 'windows' })
-  });
-  return parseJson<AuthResponse>(response);
+async function postMultipart<T>(url: string, body: FormData): Promise<T> {
+  const response = await fetch(url, { method: 'POST', body });
+  const text = await response.text();
+  return parseTextAsJson<T>(response.status, text, response.ok);
 }
 
-export async function registerAccount(input: {
+async function getJson<T>(url: string): Promise<T> {
+  const desktopRequest = window.desktopApp?.request;
+  if (desktopRequest) {
+    const result = await desktopRequest({ url, method: 'GET' });
+    return parseTextAsJson<T>(result.status, result.text, result.ok);
+  }
+
+  const response = await fetch(url);
+  const text = await response.text();
+  return parseTextAsJson<T>(response.status, text, response.ok);
+}
+
+export function login(username: string, password: string): Promise<AuthResponse> {
+  return postForm<AuthResponse>(v2Url(ENDPOINTS.auth), createFormBody({ username, password, device_type: 'windows' }));
+}
+
+export function loginByPhone(phone: string, password: string): Promise<AuthResponse> {
+  return postForm<AuthResponse>(
+    v2Url(ENDPOINTS.auth),
+    createFormBody({ username: phone, phone_number: phone, password, device_type: 'windows' })
+  );
+}
+
+export function registerAccount(input: {
   username: string;
   email?: string;
   phoneNumber?: string;
   password: string;
 }): Promise<AuthResponse> {
-  const response = await fetch(withSecurityParams(REGISTER_PATH), {
-    method: 'POST',
-    body: createFormBody({
+  return postForm<AuthResponse>(
+    withSecurityParams(REGISTER_PATH),
+    createFormBody({
       username: input.username,
       email: input.email ?? '',
       phone_number: input.phoneNumber ?? '',
@@ -76,25 +114,21 @@ export async function registerAccount(input: {
       device_type: 'windows',
       gender: 'male'
     })
-  });
-
-  return parseJson<AuthResponse>(response);
+  );
 }
 
-export async function loadChats(token: string): Promise<ChatListResponse> {
-  const response = await fetch(v2Url(ENDPOINTS.chats, token), {
-    method: 'POST',
-    body: createFormBody({ user_limit: 80, data_type: 'all', SetOnline: 1, offset: 0 })
-  });
-  return parseJson<ChatListResponse>(response);
+export function loadChats(token: string): Promise<ChatListResponse> {
+  return postForm<ChatListResponse>(
+    v2Url(ENDPOINTS.chats, token),
+    createFormBody({ user_limit: 80, data_type: 'all', SetOnline: 1, offset: 0 })
+  );
 }
 
-export async function loadMessages(token: string, recipientId: number): Promise<MessagesResponse> {
-  const response = await fetch(v2Url(ENDPOINTS.messages, token), {
-    method: 'POST',
-    body: createFormBody({ recipient_id: recipientId, limit: 40, before_message_id: 0 })
-  });
-  return parseJson<MessagesResponse>(response);
+export function loadMessages(token: string, recipientId: number): Promise<MessagesResponse> {
+  return postForm<MessagesResponse>(
+    v2Url(ENDPOINTS.messages, token),
+    createFormBody({ recipient_id: recipientId, limit: 40, before_message_id: 0 })
+  );
 }
 
 export async function sendMessage(token: string, recipientId: number, text: string): Promise<void> {
@@ -105,20 +139,15 @@ export async function sendMessage(token: string, recipientId: number, text: stri
     message_hash_id: `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
   };
 
-  await fetch(v2Url(ENDPOINTS.sendMessage, token), { method: 'POST', body: createFormBody(payload) });
-  await fetch(v2Url(ENDPOINTS.sendMessageLegacy, token), {
-    method: 'POST',
-    body: createFormBody({ recipient_id: recipientId, text })
-  });
+  await postForm(v2Url(ENDPOINTS.sendMessage, token), createFormBody(payload));
+  await postForm(v2Url(ENDPOINTS.sendMessageLegacy, token), createFormBody({ recipient_id: recipientId, text }));
 }
 
-export async function uploadMedia(token: string, file: File): Promise<MediaUploadResponse> {
+export function uploadMedia(token: string, file: File): Promise<MediaUploadResponse> {
   const form = new FormData();
   form.append('server_key', SERVER_KEY);
   form.append('file', file);
-
-  const response = await fetch(v2Url(ENDPOINTS.uploadMedia, token), { method: 'POST', body: form });
-  return parseJson<MediaUploadResponse>(response);
+  return postMultipart<MediaUploadResponse>(v2Url(ENDPOINTS.uploadMedia, token), form);
 }
 
 export async function sendMessageWithMedia(token: string, recipientId: number, text: string, file: File): Promise<void> {
@@ -129,45 +158,33 @@ export async function sendMessageWithMedia(token: string, recipientId: number, t
   form.append('message_hash_id', `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`);
   form.append('file', file);
 
-  await fetch(v2Url(ENDPOINTS.sendMessage, token), { method: 'POST', body: form });
+  await postMultipart(v2Url(ENDPOINTS.sendMessage, token), form);
 }
 
-export async function loadGroups(token: string): Promise<GenericListResponse<GroupItem>> {
-  const response = await fetch(absoluteUrl(ENDPOINTS.groups, token), {
-    method: 'POST',
-    body: createFormBody({ type: 'get_list', limit: 50, offset: 0 })
-  });
-  return parseJson<GenericListResponse<GroupItem>>(response);
+export function loadGroups(token: string): Promise<GenericListResponse<GroupItem>> {
+  return postForm<GenericListResponse<GroupItem>>(
+    absoluteUrl(ENDPOINTS.groups, token),
+    createFormBody({ type: 'get_list', limit: 50, offset: 0 })
+  );
 }
 
-export async function createGroup(token: string, groupName: string): Promise<void> {
-  await fetch(absoluteUrl(ENDPOINTS.groups, token), {
-    method: 'POST',
-    body: createFormBody({ type: 'create', group_name: groupName, parts: '', group_type: 'group' })
-  });
+export function createGroup(token: string, groupName: string): Promise<unknown> {
+  return postForm(absoluteUrl(ENDPOINTS.groups, token), createFormBody({ type: 'create', group_name: groupName, parts: '', group_type: 'group' }));
 }
 
-export async function loadChannels(token: string): Promise<GenericListResponse<ChannelItem>> {
-  const response = await fetch(absoluteUrl(ENDPOINTS.channels, token), {
-    method: 'POST',
-    body: createFormBody({ type: 'get_list', limit: 50, offset: 0 })
-  });
-  return parseJson<GenericListResponse<ChannelItem>>(response);
+export function loadChannels(token: string): Promise<GenericListResponse<ChannelItem>> {
+  return postForm<GenericListResponse<ChannelItem>>(
+    absoluteUrl(ENDPOINTS.channels, token),
+    createFormBody({ type: 'get_list', limit: 50, offset: 0 })
+  );
 }
 
-export async function createChannel(token: string, channelName: string, description: string): Promise<void> {
-  await fetch(absoluteUrl(ENDPOINTS.channels, token), {
-    method: 'POST',
-    body: createFormBody({ action: 'create_channel', name: channelName, description })
-  });
+export function createChannel(token: string, channelName: string, description: string): Promise<unknown> {
+  return postForm(absoluteUrl(ENDPOINTS.channels, token), createFormBody({ action: 'create_channel', name: channelName, description }));
 }
 
-export async function loadStories(token: string): Promise<GenericListResponse<StoryItem>> {
-  const response = await fetch(absoluteUrl(ENDPOINTS.stories, token), {
-    method: 'POST',
-    body: createFormBody({ limit: 35 })
-  });
-  return parseJson<GenericListResponse<StoryItem>>(response);
+export function loadStories(token: string): Promise<GenericListResponse<StoryItem>> {
+  return postForm<GenericListResponse<StoryItem>>(absoluteUrl(ENDPOINTS.stories, token), createFormBody({ limit: 35 }));
 }
 
 export async function createStory(token: string, file: File, fileType: 'image' | 'video'): Promise<void> {
@@ -176,14 +193,14 @@ export async function createStory(token: string, file: File, fileType: 'image' |
   form.append('file', file);
   form.append('file_type', fileType);
 
-  await fetch(absoluteUrl(ENDPOINTS.createStory, token), { method: 'POST', body: form });
+  await postMultipart(absoluteUrl(ENDPOINTS.createStory, token), form);
 }
 
 export async function getIceServers(userId: number): Promise<RTCIceServer[]> {
-  const response = await fetch(absoluteUrl(`${ENDPOINTS.iceServers}${userId}`));
-  if (!response.ok) {
+  try {
+    const payload = await getJson<{ iceServers?: RTCIceServer[] } | RTCIceServer[]>(absoluteUrl(`${ENDPOINTS.iceServers}${userId}`));
+    return Array.isArray(payload) ? payload : (payload.iceServers ?? []);
+  } catch {
     return [];
   }
-  const payload = await response.json();
-  return payload.iceServers ?? payload ?? [];
 }

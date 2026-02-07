@@ -43,6 +43,7 @@ Desktop клиент под **Windows 10/11** (Electron + React + TypeScript), �
 - Web Crypto API (AES-256-GCM)
 - WebRTC
 - electron-builder
+- Electron main-process request bridge (IPC) for auth/API in desktop mode
 
 ## Запуск
 
@@ -63,6 +64,8 @@ npm run dev
   - `https://worldmates.club:449/`
 
 То есть локальный адрес не означает, что backend локальный.
+
+Дополнительно: в desktop-режиме авторизационные form-запросы отправляются через Electron main process (IPC bridge), чтобы обойти возможные CORS/Fetch ограничения renderer в dev-режиме.
 
 ## Сборка installer
 

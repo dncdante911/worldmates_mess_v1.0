@@ -2,6 +2,12 @@
 /**
  * check_app_update.php - Check for Android app updates
  *
+ * Server structure (ISPmanager 6):
+ *   Site root:    /var/www/worldmates.club/  (or wherever ISPmanager puts it)
+ *   APK storage:  {site_root}/sources-app/
+ *   This file:    {site_root}/api/v2/endpoints/check_app_update.php
+ *   Config:       {site_root}/sources-app/version.json
+ *
  * Parameters:
  *   - current_version_code (int) - Current app versionCode
  *   - current_version_name (string) - Current app versionName
@@ -19,9 +25,13 @@
 
 header('Content-Type: application/json; charset=UTF-8');
 
-// Version config file path
-$version_config_file = __DIR__ . '/../../upload/app_updates/version.json';
-$apk_directory = __DIR__ . '/../../upload/app_updates/';
+// Determine site root: go up from api/v2/endpoints/ -> site root
+// __DIR__ = {site_root}/api/v2/endpoints
+$site_root = realpath(__DIR__ . '/../../../') . '/';
+
+// APK storage directory: {site_root}/sources-app/
+$apk_directory = $site_root . 'sources-app/';
+$version_config_file = $apk_directory . 'version.json';
 
 // Create directory and default config if not exists
 if (!is_dir($apk_directory)) {
@@ -40,7 +50,7 @@ if (!file_exists($version_config_file)) {
             'file_size' => 0
         ]
     ];
-    file_put_contents($version_config_file, json_encode($default_config, JSON_PRETTY_PRINT));
+    file_put_contents($version_config_file, json_encode($default_config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
 // Read version config
@@ -78,11 +88,13 @@ $download_url = '';
 if (!empty($apk_filename) && file_exists($apk_directory . $apk_filename)) {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'worldmates.club';
-    $download_url = $protocol . '://' . $host . '/upload/app_updates/' . $apk_filename;
+    // URL path: /sources-app/{filename}
+    $download_url = $protocol . '://' . $host . '/sources-app/' . $apk_filename;
 
     // Update file size from actual file
     $file_size = filesize($apk_directory . $apk_filename);
 } elseif (!empty($platform_config['download_url'])) {
+    // Fallback to manually specified URL
     $download_url = $platform_config['download_url'];
 }
 

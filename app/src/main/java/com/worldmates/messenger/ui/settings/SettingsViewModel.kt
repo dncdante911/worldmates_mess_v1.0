@@ -11,6 +11,7 @@ import com.worldmates.messenger.data.model.User
 import com.worldmates.messenger.data.model.toGroup
 import com.worldmates.messenger.network.FileManager
 import com.worldmates.messenger.network.RetrofitClient
+import com.worldmates.messenger.update.AppUpdateManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -410,6 +411,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _errorMessage.value = null
     }
 
+    
+
+    fun checkUpdates(force: Boolean = false) {
+        viewModelScope.launch {
+            AppUpdateManager.checkForUpdates(force = force)
+        }
+    }
+
+    fun snoozeUpdatePrompt() {
+        AppUpdateManager.snoozePrompt(hours = 12)
+    }
     fun clearSuccess() {
         _successMessage.value = null
     }

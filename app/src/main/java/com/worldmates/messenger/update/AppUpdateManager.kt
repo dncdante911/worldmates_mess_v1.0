@@ -119,15 +119,10 @@ object AppUpdateManager {
     }
 
     /**
-     * Try router endpoint first, fallback to direct endpoint.
+     * Fetch update info directly from endpoint (bypasses WoWonder router).
      */
     private suspend fun fetchUpdateResponse(): AppUpdateResponse {
-        return try {
-            RetrofitClient.apiService.checkMobileUpdate()
-        } catch (routerError: Exception) {
-            Log.w(TAG, "Router endpoint failed, fallback to direct: ${routerError.message}")
-            RetrofitClient.apiService.checkMobileUpdateDirect()
-        }
+        return RetrofitClient.apiService.checkMobileUpdate()
     }
 
     private fun updateFailure(message: String, throwable: Throwable? = null): UpdateState {

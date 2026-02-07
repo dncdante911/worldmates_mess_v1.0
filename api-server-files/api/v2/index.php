@@ -23,7 +23,8 @@ $public_endpoints = [
     'verify_code',
     'get_site_settings',
     'get-site-settings',
-    'test_init'
+    'test_init',
+    'check_app_update'
 ];
 
 // Validate access_token for protected endpoints
@@ -160,6 +161,9 @@ $routes = [
     // User Rating System (Karma/Trust)
     'rate_user' => 'endpoints/rate_user.php',
     'get_user_rating' => 'endpoints/get_user_rating.php',
+
+    // App Updates
+    'check_app_update' => 'endpoints/check_app_update.php',
 
     // Other
     'get_invites' => 'endpoints/get_invites.php',

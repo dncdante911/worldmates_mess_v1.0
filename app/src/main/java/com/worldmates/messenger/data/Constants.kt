@@ -63,7 +63,7 @@ object Constants {
     const val VIDEO_CALL_TIMEOUT = 120 // seconds
     
     // ==================== DEVICE INFO ====================
-    const val APP_VERSION = "1.0.0"
+    const val APP_VERSION = "2.0-EDIT-FIX"
     const val DEVICE_TYPE = "android"
     
     // ==================== COMPRESSION ====================

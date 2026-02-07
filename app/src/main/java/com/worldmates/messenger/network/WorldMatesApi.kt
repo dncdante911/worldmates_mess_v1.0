@@ -1304,6 +1304,16 @@ interface WorldMatesApi {
         @Field("channel_id") channelId: Long
     ): GenericResponse
 
+    // ==================== APP UPDATES ====================
+
+    @FormUrlEncoded
+    @POST("?type=check_app_update")
+    suspend fun checkAppUpdate(
+        @Field("current_version_code") currentVersionCode: Int,
+        @Field("current_version_name") currentVersionName: String,
+        @Field("platform") platform: String = "android"
+    ): AppUpdateResponse
+
     // ⭐ Rate User (Like/Dislike)
     @FormUrlEncoded
     @POST("/api/v2/?type=rate_user")
@@ -1706,5 +1716,21 @@ data class InviteLinkResponse(
     @SerializedName("api_status") val apiStatus: Int,
     @SerializedName("invite_link") val inviteLink: String? = null,
     @SerializedName("message") val message: String? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+/**
+ * Response for app update check
+ */
+data class AppUpdateResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("update_available") val updateAvailable: Boolean = false,
+    @SerializedName("force_update") val forceUpdate: Boolean = false,
+    @SerializedName("latest_version_code") val latestVersionCode: Int = 0,
+    @SerializedName("latest_version_name") val latestVersionName: String = "",
+    @SerializedName("min_version_code") val minVersionCode: Int = 0,
+    @SerializedName("download_url") val downloadUrl: String = "",
+    @SerializedName("changelog") val changelog: String = "",
+    @SerializedName("file_size") val fileSize: Long = 0,
     @SerializedName("error_message") val errorMessage: String? = null
 )

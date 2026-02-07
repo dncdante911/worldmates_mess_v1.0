@@ -60,7 +60,7 @@ if (!$user_id) {
 }
 
 // Автоміграція: додаємо відсутні колонки при першому запуску
-$migration_flag = sys_get_temp_dir() . '/wm_group_migration_v2_done';
+$migration_flag = sys_get_temp_dir() . '/wm_group_migration_v3_done';
 if (!file_exists($migration_flag)) {
     try {
         // Wo_GroupChat: додаємо колонки для налаштувань
@@ -97,6 +97,24 @@ if (!file_exists($migration_flag)) {
         }
         if (!in_array('role', $gcu_columns)) {
             try { $db->exec("ALTER TABLE Wo_GroupChatUsers ADD COLUMN `role` VARCHAR(20) DEFAULT 'member'"); logGroupMessage("Auto-migration: added role to Wo_GroupChatUsers"); } catch (Exception $e) {}
+        }
+
+        // Wo_Messages: додаємо колонки для шифрування та reply
+        $msg_columns = [];
+        $result = $db->query("SHOW COLUMNS FROM Wo_Messages");
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $msg_columns[] = $row['Field'];
+        }
+        $msg_migrations = [
+            'reply_id' => "ALTER TABLE Wo_Messages ADD COLUMN `reply_id` INT(11) DEFAULT NULL",
+            'iv' => "ALTER TABLE Wo_Messages ADD COLUMN `iv` TEXT DEFAULT NULL",
+            'tag' => "ALTER TABLE Wo_Messages ADD COLUMN `tag` TEXT DEFAULT NULL",
+            'cipher_version' => "ALTER TABLE Wo_Messages ADD COLUMN `cipher_version` INT(11) DEFAULT NULL",
+        ];
+        foreach ($msg_migrations as $col => $sql) {
+            if (!in_array($col, $msg_columns)) {
+                try { $db->exec($sql); logGroupMessage("Auto-migration: added $col to Wo_Messages"); } catch (Exception $e) {}
+            }
         }
 
         // Створюємо додаткові таблиці якщо відсутні

@@ -364,33 +364,53 @@ data class ChatListResponse(
 }
 
 data class MessageListResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?, // Int (v2 API) или String (old API)
     @SerializedName("messages") val messages: List<Message>?,
     @SerializedName("total_count") val totalCount: Int? = null,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
-)
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 data class GroupListResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?,
     @SerializedName("groups") private val _groups: List<Group>? = null,
     @SerializedName("data") private val _data: List<Group>? = null, // API get-my-groups возвращает 'data' вместо 'groups'
     @SerializedName("total_count") val totalCount: Int? = null,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 ) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
     // Универсальный геттер для получения групп (из groups или data)
     val groups: List<Group>?
         get() = _groups ?: _data
 }
 
 data class GroupDetailResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?,
     @SerializedName("group") val group: Group?,
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
-)
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 data class MediaUploadResponse(
     @SerializedName("api_status") val apiStatus: Int,

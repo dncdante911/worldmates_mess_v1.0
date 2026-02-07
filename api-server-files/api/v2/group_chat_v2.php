@@ -688,6 +688,8 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
         SELECT
             m.id,
             m.from_id AS fromId,
+            m.to_id AS toId,
+            m.group_id AS groupId,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS senderName,
             u.avatar AS senderAvatar,
@@ -695,7 +697,8 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
             m.media,
             m.mediaFileName,
             m.time,
-            m.seen
+            m.seen,
+            m.message_reply_id AS replyToId
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.group_id = ? $where_clause
@@ -737,16 +740,22 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
     $stmt->execute([$user_id, $group_id, trim($text), $time, $reply_to]);
     $message_id = $db->lastInsertId();
 
-    // Отримуємо створене повідомлення
+    // Отримуємо створене повідомлення з усіма необхідними полями
     $stmt = $db->prepare("
         SELECT
             m.id,
             m.from_id AS fromId,
+            m.to_id AS toId,
+            m.group_id AS groupId,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS senderName,
             u.avatar AS senderAvatar,
             m.text,
-            m.time
+            m.media,
+            m.mediaFileName,
+            m.time,
+            m.seen,
+            m.message_reply_id AS replyToId
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.id = ?

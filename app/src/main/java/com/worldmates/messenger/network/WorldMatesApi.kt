@@ -9,6 +9,12 @@ import retrofit2.http.*
 
 interface WorldMatesApi {
 
+    @GET("/api/v2/endpoints/check_mobile_update.php")
+    suspend fun checkMobileUpdate(
+        @Query("platform") platform: String = "android",
+        @Query("channel") channel: String = "stable"
+    ): AppUpdateResponse
+
     // ==================== AUTHENTICATION ====================
 
     @FormUrlEncoded

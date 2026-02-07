@@ -61,6 +61,25 @@ object AppUpdateManager {
         }
 
         return try {
+            val response = runCatching {
+                RetrofitClient.apiService.checkMobileUpdate()
+            }.getOrElse {
+                Log.w(TAG, "Router update endpoint failed, fallback to direct endpoint: ${it.message}")
+                RetrofitClient.apiService.checkMobileUpdateDirect()
+            }
+
+            val info = response.data
+            val updateAvailable = info != null && isNewerVersion(info)
+
+            if (!response.success && info == null) {
+                val failed = _state.value.copy(
+                    error = response.message ?: "Update endpoint returned invalid payload",
+                    checkedAtMillis = System.currentTimeMillis()
+                )
+                _state.value = failed
+                return failed
+            }
+
             val response = RetrofitClient.apiService.checkMobileUpdate()
             val info = response.data
             val updateAvailable = info != null && isNewerVersion(info)

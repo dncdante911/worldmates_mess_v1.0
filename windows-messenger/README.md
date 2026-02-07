@@ -1,50 +1,34 @@
-# WorldMates Windows Messenger
+# WorldMates Windows Messenger (from scratch)
 
-Desktop клиент под **Windows 10/11** (Electron + React + TypeScript), совместимый с backend API Android приложения.
+MVP desktop client for **Windows 10/11** built from zero using Electron + React + TypeScript, reusing the current Android backend contracts (`auth`, `get_chats`, `get_user_messages`, socket events).
 
-## Реализовано в текущем этапе
+## Что уже реализовано
 
-- Экран входа + регистрация
-  - логин по username/password
-  - логин по phone/password
-  - регистрация пользователя
-- Чаты
-  - список чатов
-  - история сообщений
-  - отправка сообщений
-  - AES-256-GCM шифрование/дешифрование для текстовых сообщений (desktop-side)
-- Медиа
-  - отправка медиа в сообщении (image/video/docs)
-  - отображение ссылки на download медиа в ленте сообщения
-- Группы
-  - загрузка списка групп
-  - создание группы
-- Каналы
-  - загрузка списка каналов
-  - создание канала
-- Stories
-  - загрузка списка stories
-  - upload story (image/video)
-- Звонки (база)
-  - WebRTC desktop integration (offer flow)
-  - ICE servers из backend + fallback TURN/STUN
-- Packaging для Windows
-  - NSIS `.exe`
-  - `.msi`
-  - portable
-  - executable name: `WorldMatesMessenger.exe`
+- Авторизация через API `?type=auth`
+- Загрузка списка чатов через API `?type=get_chats`
+- Загрузка истории сообщений через API `?type=get_user_messages`
+- Отправка текстового сообщения через API `?type=send_message`
+- Realtime-подписка на Socket.IO события `join`, `private_message`, `new_message`
+- Desktop shell для Windows (Electron main/preload)
+- Базовый современный UI (dark theme, двухпанельный layout)
 
 ## Стек
 
-- Electron
-- React 18 + TypeScript
-- Vite
-- socket.io-client
-- Web Crypto API (AES-256-GCM)
-- WebRTC
-- electron-builder
+- **Electron** — desktop runtime для Windows
+- **React 18 + TypeScript** — интерфейс
+- **Vite** — сборка фронтенда
+- **socket.io-client** — realtime сообщения
 
-## Запуск
+## Структура
+
+```text
+windows-messenger/
+  electron/         # Main/preload процессы Electron
+  src/              # React приложение (UI + API + socket)
+  package.json      # Scripts и зависимости
+```
+
+## Запуск в dev-режиме
 
 ```bash
 cd windows-messenger
@@ -52,14 +36,23 @@ npm install
 npm run dev
 ```
 
-## Сборка installer
+Откроется Electron окно и подключится к локальному Vite dev server.
+
+## Сборка
 
 ```bash
-npm run dist:win
+cd windows-messenger
+npm run build
 ```
 
-Артефакты в `windows-messenger/release/`.
+Сгенерирует production web bundle в `dist/`.
 
-## Ограничения текущего этапа
+> Примечание: в этом коммите сделан рабочий MVP клиент. Для полноценного production installer (`.exe`) нужен следующий шаг с `electron-builder` (иконки, signing, auto-updater, installer pipeline).
 
-Это уже сильно расширенный desktop MVP, но не абсолютный 1:1 parity по всем экранам Android. Полный 1:1 требует дальнейшего переноса всех флоу (детальные звонки с answer/ice handling UI, весь media pipeline, полные настройки и security screens, backup UI, moderation scenarios и т.д.).
+## Что планируется в следующей итерации
+
+1. Добавить media upload/download (фото/видео/доки)
+2. Добавить группы/каналы/истории
+3. Добавить звонки (WebRTC/Agora desktop integration)
+4. Добавить secure session storage + PIN/biometric equivalent for Windows Hello
+5. Добавить packaging pipeline для `.exe` (NSIS/MSI)

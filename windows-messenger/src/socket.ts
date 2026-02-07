@@ -5,7 +5,6 @@ import type { MessageItem } from './types';
 export type SocketHandlers = {
   onMessage: (message: MessageItem) => void;
   onStatus: (status: string) => void;
-  onCallSignal?: (payload: unknown) => void;
 };
 
 export function createChatSocket(token: string, handlers: SocketHandlers): Socket {
@@ -29,10 +28,6 @@ export function createChatSocket(token: string, handlers: SocketHandlers): Socke
 
   socket.on('new_message', (data: MessageItem) => {
     handlers.onMessage(data);
-  });
-
-  socket.on('call_signal', (payload: unknown) => {
-    handlers.onCallSignal?.(payload);
   });
 
   return socket;

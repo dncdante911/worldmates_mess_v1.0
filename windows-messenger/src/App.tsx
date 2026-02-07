@@ -1,72 +1,46 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { Socket } from 'socket.io-client';
-import {
-  createChannel,
-  createGroup,
-  createStory,
-  getIceServers,
-  loadChannels,
-  loadChats,
-  loadGroups,
-  loadMessages,
-  loadStories,
-  login,
-  loginByPhone,
-  registerAccount,
-  sendMessage,
-  sendMessageWithMedia
-} from './api';
-import { encryptAesGcm, tryDecryptAesGcm } from './crypto';
+import { loadChats, loadMessages, login, sendMessage } from './api';
 import { createChatSocket } from './socket';
-import type { ChannelItem, ChatItem, GroupItem, MessageItem, StoryItem } from './types';
-import { createLocalVideoStream, createPeerConnection } from './webrtc';
+import type { ChatItem, MessageItem } from './types';
 
-type Session = { token: string; userId: number; username: string };
-type AuthMode = 'login' | 'register';
-type LoginMethod = 'username' | 'phone';
-type Section = 'chats' | 'groups' | 'channels' | 'stories' | 'calls';
+type Session = {
+  token: string;
+  userId: number;
+  username: string;
+};
 
+type MessengerTab = 'all' | 'groups' | 'channels';
+
+const initialStatus = 'Offline';
 const sessionKey = 'wm_windows_session';
-const aesSeed = 'worldmates-aes-256-gcm-desktop';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [authMode, setAuthMode] = useState<AuthMode>('login');
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>('username');
-  const [activeSection, setActiveSection] = useState<Section>('chats');
-
-  const [status, setStatus] = useState('Offline');
-  const [error, setError] = useState('');
-  const [socket, setSocket] = useState<Socket | null>(null);
-
+  const [status, setStatus] = useState(initialStatus);
   const [username, setUsername] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const [chats, setChats] = useState<ChatItem[]>([]);
-  const [groups, setGroups] = useState<GroupItem[]>([]);
-  const [channels, setChannels] = useState<ChannelItem[]>([]);
-  const [stories, setStories] = useState<StoryItem[]>([]);
-
   const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [encryptMessages, setEncryptMessages] = useState(true);
-
-  const [pendingMedia, setPendingMedia] = useState<File | null>(null);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newChannelName, setNewChannelName] = useState('');
-  const [newChannelDescription, setNewChannelDescription] = useState('');
-  const [newStory, setNewStory] = useState<File | null>(null);
-  const [callInfo, setCallInfo] = useState('Idle');
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [activeTab, setActiveTab] = useState<MessengerTab>('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const raw = localStorage.getItem(sessionKey);
-    if (!raw) return;
+    const saved = localStorage.getItem(sessionKey);
+    if (!saved) {
+      return;
+    }
+
     try {
-      const parsed = JSON.parse(raw) as Session;
-      if (parsed.token) setSession(parsed);
+      const parsed = JSON.parse(saved) as Session;
+      if (parsed?.token && parsed?.userId && parsed?.username) {
+        setSession(parsed);
+      }
     } catch {
       localStorage.removeItem(sessionKey);
     }
@@ -77,257 +51,136 @@ export default function App() {
     [chats, selectedChatId]
   );
 
-  async function handleAuth(event: FormEvent) {
+  const filteredChats = useMemo(() => {
+    const byName = chats.filter((chat) => chat.name.toLowerCase().includes(search.toLowerCase()));
+
+    if (activeTab === 'all') {
+      return byName;
+    }
+
+    return byName.filter((chat) => {
+      if (activeTab === 'groups') {
+        return chat.name.toLowerCase().includes('group');
+      }
+      return chat.name.toLowerCase().includes('channel');
+    });
+  }, [activeTab, chats, search]);
+
+  async function handleLogin(event: FormEvent) {
     event.preventDefault();
     setError('');
+    const response = await login(username.trim(), password);
 
-    try {
-      if (authMode === 'register') {
-        const registered = await registerAccount({ username, email, phoneNumber: phone, password });
-        if (registered.api_status === '200' && registered.access_token && registered.user_id) {
-          const next = { token: registered.access_token, userId: registered.user_id, username };
-          localStorage.setItem(sessionKey, JSON.stringify(next));
-          setSession(next);
-          return;
-        }
-        setError(registered.message ?? 'Registration failed.');
-        return;
-      }
-
-      const loggedIn =
-        loginMethod === 'username' ? await login(username.trim(), password) : await loginByPhone(phone.trim(), password);
-
-      if (loggedIn.api_status === '200' && loggedIn.access_token && loggedIn.user_id) {
-        const next = {
-          token: loggedIn.access_token,
-          userId: loggedIn.user_id,
-          username: loginMethod === 'username' ? username.trim() : phone.trim()
-        };
-        localStorage.setItem(sessionKey, JSON.stringify(next));
-        setSession(next);
-        return;
-      }
-
-      setError(loggedIn.message ?? 'Auth failed.');
-    } catch {
-      setError('Auth failed (network/API).');
+    if (response.api_status === '200' && response.access_token && response.user_id) {
+      const nextSession = { token: response.access_token, userId: response.user_id, username: username.trim() };
+      setSession(nextSession);
+      localStorage.setItem(sessionKey, JSON.stringify(nextSession));
+      return;
     }
+
+    setError(response.message ?? 'Login failed. Please check credentials or API compatibility.');
   }
 
-  function logout() {
+  function handleLogout() {
     localStorage.removeItem(sessionKey);
     setSession(null);
-    setMessages([]);
     setChats([]);
-    setGroups([]);
-    setChannels([]);
-    setStories([]);
+    setMessages([]);
     setSelectedChatId(null);
-    socket?.disconnect();
-    setSocket(null);
+    setNewMessage('');
   }
 
   useEffect(() => {
-    if (!session) return;
+    if (!session) {
+      return;
+    }
 
-    Promise.all([
-      loadChats(session.token).then((response) => {
+    loadChats(session.token)
+      .then((response) => {
         setChats(response.data ?? []);
         if ((response.data ?? []).length > 0) {
           setSelectedChatId(response.data?.[0].user_id ?? null);
         }
-      }),
-      loadGroups(session.token).then((response) => setGroups(response.data ?? [])),
-      loadChannels(session.token).then((response) => setChannels(response.data ?? [])),
-      loadStories(session.token).then((response) => setStories(response.stories ?? response.data ?? []))
-    ]).catch(() => setError('Failed loading initial data from API.'));
+      })
+      .catch(() => setError('Failed to load chats from API.'));
 
     const liveSocket = createChatSocket(session.token, {
       onStatus: setStatus,
-      onMessage: async (message) => {
-        const key = `${aesSeed}:${session.userId}:${selectedChatId ?? 0}`;
-        const text = await tryDecryptAesGcm(message.text, key);
+      onMessage: (message) => {
         if (message.from_id === selectedChatId || message.to_id === selectedChatId) {
-          setMessages((current) => [...current, { ...message, text }]);
+          setMessages((current) => [...current, message]);
         }
       }
     });
 
     setSocket(liveSocket);
-    return () => liveSocket.disconnect();
+
+    return () => {
+      liveSocket.disconnect();
+      setSocket(null);
+      setStatus(initialStatus);
+    };
   }, [session, selectedChatId]);
 
   useEffect(() => {
-    if (!session || !selectedChatId) return;
+    if (!session || !selectedChatId) {
+      return;
+    }
 
     loadMessages(session.token, selectedChatId)
-      .then(async (response) => {
-        const key = `${aesSeed}:${session.userId}:${selectedChatId}`;
-        const decrypted = await Promise.all(
-          (response.messages ?? []).map(async (message) => ({
-            ...message,
-            text: await tryDecryptAesGcm(message.text, key)
-          }))
-        );
-        setMessages(decrypted);
-      })
-      .catch(() => setError('Failed to load messages.'));
-  }, [session, selectedChatId]);
+      .then((response) => setMessages(response.messages ?? []))
+      .catch(() => setError('Failed to load messages for selected chat.'));
+  }, [selectedChatId, session]);
 
-  async function handleSendMessage(event: FormEvent) {
+  async function handleSend(event: FormEvent) {
     event.preventDefault();
-    if (!session || !selectedChatId || (!newMessage.trim() && !pendingMedia)) return;
+    if (!session || !selectedChatId || !newMessage.trim()) {
+      return;
+    }
 
-    try {
-      const key = `${aesSeed}:${session.userId}:${selectedChatId}`;
-      const textRaw = newMessage.trim();
-      const textPayload = textRaw ? (encryptMessages ? await encryptAesGcm(textRaw, key) : textRaw) : '';
+    const text = newMessage.trim();
+    setNewMessage('');
 
-      if (pendingMedia) {
-        await sendMessageWithMedia(session.token, selectedChatId, textPayload, pendingMedia);
-      } else {
-        await sendMessage(session.token, selectedChatId, textPayload);
+    await sendMessage(session.token, selectedChatId, text);
+    setMessages((current) => [
+      ...current,
+      {
+        id: Date.now(),
+        from_id: session.userId,
+        to_id: selectedChatId,
+        text,
+        time_text: 'now'
       }
+    ]);
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: Date.now(),
-          from_id: session.userId,
-          to_id: selectedChatId,
-          text: textRaw || `[Media] ${pendingMedia?.name ?? ''}`,
-          time_text: 'now'
-        }
-      ]);
-
-      setNewMessage('');
-      setPendingMedia(null);
-    } catch {
-      setError('Failed to send message.');
-    }
-  }
-
-  async function handleCreateGroup(event: FormEvent) {
-    event.preventDefault();
-    if (!session || !newGroupName.trim()) return;
-    await createGroup(session.token, newGroupName.trim());
-    const refreshed = await loadGroups(session.token);
-    setGroups(refreshed.data ?? []);
-    setNewGroupName('');
-  }
-
-  async function handleCreateChannel(event: FormEvent) {
-    event.preventDefault();
-    if (!session || !newChannelName.trim()) return;
-    await createChannel(session.token, newChannelName.trim(), newChannelDescription.trim());
-    const refreshed = await loadChannels(session.token);
-    setChannels(refreshed.data ?? []);
-    setNewChannelName('');
-    setNewChannelDescription('');
-  }
-
-  async function handleCreateStory(event: FormEvent) {
-    event.preventDefault();
-    if (!session || !newStory) return;
-    const type = newStory.type.startsWith('video/') ? 'video' : 'image';
-    await createStory(session.token, newStory, type);
-    const refreshed = await loadStories(session.token);
-    setStories(refreshed.stories ?? refreshed.data ?? []);
-    setNewStory(null);
-  }
-
-  async function startVideoCall() {
-    if (!session || !selectedChatId) return;
-    setCallInfo('Preparing video call...');
-
-    try {
-      const servers = await getIceServers(session.userId);
-      const peer = await createPeerConnection(servers);
-      const stream = await createLocalVideoStream();
-      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
-
-      socket?.emit('call_signal', {
-        type: 'offer',
-        to: selectedChatId,
-        from: session.userId,
-        sdp: offer
-      });
-
-      setCallInfo('Offer sent. Waiting for answer...');
-    } catch {
-      setCallInfo('Call failed to initialize');
-    }
+    socket?.emit('private_message', {
+      recipient_id: selectedChatId,
+      text,
+      access_token: session.token
+    });
   }
 
   if (!session) {
     return (
       <div className="auth-page">
-        <form className="auth-card" onSubmit={handleAuth}>
+        <form className="auth-card" onSubmit={handleLogin}>
           <h1>WorldMates Desktop</h1>
-          <p>Login / Register with Android-compatible API.</p>
-
-          <div className="switch-row">
-            <button type="button" className={authMode === 'login' ? 'tab active' : 'tab'} onClick={() => setAuthMode('login')}>
-              Login
-            </button>
-            <button
-              type="button"
-              className={authMode === 'register' ? 'tab active' : 'tab'}
-              onClick={() => setAuthMode('register')}
-            >
-              Register
-            </button>
-          </div>
-
-          {authMode === 'login' ? (
-            <div className="switch-row">
-              <button
-                type="button"
-                className={loginMethod === 'username' ? 'tab active' : 'tab'}
-                onClick={() => setLoginMethod('username')}
-              >
-                By username
-              </button>
-              <button
-                type="button"
-                className={loginMethod === 'phone' ? 'tab active' : 'tab'}
-                onClick={() => setLoginMethod('phone')}
-              >
-                By phone
-              </button>
-            </div>
-          ) : null}
-
-          {authMode === 'register' || loginMethod === 'username' ? (
-            <label>
-              Username
-              <input value={username} onChange={(event) => setUsername(event.target.value)} required={authMode === 'register' || loginMethod === 'username'} />
-            </label>
-          ) : null}
-
-          {authMode === 'register' || loginMethod === 'phone' ? (
-            <label>
-              Phone
-              <input value={phone} onChange={(event) => setPhone(event.target.value)} required={authMode === 'register' || loginMethod === 'phone'} />
-            </label>
-          ) : null}
-
-          {authMode === 'register' ? (
-            <label>
-              Email
-              <input value={email} onChange={(event) => setEmail(event.target.value)} />
-            </label>
-          ) : null}
-
+          <p>Вход с тем же аккаунтом, что и в Android приложении.</p>
+          <label>
+            Username
+            <input value={username} onChange={(event) => setUsername(event.target.value)} required />
+          </label>
           <label>
             Password
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
           </label>
-
           {error ? <div className="error">{error}</div> : null}
-          <button type="submit">{authMode === 'register' ? 'Create account' : 'Sign in'}</button>
+          <button type="submit">Sign In</button>
         </form>
       </div>
     );
@@ -336,11 +189,9 @@ export default function App() {
   return (
     <div className="layout">
       <nav className="rail">
-        <button className={activeSection === 'chats' ? 'rail-btn active' : 'rail-btn'} onClick={() => setActiveSection('chats')}>💬</button>
-        <button className={activeSection === 'groups' ? 'rail-btn active' : 'rail-btn'} onClick={() => setActiveSection('groups')}>👥</button>
-        <button className={activeSection === 'channels' ? 'rail-btn active' : 'rail-btn'} onClick={() => setActiveSection('channels')}>📢</button>
-        <button className={activeSection === 'stories' ? 'rail-btn active' : 'rail-btn'} onClick={() => setActiveSection('stories')}>📱</button>
-        <button className={activeSection === 'calls' ? 'rail-btn active' : 'rail-btn'} onClick={() => setActiveSection('calls')}>📞</button>
+        <button className="rail-btn active">💬</button>
+        <button className="rail-btn">📞</button>
+        <button className="rail-btn">⚙️</button>
       </nav>
 
       <aside className="sidebar">
@@ -349,98 +200,60 @@ export default function App() {
             <h2>WorldMates</h2>
             <small>{session.username}</small>
           </div>
-          <button className="logout-btn" onClick={logout}>Exit</button>
+          <button className="logout-btn" onClick={handleLogout}>Exit</button>
         </header>
+
+        <div className="tabs">
+          <button className={activeTab === 'all' ? 'tab active' : 'tab'} onClick={() => setActiveTab('all')}>All</button>
+          <button className={activeTab === 'groups' ? 'tab active' : 'tab'} onClick={() => setActiveTab('groups')}>Groups</button>
+          <button className={activeTab === 'channels' ? 'tab active' : 'tab'} onClick={() => setActiveTab('channels')}>Channels</button>
+        </div>
+
+        <input
+          className="search"
+          placeholder="Search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+
         <div className="status">{status}</div>
 
-        {activeSection === 'chats' ? (
-          <div className="chat-list">
-            {chats.map((chat) => (
-              <button
-                key={chat.user_id}
-                className={chat.user_id === selectedChatId ? 'chat-item active' : 'chat-item'}
-                onClick={() => setSelectedChatId(chat.user_id)}
-              >
-                <strong>{chat.name}</strong>
-                <span>{chat.last_message ?? 'No messages yet'}</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {activeSection === 'groups' ? (
-          <>
-            <form className="mini-form" onSubmit={handleCreateGroup}>
-              <input value={newGroupName} onChange={(event) => setNewGroupName(event.target.value)} placeholder="New group" />
-              <button type="submit">Create</button>
-            </form>
-            <div className="list-panel">{groups.map((group) => <div key={group.id} className="list-item">{group.group_name}</div>)}</div>
-          </>
-        ) : null}
-
-        {activeSection === 'channels' ? (
-          <>
-            <form className="mini-form" onSubmit={handleCreateChannel}>
-              <input value={newChannelName} onChange={(event) => setNewChannelName(event.target.value)} placeholder="Channel name" />
-              <input value={newChannelDescription} onChange={(event) => setNewChannelDescription(event.target.value)} placeholder="Description" />
-              <button type="submit">Create</button>
-            </form>
-            <div className="list-panel">{channels.map((channel) => <div key={channel.id} className="list-item">{channel.name}</div>)}</div>
-          </>
-        ) : null}
-
-        {activeSection === 'stories' ? (
-          <>
-            <form className="mini-form" onSubmit={handleCreateStory}>
-              <input type="file" accept="image/*,video/*" onChange={(event) => setNewStory(event.target.files?.[0] ?? null)} />
-              <button type="submit">Upload story</button>
-            </form>
-            <div className="list-panel">{stories.map((story) => <div key={story.id} className="list-item">Story #{story.id}</div>)}</div>
-          </>
-        ) : null}
-
-        {activeSection === 'calls' ? (
-          <div className="list-panel">
-            <button className="call-btn" onClick={startVideoCall}>Start WebRTC video call</button>
-            <p>{callInfo}</p>
-          </div>
-        ) : null}
+        <div className="chat-list">
+          {filteredChats.map((chat) => (
+            <button
+              key={chat.user_id}
+              className={chat.user_id === selectedChatId ? 'chat-item active' : 'chat-item'}
+              onClick={() => setSelectedChatId(chat.user_id)}
+            >
+              <strong>{chat.name}</strong>
+              <span>{chat.last_message ?? 'No messages yet'}</span>
+            </button>
+          ))}
+        </div>
       </aside>
 
       <main className="chat-view">
         <header className="chat-header">
           <h3>{selectedChat?.name ?? 'Select chat'}</h3>
-          <p>AES-256-GCM: {encryptMessages ? 'enabled' : 'disabled'}</p>
+          <p>Online status synced with API</p>
         </header>
-
         <section className="messages">
           {messages.map((message) => (
-            <article key={message.id} className={message.from_id === session.userId ? 'bubble own' : 'bubble'}>
+            <article
+              key={message.id}
+              className={message.from_id === session.userId ? 'bubble own' : 'bubble'}
+            >
               <p>{message.text}</p>
-              {message.media ? (
-                <a href={message.media} target="_blank" rel="noreferrer">
-                  Download media
-                </a>
-              ) : null}
               <time>{message.time_text ?? ''}</time>
             </article>
           ))}
         </section>
 
-        <form className="composer" onSubmit={handleSendMessage}>
-          <label className="check-row">
-            <input
-              type="checkbox"
-              checked={encryptMessages}
-              onChange={(event) => setEncryptMessages(event.target.checked)}
-            />
-            AES-256-GCM
-          </label>
-          <input value={newMessage} onChange={(event) => setNewMessage(event.target.value)} placeholder="Message" />
+        <form className="composer" onSubmit={handleSend}>
           <input
-            type="file"
-            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
-            onChange={(event) => setPendingMedia(event.target.files?.[0] ?? null)}
+            value={newMessage}
+            onChange={(event) => setNewMessage(event.target.value)}
+            placeholder="Type a message"
           />
           <button type="submit">Send</button>
         </form>

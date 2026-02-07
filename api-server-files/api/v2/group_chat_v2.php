@@ -1047,9 +1047,9 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
     $stmt = $db->prepare("
         SELECT
             m.id,
-            m.from_id,
-            COALESCE(m.to_id, 0) AS to_id,
-            m.group_id,
+            m.from_id AS fromId,
+            m.to_id AS toId,
+            m.group_id AS groupId,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
             u.avatar AS sender_avatar,
@@ -1058,10 +1058,7 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
             m.mediaFileName AS media_file_name,
             m.time,
             m.seen,
-            m.reply_id AS reply_to_id,
-            m.iv,
-            m.tag,
-            m.cipher_version
+            m.message_reply_id AS replyToId
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.group_id = ? $where_clause
@@ -1104,20 +1101,22 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
     $stmt->execute([$user_id, $group_id, trim($text), $time, $reply_to]);
     $message_id = $db->lastInsertId();
 
-    // ВАЖЛИВО: Використовуємо snake_case для Android (@SerializedName)
-    // COALESCE(m.to_id, 0) - щоб to_id ніколи не був null
+    // Отримуємо створене повідомлення з усіма необхідними полями
     $stmt = $db->prepare("
         SELECT
             m.id,
-            m.from_id,
-            COALESCE(m.to_id, 0) AS to_id,
-            m.group_id,
+            m.from_id AS fromId,
+            m.to_id AS toId,
+            m.group_id AS groupId,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
             u.avatar AS sender_avatar,
             m.text,
+            m.media,
+            m.mediaFileName,
             m.time,
-            m.reply_id AS reply_to_id
+            m.seen,
+            m.message_reply_id AS replyToId
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.id = ?

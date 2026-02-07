@@ -1239,6 +1239,7 @@ class GroupsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Викликаємо API з параметрами з об'єкта settings
                 val response = RetrofitClient.apiService.updateGroupSettings(
                     accessToken = UserSession.accessToken!!,
                     groupId = groupId,

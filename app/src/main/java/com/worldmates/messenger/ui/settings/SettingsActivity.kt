@@ -27,11 +27,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
+import com.worldmates.messenger.BuildConfig
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.ui.login.LoginActivity
 import com.worldmates.messenger.ui.settings.security.AppLockSettingsScreen
@@ -39,6 +41,7 @@ import com.worldmates.messenger.ui.settings.security.TwoFactorAuthScreen
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.ThemeSettingsScreen
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
+import com.worldmates.messenger.update.AppUpdateManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 class SettingsActivity : AppCompatActivity() {
@@ -171,6 +174,8 @@ fun SettingsScreen(
     val successMessage by viewModel.successMessage.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    val updateState by AppUpdateManager.state.collectAsState()
+    val context = LocalContext.current
 
     // Показать сообщение об успехе
     LaunchedEffect(successMessage) {
@@ -184,6 +189,7 @@ fun SettingsScreen(
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         visible = true
+        viewModel.checkUpdates(force = false)
     }
 
     Box(
@@ -456,9 +462,17 @@ fun SettingsScreen(
             }
             item {
                 SettingsItem(
+                    icon = Icons.Default.SystemUpdate,
+                    title = "Оновлення додатку",
+                    subtitle = if (updateState.hasUpdate) "Доступна версія ${updateState.latestVersion}" else "Автоперевірка з сервера кожні 30 хв",
+                    onClick = { viewModel.checkUpdates(force = true) }
+                )
+            }
+            item {
+                SettingsItem(
                     icon = Icons.Default.Info,
                     title = "Про додаток",
-                    subtitle = "Версія 1.0.0",
+                    subtitle = "Версія ${BuildConfig.VERSION_NAME}",
                     onClick = { showAboutDialog = true }
                 )
             }
@@ -542,6 +556,36 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
                     Text("Скасувати")
+                }
+            }
+        )
+    }
+
+    if (updateState.hasUpdate && updateState.apkUrl != null) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Доступне оновлення ${updateState.latestVersion ?: ""}") },
+            text = {
+                Column {
+                    Text("Нова версія доступна на сервері. Можна встановити в один клік без очікування Google Play.")
+                    if (updateState.changelog.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        updateState.changelog.take(4).forEach { change ->
+                            Text("• $change", fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { AppUpdateManager.openUpdateUrl(context) }) {
+                    Text("Оновити зараз")
+                }
+            },
+            dismissButton = {
+                if (!updateState.isMandatory) {
+                    TextButton(onClick = { viewModel.snoozeUpdatePrompt() }) {
+                        Text("Пізніше")
+                    }
                 }
             }
         )

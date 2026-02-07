@@ -9,6 +9,7 @@ import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import com.google.firebase.FirebaseApp
 import timber.log.Timber
+import com.worldmates.messenger.update.AppUpdateManager
 
 /**
  * Главный Application класс WorldMates Messenger
@@ -37,6 +38,8 @@ class WMApplication : MultiDexApplication(), ImageLoaderFactory {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize Firebase", e)
         }
+
+        AppUpdateManager.startPeriodicChecks(intervalMinutes = 30)
 
         Log.d(TAG, "WorldMates Messenger Application started")
     }

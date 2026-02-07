@@ -1,6 +1,7 @@
 export const API_BASE_URL = 'https://worldmates.club/api/v2/';
 export const SOCKET_URL = 'https://worldmates.club:449/';
 export const REGISTER_PATH = 'https://worldmates.club/phone/register_user.php?type=user_registration';
+export const WINDOWS_APP_BASE_URL = 'https://worldmates.club/api/windows_app/';
 
 // Must match Android client constants.
 export const SITE_ENCRYPT_KEY = '2ad9c757daccdfff436dc226779e20b719f6d6f8';
@@ -18,7 +19,13 @@ export const ENDPOINTS = {
   channels: '/api/v2/channels.php',
   stories: '/api/v2/endpoints/get-stories.php',
   createStory: '/api/v2/endpoints/create-story.php',
-  iceServers: '/api/ice-servers/'
+  iceServers: '/api/ice-servers/',
+
+  // Windows app API fallback (WoWonder desktop style)
+  windowsLogin: 'login.php?type=user_login',
+  windowsUsersList: 'get_users_list.php?type=get_users_list',
+  windowsMessages: 'get_user_messages.php?type=get_user_messages',
+  windowsInsertMessage: 'insert_new_message.php?type=insert_new_message'
 };
 
 export const TURN_FALLBACK = [

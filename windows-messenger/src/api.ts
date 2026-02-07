@@ -1,11 +1,13 @@
-import { API_BASE_URL, ENDPOINTS, REGISTER_PATH, SERVER_KEY, SITE_ENCRYPT_KEY } from './config';
+import { API_BASE_URL, ENDPOINTS, REGISTER_PATH, SERVER_KEY, SITE_ENCRYPT_KEY, WINDOWS_APP_BASE_URL } from './config';
 import type {
   AuthResponse,
   ChannelItem,
+  ChatItem,
   ChatListResponse,
   GenericListResponse,
   GroupItem,
   MediaUploadResponse,
+  MessageItem,
   MessagesResponse,
   StoryItem
 } from './types';
@@ -13,6 +15,12 @@ import type {
 function createFormBody(payload: Record<string, string | number>) {
   const body = new URLSearchParams();
   body.append('server_key', SERVER_KEY);
+  Object.entries(payload).forEach(([key, value]) => body.append(key, String(value)));
+  return body;
+}
+
+function createWindowsBody(payload: Record<string, string | number>) {
+  const body = new URLSearchParams();
   Object.entries(payload).forEach(([key, value]) => body.append(key, String(value)));
   return body;
 }
@@ -30,6 +38,10 @@ function v2Url(endpoint: string, accessToken?: string): string {
 
 function absoluteUrl(path: string, accessToken?: string): string {
   return withSecurityParams(`https://worldmates.club${path}`, accessToken);
+}
+
+function windowsUrl(endpoint: string): string {
+  return `${WINDOWS_APP_BASE_URL}${endpoint}`;
 }
 
 async function parseTextAsJson<T>(status: number, text: string, ok: boolean): Promise<T> {
@@ -53,12 +65,9 @@ async function postForm<T>(url: string, body: URLSearchParams): Promise<T> {
     const result = await desktopRequest({
       url,
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body: body.toString()
     });
-
     return parseTextAsJson<T>(result.status, result.text, result.ok);
   }
 
@@ -85,24 +94,85 @@ async function getJson<T>(url: string): Promise<T> {
   return parseTextAsJson<T>(response.status, text, response.ok);
 }
 
-export function login(username: string, password: string): Promise<AuthResponse> {
-  return postForm<AuthResponse>(v2Url(ENDPOINTS.auth), createFormBody({ username, password, device_type: 'windows' }));
+function normalizeAuth(payload: any): AuthResponse {
+  return {
+    api_status: String(payload.api_status ?? ''),
+    access_token: payload.access_token,
+    user_id: payload.user_id ? Number(payload.user_id) : undefined,
+    message: payload.message ?? payload.messages ?? payload.errors?.error_text
+  };
 }
 
-export function loginByPhone(phone: string, password: string): Promise<AuthResponse> {
-  return postForm<AuthResponse>(
-    v2Url(ENDPOINTS.auth),
-    createFormBody({ username: phone, phone_number: phone, password, device_type: 'windows' })
+function normalizeChats(payload: any): ChatListResponse {
+  if (Array.isArray(payload.data)) {
+    return { api_status: String(payload.api_status ?? '200'), data: payload.data };
+  }
+
+  const usersRaw = payload.users ?? payload.data?.users ?? [];
+  const data: ChatItem[] = Array.isArray(usersRaw)
+    ? usersRaw.map((user: any) => ({
+        user_id: Number(user.user_id ?? user.id),
+        name: user.name ?? [user.first_name, user.last_name].filter(Boolean).join(' ') ?? user.username ?? 'Unknown',
+        avatar: user.avatar,
+        last_message: user.last_message ?? '',
+        time: user.lastseen ?? user.lastseen_unix_time ?? ''
+      }))
+    : [];
+
+  return { api_status: String(payload.api_status ?? '200'), data };
+}
+
+function normalizeMessages(payload: any): MessagesResponse {
+  if (Array.isArray(payload.messages)) {
+    const messages: MessageItem[] = payload.messages.map((m: any) => ({
+      id: Number(m.id),
+      from_id: Number(m.from_id),
+      to_id: Number(m.to_id),
+      text: m.text ?? m.or_text ?? '',
+      time_text: m.time_text,
+      media: m.media
+    }));
+    return { api_status: String(payload.api_status ?? '200'), messages };
+  }
+
+  return { api_status: String(payload.api_status ?? '200'), messages: [] };
+}
+
+async function loginViaWindowsApi(username: string, password: string): Promise<AuthResponse> {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const response = await postForm<any>(
+    windowsUrl(ENDPOINTS.windowsLogin),
+    createWindowsBody({ username, password, timezone })
   );
+  return normalizeAuth(response);
 }
 
-export function registerAccount(input: {
+export async function login(username: string, password: string): Promise<AuthResponse> {
+  try {
+    const response = await postForm<any>(v2Url(ENDPOINTS.auth), createFormBody({ username, password, device_type: 'windows' }));
+    const normalized = normalizeAuth(response);
+    if (normalized.api_status === '200' && normalized.access_token) {
+      return normalized;
+    }
+  } catch {
+    // fallback below
+  }
+
+  return loginViaWindowsApi(username, password);
+}
+
+export async function loginByPhone(phone: string, password: string): Promise<AuthResponse> {
+  // Windows API login accepts username/email/phone in one field.
+  return login(phone, password);
+}
+
+export async function registerAccount(input: {
   username: string;
   email?: string;
   phoneNumber?: string;
   password: string;
 }): Promise<AuthResponse> {
-  return postForm<AuthResponse>(
+  const response = await postForm<any>(
     withSecurityParams(REGISTER_PATH),
     createFormBody({
       username: input.username,
@@ -115,23 +185,58 @@ export function registerAccount(input: {
       gender: 'male'
     })
   );
+
+  return normalizeAuth(response);
 }
 
-export function loadChats(token: string): Promise<ChatListResponse> {
-  return postForm<ChatListResponse>(
-    v2Url(ENDPOINTS.chats, token),
-    createFormBody({ user_limit: 80, data_type: 'all', SetOnline: 1, offset: 0 })
+export async function loadChats(token: string, userId?: number): Promise<ChatListResponse> {
+  try {
+    const response = await postForm<any>(
+      v2Url(ENDPOINTS.chats, token),
+      createFormBody({ user_limit: 80, data_type: 'all', SetOnline: 1, offset: 0 })
+    );
+    const normalized = normalizeChats(response);
+    if ((normalized.data ?? []).length > 0) {
+      return normalized;
+    }
+  } catch {
+    // fallback
+  }
+
+  if (!userId) {
+    return { api_status: '400', data: [] };
+  }
+
+  const winPayload = await postForm<any>(
+    windowsUrl(ENDPOINTS.windowsUsersList),
+    createWindowsBody({ user_id: userId, access_token: token })
   );
+  return normalizeChats(winPayload);
 }
 
-export function loadMessages(token: string, recipientId: number): Promise<MessagesResponse> {
-  return postForm<MessagesResponse>(
-    v2Url(ENDPOINTS.messages, token),
-    createFormBody({ recipient_id: recipientId, limit: 40, before_message_id: 0 })
+export async function loadMessages(token: string, recipientId: number, userId?: number): Promise<MessagesResponse> {
+  try {
+    const response = await postForm<any>(
+      v2Url(ENDPOINTS.messages, token),
+      createFormBody({ recipient_id: recipientId, limit: 40, before_message_id: 0 })
+    );
+    return normalizeMessages(response);
+  } catch {
+    // fallback
+  }
+
+  if (!userId) {
+    return { api_status: '400', messages: [] };
+  }
+
+  const winPayload = await postForm<any>(
+    windowsUrl(ENDPOINTS.windowsMessages),
+    createWindowsBody({ user_id: userId, recipient_id: recipientId, access_token: token, limit: 50 })
   );
+  return normalizeMessages(winPayload);
 }
 
-export async function sendMessage(token: string, recipientId: number, text: string): Promise<void> {
+export async function sendMessage(token: string, recipientId: number, text: string, userId?: number): Promise<void> {
   const payload = {
     user_id: recipientId,
     recipient_id: recipientId,
@@ -139,8 +244,29 @@ export async function sendMessage(token: string, recipientId: number, text: stri
     message_hash_id: `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
   };
 
-  await postForm(v2Url(ENDPOINTS.sendMessage, token), createFormBody(payload));
-  await postForm(v2Url(ENDPOINTS.sendMessageLegacy, token), createFormBody({ recipient_id: recipientId, text }));
+  try {
+    await postForm(v2Url(ENDPOINTS.sendMessage, token), createFormBody(payload));
+    await postForm(v2Url(ENDPOINTS.sendMessageLegacy, token), createFormBody({ recipient_id: recipientId, text }));
+    return;
+  } catch {
+    // fallback below
+  }
+
+  if (!userId) {
+    throw new Error('Windows API fallback requires current user id.');
+  }
+
+  await postForm(
+    windowsUrl(ENDPOINTS.windowsInsertMessage),
+    createWindowsBody({
+      user_id: userId,
+      recipient_id: recipientId,
+      access_token: token,
+      send_time: Math.floor(Date.now() / 1000),
+      text,
+      message_hash_id: `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+    })
+  );
 }
 
 export function uploadMedia(token: string, file: File): Promise<MediaUploadResponse> {
@@ -150,7 +276,13 @@ export function uploadMedia(token: string, file: File): Promise<MediaUploadRespo
   return postMultipart<MediaUploadResponse>(v2Url(ENDPOINTS.uploadMedia, token), form);
 }
 
-export async function sendMessageWithMedia(token: string, recipientId: number, text: string, file: File): Promise<void> {
+export async function sendMessageWithMedia(
+  token: string,
+  recipientId: number,
+  text: string,
+  file: File,
+  userId?: number
+): Promise<void> {
   const form = new FormData();
   form.append('server_key', SERVER_KEY);
   form.append('user_id', String(recipientId));
@@ -158,7 +290,26 @@ export async function sendMessageWithMedia(token: string, recipientId: number, t
   form.append('message_hash_id', `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`);
   form.append('file', file);
 
-  await postMultipart(v2Url(ENDPOINTS.sendMessage, token), form);
+  try {
+    await postMultipart(v2Url(ENDPOINTS.sendMessage, token), form);
+    return;
+  } catch {
+    // fallback
+  }
+
+  if (!userId) {
+    throw new Error('Windows API fallback requires current user id.');
+  }
+
+  const fallbackForm = new FormData();
+  fallbackForm.append('user_id', String(userId));
+  fallbackForm.append('recipient_id', String(recipientId));
+  fallbackForm.append('access_token', token);
+  fallbackForm.append('send_time', String(Math.floor(Date.now() / 1000)));
+  fallbackForm.append('text', text);
+  fallbackForm.append('file', file);
+
+  await postMultipart(windowsUrl(ENDPOINTS.windowsInsertMessage), fallbackForm);
 }
 
 export function loadGroups(token: string): Promise<GenericListResponse<GroupItem>> {
@@ -169,7 +320,10 @@ export function loadGroups(token: string): Promise<GenericListResponse<GroupItem
 }
 
 export function createGroup(token: string, groupName: string): Promise<unknown> {
-  return postForm(absoluteUrl(ENDPOINTS.groups, token), createFormBody({ type: 'create', group_name: groupName, parts: '', group_type: 'group' }));
+  return postForm(
+    absoluteUrl(ENDPOINTS.groups, token),
+    createFormBody({ type: 'create', group_name: groupName, parts: '', group_type: 'group' })
+  );
 }
 
 export function loadChannels(token: string): Promise<GenericListResponse<ChannelItem>> {
@@ -180,7 +334,10 @@ export function loadChannels(token: string): Promise<GenericListResponse<Channel
 }
 
 export function createChannel(token: string, channelName: string, description: string): Promise<unknown> {
-  return postForm(absoluteUrl(ENDPOINTS.channels, token), createFormBody({ action: 'create_channel', name: channelName, description }));
+  return postForm(
+    absoluteUrl(ENDPOINTS.channels, token),
+    createFormBody({ action: 'create_channel', name: channelName, description })
+  );
 }
 
 export function loadStories(token: string): Promise<GenericListResponse<StoryItem>> {
@@ -198,7 +355,9 @@ export async function createStory(token: string, file: File, fileType: 'image' |
 
 export async function getIceServers(userId: number): Promise<RTCIceServer[]> {
   try {
-    const payload = await getJson<{ iceServers?: RTCIceServer[] } | RTCIceServer[]>(absoluteUrl(`${ENDPOINTS.iceServers}${userId}`));
+    const payload = await getJson<{ iceServers?: RTCIceServer[] } | RTCIceServer[]>(
+      absoluteUrl(`${ENDPOINTS.iceServers}${userId}`)
+    );
     return Array.isArray(payload) ? payload : (payload.iceServers ?? []);
   } catch {
     return [];

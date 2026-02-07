@@ -67,6 +67,17 @@ npm run dev
 
 Дополнительно: в desktop-режиме авторизационные form-запросы отправляются через Electron main process (IPC bridge), чтобы обойти возможные CORS/Fetch ограничения renderer в dev-режиме.
 
+
+### Fallback на `api/windows_app`
+
+Если `api/v2` логин/чаты не отвечают корректно для desktop-клиента, приложение теперь автоматически пробует fallback на:
+- `api/windows_app/login.php?type=user_login`
+- `api/windows_app/get_users_list.php?type=get_users_list`
+- `api/windows_app/get_user_messages.php?type=get_user_messages`
+- `api/windows_app/insert_new_message.php?type=insert_new_message`
+
+Это сделано для совместимости с вашим WoWonder windows API слоем.
+
 ## Сборка installer
 
 ```bash

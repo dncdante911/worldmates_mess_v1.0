@@ -132,7 +132,7 @@ export default function App() {
     if (!session) return;
 
     Promise.all([
-      loadChats(session.token).then((response) => {
+      loadChats(session.token, session.userId).then((response) => {
         setChats(response.data ?? []);
         if ((response.data ?? []).length > 0) {
           setSelectedChatId(response.data?.[0].user_id ?? null);
@@ -161,7 +161,7 @@ export default function App() {
   useEffect(() => {
     if (!session || !selectedChatId) return;
 
-    loadMessages(session.token, selectedChatId)
+    loadMessages(session.token, selectedChatId, session.userId)
       .then(async (response) => {
         const key = `${aesSeed}:${session.userId}:${selectedChatId}`;
         const decrypted = await Promise.all(
@@ -185,9 +185,9 @@ export default function App() {
       const textPayload = textRaw ? (encryptMessages ? await encryptAesGcm(textRaw, key) : textRaw) : '';
 
       if (pendingMedia) {
-        await sendMessageWithMedia(session.token, selectedChatId, textPayload, pendingMedia);
+        await sendMessageWithMedia(session.token, selectedChatId, textPayload, pendingMedia, session.userId);
       } else {
-        await sendMessage(session.token, selectedChatId, textPayload);
+        await sendMessage(session.token, selectedChatId, textPayload, session.userId);
       }
 
       setMessages((current) => [

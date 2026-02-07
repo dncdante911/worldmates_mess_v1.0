@@ -1536,10 +1536,17 @@ data class VerificationResponse(
  * Generic response for simple operations (pin/unpin messages, etc.)
  */
 data class GenericResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?,
     @SerializedName("message") val message: String? = null,
     @SerializedName("error_message") val errorMessage: String? = null
-)
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 /**
  * Response for search group messages
@@ -1618,10 +1625,17 @@ data class JoinRequestData(
  * ⚙️ Response for group settings
  */
 data class GroupSettingsResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?,
     @SerializedName("settings") val settings: GroupSettingsData? = null,
     @SerializedName("error_message") val errorMessage: String? = null
-)
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 data class GroupSettingsData(
     @SerializedName("group_id") val groupId: Long,

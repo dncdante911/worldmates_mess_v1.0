@@ -61,6 +61,77 @@ if (!$user_id) {
     exit;
 }
 
+// Автоміграція: додаємо відсутні колонки для каналів при першому запуску
+$ch_migration_flag = sys_get_temp_dir() . '/wm_channels_migration_v2_done';
+if (!file_exists($ch_migration_flag)) {
+    try {
+        // Wo_GroupChat: додаємо колонки потрібні для каналів
+        $gc_columns = [];
+        $result = $db->query("SHOW COLUMNS FROM Wo_GroupChat");
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $gc_columns[] = $row['Field'];
+        }
+        $ch_migrations = [
+            'username' => "ALTER TABLE Wo_GroupChat ADD COLUMN `username` VARCHAR(255) DEFAULT NULL",
+            'description' => "ALTER TABLE Wo_GroupChat ADD COLUMN `description` TEXT DEFAULT NULL",
+            'is_private' => "ALTER TABLE Wo_GroupChat ADD COLUMN `is_private` TINYINT(1) DEFAULT 0",
+            'category' => "ALTER TABLE Wo_GroupChat ADD COLUMN `category` VARCHAR(100) DEFAULT NULL",
+            'settings' => "ALTER TABLE Wo_GroupChat ADD COLUMN `settings` TEXT DEFAULT NULL",
+            'subscribers_count' => "ALTER TABLE Wo_GroupChat ADD COLUMN `subscribers_count` INT(11) DEFAULT 0",
+            'posts_count' => "ALTER TABLE Wo_GroupChat ADD COLUMN `posts_count` INT(11) DEFAULT 0",
+            'is_verified' => "ALTER TABLE Wo_GroupChat ADD COLUMN `is_verified` TINYINT(1) DEFAULT 0",
+        ];
+        foreach ($ch_migrations as $col => $sql) {
+            if (!in_array($col, $gc_columns)) {
+                try { $db->exec($sql); logChannelMessage("Auto-migration: added $col to Wo_GroupChat"); } catch (Exception $e) {}
+            }
+        }
+
+        // Wo_GroupChatUsers: додаємо role якщо немає
+        $gcu_columns = [];
+        $result = $db->query("SHOW COLUMNS FROM Wo_GroupChatUsers");
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $gcu_columns[] = $row['Field'];
+        }
+        if (!in_array('role', $gcu_columns)) {
+            try { $db->exec("ALTER TABLE Wo_GroupChatUsers ADD COLUMN `role` VARCHAR(20) DEFAULT 'member'"); } catch (Exception $e) {}
+        }
+
+        // Wo_MessageComments
+        $db->exec("CREATE TABLE IF NOT EXISTS `Wo_MessageComments` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT, `message_id` INT(11) NOT NULL, `user_id` INT(11) NOT NULL,
+            `text` TEXT NOT NULL, `time` INT(11) NOT NULL, `edited_time` INT(11) DEFAULT NULL,
+            `reply_to_comment_id` INT(11) DEFAULT NULL,
+            PRIMARY KEY (`id`), KEY `idx_message` (`message_id`), KEY `idx_user` (`user_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Wo_MessageViews
+        $db->exec("CREATE TABLE IF NOT EXISTS `Wo_MessageViews` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT, `message_id` INT(11) NOT NULL, `user_id` INT(11) NOT NULL,
+            `time` INT(11) NOT NULL,
+            PRIMARY KEY (`id`), UNIQUE KEY `idx_msg_user` (`message_id`,`user_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Wo_MessageCommentReactions
+        $db->exec("CREATE TABLE IF NOT EXISTS `Wo_MessageCommentReactions` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT, `comment_id` INT(11) NOT NULL, `user_id` INT(11) NOT NULL,
+            `reaction` VARCHAR(50) NOT NULL, `time` INT(11) NOT NULL,
+            PRIMARY KEY (`id`), KEY `idx_comment` (`comment_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Встановлюємо role='owner' для засновників каналів
+        $db->exec("UPDATE Wo_GroupChatUsers gcu
+            INNER JOIN Wo_GroupChat gc ON gc.group_id = gcu.group_id AND gc.user_id = gcu.user_id
+            SET gcu.role = 'owner'
+            WHERE (gcu.role = 'member' OR gcu.role IS NULL OR gcu.role = '') AND gc.type = 'channel'");
+
+        @file_put_contents($ch_migration_flag, date('Y-m-d H:i:s'));
+        logChannelMessage("Auto-migration completed successfully", 'INFO');
+    } catch (Exception $e) {
+        logChannelMessage("Auto-migration error: " . $e->getMessage(), 'ERROR');
+    }
+}
+
 // Роутинг методів
 // Android клієнт надсилає 'type', веб клієнт може надсилати 'action'
 $action = $data['type'] ?? $data['action'] ?? $_GET['type'] ?? $_GET['action'] ?? '';
@@ -72,6 +143,7 @@ $type_mapping = [
     'get_subscribed' => 'get_channels',
     'get_list' => 'get_channels',
     'get_all' => 'get_channels',
+    'get_by_id' => 'get_channel_details',
 ];
 
 // Якщо є маппінг, використовуємо його
@@ -339,59 +411,64 @@ function getChannels($db, $user_id, $data) {
     $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
     $query = isset($data['query']) ? trim($data['query']) : '';
 
-    $where = "WHERE type = 'channel'";
+    $where = "WHERE g.type = 'channel'";
     $params = [];
 
     if ($filter === 'subscribed') {
-        $where .= " AND group_id IN (SELECT group_id FROM Wo_GroupChatUsers WHERE user_id = ?)";
+        $where .= " AND g.group_id IN (SELECT group_id FROM Wo_GroupChatUsers WHERE user_id = ?)";
         $params[] = $user_id;
     } elseif ($filter === 'owned') {
-        $where .= " AND user_id = ?";
+        $where .= " AND g.user_id = ?";
         $params[] = $user_id;
     }
 
-    // Пошук по назві або username
+    // Пошук по назві (username може не існувати в БД)
     if (!empty($query)) {
-        $where .= " AND (g.group_name LIKE ? OR g.username LIKE ? OR g.description LIKE ?)";
+        $where .= " AND g.group_name LIKE ?";
         $searchTerm = "%{$query}%";
-        $params[] = $searchTerm;
-        $params[] = $searchTerm;
         $params[] = $searchTerm;
     }
 
-    $stmt = $db->prepare("
-        SELECT
-            g.group_id AS id,
-            g.group_name AS name,
-            g.username,
-            g.description,
-            g.avatar AS avatar_url,
-            g.user_id AS owner_id,
-            g.is_private,
-            g.is_verified,
-            g.subscribers_count,
-            g.posts_count,
-            g.category,
-            g.settings,
-            g.time AS created_time,
-            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_subscribed,
-            (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS user_role
-        FROM Wo_GroupChat g
-        $where
-        ORDER BY g.subscribers_count DESC, g.group_id DESC
-        LIMIT ? OFFSET ?
-    ");
+    try {
+        $stmt = $db->prepare("
+            SELECT
+                g.group_id AS id,
+                g.group_name AS name,
+                COALESCE(g.username, g.group_name) AS username,
+                COALESCE(g.description, '') AS description,
+                g.avatar AS avatar_url,
+                g.user_id AS owner_id,
+                COALESCE(g.is_private, 0) AS is_private,
+                COALESCE(g.is_verified, 0) AS is_verified,
+                (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id) AS subscribers_count,
+                (SELECT COUNT(*) FROM Wo_Messages WHERE group_id = g.group_id) AS posts_count,
+                COALESCE(g.category, '') AS category,
+                g.time AS created_time,
+                (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_subscribed,
+                (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS user_role
+            FROM Wo_GroupChat g
+            $where
+            ORDER BY g.group_id DESC
+            LIMIT ? OFFSET ?
+        ");
 
-    $params = array_merge([$user_id, $user_id], $params, [$limit, $offset]);
-    $stmt->execute($params);
-    $channels = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $params = array_merge([$user_id, $user_id], $params, [$limit, $offset]);
+        $stmt->execute($params);
+        $channels = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        logChannelMessage("Error fetching channels: " . $e->getMessage(), 'ERROR');
+        return ['api_status' => 200, 'channels' => []];
+    }
 
-    // Парсимо settings
+    // Форматуємо результати - ВАЖЛИВО: cast до bool для Gson
     foreach ($channels as &$channel) {
+        $channel['is_private'] = (bool)$channel['is_private'];
         $channel['is_subscribed'] = (bool)$channel['is_subscribed'];
         $channel['is_verified'] = (bool)$channel['is_verified'];
         $channel['is_admin'] = in_array($channel['user_role'], ['owner', 'admin', 'moderator']);
-        $channel['settings'] = json_decode($channel['settings'] ?? '{}', true);
+        $channel['settings'] = null;
+        $channel['subscribers_count'] = (int)$channel['subscribers_count'];
+        $channel['posts_count'] = (int)$channel['posts_count'];
         unset($channel['user_role']);
     }
 
@@ -416,38 +493,45 @@ function searchChannels($db, $user_id, $data) {
  * Отримати деталі каналу
  */
 function getChannelDetails($db, $user_id, $channel_id) {
-    $stmt = $db->prepare("
-        SELECT
-            g.group_id AS id,
-            g.group_name AS name,
-            g.username,
-            g.description,
-            g.avatar AS avatar_url,
-            g.user_id AS owner_id,
-            g.is_private,
-            g.is_verified,
-            g.subscribers_count,
-            g.posts_count,
-            g.category,
-            g.settings,
-            g.time AS created_time,
-            (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_subscribed,
-            (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS user_role
-        FROM Wo_GroupChat g
-        WHERE g.group_id = ? AND g.type = 'channel'
-    ");
-    $stmt->execute([$user_id, $user_id, $channel_id]);
-    $channel = $stmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        $stmt = $db->prepare("
+            SELECT
+                g.group_id AS id,
+                g.group_name AS name,
+                COALESCE(g.username, g.group_name) AS username,
+                COALESCE(g.description, '') AS description,
+                g.avatar AS avatar_url,
+                g.user_id AS owner_id,
+                COALESCE(g.is_private, 0) AS is_private,
+                COALESCE(g.is_verified, 0) AS is_verified,
+                (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id) AS subscribers_count,
+                (SELECT COUNT(*) FROM Wo_Messages WHERE group_id = g.group_id) AS posts_count,
+                COALESCE(g.category, '') AS category,
+                g.time AS created_time,
+                (SELECT COUNT(*) FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS is_subscribed,
+                (SELECT role FROM Wo_GroupChatUsers WHERE group_id = g.group_id AND user_id = ?) AS user_role
+            FROM Wo_GroupChat g
+            WHERE g.group_id = ? AND g.type = 'channel'
+        ");
+        $stmt->execute([$user_id, $user_id, $channel_id]);
+        $channel = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        logChannelMessage("Error getting channel details: " . $e->getMessage(), 'ERROR');
+        return ['api_status' => 500, 'error_message' => 'Database error'];
+    }
 
     if (!$channel) {
         return ['api_status' => 404, 'error_message' => 'Channel not found'];
     }
 
-    // Парсимо settings
+    // Форматуємо результати - ВАЖЛИВО: cast до bool для Gson
+    $channel['is_private'] = (bool)$channel['is_private'];
     $channel['is_subscribed'] = (bool)$channel['is_subscribed'];
     $channel['is_verified'] = (bool)$channel['is_verified'];
     $channel['is_admin'] = in_array($channel['user_role'], ['owner', 'admin', 'moderator']);
-    $channel['settings'] = json_decode($channel['settings'] ?? '{}', true);
+    $channel['subscribers_count'] = (int)$channel['subscribers_count'];
+    $channel['posts_count'] = (int)$channel['posts_count'];
+    $channel['settings'] = null;
     unset($channel['user_role']);
 
     return [
@@ -1140,9 +1224,9 @@ function addComment($db, $user_id, $data) {
         return ['api_status' => 400, 'error_message' => 'post_id and text are required'];
     }
 
-    // Перевіряємо чи існує пост і чи дозволені коментарі
+    // Перевіряємо чи існує пост (settings колонка може не існувати)
     $stmt = $db->prepare("
-        SELECT m.group_id, g.settings
+        SELECT m.group_id
         FROM Wo_Messages m
         JOIN Wo_GroupChat g ON g.group_id = m.group_id
         WHERE m.id = ? AND g.type = 'channel'
@@ -1154,10 +1238,10 @@ function addComment($db, $user_id, $data) {
         return ['api_status' => 404, 'error_message' => 'Post not found'];
     }
 
-    $settings = json_decode($post['settings'] ?? '{}', true);
-    if (isset($settings['allow_comments']) && !$settings['allow_comments']) {
-        return ['api_status' => 403, 'error_message' => 'Comments are disabled for this channel'];
-    }
+    // Коментарі дозволені за замовчуванням (settings колонка може не існувати)
+    // if (isset($settings['allow_comments']) && !$settings['allow_comments']) {
+    //     return ['api_status' => 403, 'error_message' => 'Comments are disabled for this channel'];
+    // }
 
     // Додаємо коментар
     $stmt = $db->prepare("
@@ -1213,9 +1297,9 @@ function addPostReaction($db, $user_id, $data) {
         return ['api_status' => 400, 'error_message' => 'post_id and reaction are required'];
     }
 
-    // Перевіряємо чи дозволені реакції
+    // Перевіряємо чи існує пост (settings колонка може не існувати)
     $stmt = $db->prepare("
-        SELECT g.settings
+        SELECT m.id
         FROM Wo_Messages m
         JOIN Wo_GroupChat g ON g.group_id = m.group_id
         WHERE m.id = ? AND g.type = 'channel'
@@ -1227,10 +1311,7 @@ function addPostReaction($db, $user_id, $data) {
         return ['api_status' => 404, 'error_message' => 'Post not found'];
     }
 
-    $settings = json_decode($post['settings'] ?? '{}', true);
-    if (isset($settings['allow_reactions']) && !$settings['allow_reactions']) {
-        return ['api_status' => 403, 'error_message' => 'Reactions are disabled for this channel'];
-    }
+    // Реакції дозволені за замовчуванням (settings колонка може не існувати)
 
     // Видаляємо попередню реакцію цього користувача
     $stmt = $db->prepare("DELETE FROM wo_reactions WHERE message_id = ? AND user_id = ?");

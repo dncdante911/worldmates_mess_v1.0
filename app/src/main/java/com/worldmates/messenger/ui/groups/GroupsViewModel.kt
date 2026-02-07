@@ -823,26 +823,45 @@ class GroupsViewModel : ViewModel() {
     }
 
     /**
-     * 🔔 Сохранение настроек уведомлений группы
+     * 🔔 Сохранение настроек уведомлений группы (REAL API + local)
      */
     fun saveNotificationSettings(
         groupId: Long,
         enabled: Boolean,
         onSuccess: () -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) return
+
         viewModelScope.launch {
             try {
+                // Зберігаємо локально
                 val prefs = com.worldmates.messenger.WMApplication.instance
                     .getSharedPreferences("group_notification_prefs", android.content.Context.MODE_PRIVATE)
-
                 prefs.edit().putBoolean("notifications_$groupId", enabled).apply()
-                Log.d("GroupsViewModel", "🔔 Saved notification setting for group $groupId: $enabled")
-                onSuccess()
 
-                // TODO: В будущем добавить API вызов для сохранения на backend
-                // val response = RetrofitClient.apiService.updateGroupNotifications(...)
+                // Виклик API для mute/unmute
+                val response = if (enabled) {
+                    RetrofitClient.apiService.unmuteGroup(
+                        accessToken = UserSession.accessToken!!,
+                        groupId = groupId
+                    )
+                } else {
+                    RetrofitClient.apiService.muteGroup(
+                        accessToken = UserSession.accessToken!!,
+                        groupId = groupId
+                    )
+                }
+
+                if (response.apiStatus == 200) {
+                    Log.d("GroupsViewModel", "🔔 Notification setting saved for group $groupId: $enabled via API")
+                    onSuccess()
+                } else {
+                    Log.e("GroupsViewModel", "❌ API error saving notification settings: ${response.errorMessage}")
+                    onSuccess() // Локально зберегли
+                }
             } catch (e: Exception) {
                 Log.e("GroupsViewModel", "❌ Error saving notification settings", e)
+                onSuccess() // Локально зберегли
             }
         }
     }
@@ -1037,25 +1056,47 @@ class GroupsViewModel : ViewModel() {
     val scheduledPosts: StateFlow<List<com.worldmates.messenger.data.model.ScheduledPost>> = _scheduledPosts
 
     /**
-     * 📅 Завантаження запланованих постів
+     * 📅 Завантаження запланованих постів (REAL API)
      */
     fun loadScheduledPosts(groupId: Long) {
+        if (UserSession.accessToken == null) return
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.getScheduledPosts(accessToken, groupId)
+                val response = RetrofitClient.apiService.getScheduledPosts(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
+                )
 
-                // Поки використовуємо пустий список
-                _scheduledPosts.value = emptyList()
-                Log.d("GroupsViewModel", "📅 Scheduled posts loaded for group $groupId")
+                if (response.apiStatus == 200 && response.scheduledPosts != null) {
+                    _scheduledPosts.value = response.scheduledPosts.map { post ->
+                        com.worldmates.messenger.data.model.ScheduledPost(
+                            id = post.id,
+                            groupId = post.groupId,
+                            authorId = post.authorId,
+                            text = post.text,
+                            scheduledTime = post.scheduledTime,
+                            createdTime = post.createdTime,
+                            mediaUrl = post.mediaUrl,
+                            status = post.status,
+                            repeatType = post.repeatType,
+                            isPinned = post.isPinned,
+                            notifyMembers = post.notifyMembers
+                        )
+                    }
+                    Log.d("GroupsViewModel", "📅 Loaded ${response.scheduledPosts.size} scheduled posts for group $groupId")
+                } else {
+                    _scheduledPosts.value = emptyList()
+                }
             } catch (e: Exception) {
                 Log.e("GroupsViewModel", "❌ Error loading scheduled posts", e)
+                _scheduledPosts.value = emptyList()
             }
         }
     }
 
     /**
-     * ➕ Створити запланований пост
+     * ➕ Створити запланований пост (REAL API)
      */
     fun createScheduledPost(
         groupId: Long,
@@ -1068,26 +1109,34 @@ class GroupsViewModel : ViewModel() {
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.createScheduledPost(...)
-
-                val newPost = com.worldmates.messenger.data.model.ScheduledPost(
-                    id = System.currentTimeMillis(),
+                val response = RetrofitClient.apiService.createScheduledPost(
+                    accessToken = UserSession.accessToken!!,
                     groupId = groupId,
-                    authorId = UserSession.userId ?: 0,
                     text = text,
                     scheduledTime = scheduledTime,
-                    createdTime = System.currentTimeMillis(),
                     mediaUrl = mediaUrl,
                     repeatType = repeatType,
-                    isPinned = isPinned,
-                    notifyMembers = notifyMembers
+                    isPinned = if (isPinned) 1 else 0,
+                    notifyMembers = if (notifyMembers) 1 else 0
                 )
-                _scheduledPosts.value = _scheduledPosts.value + newPost
-                onSuccess()
-                Log.d("GroupsViewModel", "📅 Created scheduled post for group $groupId")
+
+                if (response.apiStatus == 200) {
+                    // Перезавантажуємо список постів з сервера
+                    loadScheduledPosts(groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "📅 Created scheduled post for group $groupId via API")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося створити запланований пост"
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ API error creating scheduled post: $errorMsg")
+                }
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)
@@ -1097,20 +1146,35 @@ class GroupsViewModel : ViewModel() {
     }
 
     /**
-     * 🗑️ Видалити запланований пост
+     * 🗑️ Видалити запланований пост (REAL API)
      */
     fun deleteScheduledPost(
         post: com.worldmates.messenger.data.model.ScheduledPost,
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
+                val response = RetrofitClient.apiService.deleteScheduledPost(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = post.groupId ?: 0,
+                    postId = post.id
+                )
 
-                _scheduledPosts.value = _scheduledPosts.value.filter { it.id != post.id }
-                onSuccess()
-                Log.d("GroupsViewModel", "🗑️ Deleted scheduled post ${post.id}")
+                if (response.apiStatus == 200) {
+                    _scheduledPosts.value = _scheduledPosts.value.filter { it.id != post.id }
+                    onSuccess()
+                    Log.d("GroupsViewModel", "🗑️ Deleted scheduled post ${post.id} via API")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося видалити запланований пост"
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ API error deleting scheduled post: $errorMsg")
+                }
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)
@@ -1120,20 +1184,35 @@ class GroupsViewModel : ViewModel() {
     }
 
     /**
-     * 📤 Опублікувати запланований пост зараз
+     * 📤 Опублікувати запланований пост зараз (REAL API)
      */
     fun publishScheduledPost(
         post: com.worldmates.messenger.data.model.ScheduledPost,
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call to publish immediately
+                val response = RetrofitClient.apiService.publishScheduledPost(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = post.groupId ?: 0,
+                    postId = post.id
+                )
 
-                _scheduledPosts.value = _scheduledPosts.value.filter { it.id != post.id }
-                onSuccess()
-                Log.d("GroupsViewModel", "📤 Published scheduled post ${post.id}")
+                if (response.apiStatus == 200) {
+                    _scheduledPosts.value = _scheduledPosts.value.filter { it.id != post.id }
+                    onSuccess()
+                    Log.d("GroupsViewModel", "📤 Published scheduled post ${post.id} via API")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося опублікувати пост"
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ API error publishing scheduled post: $errorMsg")
+                }
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)
@@ -1145,7 +1224,7 @@ class GroupsViewModel : ViewModel() {
     // ==================== ⚙️ GROUP SETTINGS ====================
 
     /**
-     * ⚙️ Оновлення налаштувань групи
+     * ⚙️ Оновлення налаштувань групи (REAL API)
      */
     fun updateGroupSettings(
         groupId: Long,
@@ -1153,21 +1232,42 @@ class GroupsViewModel : ViewModel() {
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.updateGroupSettings(accessToken, groupId, settings)
+                val response = RetrofitClient.apiService.updateGroupSettings(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    slowModeSeconds = settings.slowModeSeconds,
+                    historyVisible = if (settings.historyVisibleForNewMembers) 1 else 0,
+                    antiSpamEnabled = if (settings.antiSpamEnabled) 1 else 0,
+                    maxMessagesPerMinute = settings.maxMessagesPerMinute,
+                    allowMedia = if (settings.allowMembersSendMedia) 1 else 0,
+                    allowLinks = if (settings.allowMembersSendLinks) 1 else 0,
+                    allowStickers = if (settings.allowMembersSendStickers) 1 else 0,
+                    allowInvite = if (settings.allowMembersInvite) 1 else 0
+                )
 
-                // Оновлюємо локально
-                val updatedGroup = _selectedGroup.value?.copy(settings = settings)
-                _selectedGroup.value = updatedGroup
-                if (updatedGroup != null) {
-                    _groupList.value = _groupList.value.map {
-                        if (it.id == groupId) updatedGroup else it
+                if (response.apiStatus == 200) {
+                    // Оновлюємо локально після успішного API виклику
+                    val updatedGroup = _selectedGroup.value?.copy(settings = settings)
+                    _selectedGroup.value = updatedGroup
+                    if (updatedGroup != null) {
+                        _groupList.value = _groupList.value.map {
+                            if (it.id == groupId) updatedGroup else it
+                        }
                     }
+                    onSuccess()
+                    Log.d("GroupsViewModel", "⚙️ Updated settings for group $groupId via API")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося оновити налаштування"
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ API error updating settings: $errorMsg")
                 }
-                onSuccess()
-                Log.d("GroupsViewModel", "⚙️ Updated settings for group $groupId")
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)
@@ -1177,7 +1277,7 @@ class GroupsViewModel : ViewModel() {
     }
 
     /**
-     * 🔒 Зміна приватності групи
+     * 🔒 Зміна приватності групи (REAL API)
      */
     fun updateGroupPrivacy(
         groupId: Long,
@@ -1185,16 +1285,29 @@ class GroupsViewModel : ViewModel() {
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-                // val response = RetrofitClient.apiService.updateGroupPrivacy(accessToken, groupId, isPrivate)
+                val response = RetrofitClient.apiService.updateGroupPrivacy(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    isPrivate = if (isPrivate) 1 else 0
+                )
 
-                // Оновлюємо локально
-                // Note: Group data class needs isPrivate to be var or we need to recreate
-                fetchGroupDetails(groupId)
-                onSuccess()
-                Log.d("GroupsViewModel", "🔒 Updated privacy for group $groupId to $isPrivate")
+                if (response.apiStatus == 200) {
+                    // Оновлюємо деталі групи з сервера
+                    fetchGroupDetails(groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "🔒 Updated privacy for group $groupId to $isPrivate via API")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося змінити приватність"
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ API error updating privacy: $errorMsg")
+                }
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)
@@ -1260,48 +1373,46 @@ class GroupsViewModel : ViewModel() {
     val subgroups: StateFlow<List<com.worldmates.messenger.data.model.Subgroup>> = _subgroups
 
     /**
-     * 📱 Завантаження підгруп (топіків)
+     * 📱 Завантаження підгруп (топіків) (REAL API)
      */
     fun loadSubgroups(groupId: Long) {
+        if (UserSession.accessToken == null) return
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-
-                // Демо-дані
-                _subgroups.value = listOf(
-                    com.worldmates.messenger.data.model.Subgroup(
-                        id = 1,
-                        parentGroupId = groupId,
-                        name = "General",
-                        description = "Загальне обговорення",
-                        color = "#0088CC",
-                        membersCount = _groupMembers.value.size,
-                        messagesCount = 150,
-                        createdBy = _selectedGroup.value?.adminId ?: 0,
-                        createdTime = System.currentTimeMillis() - 86400000
-                    ),
-                    com.worldmates.messenger.data.model.Subgroup(
-                        id = 2,
-                        parentGroupId = groupId,
-                        name = "Announcements",
-                        description = "Важливі оголошення",
-                        iconEmoji = "\uD83D\uDCE2",
-                        color = "#00C853",
-                        membersCount = _groupMembers.value.size,
-                        messagesCount = 25,
-                        createdBy = _selectedGroup.value?.adminId ?: 0,
-                        createdTime = System.currentTimeMillis() - 86400000
-                    )
+                val response = RetrofitClient.apiService.getSubgroups(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId
                 )
-                Log.d("GroupsViewModel", "📱 Subgroups loaded for group $groupId")
+
+                if (response.apiStatus == 200 && response.subgroups != null) {
+                    _subgroups.value = response.subgroups.map { sub ->
+                        com.worldmates.messenger.data.model.Subgroup(
+                            id = sub.id,
+                            parentGroupId = sub.parentGroupId,
+                            name = sub.name,
+                            description = sub.description,
+                            color = sub.color,
+                            isPrivate = sub.isPrivate,
+                            membersCount = sub.membersCount,
+                            messagesCount = sub.messagesCount,
+                            createdBy = sub.createdBy,
+                            createdTime = sub.createdTime
+                        )
+                    }
+                    Log.d("GroupsViewModel", "📱 Loaded ${response.subgroups.size} subgroups for group $groupId")
+                } else {
+                    _subgroups.value = emptyList()
+                }
             } catch (e: Exception) {
                 Log.e("GroupsViewModel", "❌ Error loading subgroups", e)
+                _subgroups.value = emptyList()
             }
         }
     }
 
     /**
-     * ➕ Створити підгрупу (топік)
+     * ➕ Створити підгрупу (топік) (REAL API)
      */
     fun createSubgroup(
         groupId: Long,
@@ -1312,27 +1423,75 @@ class GroupsViewModel : ViewModel() {
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                // TODO: Implement API call when backend is ready
-
-                val newSubgroup = com.worldmates.messenger.data.model.Subgroup(
-                    id = System.currentTimeMillis(),
-                    parentGroupId = groupId,
+                val response = RetrofitClient.apiService.createSubgroup(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
                     name = name,
                     description = description,
                     color = color,
-                    isPrivate = isPrivate,
-                    createdBy = UserSession.userId ?: 0,
-                    createdTime = System.currentTimeMillis()
+                    isPrivate = if (isPrivate) 1 else 0
                 )
-                _subgroups.value = _subgroups.value + newSubgroup
-                onSuccess()
-                Log.d("GroupsViewModel", "📱 Created subgroup '$name' in group $groupId")
+
+                if (response.apiStatus == 200) {
+                    // Перезавантажуємо список підгруп з сервера
+                    loadSubgroups(groupId)
+                    onSuccess()
+                    Log.d("GroupsViewModel", "📱 Created subgroup '$name' in group $groupId via API")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося створити підгрупу"
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ API error creating subgroup: $errorMsg")
+                }
             } catch (e: Exception) {
                 val errorMsg = "Помилка: ${e.localizedMessage}"
                 onError(errorMsg)
                 Log.e("GroupsViewModel", "❌ Error creating subgroup", e)
+            }
+        }
+    }
+
+    /**
+     * 🗑️ Видалити підгрупу (топік) (REAL API)
+     */
+    fun deleteSubgroup(
+        groupId: Long,
+        subgroupId: Long,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Користувач не авторизований")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.deleteSubgroup(
+                    accessToken = UserSession.accessToken!!,
+                    groupId = groupId,
+                    subgroupId = subgroupId
+                )
+
+                if (response.apiStatus == 200) {
+                    _subgroups.value = _subgroups.value.filter { it.id != subgroupId }
+                    onSuccess()
+                    Log.d("GroupsViewModel", "🗑️ Deleted subgroup $subgroupId via API")
+                } else {
+                    val errorMsg = response.errorMessage ?: "Не вдалося видалити підгрупу"
+                    onError(errorMsg)
+                    Log.e("GroupsViewModel", "❌ API error deleting subgroup: $errorMsg")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e("GroupsViewModel", "❌ Error deleting subgroup", e)
             }
         }
     }

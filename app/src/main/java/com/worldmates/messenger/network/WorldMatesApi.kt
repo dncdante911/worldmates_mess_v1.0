@@ -364,43 +364,48 @@ interface WorldMatesApi {
         @Part avatar: MultipartBody.Part
     ): CreateGroupResponse
 
-    // 📌 Pin/Unpin Group Messages
+    // 📌 Pin/Unpin Group Messages (consolidated API)
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/pin_group_message.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun pinGroupMessage(
-        @Field("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "pin_message",
+        @Field("id") groupId: Long,
         @Field("message_id") messageId: Long
     ): GenericResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/unpin_group_message.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun unpinGroupMessage(
-        @Field("access_token") accessToken: String,
-        @Field("group_id") groupId: Long
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "unpin_message",
+        @Field("id") groupId: Long
     ): GenericResponse
 
-    // 🔕 Mute/Unmute Group Notifications
+    // 🔕 Mute/Unmute Group Notifications (consolidated API)
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/mute_group.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun muteGroup(
-        @Field("access_token") accessToken: String,
-        @Field("group_id") groupId: Long
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "mute",
+        @Field("id") groupId: Long
     ): GenericResponse
 
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/unmute_group.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun unmuteGroup(
-        @Field("access_token") accessToken: String,
-        @Field("group_id") groupId: Long
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "unmute",
+        @Field("id") groupId: Long
     ): GenericResponse
 
-    // 🔍 Search Group Messages
+    // 🔍 Search Group Messages (consolidated API)
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/search_group_messages.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun searchGroupMessages(
-        @Field("access_token") accessToken: String,
-        @Field("group_id") groupId: Long,
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "search_messages",
+        @Field("id") groupId: Long,
         @Field("query") query: String,
         @Field("limit") limit: Int = 50,
         @Field("offset") offset: Int = 0
@@ -424,58 +429,69 @@ interface WorldMatesApi {
         @Part avatar: MultipartBody.Part
     ): UploadAvatarResponse
 
-    // 🔲 Generate Group QR Code
+    // 🔲 Generate Group QR Code (consolidated API)
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/generate_group_qr.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun generateGroupQr(
-        @Field("access_token") accessToken: String,
-        @Field("group_id") groupId: Long
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "generate_qr",
+        @Field("id") groupId: Long
     ): GenerateQrResponse
 
-    // 🔲 Join Group by QR Code
+    // 🔲 Join Group by QR Code (consolidated API)
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/join_group_by_qr.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun joinGroupByQr(
-        @Field("access_token") accessToken: String,
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "join_by_qr",
         @Field("qr_code") qrCode: String
     ): JoinGroupResponse
 
-    // ==================== GROUP MANAGEMENT ====================
+    // 🔓 Join Public Group (consolidated API)
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun joinGroup(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "join_group",
+        @Field("id") groupId: Long
+    ): JoinGroupResponse
+
+    // ==================== GROUP MANAGEMENT (consolidated API) ====================
 
     // 📝 Get Join Requests
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_management.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun getGroupJoinRequests(
-        @Field("access_token") accessToken: String,
+        @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_join_requests",
-        @Field("group_id") groupId: Long
+        @Field("id") groupId: Long
     ): JoinRequestsResponse
 
     // ✅ Approve Join Request
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_management.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun approveJoinRequest(
-        @Field("access_token") accessToken: String,
+        @Query("access_token") accessToken: String,
         @Field("type") type: String = "approve_join_request",
         @Field("request_id") requestId: Long
     ): GenericResponse
 
     // ❌ Reject Join Request
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_management.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun rejectJoinRequest(
-        @Field("access_token") accessToken: String,
+        @Query("access_token") accessToken: String,
         @Field("type") type: String = "reject_join_request",
         @Field("request_id") requestId: Long
     ): GenericResponse
 
     // ⚙️ Update Group Settings (slow mode, privacy, permissions)
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_management.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun updateGroupSettings(
-        @Field("access_token") accessToken: String,
+        @Query("access_token") accessToken: String,
         @Field("type") type: String = "update_settings",
-        @Field("group_id") groupId: Long,
+        @Field("id") groupId: Long,
         @Field("is_private") isPrivate: Int? = null,
         @Field("slow_mode_seconds") slowModeSeconds: Int? = null,
         @Field("history_visible") historyVisible: Int? = null,
@@ -489,21 +505,120 @@ interface WorldMatesApi {
 
     // ⚙️ Get Group Settings
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_management.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun getGroupSettings(
-        @Field("access_token") accessToken: String,
+        @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_settings",
-        @Field("group_id") groupId: Long
+        @Field("id") groupId: Long
     ): GroupSettingsResponse
+
+    // 🔒 Update Group Privacy
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun updateGroupPrivacy(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "update_privacy",
+        @Field("id") groupId: Long,
+        @Field("is_private") isPrivate: Int
+    ): GenericResponse
 
     // 📊 Get Group Statistics
     @FormUrlEncoded
-    @POST("/api/v2/endpoints/group_management.php")
+    @POST("/api/v2/group_chat_v2.php")
     suspend fun getGroupStatistics(
-        @Field("access_token") accessToken: String,
+        @Query("access_token") accessToken: String,
         @Field("type") type: String = "get_statistics",
-        @Field("group_id") groupId: Long
+        @Field("id") groupId: Long
     ): GroupStatisticsResponse
+
+    // ==================== SCHEDULED POSTS (consolidated API) ====================
+
+    // 📅 Get Scheduled Posts
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun getScheduledPosts(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_scheduled_posts",
+        @Field("id") groupId: Long
+    ): ScheduledPostsResponse
+
+    // ➕ Create Scheduled Post
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun createScheduledPost(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "create_scheduled_post",
+        @Field("id") groupId: Long,
+        @Field("text") text: String,
+        @Field("scheduled_time") scheduledTime: Long,
+        @Field("media_url") mediaUrl: String? = null,
+        @Field("repeat_type") repeatType: String = "none",
+        @Field("is_pinned") isPinned: Int = 0,
+        @Field("notify_members") notifyMembers: Int = 1
+    ): ScheduledPostsResponse
+
+    // 🗑️ Delete Scheduled Post
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun deleteScheduledPost(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "delete_scheduled_post",
+        @Field("id") groupId: Long,
+        @Field("post_id") postId: Long
+    ): GenericResponse
+
+    // 📤 Publish Scheduled Post Now
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun publishScheduledPost(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "publish_scheduled_post",
+        @Field("id") groupId: Long,
+        @Field("post_id") postId: Long
+    ): GenericResponse
+
+    // ==================== SUBGROUPS / TOPICS (consolidated API) ====================
+
+    // 📱 Get Subgroups (Topics)
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun getSubgroups(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_subgroups",
+        @Field("id") groupId: Long
+    ): SubgroupsResponse
+
+    // ➕ Create Subgroup (Topic)
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun createSubgroup(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "create_subgroup",
+        @Field("id") groupId: Long,
+        @Field("name") name: String,
+        @Field("description") description: String? = null,
+        @Field("color") color: String = "#2196F3",
+        @Field("is_private") isPrivate: Int = 0
+    ): SubgroupsResponse
+
+    // 🗑️ Delete Subgroup (Topic)
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun deleteSubgroup(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "delete_subgroup",
+        @Field("id") groupId: Long,
+        @Field("subgroup_id") subgroupId: Long
+    ): GenericResponse
+
+    // 🔗 Generate Invite Link
+    @FormUrlEncoded
+    @POST("/api/v2/group_chat_v2.php")
+    suspend fun generateGroupInviteLink(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "generate_invite_link",
+        @Field("id") groupId: Long
+    ): InviteLinkResponse
 
     // ==================== MESSAGES ====================
 
@@ -514,7 +629,7 @@ interface WorldMatesApi {
         @Field("user_id") recipientId: Long,
         @Field("text") text: String,
         @Field("message_hash_id") messageHashId: String,
-        @Field("message_reply_id") replyToId: Long? = null
+        @Field("reply_id") replyToId: Long? = null
     ): MessageResponse
 
     // Отправка сообщения с медиа-файлом
@@ -1189,6 +1304,20 @@ interface WorldMatesApi {
         @Field("channel_id") channelId: Long
     ): GenericResponse
 
+    // ==================== APP UPDATES ====================
+
+    @GET("?type=check_mobile_update")
+    suspend fun checkMobileUpdate(
+        @Query("platform") platform: String = "android",
+        @Query("channel") channel: String = "stable"
+    ): AppUpdateResponse
+
+    @GET("/api/v2/endpoints/check_mobile_update.php")
+    suspend fun checkMobileUpdateDirect(
+        @Query("platform") platform: String = "android",
+        @Query("channel") channel: String = "stable"
+    ): AppUpdateResponse
+
     // ⭐ Rate User (Like/Dislike)
     @FormUrlEncoded
     @POST("/api/v2/?type=rate_user")
@@ -1534,3 +1663,63 @@ data class TopContributorData(
     @SerializedName("avatar") val avatar: String? = null,
     @SerializedName("messages_count") val messagesCount: Int = 0
 )
+
+/**
+ * 📅 Response for scheduled posts
+ */
+data class ScheduledPostsResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("scheduled_posts") val scheduledPosts: List<ScheduledPostData>? = null,
+    @SerializedName("post") val post: ScheduledPostData? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+data class ScheduledPostData(
+    @SerializedName("id") val id: Long,
+    @SerializedName("group_id") val groupId: Long,
+    @SerializedName("author_id") val authorId: Long,
+    @SerializedName("text") val text: String,
+    @SerializedName("media_url") val mediaUrl: String? = null,
+    @SerializedName("scheduled_time") val scheduledTime: Long,
+    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("status") val status: String = "scheduled",
+    @SerializedName("repeat_type") val repeatType: String? = null,
+    @SerializedName("is_pinned") val isPinned: Boolean = false,
+    @SerializedName("notify_members") val notifyMembers: Boolean = true
+)
+
+/**
+ * 📱 Response for subgroups (topics)
+ */
+data class SubgroupsResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("subgroups") val subgroups: List<SubgroupData>? = null,
+    @SerializedName("subgroup") val subgroup: SubgroupData? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+data class SubgroupData(
+    @SerializedName("id") val id: Long,
+    @SerializedName("parent_group_id") val parentGroupId: Long,
+    @SerializedName("name") val name: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("color") val color: String = "#2196F3",
+    @SerializedName("is_private") val isPrivate: Boolean = false,
+    @SerializedName("members_count") val membersCount: Int = 0,
+    @SerializedName("messages_count") val messagesCount: Int = 0,
+    @SerializedName("created_by") val createdBy: Long = 0,
+    @SerializedName("created_time") val createdTime: Long = 0
+)
+
+/**
+ * 🔗 Response for invite link generation
+ */
+data class InviteLinkResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("invite_link") val inviteLink: String? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+

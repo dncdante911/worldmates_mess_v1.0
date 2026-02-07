@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.worldmates.messenger.BuildConfig
 
 /**
  * Диалог "Про додаток" (About App)
@@ -56,7 +57,7 @@ fun AboutAppDialog(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "1.0.0",
+                        text = BuildConfig.VERSION_NAME,
                         fontWeight = FontWeight.Bold
                     )
                 }

@@ -1,0 +1,161 @@
+:root {
+  font-family: Inter, Segoe UI, sans-serif;
+  color: #e6eaf2;
+  background: #0c121d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at top, #1f2d45 0%, #0b1018 75%);
+}
+
+.auth-card {
+  width: min(420px, 95vw);
+  background: #141d2b;
+  border: 1px solid #2f3e59;
+  border-radius: 20px;
+  padding: 28px;
+  display: grid;
+  gap: 12px;
+}
+
+.auth-card label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #a8b6d4;
+}
+
+.auth-card input,
+.composer input {
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid #334668;
+  background: #111926;
+  color: #e8efff;
+  padding: 0 12px;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+}
+
+.auth-card button,
+.composer button {
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4b8bff 0%, #7b5fff 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.layout {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+}
+
+.sidebar {
+  border-right: 1px solid #1f2b42;
+  background: #111a28;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+}
+
+.sidebar header {
+  padding: 16px;
+  border-bottom: 1px solid #1f2b42;
+}
+
+.status {
+  margin: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #9fd0ae;
+  background: #16281f;
+}
+
+.chat-item {
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin: 4px 10px;
+  background: transparent;
+  color: #d9e6ff;
+  display: grid;
+  gap: 4px;
+}
+
+.chat-item span {
+  font-size: 12px;
+  color: #8ca4c7;
+}
+
+.chat-item.active {
+  background: #1f2f4d;
+}
+
+.chat-view {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: linear-gradient(180deg, #0f1623 0%, #0d121c 100%);
+}
+
+.chat-header {
+  border-bottom: 1px solid #1f2b42;
+  padding: 18px;
+  font-weight: 600;
+}
+
+.messages {
+  overflow: auto;
+  padding: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.bubble {
+  max-width: 560px;
+  background: #1b2a42;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.bubble.own {
+  justify-self: end;
+  background: #2d3f63;
+}
+
+.bubble p {
+  margin: 0;
+}
+
+.bubble time {
+  margin-top: 6px;
+  display: block;
+  font-size: 11px;
+  color: #89a1c6;
+}
+
+.composer {
+  border-top: 1px solid #1f2b42;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.error {
+  color: #ff9292;
+}

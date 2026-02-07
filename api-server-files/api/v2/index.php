@@ -24,7 +24,7 @@ $public_endpoints = [
     'get_site_settings',
     'get-site-settings',
     'test_init',
-    'check_app_update'
+    'check_mobile_update'
 ];
 
 // Validate access_token for protected endpoints
@@ -162,14 +162,12 @@ $routes = [
     'rate_user' => 'endpoints/rate_user.php',
     'get_user_rating' => 'endpoints/get_user_rating.php',
 
-    // App Updates
-    'check_app_update' => 'endpoints/check_app_update.php',
-
     // Other
     'get_invites' => 'endpoints/get_invites.php',
     'get_live_friends' => 'endpoints/get_live_friends.php',
     'get_site_settings' => 'endpoints/get-site-settings.php',
     'subscribe_channel_by_qr' => 'endpoints/subscribe_channel_by_qr.php',
+    'check_mobile_update' => 'endpoints/check_mobile_update.php',
 ];
 
 // Check if route exists

@@ -27,11 +27,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
+import com.worldmates.messenger.BuildConfig
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.ui.login.LoginActivity
 import com.worldmates.messenger.ui.settings.security.AppLockSettingsScreen
@@ -41,8 +43,6 @@ import com.worldmates.messenger.ui.theme.ThemeSettingsScreen
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import com.worldmates.messenger.update.AppUpdateManager
 import androidx.lifecycle.viewmodel.compose.viewModel
-import android.widget.Toast
-import kotlinx.coroutines.launch
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -168,31 +168,14 @@ fun SettingsScreen(
     onNavigate: (SettingsScreen) -> Unit,
     onLogout: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val username = UserSession.username ?: "Користувач"
     val avatar = UserSession.avatar
     val userData by viewModel.userData.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
-    var showUpdateDialog by remember { mutableStateOf(false) }
-
-    // App Update Manager
-    val updateManager = remember { AppUpdateManager(context) }
-    val updateInfo by updateManager.updateInfo.collectAsState()
-    val isCheckingUpdate by updateManager.isChecking.collectAsState()
-    val downloadState by updateManager.downloadState.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
-
-    // Auto-check for updates on first load
-    LaunchedEffect(Unit) {
-        if (updateManager.shouldAutoCheck()) {
-            val info = updateManager.checkForUpdate()
-            if (info.updateAvailable && !updateManager.isVersionDismissed(info.latestVersionCode)) {
-                showUpdateDialog = true
-            }
-        }
-    }
+    val updateState by AppUpdateManager.state.collectAsState()
+    val context = LocalContext.current
 
     // Показать сообщение об успехе
     LaunchedEffect(successMessage) {
@@ -206,6 +189,7 @@ fun SettingsScreen(
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         visible = true
+        viewModel.checkUpdates(force = false)
     }
 
     Box(
@@ -478,29 +462,18 @@ fun SettingsScreen(
             }
             item {
                 SettingsItem(
-                    icon = Icons.Default.Info,
-                    title = "Про додаток",
-                    subtitle = "Версія ${updateManager.getCurrentVersionName()}",
-                    onClick = { showAboutDialog = true }
+                    icon = Icons.Default.SystemUpdate,
+                    title = "Оновлення додатку",
+                    subtitle = if (updateState.hasUpdate) "Доступна версія ${updateState.latestVersion}" else "Автоперевірка з сервера кожні 30 хв",
+                    onClick = { viewModel.checkUpdates(force = true) }
                 )
             }
             item {
                 SettingsItem(
-                    icon = Icons.Default.SystemUpdate,
-                    title = "Оновити додаток",
-                    subtitle = if (isCheckingUpdate) "Перевірка..."
-                              else if (updateInfo.updateAvailable) "Доступна версія ${updateInfo.latestVersionName}"
-                              else "Остання версія встановлена",
-                    onClick = {
-                        coroutineScope.launch {
-                            val info = updateManager.checkForUpdate(force = true)
-                            if (info.updateAvailable) {
-                                showUpdateDialog = true
-                            } else {
-                                Toast.makeText(context, "У вас остання версія!", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
+                    icon = Icons.Default.Info,
+                    title = "Про додаток",
+                    subtitle = "Версія ${BuildConfig.VERSION_NAME}",
+                    onClick = { showAboutDialog = true }
                 )
             }
 
@@ -588,107 +561,40 @@ fun SettingsScreen(
         )
     }
 
-    // About App dialog
-    if (showAboutDialog) {
-        com.worldmates.messenger.ui.components.AboutAppDialog(
-            onDismiss = { showAboutDialog = false }
-        )
-    }
-
-    // Update dialog
-    if (showUpdateDialog && updateInfo.updateAvailable) {
+    if (updateState.hasUpdate && updateState.apkUrl != null) {
         AlertDialog(
-            onDismissRequest = {
-                if (!updateInfo.forceUpdate) {
-                    showUpdateDialog = false
-                    updateManager.dismissVersion(updateInfo.latestVersionCode)
-                }
-            },
-            title = {
-                Text(
-                    if (updateInfo.forceUpdate) "Обов'язкове оновлення"
-                    else "Доступне оновлення",
-                    fontWeight = FontWeight.Bold
-                )
-            },
+            onDismissRequest = { },
+            title = { Text("Доступне оновлення ${updateState.latestVersion ?: ""}") },
             text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        "Нова версія: ${updateInfo.latestVersionName}",
-                        fontWeight = FontWeight.Medium
-                    )
-                    if (updateInfo.fileSize > 0) {
-                        Text(
-                            "Розмір: ${updateManager.formatFileSize(updateInfo.fileSize)}",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                    }
-                    if (updateInfo.changelog.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "Що нового:",
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            updateInfo.changelog,
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                    }
-                    when (val state = downloadState) {
-                        is AppUpdateManager.DownloadState.Downloading -> {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            LinearProgressIndicator(
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                "Завантаження...",
-                                fontSize = 13.sp,
-                                color = Color.Gray
-                            )
+                Column {
+                    Text("Нова версія доступна на сервері. Можна встановити в один клік без очікування Google Play.")
+                    if (updateState.changelog.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        updateState.changelog.take(4).forEach { change ->
+                            Text("• $change", fontSize = 13.sp)
                         }
-                        is AppUpdateManager.DownloadState.Downloaded -> {
-                            Text(
-                                "Завантажено! Встановлення...",
-                                fontSize = 13.sp,
-                                color = Color(0xFF4CAF50)
-                            )
-                        }
-                        is AppUpdateManager.DownloadState.Error -> {
-                            Text(
-                                "Помилка: ${state.message}",
-                                fontSize = 13.sp,
-                                color = Color.Red
-                            )
-                        }
-                        else -> {}
                     }
                 }
             },
             confirmButton = {
-                val isDownloading = downloadState is AppUpdateManager.DownloadState.Downloading
-                FilledTonalButton(
-                    onClick = {
-                        updateManager.downloadAndInstall(updateInfo.downloadUrl)
-                    },
-                    enabled = !isDownloading
-                ) {
-                    Text(if (isDownloading) "Завантаження..." else "Оновити")
+                TextButton(onClick = { AppUpdateManager.openUpdateUrl(context) }) {
+                    Text("Оновити зараз")
                 }
             },
             dismissButton = {
-                if (!updateInfo.forceUpdate) {
-                    TextButton(onClick = {
-                        showUpdateDialog = false
-                        updateManager.dismissVersion(updateInfo.latestVersionCode)
-                    }) {
+                if (!updateState.isMandatory) {
+                    TextButton(onClick = { viewModel.snoozeUpdatePrompt() }) {
                         Text("Пізніше")
                     }
                 }
             }
+        )
+    }
+
+    // About App dialog
+    if (showAboutDialog) {
+        com.worldmates.messenger.ui.components.AboutAppDialog(
+            onDismiss = { showAboutDialog = false }
         )
     }
 }

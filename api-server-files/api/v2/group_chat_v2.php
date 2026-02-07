@@ -1059,31 +1059,21 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
     $where_clause = $before_message_id > 0 ? "AND m.id < ?" : "";
     $params = $before_message_id > 0 ? [$group_id, $before_message_id, $limit] : [$group_id, $limit];
 
-    // ВАЖЛИВО: Використовуємо snake_case для Android (@SerializedName)
-    // Додаємо iv, tag, cipher_version для розшифровки старих повідомлень
-    // COALESCE(m.to_id, 0) - щоб to_id ніколи не був null (Android Long non-nullable)
+    // ВАЖЛИВО: Використовуємо m.* щоб запит працював незалежно від того які колонки є
+    // Додаємо аліаси для Android (@SerializedName): sender_name, sender_avatar, reply_to_id
     $stmt = $db->prepare("
         SELECT
-            m.id,
-            m.from_id,
+            m.*,
             COALESCE(m.to_id, 0) AS to_id,
-            m.group_id,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
             u.avatar AS sender_avatar,
-            m.text,
-            m.media,
             m.mediaFileName AS media_file_name,
-            m.time,
-            m.seen,
-            m.reply_id AS reply_to_id,
-            m.iv,
-            m.tag,
-            m.cipher_version
+            COALESCE(m.reply_id, NULL) AS reply_to_id
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.group_id = ? $where_clause
-        ORDER BY m.time DESC
+        ORDER BY m.id DESC
         LIMIT ?
     ");
     $stmt->execute($params);
@@ -1115,27 +1105,23 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
     // Android надсилає reply_id, не message_reply_id
     $reply_to = $data['reply_id'] ?? $data['message_reply_id'] ?? null;
 
+    // ВАЖЛИВО: to_id = 0 для групових повідомлень (Android Long non-nullable)
     $stmt = $db->prepare("
-        INSERT INTO Wo_Messages (from_id, group_id, text, time, seen, sent_push, reply_id)
-        VALUES (?, ?, ?, ?, 0, 0, ?)
+        INSERT INTO Wo_Messages (from_id, group_id, to_id, text, time, seen, sent_push, reply_id)
+        VALUES (?, ?, 0, ?, ?, 0, 0, ?)
     ");
     $stmt->execute([$user_id, $group_id, trim($text), $time, $reply_to]);
     $message_id = $db->lastInsertId();
 
-    // ВАЖЛИВО: Використовуємо snake_case для Android (@SerializedName)
-    // COALESCE(m.to_id, 0) - щоб to_id ніколи не був null
+    // Повертаємо створене повідомлення (m.* для надійності)
     $stmt = $db->prepare("
         SELECT
-            m.id,
-            m.from_id,
+            m.*,
             COALESCE(m.to_id, 0) AS to_id,
-            m.group_id,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
             u.avatar AS sender_avatar,
-            m.text,
-            m.time,
-            m.reply_id AS reply_to_id
+            COALESCE(m.reply_id, NULL) AS reply_to_id
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.id = ?
@@ -1249,10 +1235,23 @@ function uploadGroupAvatar($db, $user_id, $group_id, $files) {
  * Проверка прав администратора/владельца
  */
 function isGroupAdminOrOwner($db, $group_id, $user_id) {
-    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
-    $stmt->execute([$group_id, $user_id]);
-    $role = $stmt->fetchColumn();
-    return in_array($role, ['owner', 'admin']);
+    // Перевіряємо роль в Wo_GroupChatUsers
+    try {
+        $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+        $stmt->execute([$group_id, $user_id]);
+        $role = $stmt->fetchColumn();
+        if (in_array($role, ['owner', 'admin'])) {
+            return true;
+        }
+    } catch (Exception $e) {
+        // role column might not exist yet
+    }
+
+    // Фолбек: перевіряємо чи user_id є власником групи в Wo_GroupChat
+    $stmt = $db->prepare("SELECT user_id FROM Wo_GroupChat WHERE group_id = ?");
+    $stmt->execute([$group_id]);
+    $owner_id = $stmt->fetchColumn();
+    return (int)$owner_id === (int)$user_id;
 }
 
 /**

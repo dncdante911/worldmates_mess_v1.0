@@ -9,21 +9,6 @@ import retrofit2.http.*
 
 interface WorldMatesApi {
 
-    @GET("index.php?type=check_mobile_update")
-    suspend fun checkMobileUpdate(
-        @Query("platform") platform: String = "android",
-        @Query("channel") channel: String = "stable"
-    ): AppUpdateResponse
-
-    @GET("/api/v2/endpoints/check_mobile_update.php")
-    suspend fun checkMobileUpdateDirect(
-    @GET("?type=check_mobile_update")
-    @GET("/api/v2/endpoints/check_mobile_update.php")
-    suspend fun checkMobileUpdate(
-        @Query("platform") platform: String = "android",
-        @Query("channel") channel: String = "stable"
-    ): AppUpdateResponse
-
     // ==================== AUTHENTICATION ====================
 
     @FormUrlEncoded
@@ -1321,12 +1306,16 @@ interface WorldMatesApi {
 
     // ==================== APP UPDATES ====================
 
-    @FormUrlEncoded
-    @POST("?type=check_app_update")
-    suspend fun checkAppUpdate(
-        @Field("current_version_code") currentVersionCode: Int,
-        @Field("current_version_name") currentVersionName: String,
-        @Field("platform") platform: String = "android"
+    @GET("?type=check_mobile_update")
+    suspend fun checkMobileUpdate(
+        @Query("platform") platform: String = "android",
+        @Query("channel") channel: String = "stable"
+    ): AppUpdateResponse
+
+    @GET("/api/v2/endpoints/check_mobile_update.php")
+    suspend fun checkMobileUpdateDirect(
+        @Query("platform") platform: String = "android",
+        @Query("channel") channel: String = "stable"
     ): AppUpdateResponse
 
     // ⭐ Rate User (Like/Dislike)
@@ -1734,18 +1723,3 @@ data class InviteLinkResponse(
     @SerializedName("error_message") val errorMessage: String? = null
 )
 
-/**
- * Response for app update check
- */
-data class AppUpdateResponse(
-    @SerializedName("api_status") val apiStatus: Int,
-    @SerializedName("update_available") val updateAvailable: Boolean = false,
-    @SerializedName("force_update") val forceUpdate: Boolean = false,
-    @SerializedName("latest_version_code") val latestVersionCode: Int = 0,
-    @SerializedName("latest_version_name") val latestVersionName: String = "",
-    @SerializedName("min_version_code") val minVersionCode: Int = 0,
-    @SerializedName("download_url") val downloadUrl: String = "",
-    @SerializedName("changelog") val changelog: String = "",
-    @SerializedName("file_size") val fileSize: Long = 0,
-    @SerializedName("error_message") val errorMessage: String? = null
-)

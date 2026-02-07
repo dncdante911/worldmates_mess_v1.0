@@ -7,7 +7,7 @@
  *   "data": {
  *     "latest_version": "2.1.0",
  *     "version_code": 3,
- *     "apk_url": "https://worldmates.club/downloads/worldmates-latest.apk",
+ *     "apk_url": "https://worldmates.club/sources-app/worldmates-latest.apk",
  *     "changelog": ["Новые one-click темы", "Автообновление с сервера"],
  *     "is_mandatory": false,
  *     "published_at": "2026-02-07T09:00:00Z"
@@ -25,7 +25,7 @@ if (!file_exists($configPath)) {
         'data' => [
             'latest_version' => '2.0.0',
             'version_code' => 2,
-            'apk_url' => 'https://worldmates.club/downloads/worldmates-latest.apk',
+            'apk_url' => 'https://worldmates.club/sources-app/worldmates-latest.apk',
             'changelog' => ['Первый стабильный релиз'],
             'is_mandatory' => false,
             'published_at' => gmdate('c'),
@@ -51,7 +51,7 @@ echo json_encode([
     'data' => [
         'latest_version' => $data['latest_version'] ?? '2.0.0',
         'version_code' => intval($data['version_code'] ?? 2),
-        'apk_url' => $data['apk_url'] ?? 'https://worldmates.club/downloads/worldmates-latest.apk',
+        'apk_url' => $data['apk_url'] ?? 'https://worldmates.club/sources-app/worldmates-latest.apk',
         'changelog' => is_array($data['changelog'] ?? null) ? $data['changelog'] : ['Update available'],
         'is_mandatory' => boolval($data['is_mandatory'] ?? false),
         'published_at' => $data['published_at'] ?? gmdate('c'),

@@ -536,4 +536,124 @@ class StoryRepository(private val context: Context) {
     fun clearViewers() {
         _viewers.value = emptyList()
     }
+
+    // ==================== CHANNEL STORIES ====================
+
+    // Stories каналів (окремо від особистих)
+    private val _channelStories = MutableStateFlow<List<Story>>(emptyList())
+    val channelStories: StateFlow<List<Story>> = _channelStories
+
+    /**
+     * Створити story каналу
+     */
+    suspend fun createChannelStory(
+        channelId: Long,
+        mediaUri: Uri,
+        fileType: String,
+        title: String? = null,
+        description: String? = null
+    ): Result<CreateStoryResponse> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            _isLoading.value = true
+
+            val mediaFile = FileUtils.getFileFromUri(context, mediaUri)
+                ?: return Result.failure(Exception("Не вдалося прочитати файл"))
+
+            val finalMediaFile = if (fileType == "image") {
+                FileUtils.compressImageIfNeeded(context, mediaFile, maxSizeKB = 15360, quality = 90)
+            } else {
+                mediaFile
+            }
+
+            val requestFile = finalMediaFile.asRequestBody("multipart/form-data".toMediaTypeOrNull())
+            val filePart = MultipartBody.Part.createFormData("file", finalMediaFile.name, requestFile)
+
+            val channelIdBody = channelId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+            val fileTypeBody = fileType.toRequestBody("text/plain".toMediaTypeOrNull())
+            val titleBody = title?.toRequestBody("text/plain".toMediaTypeOrNull())
+            val descriptionBody = description?.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val response = storiesApi.createChannelStory(
+                accessToken = UserSession.accessToken!!,
+                channelId = channelIdBody,
+                file = filePart,
+                fileType = fileTypeBody,
+                storyTitle = titleBody,
+                storyDescription = descriptionBody
+            )
+
+            _isLoading.value = false
+
+            if (response.apiStatus == 200) {
+                fetchSubscribedChannelStories()
+                Log.d(TAG, "Channel story створена: ${response.storyId}")
+                Result.success(response)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка створення channel story"))
+            }
+        } catch (e: Exception) {
+            _isLoading.value = false
+            Log.e(TAG, "Помилка створення channel story", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Отримати stories підписаних каналів
+     */
+    suspend fun fetchSubscribedChannelStories(limit: Int = 30): Result<List<Story>> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.getSubscribedChannelStories(
+                accessToken = UserSession.accessToken!!,
+                limit = limit
+            )
+
+            if (response.apiStatus == 200 && response.stories != null) {
+                val active = response.stories.filter { !it.isExpired() }.distinctBy { it.id }
+                _channelStories.value = active
+                Log.d(TAG, "Channel stories завантажено: ${active.size}")
+                Result.success(active)
+            } else {
+                Log.e(TAG, "Channel stories error: ${response.errorMessage}")
+                Result.failure(Exception(response.errorMessage ?: "Помилка завантаження channel stories"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Channel stories exception", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Видалити story каналу
+     */
+    suspend fun deleteChannelStory(storyId: Long): Result<DeleteStoryResponse> {
+        return try {
+            if (UserSession.accessToken == null) {
+                return Result.failure(Exception("Не авторизовано"))
+            }
+
+            val response = storiesApi.deleteChannelStory(
+                accessToken = UserSession.accessToken!!,
+                storyId = storyId
+            )
+
+            if (response.apiStatus == 200) {
+                _channelStories.value = _channelStories.value.filter { it.id != storyId }
+                Result.success(response)
+            } else {
+                Result.failure(Exception(response.errorMessage ?: "Помилка видалення channel story"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка видалення channel story", e)
+            Result.failure(e)
+        }
+    }
 }

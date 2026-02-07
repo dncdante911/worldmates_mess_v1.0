@@ -79,6 +79,9 @@ fun ChatsScreenModern(
     val stories by storyViewModel.stories.collectAsState()
     val isLoadingStories by storyViewModel.isLoading.collectAsState()
 
+    // Channel stories state
+    val channelStories by storyViewModel.channelStories.collectAsState()
+
     val uiStyle = rememberUIStyle()
     val themeState = rememberThemeState()
     val pagerState = rememberPagerState(initialPage = 0) { 3 } // 3 вкладки: Чати, Канали, Групи
@@ -94,14 +97,20 @@ fun ChatsScreenModern(
             delay(6000) // 6 секунд
             when (pagerState.currentPage) {
                 0 -> viewModel.fetchChats()
-                1 -> channelsViewModel.fetchSubscribedChannels()
+                1 -> {
+                    channelsViewModel.fetchSubscribedChannels()
+                    storyViewModel.loadChannelStories()
+                }
                 2 -> groupsViewModel.fetchGroups()
             }
         }
     }
 
-    // Load available users when switching to groups tab
+    // Load channel stories when switching to channels tab
     LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage == 1) {
+            storyViewModel.loadChannelStories()
+        }
         if (pagerState.currentPage == 2) {
             groupsViewModel.loadAvailableUsers()
         }
@@ -110,6 +119,7 @@ fun ChatsScreenModern(
     // Стан для діалогів
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var showCreateStoryDialog by remember { mutableStateOf(false) }
+    var showCreateChannelStoryDialog by remember { mutableStateOf(false) }
     var selectedGroup by remember { mutableStateOf<Group?>(null) }
     var showEditGroupDialog by remember { mutableStateOf(false) }
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
@@ -300,18 +310,22 @@ fun ChatsScreenModern(
                         )
                     }
                     1 -> {
-                        // Вкладка "Канали" — без stories, чистий список
+                        // Вкладка "Канали" з channel stories
                         ChannelListTabWithStories(
                             channels = channels,
-                            stories = emptyList(),
+                            stories = channelStories,
                             isLoading = isLoadingChannels,
                             isLoadingStories = false,
                             uiStyle = uiStyle,
                             channelsViewModel = channelsViewModel,
                             onRefresh = {
                                 channelsViewModel.fetchSubscribedChannels()
+                                storyViewModel.loadChannelStories()
                             },
-                            onChannelClick = onChannelClick
+                            onChannelClick = onChannelClick,
+                            onCreateChannelStoryClick = {
+                                showCreateChannelStoryDialog = true
+                            }
                         )
                     }
                     2 -> {
@@ -485,6 +499,20 @@ fun ChatsScreenModern(
             onDismiss = { showCreateStoryDialog = false },
             viewModel = storyViewModel
         )
+    }
+
+    // Create Channel Story Dialog
+    if (showCreateChannelStoryDialog) {
+        val adminChannels = channels.filter { it.isAdmin }
+        if (adminChannels.isNotEmpty()) {
+            com.worldmates.messenger.ui.stories.CreateChannelStoryDialog(
+                adminChannels = adminChannels,
+                onDismiss = { showCreateChannelStoryDialog = false },
+                viewModel = storyViewModel
+            )
+        } else {
+            showCreateChannelStoryDialog = false
+        }
     }
     }  // Закриваємо Box з фоновим зображенням
     }  // Закриваємо ModalNavigationDrawer
@@ -973,7 +1001,7 @@ fun ChatListTabWithStories(
 }
 
 /**
- * Вкладка з каналами (без stories — stories тільки в чатах)
+ * Вкладка з каналами + channel stories (окремі від особистих)
  */
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -985,13 +1013,17 @@ fun ChannelListTabWithStories(
     uiStyle: UIStyle,
     channelsViewModel: com.worldmates.messenger.ui.channels.ChannelsViewModel,
     onRefresh: () -> Unit,
-    onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit
+    onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit,
+    onCreateChannelStoryClick: () -> Unit = {}
 ) {
     val refreshing by remember { mutableStateOf(false) }
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing || isLoading,
         onRefresh = onRefresh
     )
+
+    // Канали, де поточний користувач — адмін
+    val adminChannelIds = channels.filter { it.isAdmin }.map { it.id }
 
     Box(
         modifier = Modifier
@@ -1016,8 +1048,19 @@ fun ChannelListTabWithStories(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
+                // Channel stories рядок (як PersonalStoriesRow, але для каналів)
+                if (stories.isNotEmpty() || adminChannelIds.isNotEmpty()) {
+                    item {
+                        com.worldmates.messenger.ui.stories.ChannelStoriesRow(
+                            stories = stories,
+                            adminChannelIds = adminChannelIds,
+                            onCreateClick = onCreateChannelStoryClick
+                        )
+                    }
+                }
+
+                // Список каналів — чистий стиль
                 items(channels, key = { it.id }) { channel ->
-                    // Єдиний стиль — чистий список як у чатах
                     com.worldmates.messenger.ui.channels.TelegramChannelItem(
                         channel = channel,
                         onClick = { onChannelClick(channel) },

@@ -23,7 +23,8 @@ $public_endpoints = [
     'verify_code',
     'get_site_settings',
     'get-site-settings',
-    'test_init'
+    'test_init',
+    'check_mobile_update'
 ];
 
 // Validate access_token for protected endpoints
@@ -166,6 +167,7 @@ $routes = [
     'get_live_friends' => 'endpoints/get_live_friends.php',
     'get_site_settings' => 'endpoints/get-site-settings.php',
     'subscribe_channel_by_qr' => 'endpoints/subscribe_channel_by_qr.php',
+    'check_mobile_update' => 'endpoints/check_mobile_update.php',
 ];
 
 // Check if route exists

@@ -78,6 +78,15 @@ npm run dev
 
 Это сделано для совместимости с вашим WoWonder windows API слоем.
 
+
+### Windows API decryptor (новый)
+
+Добавлен новый серверный дешифратор для windows API:
+- `api-server-files/api/windows_app/core/windows_message_decryptor.php`
+
+И он подключен в `get_user_messages.php`: при получении сообщений сервер пытается расшифровать
+`text` (AES-128-ECB legacy и AES-256-GCM), после чего отдает `decrypted_text` + обновленный `text`.
+
 ## Сборка installer
 
 ```bash

@@ -141,7 +141,7 @@ function normalizeMessages(payload: any): MessagesResponse {
       id: Number(m.id),
       from_id: Number(m.from_id),
       to_id: Number(m.to_id),
-      text: toSafeText(m.text, toSafeText(m.or_text, '')),
+      text: toSafeText(m.decrypted_text, toSafeText(m.text, toSafeText(m.or_text, ''))),
       time_text: m.time_text,
       media: m.media
     }));

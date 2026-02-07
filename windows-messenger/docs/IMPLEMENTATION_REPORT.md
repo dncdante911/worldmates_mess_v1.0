@@ -53,3 +53,10 @@ cd windows-messenger
 npm install
 npm run dist:win
 ```
+
+
+## Новое: серверный decryptor для windows_app
+
+- Добавлен файл `api-server-files/api/windows_app/core/windows_message_decryptor.php`
+- В `api-server-files/api/windows_app/get_user_messages.php` подключен decrypt hook, который
+  пытается расшифровать `text` (ECB/GCM) и вернуть `decrypted_text` для desktop клиента.

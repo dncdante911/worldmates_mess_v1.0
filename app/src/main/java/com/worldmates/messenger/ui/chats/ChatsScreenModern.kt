@@ -300,17 +300,16 @@ fun ChatsScreenModern(
                         )
                     }
                     1 -> {
-                        // Вкладка "Канали" з pull-to-refresh + Channel Stories
+                        // Вкладка "Канали" — без stories, чистий список
                         ChannelListTabWithStories(
                             channels = channels,
-                            stories = stories,
+                            stories = emptyList(),
                             isLoading = isLoadingChannels,
-                            isLoadingStories = isLoadingStories,
+                            isLoadingStories = false,
                             uiStyle = uiStyle,
                             channelsViewModel = channelsViewModel,
                             onRefresh = {
                                 channelsViewModel.fetchSubscribedChannels()
-                                storyViewModel.loadStories()
                             },
                             onChannelClick = onChannelClick
                         )
@@ -974,7 +973,7 @@ fun ChatListTabWithStories(
 }
 
 /**
- * Вкладка з каналами + Channel Stories
+ * Вкладка з каналами (без stories — stories тільки в чатах)
  */
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -988,81 +987,42 @@ fun ChannelListTabWithStories(
     onRefresh: () -> Unit,
     onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit
 ) {
-    val context = LocalContext.current
     val refreshing by remember { mutableStateOf(false) }
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing || isLoading,
         onRefresh = onRefresh
     )
 
-    // Групуємо stories по каналах
-    val channelStoriesMap = stories.groupBy { it.userId }
-    val channelStoriesWithData = channels.mapNotNull { channel ->
-        channelStoriesMap[channel.ownerId]?.let { channelStories ->
-            Pair(channel, channelStories)
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Channel Stories секція (якщо є)
-            if (channelStoriesWithData.isNotEmpty()) {
-                item {
-                    com.worldmates.messenger.ui.stories.ChannelStoriesSection(
-                        channelStories = channelStoriesWithData
-                    )
-                }
+        if (channels.isEmpty() && !isLoading) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Немає каналів",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
             }
-
-            // Список каналів
-            items(channels, key = { it.id }) { channel ->
-                when (uiStyle) {
-                    UIStyle.WORLDMATES -> {
-                        com.worldmates.messenger.ui.channels.ChannelCard(
-                            channel = channel,
-                            onClick = { onChannelClick(channel) },
-                            onSubscribeToggle = { isCurrentlySubscribed ->
-                                if (isCurrentlySubscribed) {
-                                    channelsViewModel.unsubscribeChannel(
-                                        channelId = channel.id,
-                                        onSuccess = {
-                                            android.widget.Toast.makeText(context, "Відписано", android.widget.Toast.LENGTH_SHORT).show()
-                                        },
-                                        onError = { error ->
-                                            android.widget.Toast.makeText(context, "Помилка: $error", android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    )
-                                } else {
-                                    channelsViewModel.subscribeChannel(
-                                        channelId = channel.id,
-                                        onSuccess = {
-                                            android.widget.Toast.makeText(context, "Підписано!", android.widget.Toast.LENGTH_SHORT).show()
-                                        },
-                                        onError = { error ->
-                                            android.widget.Toast.makeText(context, "Помилка: $error", android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    )
-                                }
-                            },
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .animateItem()
-                        )
-                    }
-                    UIStyle.TELEGRAM -> {
-                        // Telegram style - використовуємо TelegramChannelItem
-                        com.worldmates.messenger.ui.channels.TelegramChannelItem(
-                            channel = channel,
-                            onClick = { onChannelClick(channel) },
-                            modifier = Modifier.animateItem()
-                        )
-                    }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(channels, key = { it.id }) { channel ->
+                    // Єдиний стиль — чистий список як у чатах
+                    com.worldmates.messenger.ui.channels.TelegramChannelItem(
+                        channel = channel,
+                        onClick = { onChannelClick(channel) },
+                        modifier = Modifier.animateItem()
+                    )
                 }
             }
         }

@@ -80,6 +80,10 @@ object AppUpdateManager {
                 return failed
             }
 
+            val response = RetrofitClient.apiService.checkMobileUpdate()
+            val info = response.data
+            val updateAvailable = info != null && isNewerVersion(info)
+
             val isSnoozed = System.currentTimeMillis() < snoozedUntilMillis
             val newState = UpdateState(
                 hasUpdate = updateAvailable && !isSnoozed,

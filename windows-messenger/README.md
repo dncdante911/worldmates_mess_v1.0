@@ -89,3 +89,8 @@ npm run dist:win
 ## Ограничения текущего этапа
 
 Это уже сильно расширенный desktop MVP, но не абсолютный 1:1 parity по всем экранам Android. Полный 1:1 требует дальнейшего переноса всех флоу (детальные звонки с answer/ice handling UI, весь media pipeline, полные настройки и security screens, backup UI, moderation scenarios и т.д.).
+
+
+## Merge conflicts
+
+Смотрите `windows-messenger/docs/MERGE_RESOLVE_GUIDE.md` для правил выбора Current/Incoming/Both без поломки auth/network слоя.

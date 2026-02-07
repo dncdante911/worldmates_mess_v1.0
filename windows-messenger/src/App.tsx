@@ -29,6 +29,20 @@ type Section = 'chats' | 'groups' | 'channels' | 'stories' | 'calls';
 const sessionKey = 'wm_windows_session';
 const aesSeed = 'worldmates-aes-256-gcm-desktop';
 
+
+function asText(value: unknown, fallback = ''): string {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'object') {
+    const candidate = (value as Record<string, unknown>).text;
+    if (typeof candidate === 'string') return candidate;
+    return fallback;
+  }
+  return fallback;
+}
+
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>('login');
@@ -357,14 +371,14 @@ export default function App() {
 
         {activeSection === 'chats' ? (
           <div className="chat-list">
-            {chats.map((chat) => (
+            {chats.map((chat, index) => (
               <button
-                key={chat.user_id}
+                key={`${chat.user_id}-${index}`}
                 className={chat.user_id === selectedChatId ? 'chat-item active' : 'chat-item'}
                 onClick={() => setSelectedChatId(chat.user_id)}
               >
                 <strong>{chat.name}</strong>
-                <span>{chat.last_message ?? 'No messages yet'}</span>
+                <span>{asText(chat.last_message, 'No messages yet')}</span>
               </button>
             ))}
           </div>
@@ -376,7 +390,7 @@ export default function App() {
               <input value={newGroupName} onChange={(event) => setNewGroupName(event.target.value)} placeholder="New group" />
               <button type="submit">Create</button>
             </form>
-            <div className="list-panel">{groups.map((group) => <div key={group.id} className="list-item">{group.group_name}</div>)}</div>
+            <div className="list-panel">{groups.map((group, index) => <div key={`${group.id}-${index}`} className="list-item">{asText(group.group_name, 'Group')}</div>)}</div>
           </>
         ) : null}
 
@@ -387,7 +401,7 @@ export default function App() {
               <input value={newChannelDescription} onChange={(event) => setNewChannelDescription(event.target.value)} placeholder="Description" />
               <button type="submit">Create</button>
             </form>
-            <div className="list-panel">{channels.map((channel) => <div key={channel.id} className="list-item">{channel.name}</div>)}</div>
+            <div className="list-panel">{channels.map((channel, index) => <div key={`${channel.id}-${index}`} className="list-item">{asText(channel.name, 'Channel')}</div>)}</div>
           </>
         ) : null}
 
@@ -397,7 +411,7 @@ export default function App() {
               <input type="file" accept="image/*,video/*" onChange={(event) => setNewStory(event.target.files?.[0] ?? null)} />
               <button type="submit">Upload story</button>
             </form>
-            <div className="list-panel">{stories.map((story) => <div key={story.id} className="list-item">Story #{story.id}</div>)}</div>
+            <div className="list-panel">{stories.map((story, index) => <div key={`${story.id}-${index}`} className="list-item">Story #{story.id}</div>)}</div>
           </>
         ) : null}
 
@@ -416,9 +430,9 @@ export default function App() {
         </header>
 
         <section className="messages">
-          {messages.map((message) => (
-            <article key={message.id} className={message.from_id === session.userId ? 'bubble own' : 'bubble'}>
-              <p>{message.text}</p>
+          {messages.map((message, index) => (
+            <article key={`${message.id}-${index}`} className={message.from_id === session.userId ? 'bubble own' : 'bubble'}>
+              <p>{asText(message.text, '')}</p>
               {message.media ? (
                 <a href={message.media} target="_blank" rel="noreferrer">
                   Download media

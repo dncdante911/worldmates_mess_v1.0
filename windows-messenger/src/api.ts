@@ -94,6 +94,19 @@ async function getJson<T>(url: string): Promise<T> {
   return parseTextAsJson<T>(response.status, text, response.ok);
 }
 
+
+function toSafeText(value: unknown, fallback = ''): string {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'object') {
+    const candidate = (value as Record<string, unknown>).text;
+    if (typeof candidate === 'string') return candidate;
+    return fallback;
+  }
+  return fallback;
+}
+
 function normalizeAuth(payload: any): AuthResponse {
   return {
     api_status: String(payload.api_status ?? ''),
@@ -114,7 +127,7 @@ function normalizeChats(payload: any): ChatListResponse {
         user_id: Number(user.user_id ?? user.id),
         name: user.name ?? [user.first_name, user.last_name].filter(Boolean).join(' ') ?? user.username ?? 'Unknown',
         avatar: user.avatar,
-        last_message: user.last_message ?? '',
+        last_message: toSafeText(user.last_message, ''),
         time: user.lastseen ?? user.lastseen_unix_time ?? ''
       }))
     : [];
@@ -128,7 +141,7 @@ function normalizeMessages(payload: any): MessagesResponse {
       id: Number(m.id),
       from_id: Number(m.from_id),
       to_id: Number(m.to_id),
-      text: m.text ?? m.or_text ?? '',
+      text: toSafeText(m.text, toSafeText(m.or_text, '')),
       time_text: m.time_text,
       media: m.media
     }));

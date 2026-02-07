@@ -1335,7 +1335,7 @@ interface WorldMatesApi {
 // ==================== RESPONSE MODELS ====================
 
 data class MessageResponse(
-    @SerializedName("api_status") val apiStatusString: String?, // "200" или "400"
+    @SerializedName("api_status") private val _apiStatus: Any?, // Может быть String "200" или Int 200
     @SerializedName("api_text") val apiText: String?, // "success" или "failed"
     @SerializedName("api_version") val apiVersion: String?,
     @SerializedName("messages") val messages: List<Message>?,
@@ -1346,9 +1346,13 @@ data class MessageResponse(
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 ) {
-    // Для совместимости с кодом, проверяющим apiStatus как Int
+    // Обработка api_status: old WoWonder API = String "200", v2 API = Int 200
     val apiStatus: Int
-        get() = apiStatusString?.toIntOrNull() ?: 400
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
 
     // Универсальный геттер для получения сообщений (из messages, message_data или message)
     val allMessages: List<Message>?

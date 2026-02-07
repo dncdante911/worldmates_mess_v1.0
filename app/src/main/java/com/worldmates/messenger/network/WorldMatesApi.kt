@@ -17,6 +17,9 @@ interface WorldMatesApi {
 
     @GET("/api/v2/endpoints/check_mobile_update.php")
     suspend fun checkMobileUpdateDirect(
+    @GET("?type=check_mobile_update")
+    @GET("/api/v2/endpoints/check_mobile_update.php")
+    suspend fun checkMobileUpdate(
         @Query("platform") platform: String = "android",
         @Query("channel") channel: String = "stable"
     ): AppUpdateResponse

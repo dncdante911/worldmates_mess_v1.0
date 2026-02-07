@@ -79,6 +79,37 @@ object AppUpdateManager {
                 changelog = updateInfo?.changelog.orEmpty(),
                 apkUrl = updateInfo?.apkUrl,
                 publishedAt = updateInfo?.publishedAt,
+            val response = runCatching {
+                RetrofitClient.apiService.checkMobileUpdate()
+            }.getOrElse {
+                Log.w(TAG, "Router update endpoint failed, fallback to direct endpoint: ${it.message}")
+                RetrofitClient.apiService.checkMobileUpdateDirect()
+            }
+
+            val info = response.data
+            val updateAvailable = info != null && isNewerVersion(info)
+
+            if (!response.success && info == null) {
+                val failed = _state.value.copy(
+                    error = response.message ?: "Update endpoint returned invalid payload",
+                    checkedAtMillis = System.currentTimeMillis()
+                )
+                _state.value = failed
+                return failed
+            }
+
+            val response = RetrofitClient.apiService.checkMobileUpdate()
+            val info = response.data
+            val updateAvailable = info != null && isNewerVersion(info)
+
+            val isSnoozed = System.currentTimeMillis() < snoozedUntilMillis
+            val newState = UpdateState(
+                hasUpdate = updateAvailable && !isSnoozed,
+                latestVersion = info?.latestVersion,
+                isMandatory = info?.isMandatory ?: false,
+                changelog = info?.changelog.orEmpty(),
+                apkUrl = info?.apkUrl,
+                publishedAt = info?.publishedAt,
                 error = null,
                 checkedAtMillis = System.currentTimeMillis()
             )
@@ -114,6 +145,14 @@ object AppUpdateManager {
         }
 
         return failed
+            val failed = _state.value.copy(
+                error = e.message,
+                checkedAtMillis = System.currentTimeMillis()
+            )
+            _state.value = failed
+            Log.e(TAG, "Update check failed", e)
+            failed
+        }
     }
 
     fun snoozePrompt(hours: Int = 12) {

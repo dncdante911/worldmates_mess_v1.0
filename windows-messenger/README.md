@@ -1,0 +1,77 @@
+# WorldMates Windows Messenger
+
+Desktop клиент под **Windows 10/11** (Electron + React + TypeScript), совместимый с backend API Android приложения.
+
+## Реализовано в текущем этапе
+
+- Экран входа + регистрация
+  - логин по username/password
+  - логин по phone/password
+  - регистрация пользователя
+- Чаты
+  - список чатов
+  - история сообщений
+  - отправка сообщений
+  - AES-256-GCM шифрование/дешифрование для текстовых сообщений (desktop-side)
+- Медиа
+  - отправка медиа в сообщении (image/video/docs)
+  - отображение ссылки на download медиа в ленте сообщения
+- Группы
+  - загрузка списка групп
+  - создание группы
+- Каналы
+  - загрузка списка каналов
+  - создание канала
+- Stories
+  - загрузка списка stories
+  - upload story (image/video)
+- Звонки (база)
+  - WebRTC desktop integration (offer flow)
+  - ICE servers из backend + fallback TURN/STUN
+- Packaging для Windows
+  - NSIS `.exe`
+  - `.msi`
+  - portable
+  - executable name: `WorldMatesMessenger.exe`
+
+## Стек
+
+- Electron
+- React 18 + TypeScript
+- Vite
+- socket.io-client
+- Web Crypto API (AES-256-GCM)
+- WebRTC
+- electron-builder
+
+## Запуск
+
+```bash
+cd windows-messenger
+npm install
+npm run dev
+```
+
+
+## Важно про `http://127.0.0.1:5173`
+
+Это **только локальный dev UI сервер Vite**.
+
+- Интерфейс открывается с `127.0.0.1:5173` в dev режиме.
+- API/Socket запросы идут на ваш внешний домен из конфигурации:
+  - `https://worldmates.club/api/v2/`
+  - `https://worldmates.club:449/`
+
+То есть локальный адрес не означает, что backend локальный.
+
+## Сборка installer
+
+```bash
+npm run dist:win
+```
+
+Артефакты в `windows-messenger/release/`.
+
+## Ограничения текущего этапа
+
+Это уже сильно расширенный desktop MVP, но не абсолютный 1:1 parity по всем экранам Android. Полный 1:1 требует дальнейшего переноса всех флоу (детальные звонки с answer/ice handling UI, весь media pipeline, полные настройки и security screens, backup UI, moderation scenarios и т.д.).

@@ -1,9 +1,13 @@
 {
-  "latest_version": "2.2.0",
-  "version_code": 4,
+  "latest_version": "2.3.0",
+  "version_code": 5,
   "apk_url": "https://worldmates.club/sources-app/worldmates-latest.apk",
   "changelog": [
-    "🎬 Новый продвинутый видеоплеер с жестами управления",
+    "🎭 Анімовані стікери! 200 вбудованих Lottie стікерів",
+    "✨ Підтримка TGS формату (Telegram stickers)",
+    "🎨 5 паків стікерів: Емоції, Тварини, Святкування, Жести, Серця",
+    "🔄 Інтеграція з CDN/Strapi для завантаження додаткових паків",
+    "🎬 Новий продвинутий видеоплеер с жестами управління",
     "🎮 Свайп влево/вправо для перемотки видео",
     "🔊 Свайп вверх/вниз для регулировки громкости и яркости",
     "⏩ Скорость воспроизведения (0.5x - 2x)",
@@ -16,8 +20,58 @@
     "⚙️ Исправлено сохранение настроек админки групп"
   ],
   "is_mandatory": false,
-  "published_at": "2026-02-08T12:00:00Z",
+  "published_at": "2026-02-08T15:00:00Z",
   "features": {
+    "animated_stickers": {
+      "enabled": true,
+      "supported_formats": [
+        "lottie",
+        "tgs",
+        "gif",
+        "webp",
+        "png"
+      ],
+      "embedded_packs": 5,
+      "embedded_stickers_count": 200,
+      "packs": [
+        {
+          "id": -1,
+          "name": "Емоції",
+          "sticker_count": 40
+        },
+        {
+          "id": -2,
+          "name": "Тварини",
+          "sticker_count": 40
+        },
+        {
+          "id": -3,
+          "name": "Святкування",
+          "sticker_count": 40
+        },
+        {
+          "id": -4,
+          "name": "Жести",
+          "sticker_count": 40
+        },
+        {
+          "id": -5,
+          "name": "Серця",
+          "sticker_count": 40
+        }
+      ],
+      "cdn_integration": {
+        "enabled": true,
+        "base_url": "https://cdn.worldmates.club",
+        "strapi_endpoint": "/api/gifs-packs?populate=*",
+        "cache_duration_hours": 1
+      },
+      "tgs_decoder": {
+        "enabled": true,
+        "gzip_decompression": true
+      },
+      "lottie_version": "6.4.0"
+    },
     "advanced_video_player": {
       "enabled": true,
       "supported_gestures": [
@@ -43,5 +97,17 @@
     }
   },
   "minimum_supported_version": "2.0.0",
-  "force_update_below": "1.9.0"
+  "force_update_below": "1.9.0",
+  "new_files": [
+    "ui/components/AnimatedStickerView.kt",
+    "data/stickers/EmbeddedStickerPacks.kt"
+  ],
+  "modified_files": [
+    "ui/components/StickerPicker.kt"
+  ],
+  "dependencies": {
+    "lottie": "6.4.0",
+    "lottie-compose": "6.4.0",
+    "coil-gif": "2.7.0"
+  }
 }

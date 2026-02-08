@@ -23,6 +23,7 @@ import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Sticker
 import com.worldmates.messenger.data.model.StickerPack
 import com.worldmates.messenger.data.repository.StickerRepository
+import com.worldmates.messenger.data.stickers.EmbeddedStickerPacks
 import kotlinx.coroutines.launch
 
 /**
@@ -53,7 +54,10 @@ fun StickerPicker(
     val scope = rememberCoroutineScope()
     val stickerRepository = remember { StickerRepository.getInstance(context) }
 
-    // Стандартний пак стікерів (приклад)
+    // ✨ Вбудовані анімовані паки (200 стікерів)
+    val embeddedPacks = remember { EmbeddedStickerPacks.getAllEmbeddedPacks() }
+
+    // Стандартний пак стікерів (emoji fallback)
     val standardPack = remember {
         StickerPack(
             id = 1,
@@ -64,15 +68,22 @@ fun StickerPicker(
         )
     }
 
-    // Завантажуємо кастомні паки з API
+    // Завантажуємо кастомні паки з API (Strapi/CDN)
     val customPacks by stickerRepository.stickerPacks.collectAsState()
+
+    // Об'єднуємо всі паки: вбудовані + стандартні + з API
     val activePacks = remember(customPacks) {
-        val packs = mutableListOf(standardPack)
+        val packs = mutableListOf<StickerPack>()
+        // Спочатку вбудовані анімовані паки
+        packs.addAll(embeddedPacks)
+        // Потім стандартні emoji
+        packs.add(standardPack)
+        // Потім паки з Strapi/CDN
         packs.addAll(customPacks.filter { it.isActive && it.stickers?.isNotEmpty() == true })
         packs
     }
 
-    var selectedPack by remember { mutableStateOf(standardPack) }
+    var selectedPack by remember { mutableStateOf(embeddedPacks.firstOrNull() ?: standardPack) }
 
     // Завантажуємо паки при відкритті
     LaunchedEffect(Unit) {
@@ -156,12 +167,24 @@ fun StickerPicker(
 
 /**
  * Елемент стікера в сітці
+ * Підтримує як анімовані (Lottie/TGS), так і статичні стікери
  */
 @Composable
 private fun StickerItem(
     sticker: Sticker,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val stickerUrl = when {
+        // Вбудований анімований стікер (lottie://)
+        sticker.fileUrl.startsWith("lottie://") -> {
+            EmbeddedStickerPacks.getEmbeddedStickerResourceUrl(context, sticker.fileUrl)
+                ?: sticker.emoji // Fallback на emoji якщо ресурс не знайдено
+        }
+        // Звичайний стікер з URL
+        else -> sticker.thumbnailUrl ?: sticker.fileUrl
+    }
+
     Card(
         modifier = Modifier
             .size(80.dp)
@@ -175,13 +198,37 @@ private fun StickerItem(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = sticker.thumbnailUrl ?: sticker.fileUrl,
-                contentDescription = sticker.emoji,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp)
-            )
+            when {
+                // Анімований стікер (Lottie, TGS, або GIF)
+                sticker.format in listOf("lottie", "tgs", "gif") ||
+                stickerUrl.endsWith(".json") ||
+                stickerUrl.endsWith(".tgs") ||
+                stickerUrl.endsWith(".gif") -> {
+                    AnimatedStickerView(
+                        url = stickerUrl,
+                        size = 64.dp,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+                // Emoji fallback (як текст)
+                stickerUrl == sticker.emoji -> {
+                    Text(
+                        text = sticker.emoji ?: "🎭",
+                        fontSize = 40.sp,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+                // Статичне зображення (WebP, PNG)
+                else -> {
+                    AsyncImage(
+                        model = stickerUrl,
+                        contentDescription = sticker.emoji,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(8.dp)
+                    )
+                }
+            }
         }
     }
 }

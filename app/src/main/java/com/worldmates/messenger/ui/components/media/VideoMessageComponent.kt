@@ -4,22 +4,25 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.worldmates.messenger.ui.media.FullscreenVideoPlayer
 import com.worldmates.messenger.ui.media.InlineVideoPlayer
+import com.worldmates.messenger.ui.video.AdvancedVideoPlayer
 
 /**
  * Компонент для отображения видео в сообщении
  *
  * Извлечено из MessagesScreen.kt (строка 2010-2031) для уменьшения размера файла
+ * Обновлено: использует новый AdvancedVideoPlayer с жестами управления
  *
  * @param videoUrl URL видеофайла
  * @param showTextAbove Есть ли текст над видео (для отступа)
+ * @param enablePiP Включить Picture-in-Picture (по умолчанию true)
  * @param modifier Дополнительный модификатор
  */
 @Composable
 fun VideoMessageComponent(
     videoUrl: String,
     showTextAbove: Boolean = false,
+    enablePiP: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showVideoPlayer by remember { mutableStateOf(false) }
@@ -32,16 +35,18 @@ fun VideoMessageComponent(
             .widthIn(max = 250.dp)
             .padding(top = if (showTextAbove) 8.dp else 0.dp),
         onFullscreenClick = {
-            // Відкриваємо повноекранний плеєр
+            // Відкриваємо новий продвинутий плеєр
             showVideoPlayer = true
         }
     )
 
-    // Повноекранний плеєр (модальний)
+    // Повноекранний продвинутий плеєр з жестами
     if (showVideoPlayer) {
-        FullscreenVideoPlayer(
+        AdvancedVideoPlayer(
             videoUrl = videoUrl,
-            onDismiss = { showVideoPlayer = false }
+            onDismiss = { showVideoPlayer = false },
+            enablePiP = enablePiP,
+            autoPlay = true
         )
     }
 }

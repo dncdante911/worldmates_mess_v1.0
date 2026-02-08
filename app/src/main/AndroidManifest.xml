@@ -114,6 +114,8 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:windowSoftInputMode="adjustResize"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:parentActivityName=".ui.chats.ChatsActivity" />
 
         <!-- Groups Activity -->

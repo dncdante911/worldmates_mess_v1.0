@@ -96,6 +96,7 @@ import com.worldmates.messenger.ui.messages.FormattedMessageText
 // 👆 Імпорт покращеного обробника дотиків
 import com.worldmates.messenger.ui.messages.MessageTouchWrapper
 import com.worldmates.messenger.ui.messages.MessageTouchConfig
+import com.worldmates.messenger.ui.components.media.VideoMessageComponent
 
 // 🎯 Enum для режимів введення (як в Telegram/Viber)
 enum class InputMode {
@@ -2019,27 +2020,15 @@ fun MessageBubbleComposable(
                             }
                         }
 
-                        // Video - інлайн плеєр
+                        // Video - інлайн плеєр з автоматичним дешифруванням
                         if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "video") {
-                            InlineVideoPlayer(
+                            VideoMessageComponent(
+                                message = message,
                                 videoUrl = effectiveMediaUrl,
+                                showTextAbove = shouldShowText,
+                                enablePiP = true,
                                 modifier = Modifier
-                                    .wrapContentWidth()
-                                    .widthIn(max = 250.dp)
-                                    .padding(top = if (shouldShowText) 8.dp else 0.dp),
-                                onFullscreenClick = {
-                                    // Відкриваємо повноекранний плеєр
-                                    showVideoPlayer = true
-                                }
                             )
-
-                            // Повноекранний плеєр (опціонально)
-                            if (showVideoPlayer) {
-                                FullscreenVideoPlayer(
-                                    videoUrl = effectiveMediaUrl,
-                                    onDismiss = { showVideoPlayer = false }
-                                )
-                            }
                         }
 
                         // 🎭 Animated Sticker message

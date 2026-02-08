@@ -607,6 +607,73 @@ async function registerCallsListeners(socket, io, ctx) {
         }
     });
 
+    // ==================== SCREEN SHARING ====================
+
+    /**
+     * Notify participants that screen sharing started/stopped
+     * Data: { roomName, userId, action: 'start'|'stop' }
+     */
+    socket.on('call:screen_share', (data) => {
+        try {
+            const { roomName, userId, action } = data;
+            console.log(`[CALLS] 🖥️ Screen share ${action} by user ${userId} in room ${roomName}`);
+
+            // Broadcast to room
+            socket.to(roomName).emit('call:screen_share', {
+                userId: userId,
+                action: action,
+                roomName: roomName
+            });
+        } catch (error) {
+            console.error('[CALLS] Error in call:screen_share:', error);
+        }
+    });
+
+    // ==================== CALL RECORDING NOTIFICATION ====================
+
+    /**
+     * Notify participants that recording started/stopped
+     * Data: { roomName, userId, userName, action: 'start'|'stop' }
+     */
+    socket.on('call:recording', (data) => {
+        try {
+            const { roomName, userId, userName, action } = data;
+            console.log(`[CALLS] 🔴 Recording ${action} by user ${userId} (${userName}) in room ${roomName}`);
+
+            // Broadcast to ALL in room (including sender for confirmation)
+            io.in(roomName).emit('call:recording', {
+                userId: userId,
+                userName: userName || 'Учасник',
+                action: action,
+                roomName: roomName,
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            console.error('[CALLS] Error in call:recording:', error);
+        }
+    });
+
+    // ==================== NOISE CANCELLATION STATUS ====================
+
+    /**
+     * Share noise cancellation status with participants
+     * Data: { roomName, userId, enabled: boolean }
+     */
+    socket.on('call:noise_cancellation', (data) => {
+        try {
+            const { roomName, userId, enabled } = data;
+            console.log(`[CALLS] 🔇 Noise cancellation ${enabled ? 'ON' : 'OFF'} for user ${userId} in room ${roomName}`);
+
+            socket.to(roomName).emit('call:noise_cancellation', {
+                userId: userId,
+                enabled: enabled,
+                roomName: roomName
+            });
+        } catch (error) {
+            console.error('[CALLS] Error in call:noise_cancellation:', error);
+        }
+    });
+
     console.log(`[CALLS] Call listeners registered for socket ${socket.id}`);
 }
 

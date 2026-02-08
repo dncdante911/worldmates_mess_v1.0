@@ -1315,18 +1315,6 @@ fun MessagesScreen(
                 )
             }
 
-            // 🎭 Sticker Picker (вбудовані + Strapi анімовані стікери)
-            if (showStickerPicker) {
-                com.worldmates.messenger.ui.components.StickerPicker(
-                    onStickerSelected = { sticker ->
-                        // Відправляємо стікер
-                        viewModel.sendSticker(sticker.id)
-                        showStickerPicker = false
-                    },
-                    onDismiss = { showStickerPicker = false }
-                )
-            }
-
             // 📤 Діалог пересилання повідомлень
             ForwardMessageDialog(
                 visible = showForwardDialog,
@@ -2357,7 +2345,8 @@ fun MessageInputBar(
             onContactClick = { onToggleContactPicker() },
             onStickerClick = { onToggleStickerPicker() },
             onGifClick = { onToggleGifPicker() },
-            onEmojiClick = { onToggleEmojiPicker() }
+            onEmojiClick = { onToggleEmojiPicker() },
+            onStrapiClick = { onToggleStrapiPicker() }
         )
         }
 

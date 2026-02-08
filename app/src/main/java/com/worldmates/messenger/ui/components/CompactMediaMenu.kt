@@ -42,6 +42,7 @@ fun CompactMediaMenu(
     onStickerClick: () -> Unit,
     onGifClick: () -> Unit,
     onEmojiClick: () -> Unit,
+    onStrapiClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -170,6 +171,15 @@ fun CompactMediaMenu(
                                 color = Color(0xFF3F51B5), // Indigo
                                 onClick = {
                                     onGifClick()
+                                    onDismiss()
+                                }
+                            ),
+                            MediaOption(
+                                icon = Icons.Default.Store,
+                                label = "Strapi CDN",
+                                color = Color(0xFF009688), // Teal
+                                onClick = {
+                                    onStrapiClick()
                                     onDismiss()
                                 }
                             )

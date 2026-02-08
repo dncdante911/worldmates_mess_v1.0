@@ -1770,26 +1770,6 @@ fun MessageBubbleComposable(
                             offsetX = (offsetX + dragAmount).coerceIn(0f, maxSwipeDistance)
                         }
                     )
-                }
-                .pointerInput(message.id) {
-                    detectTapGestures(
-                        onLongPress = {
-                            if (!isSelectionMode) {
-                                onLongPress()  // Активуємо режим вибору
-                                onToggleSelection(message.id)  // Вибираємо це повідомлення
-                            }
-                        },
-                        onDoubleTap = {
-                            if (!isSelectionMode) {
-                                onDoubleTap(message.id)  // Швидка реакція ❤️
-                            }
-                        },
-                        onTap = {
-                            if (isSelectionMode) {
-                                onToggleSelection(message.id)  // Перемикаємо вибір
-                            }
-                        }
-                    )
                 },
             horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start
         ) {
@@ -1824,7 +1804,26 @@ fun MessageBubbleComposable(
 
             if (isEmojiMessage) {
                 // 😊 ЕМОДЗІ БЕЗ БУЛЬБАШКИ - просто на прозорому фоні
-                Column {
+                Column(
+                    modifier = Modifier.combinedClickable(
+                        onClick = {
+                            if (isSelectionMode) {
+                                onToggleSelection(message.id)
+                            }
+                        },
+                        onLongClick = {
+                            if (!isSelectionMode) {
+                                onLongPress()
+                                onToggleSelection(message.id)
+                            }
+                        },
+                        onDoubleClick = {
+                            if (!isSelectionMode) {
+                                onDoubleTap(message.id)
+                            }
+                        }
+                    )
+                ) {
                     // Text message - буде рендеритися далі в коді
                     if (!message.decryptedText.isNullOrEmpty()) {
                         Text(
@@ -1862,8 +1861,22 @@ fun MessageBubbleComposable(
                             .widthIn(min = 60.dp, max = 260.dp)
                             .padding(horizontal = 12.dp)
                             .combinedClickable(
-                                onClick = { },
-                                onLongClick = onLongPress
+                                onClick = {
+                                    if (isSelectionMode) {
+                                        onToggleSelection(message.id)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!isSelectionMode) {
+                                        onLongPress()
+                                        onToggleSelection(message.id)
+                                    }
+                                },
+                                onDoubleClick = {
+                                    if (!isSelectionMode) {
+                                        onDoubleTap(message.id)
+                                    }
+                                }
                             )
                     ) {
                         // Получаем URL медиа из разных источников
@@ -1984,25 +1997,28 @@ fun MessageBubbleComposable(
                                     .padding(top = if (shouldShowText) 6.dp else 0.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color.Black.copy(alpha = 0.1f))
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (isSelectionMode) {
+                                                onToggleSelection(message.id)
+                                            } else {
+                                                // Звичайний клік - відкриваємо галерею
+                                                Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
+                                                onImageClick(effectiveMediaUrl)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (!isSelectionMode) {
+                                                onLongPress()
+                                                onToggleSelection(message.id)
+                                            }
+                                        }
+                                    )
                             ) {
                                 AsyncImage(
                                     model = effectiveMediaUrl,
                                     contentDescription = "Media",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .pointerInput(message.id) {
-                                            detectTapGestures(
-                                                onLongPress = {
-                                                    // Показуємо меню для медіа
-                                                    showMediaMenu = true
-                                                },
-                                                onTap = {
-                                                    // Звичайний клік - відкриваємо галерею
-                                                    Log.d("MessageBubble", "📸 Клік по зображенню: $effectiveMediaUrl")
-                                                    onImageClick(effectiveMediaUrl)
-                                                }
-                                            )
-                                        },
+                                    modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
                                     onError = {
                                         Log.e("MessageBubble", "Помилка завантаження зображення: $effectiveMediaUrl, error: ${it.result.throwable}")

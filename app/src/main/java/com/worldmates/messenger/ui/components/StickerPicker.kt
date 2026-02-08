@@ -201,11 +201,11 @@ private fun StickerItem(
             when {
                 // Анімований стікер (Lottie, TGS, або GIF)
                 sticker.format in listOf("lottie", "tgs", "gif") ||
-                stickerUrl.endsWith(".json") ||
-                stickerUrl.endsWith(".tgs") ||
-                stickerUrl.endsWith(".gif") -> {
+                stickerUrl?.endsWith(".json") == true ||
+                stickerUrl?.endsWith(".tgs") == true ||
+                stickerUrl?.endsWith(".gif") == true -> {
                     AnimatedStickerView(
-                        url = stickerUrl,
+                        url = stickerUrl ?: "",
                         size = 64.dp,
                         modifier = Modifier.padding(8.dp)
                     )

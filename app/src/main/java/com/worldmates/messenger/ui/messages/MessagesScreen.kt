@@ -299,13 +299,25 @@ fun MessagesScreen(
     // 📹 Відеоповідомлення - показати рекордер камери
     var showVideoMessageRecorder by remember { mutableStateOf(false) }
     val imageUrls = remember(messages) {
-        messages.mapNotNull { message ->
+        val urls = messages.mapNotNull { message ->
+            // Перевіряємо тип повідомлення
+            val isImageType = message.type == "image" || message.type == "photo"
+
             // Шукаємо URL медіа в різних полях
-            val mediaUrl = message.mediaUrl ?: message.decryptedMediaUrl ?: message.decryptedText
-            if (mediaUrl != null && isImageUrl(mediaUrl)) {
+            val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl ?: message.decryptedText
+
+            if (mediaUrl != null && !mediaUrl.isBlank() && (isImageType || isImageUrl(mediaUrl))) {
+                Log.d("MessagesScreen", "✅ Додано фото до галереї: $mediaUrl (тип: ${message.type})")
                 mediaUrl
-            } else null
+            } else {
+                if (!mediaUrl.isNullOrBlank()) {
+                    Log.d("MessagesScreen", "❌ Пропущено: $mediaUrl (тип: ${message.type}, isImage: ${isImageUrl(mediaUrl)})")
+                }
+                null
+            }
         }
+        Log.d("MessagesScreen", "📸 Всього фото в галереї: ${urls.size}")
+        urls
     }
 
     // 🎵 Мінімізований аудіо плеєр

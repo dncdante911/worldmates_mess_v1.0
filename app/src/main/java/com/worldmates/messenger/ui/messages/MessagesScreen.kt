@@ -2929,7 +2929,7 @@ fun MessageInputBar(
             )
         }
     }
-}
+
 @Composable
 fun VoiceRecordingBar(
     duration: Long,
@@ -3714,3 +3714,4 @@ fun ConnectionQualityBanner(quality: NetworkQualityMonitor.ConnectionQuality) {
         }
     }
 }
+

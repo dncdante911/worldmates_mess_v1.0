@@ -60,7 +60,7 @@ if (!$user_id) {
 }
 
 // Автоміграція: додаємо відсутні колонки при першому запуску
-$migration_flag = sys_get_temp_dir() . '/wm_group_migration_v2_done';
+$migration_flag = sys_get_temp_dir() . '/wm_group_migration_v3_done';
 if (!file_exists($migration_flag)) {
     try {
         // Wo_GroupChat: додаємо колонки для налаштувань
@@ -97,6 +97,24 @@ if (!file_exists($migration_flag)) {
         }
         if (!in_array('role', $gcu_columns)) {
             try { $db->exec("ALTER TABLE Wo_GroupChatUsers ADD COLUMN `role` VARCHAR(20) DEFAULT 'member'"); logGroupMessage("Auto-migration: added role to Wo_GroupChatUsers"); } catch (Exception $e) {}
+        }
+
+        // Wo_Messages: додаємо колонки для шифрування та reply
+        $msg_columns = [];
+        $result = $db->query("SHOW COLUMNS FROM Wo_Messages");
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $msg_columns[] = $row['Field'];
+        }
+        $msg_migrations = [
+            'reply_id' => "ALTER TABLE Wo_Messages ADD COLUMN `reply_id` INT(11) DEFAULT NULL",
+            'iv' => "ALTER TABLE Wo_Messages ADD COLUMN `iv` TEXT DEFAULT NULL",
+            'tag' => "ALTER TABLE Wo_Messages ADD COLUMN `tag` TEXT DEFAULT NULL",
+            'cipher_version' => "ALTER TABLE Wo_Messages ADD COLUMN `cipher_version` INT(11) DEFAULT NULL",
+        ];
+        foreach ($msg_migrations as $col => $sql) {
+            if (!in_array($col, $msg_columns)) {
+                try { $db->exec($sql); logGroupMessage("Auto-migration: added $col to Wo_Messages"); } catch (Exception $e) {}
+            }
         }
 
         // Створюємо додаткові таблиці якщо відсутні
@@ -1041,28 +1059,21 @@ function getGroupMessages($db, $user_id, $group_id, $data) {
     $where_clause = $before_message_id > 0 ? "AND m.id < ?" : "";
     $params = $before_message_id > 0 ? [$group_id, $before_message_id, $limit] : [$group_id, $limit];
 
-    // ВАЖЛИВО: Використовуємо snake_case для Android (@SerializedName)
-    // Додаємо iv, tag, cipher_version для розшифровки старих повідомлень
-    // COALESCE(m.to_id, 0) - щоб to_id ніколи не був null (Android Long non-nullable)
+    // ВАЖЛИВО: Використовуємо m.* щоб запит працював незалежно від того які колонки є
+    // Додаємо аліаси для Android (@SerializedName): sender_name, sender_avatar, reply_to_id
     $stmt = $db->prepare("
         SELECT
-            m.id,
-            m.from_id AS fromId,
-            m.to_id AS toId,
-            m.group_id AS groupId,
+            m.*,
+            COALESCE(m.to_id, 0) AS to_id,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
             u.avatar AS sender_avatar,
-            m.text,
-            m.media,
             m.mediaFileName AS media_file_name,
-            m.time,
-            m.seen,
-            m.message_reply_id AS replyToId
+            COALESCE(m.reply_id, NULL) AS reply_to_id
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.group_id = ? $where_clause
-        ORDER BY m.time DESC
+        ORDER BY m.id DESC
         LIMIT ?
     ");
     $stmt->execute($params);
@@ -1095,29 +1106,23 @@ function sendGroupMessage($db, $user_id, $group_id, $text, $data) {
     // Використовуємо 0 замість NULL якщо reply_id не вказаний, щоб уникнути помилки БД
     $reply_to = isset($data['reply_id']) && $data['reply_id'] > 0 ? $data['reply_id'] : (isset($data['message_reply_id']) && $data['message_reply_id'] > 0 ? $data['message_reply_id'] : 0);
 
+    // ВАЖЛИВО: to_id = 0 для групових повідомлень (Android Long non-nullable)
     $stmt = $db->prepare("
-        INSERT INTO Wo_Messages (from_id, group_id, text, time, seen, sent_push, reply_id)
-        VALUES (?, ?, ?, ?, 0, 0, ?)
+        INSERT INTO Wo_Messages (from_id, group_id, to_id, text, time, seen, sent_push, reply_id)
+        VALUES (?, ?, 0, ?, ?, 0, 0, ?)
     ");
     $stmt->execute([$user_id, $group_id, trim($text), $time, $reply_to]);
     $message_id = $db->lastInsertId();
 
-    // Отримуємо створене повідомлення з усіма необхідними полями
+    // Повертаємо створене повідомлення (m.* для надійності)
     $stmt = $db->prepare("
         SELECT
-            m.id,
-            m.from_id AS fromId,
-            m.to_id AS toId,
-            m.group_id AS groupId,
+            m.*,
+            COALESCE(m.to_id, 0) AS to_id,
             u.username,
             CONCAT(u.first_name, ' ', u.last_name) AS sender_name,
             u.avatar AS sender_avatar,
-            m.text,
-            m.media,
-            m.mediaFileName,
-            m.time,
-            m.seen,
-            m.message_reply_id AS replyToId
+            COALESCE(m.reply_id, NULL) AS reply_to_id
         FROM Wo_Messages m
         LEFT JOIN Wo_Users u ON u.user_id = m.from_id
         WHERE m.id = ?
@@ -1231,10 +1236,23 @@ function uploadGroupAvatar($db, $user_id, $group_id, $files) {
  * Проверка прав администратора/владельца
  */
 function isGroupAdminOrOwner($db, $group_id, $user_id) {
-    $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
-    $stmt->execute([$group_id, $user_id]);
-    $role = $stmt->fetchColumn();
-    return in_array($role, ['owner', 'admin']);
+    // Перевіряємо роль в Wo_GroupChatUsers
+    try {
+        $stmt = $db->prepare("SELECT role FROM Wo_GroupChatUsers WHERE group_id = ? AND user_id = ?");
+        $stmt->execute([$group_id, $user_id]);
+        $role = $stmt->fetchColumn();
+        if (in_array($role, ['owner', 'admin'])) {
+            return true;
+        }
+    } catch (Exception $e) {
+        // role column might not exist yet
+    }
+
+    // Фолбек: перевіряємо чи user_id є власником групи в Wo_GroupChat
+    $stmt = $db->prepare("SELECT user_id FROM Wo_GroupChat WHERE group_id = ?");
+    $stmt->execute([$group_id]);
+    $owner_id = $stmt->fetchColumn();
+    return (int)$owner_id === (int)$user_id;
 }
 
 /**

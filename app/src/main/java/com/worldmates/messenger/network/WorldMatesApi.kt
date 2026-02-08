@@ -1306,14 +1306,8 @@ interface WorldMatesApi {
 
     // ==================== APP UPDATES ====================
 
-    @GET("?type=check_mobile_update")
-    suspend fun checkMobileUpdate(
-        @Query("platform") platform: String = "android",
-        @Query("channel") channel: String = "stable"
-    ): AppUpdateResponse
-
     @GET("/api/v2/endpoints/check_mobile_update.php")
-    suspend fun checkMobileUpdateDirect(
+    suspend fun checkMobileUpdate(
         @Query("platform") platform: String = "android",
         @Query("channel") channel: String = "stable"
     ): AppUpdateResponse
@@ -1341,7 +1335,7 @@ interface WorldMatesApi {
 // ==================== RESPONSE MODELS ====================
 
 data class MessageResponse(
-    @SerializedName("api_status") val apiStatusString: String?, // "200" или "400"
+    @SerializedName("api_status") private val _apiStatus: Any?, // Может быть String "200" или Int 200
     @SerializedName("api_text") val apiText: String?, // "success" или "failed"
     @SerializedName("api_version") val apiVersion: String?,
     @SerializedName("messages") val messages: List<Message>?,
@@ -1352,9 +1346,13 @@ data class MessageResponse(
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 ) {
-    // Для совместимости с кодом, проверяющим apiStatus как Int
+    // Обработка api_status: old WoWonder API = String "200", v2 API = Int 200
     val apiStatus: Int
-        get() = apiStatusString?.toIntOrNull() ?: 400
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
 
     // Универсальный геттер для получения сообщений (из messages, message_data или message)
     val allMessages: List<Message>?
@@ -1538,10 +1536,17 @@ data class VerificationResponse(
  * Generic response for simple operations (pin/unpin messages, etc.)
  */
 data class GenericResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?,
     @SerializedName("message") val message: String? = null,
     @SerializedName("error_message") val errorMessage: String? = null
-)
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 /**
  * Response for search group messages
@@ -1620,10 +1625,17 @@ data class JoinRequestData(
  * ⚙️ Response for group settings
  */
 data class GroupSettingsResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?,
     @SerializedName("settings") val settings: GroupSettingsData? = null,
     @SerializedName("error_message") val errorMessage: String? = null
-)
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 data class GroupSettingsData(
     @SerializedName("group_id") val groupId: Long,

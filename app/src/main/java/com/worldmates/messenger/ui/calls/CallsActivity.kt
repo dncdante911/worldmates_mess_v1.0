@@ -79,6 +79,10 @@ class CallsActivity : ComponentActivity() {
     private var isGroup: Boolean = false
     private var groupId: Long = 0
 
+    // Screen sharing & recording managers
+    private var screenSharingManager: ScreenSharingManager? = null
+    private var callRecordingManager: CallRecordingManager? = null
+
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val audioGranted = permissions.getOrDefault(Manifest.permission.RECORD_AUDIO, false)
@@ -107,6 +111,9 @@ class CallsActivity : ComponentActivity() {
         ThemeManager.initialize(this)
 
         callsViewModel = ViewModelProvider(this).get(CallsViewModel::class.java)
+
+        // Initialize managers
+        callRecordingManager = CallRecordingManager(this)
 
         // 📥 Отримати параметри з Intent
         // Перевіряємо чи це вхідний дзвінок
@@ -266,6 +273,29 @@ class CallsActivity : ComponentActivity() {
         }
 
         requestPermissionLauncher.launch(permissions.toTypedArray())
+    }
+
+    /**
+     * Auto-enter PiP when user presses home (during active video call)
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (callType == "video" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(android.util.Rational(9, 16))
+                    .build()
+                enterPictureInPictureMode(params)
+            } catch (e: Exception) {
+                Log.e("CallsActivity", "Failed to enter PiP mode", e)
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        screenSharingManager?.release()
+        callRecordingManager?.release()
     }
 }
 
@@ -530,6 +560,9 @@ fun ActiveCallScreen(
     var showChatOverlay by remember { mutableStateOf(false) }
     var showQualitySelector by remember { mutableStateOf(false) }  // 📹 Селектор якості
     var callDuration by remember { mutableStateOf(0) }
+    var isScreenSharing by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
+    var noiseCancellation by remember { mutableStateOf(true) }
 
     // 📹 Поточна якість відео
     var currentVideoQuality by remember {
@@ -624,29 +657,36 @@ fun ActiveCallScreen(
                 .align(Alignment.TopCenter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = formatDuration(callDuration),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier
-                        .background(Color(0x99000000), RoundedCornerShape(8.dp))
-                        .padding(12.dp)
+            // Enhanced status bar
+            EnhancedConnectionStatus(
+                connectionState = connectionState,
+                callDuration = callDuration,
+                calleeName = calleeName,
+                isRecording = isRecording,
+                isScreenSharing = isScreenSharing
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Noise cancellation indicator
+            NoiseCancellationIndicator(isEnabled = noiseCancellation)
+
+            // Recording banner
+            if (isRecording) {
+                Spacer(modifier = Modifier.height(8.dp))
+                RecordingNotificationBanner(
+                    recordedBy = "Ви",
+                    onStop = { isRecording = false },
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
+            }
 
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Text(
-                    text = connectionState,
-                    fontSize = 12.sp,
-                    color = Color(0xFFbbbbbb),
-                    modifier = Modifier
-                        .background(Color(0x99000000), RoundedCornerShape(8.dp))
-                        .padding(8.dp)
+            // Screen sharing banner
+            if (isScreenSharing) {
+                Spacer(modifier = Modifier.height(8.dp))
+                ScreenSharingBanner(
+                    onStop = { isScreenSharing = false },
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
 
@@ -661,118 +701,35 @@ fun ActiveCallScreen(
             }
         }
 
-        // Контрольні кнопки в низу (2 ряди) - ЗАВЖДИ видимі
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .align(Alignment.BottomCenter)
-        ) {
-            // Ряд 1: Основні функції
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Перемикач аудіо (Mute)
-                CallControlButton(
-                    icon = if (audioEnabled) Icons.Default.Mic else Icons.Default.MicOff,
-                    label = "Мік",
-                    isActive = audioEnabled,
-                    backgroundColor = if (audioEnabled) Color(0xFF2196F3) else Color(0xFF555555)
-                ) {
-                    audioEnabled = !audioEnabled
-                    viewModel.toggleAudio(audioEnabled)
-                }
-
-                // Перемикач відео
-                CallControlButton(
-                    icon = if (videoEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                    label = "Відео",
-                    isActive = videoEnabled,
-                    backgroundColor = if (videoEnabled) Color(0xFF2196F3) else Color(0xFF555555)
-                ) {
-                    videoEnabled = !videoEnabled
-                    viewModel.toggleVideo(videoEnabled)
-                }
-
-                // Громка связь (Speaker)
-                CallControlButton(
-                    icon = if (speakerEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeDown,
-                    label = "Динамік",
-                    isActive = speakerEnabled,
-                    backgroundColor = if (speakerEnabled) Color(0xFF4CAF50) else Color(0xFF555555)
-                ) {
-                    speakerEnabled = !speakerEnabled
-                    viewModel.toggleSpeaker(speakerEnabled)
-                }
-
-                // Перемикач камери (front/back)
-                CallControlButton(
-                    icon = Icons.Default.Cameraswitch,
-                    label = "Поверн.",
-                    isActive = false,
-                    backgroundColor = Color(0xFF555555)
-                ) {
-                    viewModel.switchCamera()
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Ряд 2: Додаткові функції
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Reactions
-                CallControlButton(
-                    icon = Icons.Default.EmojiEmotions,
-                    label = "Реакції",
-                    isActive = false,
-                    backgroundColor = Color(0xFFFF9800)
-                ) {
-                    showReactions = !showReactions
-                }
-
-                // 📹 Video Quality Selector
-                CallControlButton(
-                    icon = Icons.Default.HighQuality,
-                    label = currentVideoQuality.label.take(6),  // "Низкое" / "Средне" / "Высоко" / "Full H"
-                    isActive = showQualitySelector,
-                    backgroundColor = if (showQualitySelector) Color(0xFF4CAF50) else Color(0xFF555555)
-                ) {
-                    showQualitySelector = !showQualitySelector
-                }
-
-                // Picture-in-Picture
-                CallControlButton(
-                    icon = Icons.Default.PictureInPicture,
-                    label = "PiP",
-                    isActive = false,
-                    backgroundColor = Color(0xFF00BCD4)
-                ) {
-                    // Minimize to PiP mode
-                    if (context is ComponentActivity) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            val params = PictureInPictureParams.Builder().build()
-                            context.enterPictureInPictureMode(params)
-                        }
-                    }
-                }
-
-                // Завершити дзвінок
-                CallControlButton(
-                    icon = Icons.Default.CallEnd,
-                    label = "Завершити",
-                    isActive = false,
-                    backgroundColor = Color(0xFFd32f2f)
-                ) {
-                    viewModel.endCall()
-                }
-            }
-        }
+        // Enhanced control bar with glassmorphism
+        EnhancedCallControlBar(
+            audioEnabled = audioEnabled,
+            videoEnabled = videoEnabled,
+            speakerEnabled = speakerEnabled,
+            isScreenSharing = isScreenSharing,
+            isRecording = isRecording,
+            noiseCancellation = noiseCancellation,
+            onToggleAudio = {
+                audioEnabled = !audioEnabled
+                viewModel.toggleAudio(audioEnabled)
+            },
+            onToggleVideo = {
+                videoEnabled = !videoEnabled
+                viewModel.toggleVideo(videoEnabled)
+            },
+            onToggleSpeaker = {
+                speakerEnabled = !speakerEnabled
+                viewModel.toggleSpeaker(speakerEnabled)
+            },
+            onSwitchCamera = { viewModel.switchCamera() },
+            onToggleScreenShare = { isScreenSharing = !isScreenSharing },
+            onToggleRecording = { isRecording = !isRecording },
+            onToggleNoiseCancellation = { noiseCancellation = !noiseCancellation },
+            onEndCall = { viewModel.endCall() },
+            onPiP = { enterPiPMode(context) },
+            onShowReactions = { showReactions = !showReactions },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         // 🎭 Reactions Overlay - рендериться ПОВЕРХ усього
         if (showReactions) {

@@ -9,6 +9,9 @@
 // | Copyright (c) 2016 WoWonder. All rights reserved.
 // +------------------------------------------------------------------------+
 $json_error_data     = array();
+if (file_exists(__DIR__ . '/core/windows_message_decryptor.php')) {
+    require_once __DIR__ . '/core/windows_message_decryptor.php';
+}
 $json_success_data   = array();
 $json_success_data_2 = array();
 $type                = Wo_Secure($_GET['type'], 0);
@@ -125,6 +128,16 @@ if ($type == 'get_user_messages') {
                     $message['stickers'] = '';
                 }
                 $message['time_text'] = Wo_Time_Elapsed_String($message['time']);
+
+                // Try desktop-side decrypt for encrypted payloads (ECB/GCM)
+                if (function_exists('wm_decrypt_message_auto')) {
+                    $decrypted_text = wm_decrypt_message_auto($message);
+                    if (!empty($decrypted_text)) {
+                        $message['decrypted_text'] = $decrypted_text;
+                        $message['text'] = $decrypted_text;
+                    }
+                }
+
                 $message_po  = 'left';
                 if ($message['from_id'] == $user_id) {
                     $message_po  = 'right';

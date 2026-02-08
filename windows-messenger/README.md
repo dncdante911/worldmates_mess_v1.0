@@ -78,6 +78,15 @@ npm run dev
 
 Это сделано для совместимости с вашим WoWonder windows API слоем.
 
+
+### Windows API decryptor (новый)
+
+Добавлен новый серверный дешифратор для windows API:
+- `api-server-files/api/windows_app/core/windows_message_decryptor.php`
+
+И он подключен в `get_user_messages.php`: при получении сообщений сервер пытается расшифровать
+`text` (AES-128-ECB legacy и AES-256-GCM), после чего отдает `decrypted_text` + обновленный `text`.
+
 ## Сборка installer
 
 ```bash
@@ -89,3 +98,8 @@ npm run dist:win
 ## Ограничения текущего этапа
 
 Это уже сильно расширенный desktop MVP, но не абсолютный 1:1 parity по всем экранам Android. Полный 1:1 требует дальнейшего переноса всех флоу (детальные звонки с answer/ice handling UI, весь media pipeline, полные настройки и security screens, backup UI, moderation scenarios и т.д.).
+
+
+## Merge conflicts
+
+Смотрите `windows-messenger/docs/MERGE_RESOLVE_GUIDE.md` для правил выбора Current/Incoming/Both без поломки auth/network слоя.

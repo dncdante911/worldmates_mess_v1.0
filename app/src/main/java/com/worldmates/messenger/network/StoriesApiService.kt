@@ -167,6 +167,57 @@ interface StoriesApiService {
         @Query("access_token") accessToken: String,
         @Field("comment_id") commentId: Long
     ): DeleteStoryCommentResponse
+
+    // ==================== CHANNEL STORIES ====================
+
+    /**
+     * Створити story каналу (тільки для адмінів)
+     */
+    @Multipart
+    @POST("/api/v2/channel_stories.php")
+    suspend fun createChannelStory(
+        @Query("access_token") accessToken: String,
+        @Query("type") type: String = "create",
+        @Part("channel_id") channelId: RequestBody,
+        @Part file: MultipartBody.Part,
+        @Part("file_type") fileType: RequestBody,
+        @Part("story_title") storyTitle: RequestBody? = null,
+        @Part("story_description") storyDescription: RequestBody? = null
+    ): CreateStoryResponse
+
+    /**
+     * Отримати stories каналу
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/channel_stories.php")
+    suspend fun getChannelStories(
+        @Query("access_token") accessToken: String,
+        @Query("type") type: String = "get_channel",
+        @Field("channel_id") channelId: Long,
+        @Field("limit") limit: Int = 20
+    ): GetStoriesResponse
+
+    /**
+     * Отримати stories всіх підписаних каналів
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/channel_stories.php")
+    suspend fun getSubscribedChannelStories(
+        @Query("access_token") accessToken: String,
+        @Query("type") type: String = "get_subscribed",
+        @Field("limit") limit: Int = 30
+    ): GetStoriesResponse
+
+    /**
+     * Видалити story каналу
+     */
+    @FormUrlEncoded
+    @POST("/api/v2/channel_stories.php")
+    suspend fun deleteChannelStory(
+        @Query("access_token") accessToken: String,
+        @Query("type") type: String = "delete",
+        @Field("story_id") storyId: Long
+    ): DeleteStoryResponse
 }
 
 /**

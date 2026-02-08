@@ -94,6 +94,19 @@ async function getJson<T>(url: string): Promise<T> {
   return parseTextAsJson<T>(response.status, text, response.ok);
 }
 
+
+function toSafeText(value: unknown, fallback = ''): string {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'object') {
+    const candidate = (value as Record<string, unknown>).text;
+    if (typeof candidate === 'string') return candidate;
+    return fallback;
+  }
+  return fallback;
+}
+
 function normalizeAuth(payload: any): AuthResponse {
   return {
     api_status: String(payload.api_status ?? ''),
@@ -114,7 +127,7 @@ function normalizeChats(payload: any): ChatListResponse {
         user_id: Number(user.user_id ?? user.id),
         name: user.name ?? [user.first_name, user.last_name].filter(Boolean).join(' ') ?? user.username ?? 'Unknown',
         avatar: user.avatar,
-        last_message: user.last_message ?? '',
+        last_message: toSafeText(user.last_message, ''),
         time: user.lastseen ?? user.lastseen_unix_time ?? ''
       }))
     : [];
@@ -128,7 +141,7 @@ function normalizeMessages(payload: any): MessagesResponse {
       id: Number(m.id),
       from_id: Number(m.from_id),
       to_id: Number(m.to_id),
-      text: m.text ?? m.or_text ?? '',
+      text: toSafeText(m.decrypted_text, toSafeText(m.text, toSafeText(m.or_text, ''))),
       time_text: m.time_text,
       media: m.media
     }));
@@ -136,6 +149,36 @@ function normalizeMessages(payload: any): MessagesResponse {
   }
 
   return { api_status: String(payload.api_status ?? '200'), messages: [] };
+}
+
+
+function normalizeGroups(payload: any): GenericListResponse<GroupItem> {
+  const groupsRaw = payload.groups ?? payload.data ?? [];
+  const groups: GroupItem[] = Array.isArray(groupsRaw)
+    ? groupsRaw.map((group: any) => ({
+        id: Number(group.id ?? group.group_id),
+        group_name: toSafeText(group.group_name, toSafeText(group.name, 'Group')),
+        avatar: group.avatar,
+        members_count: Number(group.members_count ?? 0)
+      }))
+    : [];
+
+  return { api_status: String(payload.api_status ?? '200'), data: groups };
+}
+
+function normalizeChannels(payload: any): GenericListResponse<ChannelItem> {
+  const channelsRaw = payload.channels ?? payload.data ?? [];
+  const channels: ChannelItem[] = Array.isArray(channelsRaw)
+    ? channelsRaw.map((channel: any) => ({
+        id: Number(channel.id ?? channel.channel_id),
+        name: toSafeText(channel.name, 'Channel'),
+        username: channel.username,
+        avatar_url: channel.avatar_url ?? channel.avatar,
+        subscribers_count: Number(channel.subscribers_count ?? 0)
+      }))
+    : [];
+
+  return { api_status: String(payload.api_status ?? '200'), data: channels };
 }
 
 async function loginViaWindowsApi(username: string, password: string): Promise<AuthResponse> {
@@ -312,11 +355,12 @@ export async function sendMessageWithMedia(
   await postMultipart(windowsUrl(ENDPOINTS.windowsInsertMessage), fallbackForm);
 }
 
-export function loadGroups(token: string): Promise<GenericListResponse<GroupItem>> {
-  return postForm<GenericListResponse<GroupItem>>(
+export async function loadGroups(token: string): Promise<GenericListResponse<GroupItem>> {
+  const response = await postForm<any>(
     absoluteUrl(ENDPOINTS.groups, token),
     createFormBody({ type: 'get_list', limit: 50, offset: 0 })
   );
+  return normalizeGroups(response);
 }
 
 export function createGroup(token: string, groupName: string): Promise<unknown> {
@@ -326,11 +370,12 @@ export function createGroup(token: string, groupName: string): Promise<unknown> 
   );
 }
 
-export function loadChannels(token: string): Promise<GenericListResponse<ChannelItem>> {
-  return postForm<GenericListResponse<ChannelItem>>(
+export async function loadChannels(token: string): Promise<GenericListResponse<ChannelItem>> {
+  const response = await postForm<any>(
     absoluteUrl(ENDPOINTS.channels, token),
     createFormBody({ type: 'get_list', limit: 50, offset: 0 })
   );
+  return normalizeChannels(response);
 }
 
 export function createChannel(token: string, channelName: string, description: string): Promise<unknown> {

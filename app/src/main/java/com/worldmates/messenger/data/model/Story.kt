@@ -10,12 +10,14 @@ import com.google.gson.annotations.SerializedName
 data class Story(
     @SerializedName("id") val id: Long,
     @SerializedName("user_id") val userId: Long,
+    @SerializedName("page_id") val pageId: Long? = null, // ID канала (null = личная story)
     @SerializedName("title") val title: String? = null,
     @SerializedName("description") val description: String? = null,
     @SerializedName("posted") val posted: Long, // Unix timestamp
     @SerializedName("expire") val expire: Long, // Unix timestamp
     @SerializedName("thumbnail") val thumbnail: String,
     @SerializedName("user_data") val userData: StoryUser? = null,
+    @SerializedName("channel_data") val channelData: ChannelStoryData? = null,
     @SerializedName("thumb") val thumb: StoryMedia? = null,
     @SerializedName("images") val images: List<StoryMedia>? = null,
     @SerializedName("videos") val videos: List<StoryMedia>? = null,
@@ -87,7 +89,23 @@ data class Story(
      */
     val time: Long
         get() = posted
+
+    /**
+     * Чи є це story каналу
+     */
+    val isChannelStory: Boolean
+        get() = pageId != null && pageId > 0
 }
+
+/**
+ * Дані каналу для channel story
+ */
+data class ChannelStoryData(
+    @SerializedName("group_id") val groupId: Long,
+    @SerializedName("group_name") val groupName: String,
+    @SerializedName("avatar") val avatar: String? = null,
+    @SerializedName("owner_id") val ownerId: Long = 0
+)
 
 /**
  * Медіа файл story (фото або відео)

@@ -188,6 +188,13 @@
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.chats.ChatsActivity" />
 
+        <!-- Call History Activity -->
+        <activity
+            android:name=".ui.calls.CallHistoryActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar" />
+
         <!-- Calls Activity -->
         <activity
             android:name=".ui.calls.CallsActivity"

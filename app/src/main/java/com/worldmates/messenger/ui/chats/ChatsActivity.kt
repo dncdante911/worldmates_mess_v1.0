@@ -794,7 +794,9 @@ fun SettingsDrawerContent(
                     title = "Дзвінки",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Дзвінки", Toast.LENGTH_SHORT).show()
+                        context.startActivity(
+                            android.content.Intent(context, com.worldmates.messenger.ui.calls.CallHistoryActivity::class.java)
+                        )
                     }
                 )
             }

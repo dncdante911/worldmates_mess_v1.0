@@ -1311,6 +1311,18 @@ fun MessagesScreen(
                 )
             }
 
+            // 🎭 Sticker Picker (вбудовані + Strapi анімовані стікери)
+            if (showStickerPicker) {
+                com.worldmates.messenger.ui.components.StickerPicker(
+                    onStickerSelected = { sticker ->
+                        // Відправляємо стікер
+                        viewModel.sendSticker(sticker.id)
+                        showStickerPicker = false
+                    },
+                    onDismiss = { showStickerPicker = false }
+                )
+            }
+
             // 📤 Діалог пересилання повідомлень
             ForwardMessageDialog(
                 visible = showForwardDialog,
@@ -2028,6 +2040,18 @@ fun MessageBubbleComposable(
                                     onDismiss = { showVideoPlayer = false }
                                 )
                             }
+                        }
+
+                        // 🎭 Animated Sticker message
+                        if (!effectiveMediaUrl.isNullOrEmpty() && detectedMediaType == "sticker") {
+                            Log.d("MessageBubble", "🎭 Відображаю стікер: $effectiveMediaUrl")
+                            AnimatedStickerView(
+                                url = effectiveMediaUrl,
+                                size = 150.dp,
+                                autoPlay = true,
+                                loop = true,
+                                modifier = Modifier.padding(top = if (shouldShowText) 8.dp else 0.dp)
+                            )
                         }
 
                         // Voice/Audio message player
@@ -3095,6 +3119,11 @@ private fun detectMediaType(url: String?, messageType: String?): String? {
 
     // Потім перевіряємо за розширенням
     val typeByExtension = when {
+        // Анімовані стікери
+        lowerUrl.endsWith(".json") || lowerUrl.endsWith(".lottie") ||
+                lowerUrl.endsWith(".tgs") || lowerUrl.startsWith("lottie://") ||
+                lowerUrl.contains("/stickers/") -> "sticker"
+
         // Изображения
         lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
                 lowerUrl.endsWith(".png") || lowerUrl.endsWith(".gif") ||

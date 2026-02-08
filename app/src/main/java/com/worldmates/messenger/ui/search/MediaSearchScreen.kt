@@ -1,7 +1,9 @@
 package com.worldmates.messenger.ui.search
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,15 +30,17 @@ import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.utils.EncryptedMediaHandler
 
 /**
- * 🔍 MEDIA SEARCH SCREEN
+ * 🔍 MEDIA SEARCH SCREEN (ENHANCED)
  *
- * Экран поиска медиа-файлов в чатах
+ * Улучшенный экран поиска медиа-файлов:
  * - Поддержка личных и групповых чатов
- * - Фильтры по типу медиа (фото, видео, аудио, файлы)
- * - Grid layout для фото/видео
- * - List layout для аудио/файлов
+ * - Фильтры по типу медиа
+ * - Сортировка (дата, размер)
+ * - Массовый выбор и экспорт
+ * - Миниатюры видео
+ * - Кэширование результатов
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MediaSearchScreen(
     chatId: Long? = null,
@@ -50,6 +54,9 @@ fun MediaSearchScreen(
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val selectedSort by viewModel.selectedSort.collectAsState()
+    val selectionMode by viewModel.selectionMode.collectAsState()
+    val selectedMessages by viewModel.selectedMessages.collectAsState()
 
     LaunchedEffect(chatId, groupId) {
         viewModel.setChatId(chatId, groupId)
@@ -60,18 +67,68 @@ fun MediaSearchScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Поиск медиа",
+                        text = if (selectionMode) {
+                            "Выбрано: ${selectedMessages.size}"
+                        } else {
+                            "Поиск медиа"
+                        },
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.ArrowBack, "Назад")
+                    IconButton(onClick = {
+                        if (selectionMode) {
+                            viewModel.exitSelectionMode()
+                        } else {
+                            onDismiss()
+                        }
+                    }) {
+                        Icon(
+                            if (selectionMode) Icons.Default.Close else Icons.Default.ArrowBack,
+                            if (selectionMode) "Отмена" else "Назад"
+                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.clearSearch() }) {
-                        Icon(Icons.Default.Clear, "Очистить")
+                    if (selectionMode) {
+                        // Кнопка скачать выбранные
+                        IconButton(onClick = { viewModel.exportSelectedMedia(context) }) {
+                            Icon(Icons.Default.Download, "Скачать выбранные")
+                        }
+                        // Кнопка выбрать все
+                        IconButton(onClick = { viewModel.selectAll() }) {
+                            Icon(Icons.Default.SelectAll, "Выбрать все")
+                        }
+                    } else {
+                        // Меню сортировки
+                        var showSortMenu by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(Icons.Default.Sort, "Сортировка")
+                        }
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false }
+                        ) {
+                            SortOption.values().forEach { sortOption ->
+                                DropdownMenuItem(
+                                    text = { Text(sortOption.displayName) },
+                                    onClick = {
+                                        viewModel.setSortOption(sortOption)
+                                        showSortMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (selectedSort == sortOption) {
+                                            Icon(Icons.Default.Check, null)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        // Кнопка очистить
+                        IconButton(onClick = { viewModel.clearSearch() }) {
+                            Icon(Icons.Default.Clear, "Очистить")
+                        }
                     }
                 }
             )
@@ -140,7 +197,12 @@ fun MediaSearchScreen(
                     MediaResultsGrid(
                         messages = searchResults,
                         filter = selectedFilter,
-                        onMediaClick = onMediaClick
+                        onMediaClick = onMediaClick,
+                        selectionMode = selectionMode,
+                        selectedMessages = selectedMessages,
+                        onToggleSelection = { messageId ->
+                            viewModel.toggleSelection(messageId)
+                        }
                     )
                 }
             }
@@ -217,7 +279,10 @@ private fun MediaFilterChips(
 private fun MediaResultsGrid(
     messages: List<Message>,
     filter: MediaFilter,
-    onMediaClick: (Message) -> Unit
+    onMediaClick: (Message) -> Unit,
+    selectionMode: Boolean = false,
+    selectedMessages: Set<Long> = emptySet(),
+    onToggleSelection: (Long) -> Unit = {}
 ) {
     when (filter) {
         MediaFilter.ALL, MediaFilter.PHOTO, MediaFilter.VIDEO -> {
@@ -231,7 +296,20 @@ private fun MediaResultsGrid(
                 items(messages) { message ->
                     MediaGridItem(
                         message = message,
-                        onClick = { onMediaClick(message) }
+                        onClick = {
+                            if (selectionMode) {
+                                onToggleSelection(message.id)
+                            } else {
+                                onMediaClick(message)
+                            }
+                        },
+                        onLongClick = {
+                            if (!selectionMode) {
+                                onToggleSelection(message.id)
+                            }
+                        },
+                        isSelected = selectedMessages.contains(message.id),
+                        selectionMode = selectionMode
                     )
                 }
             }
@@ -246,7 +324,20 @@ private fun MediaResultsGrid(
                 items(messages) { message ->
                     MediaListItem(
                         message = message,
-                        onClick = { onMediaClick(message) }
+                        onClick = {
+                            if (selectionMode) {
+                                onToggleSelection(message.id)
+                            } else {
+                                onMediaClick(message)
+                            }
+                        },
+                        onLongClick = {
+                            if (!selectionMode) {
+                                onToggleSelection(message.id)
+                            }
+                        },
+                        isSelected = selectedMessages.contains(message.id),
+                        selectionMode = selectionMode
                     )
                 }
             }
@@ -255,12 +346,15 @@ private fun MediaResultsGrid(
 }
 
 /**
- * 📸 Media Grid Item (Photo/Video)
+ * 📸 Media Grid Item (Photo/Video) with Selection Support
  */
 @Composable
 private fun MediaGridItem(
     message: Message,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
+    isSelected: Boolean = false,
+    selectionMode: Boolean = false
 ) {
     val context = LocalContext.current
     val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
@@ -270,17 +364,67 @@ private fun MediaGridItem(
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
     ) {
+        // Изображение или миниатюра видео
         AsyncImage(
-            model = EncryptedMediaHandler.getFullMediaUrl(mediaUrl, message.type),
+            model = if (message.type == "video") {
+                // Для видео используем миниатюру (если есть)
+                message.mediaUrl?.let { url ->
+                    // Добавляем параметр для генерации thumbnail
+                    val thumbnailUrl = url.replace("/upload/", "/upload/t_thumbnail/")
+                    EncryptedMediaHandler.getFullMediaUrl(thumbnailUrl, message.type)
+                }
+            } else {
+                EncryptedMediaHandler.getFullMediaUrl(mediaUrl, message.type)
+            },
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
 
+        // Затемнение при выборе
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+            )
+        }
+
+        // Checkbox для выбора
+        if (selectionMode || isSelected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            Color.White.copy(alpha = 0.7f)
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Выбрано",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
         // Индикатор видео
-        if (message.type == "video") {
+        if (message.type == "video" && !selectionMode) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -318,25 +462,43 @@ private fun MediaGridItem(
 }
 
 /**
- * 📄 Media List Item (Audio/File)
+ * 📄 Media List Item (Audio/File) with Selection Support
  */
 @Composable
 private fun MediaListItem(
     message: Message,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
+    isSelected: Boolean = false,
+    selectionMode: Boolean = false
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        color = if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        }
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Checkbox для выбора
+            if (selectionMode || isSelected) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = null  // Handled by onClick
+                )
+            }
+
             // Иконка типа файла
             Icon(
                 imageVector = when (message.type) {
@@ -375,12 +537,14 @@ private fun MediaListItem(
                 }
             }
 
-            // Кнопка загрузки
-            Icon(
-                imageVector = Icons.Default.Download,
-                contentDescription = "Скачать",
-                tint = MaterialTheme.colorScheme.primary
-            )
+            // Кнопка загрузки (только если не в режиме выбора)
+            if (!selectionMode) {
+                Icon(
+                    imageVector = Icons.Default.Download,
+                    contentDescription = "Скачать",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
@@ -398,6 +562,20 @@ enum class MediaFilter(
     VIDEO("Видео", Icons.Default.VideoLibrary, listOf("video")),
     AUDIO("Аудио", Icons.Default.AudioFile, listOf("audio", "voice")),
     FILE("Файлы", Icons.Default.InsertDriveFile, listOf("file"))
+}
+
+/**
+ * 📊 Sort Option Enum
+ */
+enum class SortOption(
+    val displayName: String
+) {
+    DATE_DESC("Сначала новые"),
+    DATE_ASC("Сначала старые"),
+    SIZE_DESC("Сначала большие"),
+    SIZE_ASC("Сначала маленькие"),
+    NAME_ASC("По имени (А-Я)"),
+    NAME_DESC("По имени (Я-А)")
 }
 
 /**

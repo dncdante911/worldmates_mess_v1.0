@@ -96,6 +96,7 @@ import com.worldmates.messenger.ui.messages.FormattedMessageText
 // 👆 Імпорт покращеного обробника дотиків
 import com.worldmates.messenger.ui.messages.MessageTouchWrapper
 import com.worldmates.messenger.ui.messages.MessageTouchConfig
+import com.worldmates.messenger.ui.components.CompactMediaMenu
 import com.worldmates.messenger.ui.components.media.VideoMessageComponent
 
 // 🎯 Enum для режимів введення (як в Telegram/Viber)
@@ -1207,7 +1208,7 @@ fun MessagesScreen(
                     },
                     onShowMediaOptions = { showMediaOptions = !showMediaOptions },
                     onPickImage = { imagePickerLauncher.launch("image/*") },
-                    onPickVideo = { showVideoMessageRecorder = true },  // ✅ Показати камеру замість галереї
+                    onPickVideo = { videoPickerLauncher.launch("video/*") },  // Галерея відео
                     onPickAudio = { audioPickerLauncher.launch("audio/*") },
                     onPickFile = { filePickerLauncher.launch("*/*") },
                     showMediaOptions = showMediaOptions,
@@ -2337,144 +2338,23 @@ fun MessageInputBar(
             .background(colorScheme.surface)
             .navigationBarsPadding()
     ) {
-        // Єдине спливаюче меню для всіх опцій (як в Telegram)
-        if (showMediaOptions) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colorScheme.surfaceVariant)
-                    .padding(8.dp)
-            ) {
-                // Медіа опції
-                Text(
-                    text = "Вкласти",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MediaOptionButton(
-                        icon = Icons.Default.Image,
-                        label = "Фото",
-                        onClick = { onPickImage() }
-                    )
-                    MediaOptionButton(
-                        icon = Icons.Default.VideoLibrary,
-                        label = "Відео",
-                        onClick = { onPickVideo() }
-                    )
-                    MediaOptionButton(
-                        icon = Icons.Default.AudioFile,
-                        label = "Аудіо",
-                        onClick = { onPickAudio() }
-                    )
-                    MediaOptionButton(
-                        icon = Icons.Default.InsertDriveFile,
-                        label = "Файл",
-                        onClick = { onPickFile() }
-                    )
-                }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // Емоджі та Стікери
-                Text(
-                    text = "Додати",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MediaOptionButton(
-                        icon = Icons.Default.EmojiEmotions,
-                        label = "Емоджі",
-                        onClick = {
-                            onShowMediaOptions() // Закриваємо меню
-                            scope.launch {
-                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
-                                if (!showEmojiPicker) {
-                                    onToggleEmojiPicker() // Відкриваємо emoji picker
-                                }
-                            }
-                        }
-                    )
-                    MediaOptionButton(
-                        icon = Icons.Default.StickyNote2,
-                        label = "Стікери",
-                        onClick = {
-                            onShowMediaOptions() // Закриваємо меню
-                            scope.launch {
-                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
-                                if (!showStickerPicker) {
-                                    onToggleStickerPicker() // Відкриваємо sticker picker
-                                }
-                            }
-                        }
-                    )
-                    MediaOptionButton(
-                        icon = Icons.Default.Gif,
-                        label = "GIF",
-                        onClick = {
-                            onShowMediaOptions() // Закриваємо меню
-                            scope.launch {
-                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
-                                if (!showGifPicker) {
-                                    onToggleGifPicker() // Відкриваємо GIF picker
-                                }
-                            }
-                        }
-                    )
-                    MediaOptionButton(
-                        icon = Icons.Default.LocationOn,
-                        label = "Локація",
-                        onClick = {
-                            onShowMediaOptions() // Закриваємо меню
-                            scope.launch {
-                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
-                                if (!showLocationPicker) {
-                                    onToggleLocationPicker() // Відкриваємо Location picker
-                                }
-                            }
-                        }
-                    )
-                    MediaOptionButton(
-                        icon = Icons.Default.People,
-                        label = "Контакт",
-                        onClick = {
-                            onShowMediaOptions() // Закриваємо меню
-                            scope.launch {
-                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
-                                if (!showContactPicker) {
-                                    onToggleContactPicker() // Відкриваємо Contact picker
-                                }
-                            }
-                        }
-                    )
-                    MediaOptionButton(
-                        icon = Icons.Default.InsertEmoticon,
-                        label = "Strapi",
-                        onClick = {
-                            onShowMediaOptions() // Закриваємо меню
-                            scope.launch {
-                                kotlinx.coroutines.delay(150) // Затримка 150мс для гарної анімації
-                                if (!showStrapiPicker) {
-                                    onToggleStrapiPicker() // Відкриваємо Strapi picker
-                                }
-                            }
-                        }
-                    )
-                }
-            }
+        // 📎 Компактне меню медіа (BottomSheet)
+        CompactMediaMenu(
+            visible = showMediaOptions,
+            onDismiss = { showMediaOptions = false },
+            onPhotoClick = { imagePickerLauncher.launch("image/*") },
+            onCameraClick = { showImageMessagePicker = true },
+            onVideoClick = { videoPickerLauncher.launch("video/*") },
+            onVideoCameraClick = { showVideoMessageRecorder = true },
+            onAudioClick = { audioPickerLauncher.launch("audio/*") },
+            onFileClick = { filePickerLauncher.launch("*/*") },
+            onLocationClick = { onToggleLocationPicker() },
+            onContactClick = { onToggleContactPicker() },
+            onStickerClick = { onToggleStickerPicker() },
+            onGifClick = { onToggleGifPicker() },
+            onEmojiClick = { onToggleEmojiPicker() }
+        )
         }
 
         // Voice Recording UI

@@ -1211,6 +1211,8 @@ fun MessagesScreen(
                     onPickVideo = { videoPickerLauncher.launch("video/*") },  // Галерея відео
                     onPickAudio = { audioPickerLauncher.launch("audio/*") },
                     onPickFile = { filePickerLauncher.launch("*/*") },
+                    onCameraClick = { imagePickerLauncher.launch("image/*") },  // Поки що також галерея
+                    onVideoCameraClick = { showVideoMessageRecorder = true },
                     showMediaOptions = showMediaOptions,
                     showEmojiPicker = showEmojiPicker,
                     onToggleEmojiPicker = { showEmojiPicker = !showEmojiPicker },
@@ -2307,6 +2309,8 @@ fun MessageInputBar(
     onPickVideo: () -> Unit,
     onPickAudio: () -> Unit,
     onPickFile: () -> Unit,
+    onCameraClick: () -> Unit,
+    onVideoCameraClick: () -> Unit,
     showMediaOptions: Boolean,
     showEmojiPicker: Boolean,
     onToggleEmojiPicker: () -> Unit,
@@ -2342,13 +2346,13 @@ fun MessageInputBar(
         // 📎 Компактне меню медіа (BottomSheet)
         CompactMediaMenu(
             visible = showMediaOptions,
-            onDismiss = { showMediaOptions = false },
-            onPhotoClick = { imagePickerLauncher.launch("image/*") },
-            onCameraClick = { showImageMessagePicker = true },
-            onVideoClick = { videoPickerLauncher.launch("video/*") },
-            onVideoCameraClick = { showVideoMessageRecorder = true },
-            onAudioClick = { audioPickerLauncher.launch("audio/*") },
-            onFileClick = { filePickerLauncher.launch("*/*") },
+            onDismiss = { onShowMediaOptions() },
+            onPhotoClick = { onPickImage() },
+            onCameraClick = { onCameraClick() },
+            onVideoClick = { onPickVideo() },
+            onVideoCameraClick = { onVideoCameraClick() },
+            onAudioClick = { onPickAudio() },
+            onFileClick = { onPickFile() },
             onLocationClick = { onToggleLocationPicker() },
             onContactClick = { onToggleContactPicker() },
             onStickerClick = { onToggleStickerPicker() },

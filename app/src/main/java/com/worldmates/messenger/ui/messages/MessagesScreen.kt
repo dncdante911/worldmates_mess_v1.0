@@ -838,7 +838,7 @@ fun MessagesScreen(
             // 🔍 Media Search Screen
             if (showMediaSearch) {
                 MediaSearchScreen(
-                    chatId = if (!isGroup) recipientId else null,
+                    chatId = if (!isGroup) viewModel.getRecipientId() else null,
                     groupId = if (isGroup) viewModel.getGroupId() else null,
                     onDismiss = { showMediaSearch = false },
                     onMediaClick = { message ->
@@ -846,17 +846,27 @@ fun MessagesScreen(
                         when (message.type) {
                             "image" -> {
                                 val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
-                                if (mediaUrl != null) {
-                                    showFullScreenImage = true
-                                    fullScreenImageUrl = mediaUrl
+                                if (mediaUrl != null && imageUrls.contains(mediaUrl)) {
+                                    // Find image in existing gallery and show it
+                                    selectedImageIndex = imageUrls.indexOf(mediaUrl).coerceAtLeast(0)
+                                    showImageGallery = true
+                                    showMediaSearch = false
+                                } else {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Прокрутите чат, чтобы увидеть это изображение",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                             "video" -> {
-                                val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
-                                if (mediaUrl != null) {
-                                    showFullScreenVideo = true
-                                    fullScreenVideoUrl = mediaUrl
-                                }
+                                // Videos are shown inline - scroll to message or show toast
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Прокрутите чат, чтобы воспроизвести видео",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                                showMediaSearch = false
                             }
                             else -> {
                                 android.widget.Toast.makeText(
@@ -866,7 +876,6 @@ fun MessagesScreen(
                                 ).show()
                             }
                         }
-                        showMediaSearch = false
                     }
                 )
             }

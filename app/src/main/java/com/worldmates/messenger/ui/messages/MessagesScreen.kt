@@ -82,6 +82,7 @@ import com.worldmates.messenger.ui.groups.components.PinnedMessageBanner
 
 // 🔍 Імпорт компонента пошуку
 import com.worldmates.messenger.ui.messages.components.GroupSearchBar
+import com.worldmates.messenger.ui.search.MediaSearchScreen
 
 // 📝 Імпорти системи форматування тексту
 import com.worldmates.messenger.ui.components.formatting.FormattedText
@@ -144,6 +145,10 @@ fun MessagesScreen(
     val searchResults by viewModel.searchResults.collectAsState()
     val searchTotalCount by viewModel.searchTotalCount.collectAsState()
     val currentSearchIndex by viewModel.currentSearchIndex.collectAsState()
+
+    // 🔍 Media search state
+    var showSearchTypeDialog by remember { mutableStateOf(false) }
+    var showMediaSearch by remember { mutableStateOf(false) }
 
     var messageText by remember { mutableStateOf("") }
 
@@ -550,17 +555,8 @@ fun MessagesScreen(
                     Log.d("MessagesScreen", "Запускаємо відеодзвінок до: $recipientName")
                 },
                 onSearchClick = {
-                    if (isGroup) {
-                        // Для групп - открываем search bar
-                        showSearchBar = !showSearchBar
-                        if (!showSearchBar) {
-                            viewModel.clearSearch()
-                        }
-                    } else {
-                        // Для личных чатов - TODO
-                        Log.d("MessagesScreen", "Пошук в чаті")
-                        android.widget.Toast.makeText(context, "Пошук в чаті", android.widget.Toast.LENGTH_SHORT).show()
-                    }
+                    // Show search type dialog for both groups and personal chats
+                    showSearchTypeDialog = true
                 },
                 onMuteClick = {
                     if (isGroup && currentGroup != null) {
@@ -791,6 +787,86 @@ fun MessagesScreen(
                     onClose = {
                         showSearchBar = false
                         viewModel.clearSearch()
+                    }
+                )
+            }
+
+            // 🔍 Search Type Dialog
+            if (showSearchTypeDialog) {
+                AlertDialog(
+                    onDismissRequest = { showSearchTypeDialog = false },
+                    title = { Text("Выберите тип поиска") },
+                    text = {
+                        Column {
+                            Text("Текстовый поиск - поиск по содержимому сообщений")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Медиа поиск - поиск файлов (фото, видео, аудио)")
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showSearchTypeDialog = false
+                                showMediaSearch = true
+                            }
+                        ) {
+                            Text("Медиа поиск")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showSearchTypeDialog = false
+                                if (isGroup) {
+                                    showSearchBar = true
+                                } else {
+                                    // For personal chats, enable text search
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Текстовый поиск в личных чатах - в разработке",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        ) {
+                            Text("Текстовый поиск")
+                        }
+                    }
+                )
+            }
+
+            // 🔍 Media Search Screen
+            if (showMediaSearch) {
+                MediaSearchScreen(
+                    chatId = if (!isGroup) recipientId else null,
+                    groupId = if (isGroup) viewModel.getGroupId() else null,
+                    onDismiss = { showMediaSearch = false },
+                    onMediaClick = { message ->
+                        // Handle media click - open in gallery/video player
+                        when (message.type) {
+                            "image" -> {
+                                val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+                                if (mediaUrl != null) {
+                                    showFullScreenImage = true
+                                    fullScreenImageUrl = mediaUrl
+                                }
+                            }
+                            "video" -> {
+                                val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+                                if (mediaUrl != null) {
+                                    showFullScreenVideo = true
+                                    fullScreenVideoUrl = mediaUrl
+                                }
+                            }
+                            else -> {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Открытие ${message.type} файлов - в разработке",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                        showMediaSearch = false
                     }
                 )
             }

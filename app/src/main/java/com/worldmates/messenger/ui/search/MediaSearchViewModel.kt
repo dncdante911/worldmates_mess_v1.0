@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.worldmates.messenger.data.model.Message
 import com.worldmates.messenger.data.UserSession
-import com.worldmates.messenger.network.ApiService
+import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.utils.EncryptedMediaHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,7 +66,7 @@ class MediaSearchViewModel : ViewModel() {
 
     private val apiService: MediaSearchApiService by lazy {
         val retrofit = Retrofit.Builder()
-            .baseUrl(UserSession.getInstance().getApiUrl())
+            .baseUrl(Constants.BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
         retrofit.create(MediaSearchApiService::class.java)
@@ -164,8 +164,8 @@ class MediaSearchViewModel : ViewModel() {
                 _isLoading.value = true
                 Log.d(TAG, "🔍 Searching: query='$query'")
 
-                val accessToken = UserSession.getInstance().getAccessToken()
-                if (accessToken.isEmpty()) {
+                val accessToken = UserSession.accessToken
+                if (accessToken.isNullOrEmpty()) {
                     Log.e(TAG, "❌ No access token")
                     return@launch
                 }

@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.CallHistoryItem
-import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,19 +46,16 @@ class CallHistoryActivity : ComponentActivity() {
         viewModel = ViewModelProvider(this)[CallHistoryViewModel::class.java]
 
         setContent {
-            val themeMode by ThemeManager.themeMode.collectAsState()
-
-            WorldMatesThemedApp(themeMode = themeMode) {
+            WorldMatesThemedApp {
                 CallHistoryScreen(
                     viewModel = viewModel,
                     onBack = { finish() },
                     onCallUser = { userId, name, avatar, callType ->
                         startActivity(Intent(this, CallsActivity::class.java).apply {
-                            putExtra("recipient_id", userId)
-                            putExtra("recipient_name", name)
-                            putExtra("recipient_avatar", avatar)
-                            putExtra("call_type", callType)
-                            putExtra("should_initiate", true)
+                            putExtra("recipientId", userId)
+                            putExtra("recipientName", name)
+                            putExtra("recipientAvatar", avatar)
+                            putExtra("callType", callType)
                         })
                     }
                 )

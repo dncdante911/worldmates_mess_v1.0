@@ -15,14 +15,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -143,7 +140,7 @@ fun EnhancedCallControlBar(
             )
 
             SmallFeatureButton(
-                icon = Icons.Default.NoiseAware,
+                icon = Icons.Default.GraphicEq,
                 label = "Шум",
                 isActive = noiseCancellation,
                 activeColor = Color(0xFF9C27B0),
@@ -717,7 +714,7 @@ fun NoiseCancellationIndicator(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.NoiseAware,
+                imageVector = Icons.Default.GraphicEq,
                 contentDescription = null,
                 modifier = Modifier.size(12.dp),
                 tint = Color(0xFF9C27B0)

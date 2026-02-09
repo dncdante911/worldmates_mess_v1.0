@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -18,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +60,13 @@ fun MediaSearchScreen(
     val selectedSort by viewModel.selectedSort.collectAsState()
     val selectionMode by viewModel.selectionMode.collectAsState()
     val selectedMessages by viewModel.selectedMessages.collectAsState()
+
+    // 🖼️ Full screen image viewer state
+    var showFullScreenImage by remember { mutableStateOf(false) }
+    var currentImageIndex by remember { mutableStateOf(0) }
+    val imageMessages = remember(searchResults) {
+        searchResults.filter { it.type == "image" || it.type == "photo" }
+    }
 
     LaunchedEffect(chatId, groupId) {
         viewModel.setChatId(chatId, groupId)
@@ -197,7 +207,19 @@ fun MediaSearchScreen(
                     MediaResultsGrid(
                         messages = searchResults,
                         filter = selectedFilter,
-                        onMediaClick = onMediaClick,
+                        onMediaClick = { message ->
+                            // Open images in full screen viewer
+                            if (message.type == "image" || message.type == "photo") {
+                                val index = imageMessages.indexOf(message)
+                                if (index >= 0) {
+                                    currentImageIndex = index
+                                    showFullScreenImage = true
+                                }
+                            } else {
+                                // For other media types, call the original handler
+                                onMediaClick(message)
+                            }
+                        },
                         selectionMode = selectionMode,
                         selectedMessages = selectedMessages,
                         onToggleSelection = { messageId ->
@@ -207,6 +229,15 @@ fun MediaSearchScreen(
                 }
             }
         }
+    }
+
+    // 🖼️ Full Screen Image Viewer
+    if (showFullScreenImage && imageMessages.isNotEmpty()) {
+        FullScreenImageViewer(
+            images = imageMessages,
+            initialIndex = currentImageIndex,
+            onDismiss = { showFullScreenImage = false }
+        )
     }
 }
 
@@ -596,5 +627,154 @@ private fun formatFileSize(bytes: Long): String {
         bytes < 1024 * 1024 -> "${bytes / 1024} KB"
         bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
         else -> "${bytes / (1024 * 1024 * 1024)} GB"
+    }
+}
+
+/**
+ * 🖼️ FULL SCREEN IMAGE VIEWER
+ *
+ * Full screen image viewer with:
+ * - Pinch to zoom
+ * - Swipe to navigate
+ * - Image counter
+ * - Download button
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun FullScreenImageViewer(
+    images: List<Message>,
+    initialIndex: Int,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var currentPage by remember { mutableStateOf(initialIndex) }
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = initialIndex,
+        pageCount = { images.size }
+    )
+
+    LaunchedEffect(pagerState.currentPage) {
+        currentPage = pagerState.currentPage
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        // Image Pager
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val message = images[page]
+            val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+            val fullUrl = EncryptedMediaHandler.getFullMediaUrl(mediaUrl, message.type)
+
+            // Zoomable Image
+            var scale by remember { mutableStateOf(1f) }
+            var offsetX by remember { mutableStateOf(0f) }
+            var offsetY by remember { mutableStateOf(0f) }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                            if (scale > 1f) {
+                                offsetX += pan.x
+                                offsetY += pan.y
+                            } else {
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = fullUrl,
+                    contentDescription = "Full screen image",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offsetX,
+                            translationY = offsetY
+                        ),
+                    contentScale = if (scale > 1f) ContentScale.Crop else ContentScale.Fit
+                )
+
+                // Double tap to reset zoom
+                if (scale > 1f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable {
+                                scale = 1f
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                    )
+                }
+            }
+        }
+
+        // Top Bar
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter),
+            color = Color.Black.copy(alpha = 0.5f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Back button
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Назад",
+                        tint = Color.White
+                    )
+                }
+
+                // Counter
+                Text(
+                    text = "${currentPage + 1} / ${images.size}",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Download button
+                IconButton(
+                    onClick = {
+                        val message = images[currentPage]
+                        val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+                        val fullUrl = EncryptedMediaHandler.getFullMediaUrl(mediaUrl, message.type)
+
+                        // TODO: Download image
+                        android.widget.Toast.makeText(
+                            context,
+                            "Скачивание изображения...",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = "Скачать",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
     }
 }

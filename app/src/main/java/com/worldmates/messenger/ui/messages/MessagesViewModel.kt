@@ -121,6 +121,7 @@ class MessagesViewModel(application: Application) :
     private var socketManager: SocketManager? = null
     private var mediaUploader: MediaUploader? = null
     private var fileManager: FileManager? = null
+    private var messagePollingJob: Job? = null
 
     // 🎥 Публічні getters для відеодзвінків
     fun getRecipientId(): Long = recipientId
@@ -134,7 +135,8 @@ class MessagesViewModel(application: Application) :
         this.topicId = 0
         fetchMessages()
         setupSocket()
-        loadDraft() // Загружаем черновик
+        startMessagePolling()
+        loadDraft()
         Log.d("MessagesViewModel", "✅ Ініціалізація завершена для користувача $recipientId")
     }
 
@@ -142,10 +144,11 @@ class MessagesViewModel(application: Application) :
         this.groupId = groupId
         this.recipientId = 0
         this.topicId = topicId
-        fetchGroupDetails(groupId) // 📌 Отримуємо деталі групи включаючи закріплене повідомлення
+        fetchGroupDetails(groupId)
         fetchGroupMessages()
         setupSocket()
-        loadDraft() // Загружаем черновик
+        startMessagePolling()
+        loadDraft()
         if (topicId != 0L) {
             Log.d("MessagesViewModel", "Ініціалізація для групи $groupId, topic $topicId")
         } else {
@@ -1762,8 +1765,71 @@ class MessagesViewModel(application: Application) :
 
     // ==================== END TEXT FORMATTING ====================
 
+    /**
+     * Періодичне оновлення повідомлень (fallback якщо Socket.IO не працює)
+     */
+    private fun startMessagePolling() {
+        messagePollingJob?.cancel()
+        messagePollingJob = viewModelScope.launch {
+            while (isActive) {
+                kotlinx.coroutines.delay(5000) // Кожні 5 секунд
+                refreshLatestMessages()
+            }
+        }
+        Log.d(TAG, "🔄 Polling повідомлень запущено (кожні 5с)")
+    }
+
+    /**
+     * Оновлює останні повідомлення з сервера (легкий запит)
+     */
+    private fun refreshLatestMessages() {
+        if (UserSession.accessToken == null) return
+
+        viewModelScope.launch {
+            try {
+                val response = if (groupId != 0L) {
+                    RetrofitClient.apiService.getGroupMessages(
+                        accessToken = UserSession.accessToken!!,
+                        groupId = groupId,
+                        topicId = topicId,
+                        limit = 15,
+                        beforeMessageId = 0
+                    )
+                } else if (recipientId != 0L) {
+                    RetrofitClient.apiService.getMessages(
+                        accessToken = UserSession.accessToken!!,
+                        recipientId = recipientId,
+                        limit = 15,
+                        beforeMessageId = 0
+                    )
+                } else return@launch
+
+                if (response.apiStatus == 200 && response.messages != null) {
+                    val newMessages = response.messages!!.map { msg -> decryptMessageFully(msg) }
+                    val currentMessages = _messages.value
+                    val currentIds = currentMessages.map { it.id }.toSet()
+
+                    // Додаємо тільки нові повідомлення яких ще немає
+                    val trulyNew = newMessages.filter { it.id !in currentIds }
+
+                    if (trulyNew.isNotEmpty()) {
+                        val updated = (currentMessages + trulyNew).distinctBy { it.id }.sortedBy { it.timeStamp }
+                        _messages.value = updated
+                        Log.d(TAG, "🔄 Polling: додано ${trulyNew.size} нових повідомлень")
+                    }
+                }
+            } catch (e: Exception) {
+                // Тихо ігноруємо помилки polling - не турбуємо користувача
+                Log.w(TAG, "Polling error: ${e.message}")
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
+
+        // Зупиняємо polling
+        messagePollingJob?.cancel()
 
         // Зупиняємо Socket.IO
         socketManager?.disconnect()

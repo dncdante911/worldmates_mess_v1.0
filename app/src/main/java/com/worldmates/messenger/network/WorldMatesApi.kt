@@ -21,7 +21,7 @@ interface WorldMatesApi {
     ): AuthResponse
 
     @FormUrlEncoded
-    @POST("../phone/register_user.php?type=user_registration")
+    @POST("/api/phone/register_user.php?type=user_registration")
     suspend fun register(
         @Field("username") username: String,
         @Field("email") email: String? = null,

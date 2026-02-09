@@ -68,6 +68,10 @@ fun MediaSearchScreen(
         searchResults.filter { it.type == "image" || it.type == "photo" }
     }
 
+    // 🎨 Photo editor state
+    var showPhotoEditor by remember { mutableStateOf(false) }
+    var editImageUrl by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(chatId, groupId) {
         viewModel.setChatId(chatId, groupId)
     }
@@ -236,7 +240,32 @@ fun MediaSearchScreen(
         FullScreenImageViewer(
             images = imageMessages,
             initialIndex = currentImageIndex,
-            onDismiss = { showFullScreenImage = false }
+            onDismiss = { showFullScreenImage = false },
+            onEdit = { imageUrl ->
+                editImageUrl = imageUrl
+                showPhotoEditor = true
+                showFullScreenImage = false
+            }
+        )
+    }
+
+    // 🎨 Photo Editor
+    if (showPhotoEditor && editImageUrl != null) {
+        com.worldmates.messenger.ui.editor.PhotoEditorScreen(
+            imageUrl = editImageUrl!!,
+            onDismiss = {
+                showPhotoEditor = false
+                editImageUrl = null
+            },
+            onSave = { savedFile ->
+                android.widget.Toast.makeText(
+                    context,
+                    "Фото сохранено: ${savedFile.name}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                showPhotoEditor = false
+                editImageUrl = null
+            }
         )
     }
 }
@@ -644,7 +673,8 @@ private fun formatFileSize(bytes: Long): String {
 private fun FullScreenImageViewer(
     images: List<Message>,
     initialIndex: Int,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onEdit: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     var currentPage by remember { mutableStateOf(initialIndex) }
@@ -753,26 +783,47 @@ private fun FullScreenImageViewer(
                     fontWeight = FontWeight.Bold
                 )
 
-                // Download button
-                IconButton(
-                    onClick = {
-                        val message = images[currentPage]
-                        val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
-                        val fullUrl = EncryptedMediaHandler.getFullMediaUrl(mediaUrl, message.type)
+                Row {
+                    // Edit button
+                    IconButton(
+                        onClick = {
+                            val message = images[currentPage]
+                            val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+                            val fullUrl = EncryptedMediaHandler.getFullMediaUrl(mediaUrl, message.type)
 
-                        // TODO: Download image
-                        android.widget.Toast.makeText(
-                            context,
-                            "Скачивание изображения...",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                            if (fullUrl != null) {
+                                onEdit(fullUrl)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Редактировать",
+                            tint = Color.White
+                        )
                     }
-                ) {
-                    Icon(
-                        Icons.Default.Download,
-                        contentDescription = "Скачать",
-                        tint = Color.White
-                    )
+
+                    // Download button
+                    IconButton(
+                        onClick = {
+                            val message = images[currentPage]
+                            val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl
+                            val fullUrl = EncryptedMediaHandler.getFullMediaUrl(mediaUrl, message.type)
+
+                            // TODO: Download image
+                            android.widget.Toast.makeText(
+                                context,
+                                "Скачивание изображения...",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Download,
+                            contentDescription = "Скачать",
+                            tint = Color.White
+                        )
+                    }
                 }
             }
         }

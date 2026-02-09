@@ -53,7 +53,8 @@ import kotlin.math.roundToInt
 @Composable
 fun FullscreenImageViewer(
     imageUrl: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onEdit: ((String) -> Unit)? = null
 ) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -168,22 +169,45 @@ fun FullscreenImageViewer(
                         )
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    // Кнопка закрытия
-                    Surface(
-                        onClick = onDismiss,
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .align(Alignment.CenterEnd)
+                    // Кнопки управління
+                    Row(
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
+                        // Кнопка редагування
+                        if (onEdit != null) {
+                            Surface(
+                                onClick = { onEdit(imageUrl) },
+                                shape = CircleShape,
+                                color = Color.White.copy(alpha = 0.2f),
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Кнопка закриття
+                        Surface(
+                            onClick = onDismiss,
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
 
@@ -283,7 +307,8 @@ fun FullscreenImageViewer(
 fun ImageGalleryViewer(
     imageUrls: List<String>,
     initialPage: Int = 0,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onEdit: ((String) -> Unit)? = null
 ) {
     val pagerState = rememberPagerState(
         initialPage = initialPage,
@@ -404,22 +429,48 @@ fun ImageGalleryViewer(
                         modifier = Modifier.align(Alignment.CenterStart)
                     )
 
-                    // Кнопка закриття
-                    Surface(
-                        onClick = onDismiss,
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .align(Alignment.CenterEnd)
+                    // Кнопки управління
+                    Row(
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
+                        // Кнопка редагування
+                        if (onEdit != null) {
+                            Surface(
+                                onClick = {
+                                    val currentUrl = imageUrls.getOrNull(pagerState.currentPage)
+                                    if (currentUrl != null) onEdit(currentUrl)
+                                },
+                                shape = CircleShape,
+                                color = Color.White.copy(alpha = 0.2f),
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Кнопка закриття
+                        Surface(
+                            onClick = onDismiss,
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -1145,177 +1196,27 @@ fun MiniAudioPlayer(
 }
 
 /**
- * 🎵 УНИКАЛЬНЫЙ СТИЛЬНЫЙ АУДИО-ПЛЕЕР
- * С визуализатором и красивым дизайном
+ * 🎵 МУЗИЧНИЙ ПЛЕЄР
+ * Делегує відтворення до AdvancedMusicPlayer з підтримкою фонового відтворення.
+ * Зберігається для зворотної сумісності.
  */
 @Composable
 fun SimpleAudioPlayer(
     audioUrl: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    title: String = "Аудіо",
+    artist: String = "",
+    timestamp: Long = 0L,
+    iv: String? = null,
+    tag: String? = null
 ) {
-    val context = LocalContext.current
-    var isPlaying by remember { mutableStateOf(true) }
-
-    val exoPlayer = remember(audioUrl) {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri(Uri.parse(audioUrl))
-            setMediaItem(mediaItem)
-            prepare()
-            playWhenReady = true
-
-            addListener(object : Player.Listener {
-                override fun onIsPlayingChanged(playing: Boolean) {
-                    isPlaying = playing
-                }
-            })
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-
-    // Анимация для визуализатора
-    val infiniteTransition = rememberInfiniteTransition(label = "wave")
-    val wave1 by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "wave1"
+    com.worldmates.messenger.ui.music.AdvancedMusicPlayer(
+        audioUrl = audioUrl,
+        title = title,
+        artist = artist,
+        timestamp = timestamp,
+        iv = iv,
+        tag = tag,
+        onDismiss = onDismiss
     )
-    val wave2 by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "wave2"
-    )
-    val wave3 by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "wave3"
-    )
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
-    ) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = Color.Transparent
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(280.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color(0xFF0084FF),
-                                Color(0xFF00C6FF)
-                            )
-                        )
-                    )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Заголовок
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Аудіо",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        IconButton(
-                            onClick = {
-                                exoPlayer.pause()
-                                onDismiss()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = Color.White
-                            )
-                        }
-                    }
-
-                    // 🎵 АНИМИРОВАННЫЙ ВИЗУАЛИЗАТОР
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Волны звука
-                        repeat(5) { index ->
-                            val height = when (index % 3) {
-                                0 -> wave1
-                                1 -> wave2
-                                else -> wave3
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .width(8.dp)
-                                    .height((100 * if (isPlaying) height else 0.3f).dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color.White.copy(alpha = 0.9f))
-                            )
-                        }
-                    }
-
-                    // Кнопка Play/Pause
-                    Surface(
-                        onClick = {
-                            if (exoPlayer.isPlaying) {
-                                exoPlayer.pause()
-                            } else {
-                                exoPlayer.play()
-                            }
-                            isPlaying = !isPlaying
-                        },
-                        shape = CircleShape,
-                        color = Color.White,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .border(3.dp, Color.White.copy(alpha = 0.5f), CircleShape)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play",
-                                tint = Color(0xFF0084FF),
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

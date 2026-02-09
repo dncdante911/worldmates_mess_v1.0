@@ -11,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -563,15 +565,33 @@ fun SettingsScreen(
 
     if (updateState.hasUpdate && updateState.apkUrl != null) {
         AlertDialog(
-            onDismissRequest = { },
+            onDismissRequest = {
+                if (!updateState.isMandatory) {
+                    viewModel.snoozeUpdatePrompt()
+                }
+            },
             title = { Text("Доступне оновлення ${updateState.latestVersion ?: ""}") },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Text("Нова версія доступна на сервері. Можна встановити в один клік без очікування Google Play.")
                     if (updateState.changelog.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        updateState.changelog.take(4).forEach { change ->
-                            Text("• $change", fontSize = 13.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Що нового:",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        updateState.changelog.forEach { change ->
+                            Text(
+                                text = "• $change",
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
                         }
                     }
                 }

@@ -984,6 +984,9 @@ fun MessagesScreen(
             }
 
             // 📸 ГАЛЕРЕЯ ФОТО
+            var showPhotoEditor by remember { mutableStateOf(false) }
+            var editImageUrl by remember { mutableStateOf<String?>(null) }
+
             if (showImageGallery && imageUrls.isNotEmpty()) {
                 Log.d("MessagesScreen", "✅ Показуємо ImageGalleryViewer! URLs: ${imageUrls.size}, page: $selectedImageIndex")
                 ImageGalleryViewer(
@@ -992,12 +995,37 @@ fun MessagesScreen(
                     onDismiss = {
                         Log.d("MessagesScreen", "❌ Закриваємо галерею")
                         showImageGallery = false
+                    },
+                    onEdit = { imageUrl ->
+                        Log.d("MessagesScreen", "✏️ Відкриваємо редактор для: $imageUrl")
+                        editImageUrl = imageUrl
+                        showPhotoEditor = true
                     }
                 )
             } else {
                 if (showImageGallery) {
                     Log.e("MessagesScreen", "⚠️ showImageGallery=true але imageUrls порожній!")
                 }
+            }
+
+            // 🎨 ФОТОРЕДАКТОР
+            if (showPhotoEditor && editImageUrl != null) {
+                com.worldmates.messenger.ui.editor.PhotoEditorScreen(
+                    imageUrl = editImageUrl!!,
+                    onDismiss = {
+                        showPhotoEditor = false
+                        editImageUrl = null
+                    },
+                    onSave = { savedFile ->
+                        android.widget.Toast.makeText(
+                            context,
+                            "Фото збережено: ${savedFile.name}",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        showPhotoEditor = false
+                        editImageUrl = null
+                    }
+                )
             }
 
             // 📹 ВІДЕОПОВІДОМЛЕННЯ РЕКОРДЕР

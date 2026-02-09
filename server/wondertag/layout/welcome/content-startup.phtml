@@ -1,0 +1,394 @@
+<?php 
+$wondertage_settings = array();
+if (mysqli_query($wo['sqlConnect'], "DESCRIBE `wondertage_settings`" )) {
+	$settings = $db->get('wondertage_settings');
+	foreach ($settings as $key => $value) {
+		$wondertage_settings[$value->name] = $value->value;
+	}
+}
+?>
+
+<script>window.addEventListener('resize', () => {let vh = window.innerHeight * 0.01;document.documentElement.style.setProperty('--vh', `${vh}px`);});</script>
+<div class="container-v5">
+      <div class="forms-container">
+        <div class="signin-signup">
+          <form id="login" method="post" class="sign-in-form form-class">
+              <a class="logo" href="<?php echo $wo['config']['site_url'];?>"><img src="<?php echo $wo['config']['theme_url'];?>/img/logo.<?php echo $wo['config']['logo_extension'];?>" alt="Logo"> </a>
+			<h2 class="title"><?php echo $wo['lang']['welcome_']?></h2>
+			<div class="valign tag_auth_animation d-none log_in_auth"><svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 367.805 367.805" xml:space="preserve"> <g> <path style="fill:#5b158c;" d="M183.903,0.001c101.566,0,183.902,82.336,183.902,183.902s-82.336,183.902-183.902,183.902 S0.001,285.469,0.001,183.903l0,0C-0.288,82.625,81.579,0.29,182.856,0.001C183.205,0,183.554,0,183.903,0.001z"/> <polygon style="fill:#fff;" points="285.78,133.225 155.168,263.837 82.025,191.217 111.805,161.96 155.168,204.801 256.001,103.968"/> </g></svg><?php echo $wo['lang']['welcome_']?></h2></div>	            
+			<div class="errors"></div>
+			<?php if ($wo['config']['profile_privacy'] == 1) { ?>
+			<div class="tag_pro_users">
+				<?php echo Wo_LoadPage('welcome/welcome-users-profiles');?>
+			</div>
+			<?php } ?>
+            <div class="input-field">
+              <i><svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><path fill="currentColor" d="M256 256c52.805 0 96-43.201 96-96s-43.195-96-96-96-96 43.201-96 96 43.195 96 96 96zm0 48c-63.598 0-192 32.402-192 96v48h384v-48c0-63.598-128.402-96-192-96z"/></svg></i>
+              <input name="username" type="text" autocomplete="off" class="inputclass-wel" autofocus required placeholder="<?php echo $wo['lang']['username']?>" />
+            </div>
+            <div class="input-field">
+              <i><svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" viewBox="0 0 24 24"><path fill="currentColor" d="M17,9V7c0-2.8-2.2-5-5-5S7,4.2,7,7v2c-1.7,0-3,1.3-3,3v7c0,1.7,1.3,3,3,3h10c1.7,0,3-1.3,3-3v-7C20,10.3,18.7,9,17,9z M9,7c0-1.7,1.3-3,3-3s3,1.3,3,3v2H9V7z"/></svg></svg></i>
+              <input name="password" type="password" autocomplete="off" class="inputclass-wel" autofocus required placeholder="<?php echo $wo['lang']['password']?>" />
+            </div>
+			<?php if(isset($_GET['type']) && $_GET['type'] == "add_account") { ?>
+				<input name="add_account" type="number" value="1" hidden>
+			<?php } ?>
+			<?php if ($wo['config']['remember_device'] == 1) { ?>
+							<div class="round-check">
+								<input type="checkbox" name="remember_device" id="remember_device" <?php echo ($wo['config']['remember_device'] == 1 ? 'checked' : ''); ?>>
+								<label for="remember_device">
+									<?php echo $wo['lang']['remember_device'] ?>
+								</label>
+								<div class="clear"></div>
+							</div>
+			<?php } ?>
+			<label class="tag_field tag_wel_forgot label-class-welcome">
+				<a href="<?php echo Wo_SeoLink('index.php?link1=forgot-password');?>" title="<?php echo $wo['lang']['forget_password']?>" class="a-svg-forget" data-toggle="tooltip"><svg xmlns="http://www.w3.org/2000/svg" height="22" viewBox="0 0 24 24" width="22"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92c-.5.51-.86.97-1.04 1.69-.08.32-.13.68-.13 1.14h-2v-.5c0-.46.08-.9.22-1.31.2-.58.53-1.1.95-1.52l1.24-1.26c.46-.44.68-1.1.55-1.8-.13-.72-.69-1.33-1.39-1.53-1.11-.31-2.14.32-2.47 1.27-.12.37-.43.65-.82.65h-.3C8.4 9 8 8.44 8.16 7.88c.43-1.47 1.68-2.59 3.23-2.83 1.52-.24 2.97.55 3.87 1.8 1.18 1.63.83 3.38-.19 4.4z"/></svg>
+				<span><?php echo $wo['lang']['forget_password']?></span></a>
+			</label>
+			<?php if(isset($_GET['type']) && $_GET['type'] == "add_account") { ?>
+				<input name="add_account" type="number" value="1" hidden>
+			<?php } ?>
+            <input type="submit" value="<?php echo $wo['lang']['login']?>" id="login" class="btn solid disable_btn btn-welcome tag_wel_btn" />
+			<?php if ($wo['config']['facebookLogin'] != 0 || $wo['config']['googleLogin'] != 0 || $wo['config']['twitterLogin'] != 0 || $wo['config']['linkedinLogin'] != 0 || $wo['config']['VkontakteLogin'] != 0 || $wo['config']['instagramLogin'] != 0 || $wo['config']['qqLogin'] != 0 || $wo['config']['WeChatLogin'] != 0 || $wo['config']['DiscordLogin'] != 0 || $wo['config']['MailruLogin'] != 0) { ?>
+            <p class="social-text"><?php echo $wo['lang']['or']?></p>
+            <div class="social-media">
+			  <?php if($wo['config']['facebookLogin'] != 0): ?>
+              <a href="<?php echo $wo['facebookLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/facebookicon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['twitterLogin'] != 0): ?>
+              <a href="<?php echo $wo['twitterLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/twittericon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['linkedinLogin'] != 0): ?>
+              <a href="<?php echo $wo['linkedInLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/linkedinicon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['VkontakteLogin'] != 0): ?>
+              <a href="<?php echo $wo['VkontakteLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/vkicon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['instagramLogin'] != 0): ?>
+			  <a href="<?php echo $wo['instagramLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/instagramicon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['qqLogin'] != 0): ?>
+			  <a href="<?php echo $wo['QQLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/qqicon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['WeChatLogin'] != 0): ?>
+			  <a href="<?php echo $wo['WeChatLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/wechaticon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['DiscordLogin'] != 0): ?>
+			  <a href="<?php echo $wo['DiscordLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/discordicon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['MailruLogin'] != 0): ?>
+			  <a href="<?php echo $wo['MailruLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/mailruicon.png"/></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['googleLogin'] != 0): ?>
+			  <a href="<?php echo $wo['googleLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/googleicon.png"/></a>
+                  <?php endif; ?>
+			  <?php if($wo['config']['OkLogin'] != 0): ?>
+			  <a href="<?php echo $wo['OkLoginUrl']?>" class="social-icon"><img width="32" src="<?php echo $wo['config']['theme_url'];?>/img/okicon.png"/></a>
+			  <?php endif; ?>
+            </div>
+			<?php } ?>
+			<?php if (!empty($wo['config']['native_android_messenger_url']) || !empty($wo['config']['native_android_timeline_url']) || !empty($wo['config']['native_ios_messenger_url']) || !empty($wo['config']['native_ios_timeline_url']) || !empty($wo['config']['native_windows_messenger_url'])) { ?>
+					<div class="row_app">
+						<?php if (!empty($wo['config']['native_android_timeline_url']) || !empty($wo['config']['native_ios_timeline_url'])) { ?>
+							<div class="tag_wel_widget_app">
+								<?php if (!empty($wo['config']['native_android_timeline_url'])) { ?>
+									<a href="<?php echo($wo['config']['native_android_timeline_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/google.png"/>
+									</a>
+								<?php } ?>
+								<?php if (!empty($wo['config']['native_ios_timeline_url'])) { ?>
+									<a href="<?php echo($wo['config']['native_ios_timeline_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/apple.png"/>
+									</a>
+								<?php } ?>
+							</div>
+						<?php } ?>
+						<?php if (!empty($wo['config']['native_android_messenger_url']) || !empty($wo['config']['native_ios_messenger_url']) || !empty($wo['config']['native_windows_messenger_url'])) { ?>
+							<div class="tag_wel_widget_app">
+								<?php if (!empty($wo['config']['native_android_messenger_url'])) { ?>
+									<a href="<?php echo($wo['config']['native_android_messenger_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/google.png"/>
+									</a>
+								<?php } ?>
+								<?php if (!empty($wo['config']['native_ios_messenger_url'])) { ?>
+									<a  href="<?php echo($wo['config']['native_ios_messenger_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/apple.png"/>
+									</a>
+								<?php } ?>
+								<?php if (!empty($wo['config']['native_windows_messenger_url'])) { ?>
+									<a href="<?php echo($wo['config']['native_windows_messenger_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/microsoft.png"/>
+									</a>
+								<?php } ?>
+							</div>
+						<?php } ?>
+					</div>
+			<?php } ?>
+          </form>
+		  <form id="register" method="post" class="sign-up-form form-class">
+			<h2 class="title"><?php echo $wo['lang']['sign_up']?></h2>
+			  <div class="valign tag_auth_animation d-none register_auth"><svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 367.805 367.805" xml:space="preserve"> <g> <path style="fill:#3BB54A;" d="M183.903,0.001c101.566,0,183.902,82.336,183.902,183.902s-82.336,183.902-183.902,183.902 S0.001,285.469,0.001,183.903l0,0C-0.288,82.625,81.579,0.29,182.856,0.001C183.205,0,183.554,0,183.903,0.001z"/> <polygon style="fill:#fff;" points="285.78,133.225 155.168,263.837 82.025,191.217 111.805,161.96 155.168,204.801 256.001,103.968"/> </g></svg>Welcome!</div>
+				<div class="errors_2"></div>
+				
+						<?php if ($wo['config']['auto_username'] == 1) { ?>
+						<div class="input-field input-field_reg">
+						<i><svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><path fill="currentColor" d="M256 256c52.805 0 96-43.201 96-96s-43.195-96-96-96-96 43.201-96 96 43.195 96 96 96zm0 48c-63.598 0-192 32.402-192 96v48h384v-48c0-63.598-128.402-96-192-96z"/></svg></i>
+							<input name="first_name" type="text" autocomplete="off" class="inputclass-wel" placeholder="<?php echo $wo['lang']['first_name']?>" autofocus>
+						</div>
+						<div class="input-field input-field_reg">
+						<i><svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><path fill="currentColor" d="M256 256c52.805 0 96-43.201 96-96s-43.195-96-96-96-96 43.201-96 96 43.195 96 96 96zm0 48c-63.598 0-192 32.402-192 96v48h384v-48c0-63.598-128.402-96-192-96z"/></svg></i>
+							<input name="last_name" type="text" autocomplete="off" class="inputclass-wel" placeholder="<?php echo $wo['lang']['last_name']?>" autofocus>
+						</div>
+					<?php }else{ ?>
+				
+				
+				
+			  <div class="input-field input-field_reg">
+				<i><svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><path fill="currentColor" d="M256 256c52.805 0 96-43.201 96-96s-43.195-96-96-96-96 43.201-96 96 43.195 96 96 96zm0 48c-63.598 0-192 32.402-192 96v48h384v-48c0-63.598-128.402-96-192-96z"/></svg></i>
+				<input name="username" type="text" autocomplete="off" class="inputclass-wel" placeholder="<?php echo $wo['lang']['username']; ?>" autofocus required>
+			  </div>
+			  <?php } ?>
+			  <div class="input-field input-field_reg">
+				<i><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><path fill="currentColor"  d="M40 8h-32c-2.21 0-3.98 1.79-3.98 4l-.02 24c0 2.21 1.79 4 4 4h32c2.21 0 4-1.79 4-4v-24c0-2.21-1.79-4-4-4zm0 8l-16 10-16-10v-4l16 10 16-10v4z"/><path fill="none" d="M0 0h48v48h-48z"/></svg></i>
+				<input name="email" type="email" autocomplete="off" class="inputclass-wel" placeholder="<?php echo $wo['lang']['email']; ?>" required>
+			  </div>
+			  <?php if($wo['config']['sms_or_email'] == 'sms') {?>
+						<div class="input-field input-field_reg">
+						<i><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><path fill="currentColor" d="M31 2H15c-2.76 0-5 2.24-5 5v34c0 2.76 2.24 5 5 5h16c2.76 0 5-2.24 5-5V7c0-2.76-2.24-5-5-5zm-8 42c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm9-8H14V8h18v28z"/><path fill="none" d="M0 0h48v48H0z"/></svg></i>
+							<input name="phone_num" type="tel" autocomplete="off" class="inputclass-wel" placeholder="<?php echo $wo['lang']['phone_num_ex']?>" required>
+						</div>
+					<?php } ?>
+			  <div class="input-field input-field_reg">
+				<i><svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" viewBox="0 0 24 24"><path fill="currentColor" d="M17,9V7c0-2.8-2.2-5-5-5S7,4.2,7,7v2c-1.7,0-3,1.3-3,3v7c0,1.7,1.3,3,3,3h10c1.7,0,3-1.3,3-3v-7C20,10.3,18.7,9,17,9z M9,7c0-1.7,1.3-3,3-3s3,1.3,3,3v2H9V7z"/></svg></svg></i>
+				<input name="password" type="password" id="password" class="inputclass-wel" autocomplete="off" placeholder="<?php echo $wo['lang']['password']; ?>" required>
+			  </div>
+			  <?php if ($wo['config']['password_complexity_system'] == 1) { ?>
+						<ul class="list-unstyled helper-text">
+							<li class="length"><?php echo $wo['lang']['least_characters']; ?></li>
+							<li class="lowercase"><?php echo $wo['lang']['contain_lowercase']; ?></li>
+							<li class="uppercase"><?php echo $wo['lang']['contain_uppercase']; ?></li>
+							<li class="special"><?php echo $wo['lang']['number_special']; ?></li>
+						</ul>
+					<?php } ?>
+			  <div class="input-field input-field_reg">
+				<i><svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" viewBox="0 0 24 24"><path fill="currentColor" d="M17,9V7c0-2.8-2.2-5-5-5S7,4.2,7,7v2c-1.7,0-3,1.3-3,3v7c0,1.7,1.3,3,3,3h10c1.7,0,3-1.3,3-3v-7C20,10.3,18.7,9,17,9z M9,7c0-1.7,1.3-3,3-3s3,1.3,3,3v2H9V7z"/></svg></svg></i>
+				<input name="confirm_password" type="password" class="inputclass-wel" autocomplete="off" placeholder="<?php echo $wo['lang']['confirm_password']; ?>" required>
+			  </div>
+			  <?php 
+				if (!empty($fields) && count($fields) > 0) {
+						foreach ($fields as $key => $wo['field']) {
+						echo Wo_LoadPage('welcome/fields');
+					}
+				}
+			  ?>
+		    <div class="input-field input-field_reg">
+			<i><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="mdi-gender-male-female" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M17.58,4H14V2H21V9H19V5.41L15.17,9.24C15.69,10.03 16,11 16,12C16,14.42 14.28,16.44 12,16.9V19H14V21H12V23H10V21H8V19H10V16.9C7.72,16.44 6,14.42 6,12A5,5 0 0,1 11,7C12,7 12.96,7.3 13.75,7.83L17.58,4M11,9A3,3 0 0,0 8,12A3,3 0 0,0 11,15A3,3 0 0,0 14,12A3,3 0 0,0 11,9Z" /></svg></i>
+			<select name="gender" id="gender">
+				<?php foreach ($wo['genders'] as $key => $gender) { ?>
+					<option value="<?php echo($key) ?>"><?php echo $gender; ?></option>
+				<?php } ?>
+			</select>
+			</div>
+			<?php if($wo['config']['reCaptcha'] == 1) {?>
+			  <div class="form-group">
+				<div class="g-recaptcha" data-sitekey="<?php echo $wo['config']['reCaptchaKey']?>"></div>
+			  </div>
+			<?php } ?>
+			<?php if(!empty( $_GET['last_url'])){?>
+			  <div><input type="hidden" name="last_url" value="<?php echo urldecode(Wo_Secure($_GET['last_url']));?>"></div>
+			<?php } ?>
+			<div class="form-group1 form-check1">
+				<input type="checkbox" class="form-check-input" name="accept_terms" id="accept_terms" onchange="activateButton(this)">
+				<label class="form-check-label label-class-welcome" for="accept_terms"><?php echo $wo['lang']['terms_agreement'] ?> <a href="<?php echo Wo_SeoLink('index.php?link1=terms&type=terms');?>"><?php echo $wo['lang']['terms_of_use'] ?></a> & <a href="<?php echo Wo_SeoLink('index.php?link1=terms&type=privacy-policy');?>"><?php echo $wo['lang']['privacy_policy'] ?></a></label>
+			</div>
+		    <input type="submit" value="<?php echo $wo['lang']['lets_go']?>" id="sign_submit" class="btn solid disable_btn tag_wel_btn btn-welcome" disabled />	  
+         </form>
+        </div>
+      </div>
+
+      <div class="panels-container">
+        <div class="panel left-panel">
+          <div class="content">
+            <h3><?php echo $wo['lang']['welcome_connect_text']?></h3>
+            <button class="btn transparent btn-welcome" id="sign-up-btn" id="sign-up-btn">
+              <?php echo $wo['lang']['register']?>
+            </button>
+          </div>
+          <img src="<?php echo $wo['config']['theme_url']; ?>/img/log.svg" class="image" alt="" />
+        </div>
+        <div class="panel right-panel">
+          <div class="content">
+            <h3><?php echo $wo['lang']['welcome_share_text']?></h3>
+            <button class="btn transparent btn-welcome" id="sign-in-btn">
+              <?php echo $wo['lang']['login']?>
+            </button>
+          </div>
+          <img src="<?php echo $wo['config']['theme_url']; ?>/img/register.svg" class="image" alt="" />
+        </div>
+      </div>
+	  <div class="tag_wel_bottommm">
+		<?php echo Wo_LoadPage('footer/welcome');?>
+	</div>
+</div>
+<script>
+(function($) {
+	$.fn.visible = function(partial) {
+		var $t            = $(this),
+          $w            = $(window),
+          viewTop       = $w.scrollTop(),
+          viewBottom    = viewTop + $w.height(),
+          _top          = $t.offset().top,
+          _bottom       = _top + $t.height(),
+          compareTop    = partial === true ? _bottom : _top,
+          compareBottom = partial === true ? _top : _bottom;
+		return ((compareBottom <= viewBottom) && (compareTop >= viewTop));
+	};
+})(jQuery);
+
+const sign_in_btn = document.querySelector("#sign-in-btn");
+const sign_up_btn = document.querySelector("#sign-up-btn");
+const container = document.querySelector(".container");
+
+sign_up_btn.addEventListener("click", () => {
+  container.classList.add("sign-up-mode");
+});
+
+sign_in_btn.addEventListener("click", () => {
+  container.classList.remove("sign-up-mode");
+});
+
+	
+var win = $(window);
+var allTrends = $(".tag_stup_trend");
+
+allTrends.each(function(i, el) {
+	var el = $(el);
+	if (el.visible(true)) {
+		el.addClass("already-visible"); 
+	} 
+});
+
+win.scroll(function(event) {
+	allTrends.each(function(i, el) {
+		var el = $(el);
+		if (el.visible(true)) {
+			el.addClass("come-in"); 
+		} 
+	});
+});
+
+$(function() {
+var working = false;
+var $this = $('#login');
+var $state = $this.find('.errors');
+var $login_anim = $('.log_in_auth');
+      $('#login').ajaxForm({
+        url: Wo_Ajax_Requests_File() + '?f=login',
+        beforeSend: function() {
+			$('.errors').addClass('errors-sty');
+    		working = true;
+    		$this.find('.disable_btn').attr("disabled", true);
+        },
+        success: function(data) {
+          if (data.status == 200 || data.status == 600) {
+          	$login_anim.removeClass('d-none');
+            setTimeout(function () {
+            	window.location.href = data.location;
+            }, 1000);
+          } else {
+            var errors = data.errors.join("<br>");
+            $state.html(errors);
+          } 
+          working = false;
+    	  $this.find('.disable_btn').attr("disabled", false);
+        }
+      });
+    const sign_in_btn = document.querySelector("#sign-in-btn");
+    const sign_up_btn = document.querySelector("#sign-up-btn");
+    const container = document.querySelector(".container-v5");
+    sign_up_btn.addEventListener("click", () => {
+      container.classList.add("sign-up-mode");
+    });
+    sign_in_btn.addEventListener("click", () => {
+      container.classList.remove("sign-up-mode");
+    });
+      
+});
+<?php if($wo['config']['googleLogin'] != 0): ?>
+function signOut() {
+	var auth2 = gapi.auth2.getAuthInstance();
+	auth2.signOut().then(function () {
+	  console.log('User signed out.');
+	});
+}
+
+function onSignIn(googleUser) {
+    // The ID token you need to pass to your backend:
+    var id_token = googleUser.getAuthResponse().id_token;
+    $.post(Wo_Ajax_Requests_File() + '?f=google_login', {id_token: id_token}, function(data, textStatus, xhr) {
+    	if (data.status == 200) {
+    		signOut();
+	        window.location.href = data.location;
+    	}
+    	else{
+		$this.find('.disable_btn').attr("disabled", false);
+	        $state.html(data.message);
+    	}
+    });
+}
+<?php endif; ?>
+
+function activateButton(element) {
+	if(element.checked) {
+		document.getElementById("sign_submit").disabled = false;
+	}
+	else  {
+		document.getElementById("sign_submit").disabled = true;
+	}
+};
+
+var working_s = false;
+var $this_s = $('#register');
+var $state_s = $this_s.find('.errors_2');
+var $login_anim_s = $('.register_auth');
+
+$(function() {
+	$this_s.ajaxForm({
+		url: Wo_Ajax_Requests_File() + '?f=register',
+		beforeSend: function() {
+					$('.errors_2').addClass('errors-sty errors');
+					<?php if ($wo['config']['password_complexity_system'] == 1) { ?>
+					if ($('.helper-text .length').hasClass('valid') && $('.helper-text .lowercase').hasClass('valid') && $('.helper-text .uppercase').hasClass('valid') && $('.helper-text .special').hasClass('valid')) {
+						working_s = true;
+						$this_s.find('button').attr("disabled", true);
+					}
+					else{
+						$state_s.html("<?php echo($wo['lang']['complexity_requirements']) ?>");
+						return false;
+					}
+					<?php } else{ ?>
+					working_s = true;
+					$this_s.find('button').attr("disabled", true);
+					<?php } ?>
+					working_s = true;
+					$this_s.find('button').attr("disabled", true);
+				},
+				success: function(data) {
+			if (data.status == 200) {
+				$login_anim_s.removeClass('d-none');
+				setTimeout(function () {
+					window.location.href = data.location + '/?cash='+Math.random();
+				}, 1000);
+			} else if (data.status == 300) {
+				window.location.href = data.location + '/?cash='+Math.random();
+			} else {
+				$this_s.find('button').attr("disabled", false);
+				$state_s.html(data.errors);
+			} 
+			working_s = false;
+		}
+	});
+});
+
+</script>

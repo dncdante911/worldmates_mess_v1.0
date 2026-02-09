@@ -302,13 +302,18 @@ fun MessagesScreen(
     // 📸 Галерея фото - збір всіх фото з чату
     var showImageGallery by remember { mutableStateOf(false) }
     var selectedImageIndex by remember { mutableStateOf(0) }
+    // Для випадку коли imageUrls порожній, але клік по фото відбувся
+    var clickedImageUrl by remember { mutableStateOf<String?>(null) }
 
     // 📹 Відеоповідомлення - показати рекордер камери
     var showVideoMessageRecorder by remember { mutableStateOf(false) }
     val imageUrls = remember(messages) {
         val urls = messages.mapNotNull { message ->
-            // Перевіряємо тип повідомлення
-            val isImageType = message.type == "image" || message.type == "photo"
+            // Перевіряємо тип повідомлення (підтримка різних форматів типу)
+            val msgType = message.type?.lowercase() ?: ""
+            val isImageType = msgType == "image" || msgType == "photo" ||
+                    msgType.contains("image") || msgType == "right_image" ||
+                    msgType == "left_image"
 
             // Шукаємо URL медіа в різних полях
             val mediaUrl = message.decryptedMediaUrl ?: message.mediaUrl ?: message.decryptedText
@@ -317,10 +322,18 @@ fun MessagesScreen(
                 Log.d("MessagesScreen", "✅ Додано фото до галереї: $mediaUrl (тип: ${message.type})")
                 mediaUrl
             } else {
-                if (!mediaUrl.isNullOrBlank()) {
-                    Log.d("MessagesScreen", "❌ Пропущено: $mediaUrl (тип: ${message.type}, isImage: ${isImageUrl(mediaUrl)})")
+                // Додатковий fallback: перевіряємо detectMediaType
+                if (mediaUrl != null && !mediaUrl.isBlank()) {
+                    val detectedType = detectMediaType(mediaUrl, message.type)
+                    if (detectedType == "image") {
+                        Log.d("MessagesScreen", "✅ Додано фото (через detectMediaType): $mediaUrl")
+                        mediaUrl
+                    } else {
+                        null
+                    }
+                } else {
+                    null
                 }
-                null
             }
         }
         Log.d("MessagesScreen", "📸 Всього фото в галереї: ${urls.size}")
@@ -917,12 +930,13 @@ fun MessagesScreen(
                             },
                             onImageClick = { imageUrl ->
                                 Log.d("MessagesScreen", "🖼️ onImageClick викликано! URL: $imageUrl")
-                                Log.d("MessagesScreen", "📋 Всього imageUrls: ${imageUrls.size}, список: $imageUrls")
+                                Log.d("MessagesScreen", "📋 Всього imageUrls: ${imageUrls.size}")
+                                // Зберігаємо URL натиснутого фото (fallback якщо галерея порожня)
+                                clickedImageUrl = imageUrl
                                 // Знаходимо індекс вибраного фото в списку
                                 selectedImageIndex = imageUrls.indexOf(imageUrl).coerceAtLeast(0)
-                                Log.d("MessagesScreen", "📍 selectedImageIndex: $selectedImageIndex")
                                 showImageGallery = true
-                                Log.d("MessagesScreen", "🎬 showImageGallery = true (встановлено)")
+                                Log.d("MessagesScreen", "🎬 showImageGallery = true")
                             },
                             onReply = { msg ->
                                 // Встановлюємо повідомлення для відповіді
@@ -987,24 +1001,43 @@ fun MessagesScreen(
             var showPhotoEditor by remember { mutableStateOf(false) }
             var editImageUrl by remember { mutableStateOf<String?>(null) }
 
-            if (showImageGallery && imageUrls.isNotEmpty()) {
-                Log.d("MessagesScreen", "✅ Показуємо ImageGalleryViewer! URLs: ${imageUrls.size}, page: $selectedImageIndex")
-                ImageGalleryViewer(
-                    imageUrls = imageUrls,
-                    initialPage = selectedImageIndex,
-                    onDismiss = {
-                        Log.d("MessagesScreen", "❌ Закриваємо галерею")
-                        showImageGallery = false
-                    },
-                    onEdit = { imageUrl ->
-                        Log.d("MessagesScreen", "✏️ Відкриваємо редактор для: $imageUrl")
-                        editImageUrl = imageUrl
-                        showPhotoEditor = true
-                    }
-                )
-            } else {
-                if (showImageGallery) {
-                    Log.e("MessagesScreen", "⚠️ showImageGallery=true але imageUrls порожній!")
+            if (showImageGallery && !showPhotoEditor) {
+                if (imageUrls.isNotEmpty()) {
+                    Log.d("MessagesScreen", "✅ Показуємо ImageGalleryViewer! URLs: ${imageUrls.size}, page: $selectedImageIndex")
+                    ImageGalleryViewer(
+                        imageUrls = imageUrls,
+                        initialPage = selectedImageIndex,
+                        onDismiss = {
+                            Log.d("MessagesScreen", "❌ Закриваємо галерею")
+                            showImageGallery = false
+                            clickedImageUrl = null
+                        },
+                        onEdit = { imageUrl ->
+                            Log.d("MessagesScreen", "✏️ Відкриваємо редактор для: $imageUrl")
+                            editImageUrl = imageUrl
+                            showImageGallery = false
+                            showPhotoEditor = true
+                        }
+                    )
+                } else if (clickedImageUrl != null) {
+                    // Fallback: якщо imageUrls порожній, відкриваємо одне фото
+                    Log.d("MessagesScreen", "📸 Fallback: показуємо FullscreenImageViewer для: $clickedImageUrl")
+                    com.worldmates.messenger.ui.media.FullscreenImageViewer(
+                        imageUrl = clickedImageUrl!!,
+                        onDismiss = {
+                            showImageGallery = false
+                            clickedImageUrl = null
+                        },
+                        onEdit = { imageUrl ->
+                            editImageUrl = imageUrl
+                            showImageGallery = false
+                            showPhotoEditor = true
+                        }
+                    )
+                } else {
+                    // Нічого показати
+                    Log.e("MessagesScreen", "⚠️ showImageGallery=true але imageUrls та clickedImageUrl порожні!")
+                    showImageGallery = false
                 }
             }
 
@@ -1171,30 +1204,24 @@ fun MessagesScreen(
                 }
             )
 
-            // 🎵 Мінімізований аудіо плеєр
-            if (showMiniPlayer) {
-                MiniAudioPlayer(
-                    audioUrl = "",
-                    audioTitle = "Аудіо повідомлення",
-                    isPlaying = playbackState is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Playing,
-                    currentPosition = currentPosition,
-                    duration = duration,
-                    onPlayPauseClick = {
-                        scope.launch {
-                            if (playbackState is com.worldmates.messenger.utils.VoicePlayer.PlaybackState.Playing) {
-                                voicePlayer.pause()
-                            } else {
-                                voicePlayer.resume()
-                            }
-                        }
-                    },
-                    onSeek = { position ->
-                        voicePlayer.seek(position)
-                    },
-                    onClose = {
-                        voicePlayer.stop()
-                        showMiniPlayer = false  // Закриваємо UI плеєра
-                    }
+            // 🎵 Мінімізований аудіо плеєр (новий, через MusicPlaybackService)
+            val musicServiceTrack by com.worldmates.messenger.services.MusicPlaybackService.currentTrackInfo.collectAsState()
+            var showExpandedMusicPlayer by remember { mutableStateOf(false) }
+
+            if (musicServiceTrack.url.isNotEmpty()) {
+                com.worldmates.messenger.ui.music.MusicMiniBar(
+                    onExpand = { showExpandedMusicPlayer = true },
+                    onStop = { /* сервіс зупинено */ }
+                )
+            }
+
+            // Повноекранний плеєр з міні-бара
+            if (showExpandedMusicPlayer && musicServiceTrack.url.isNotEmpty()) {
+                com.worldmates.messenger.ui.music.AdvancedMusicPlayer(
+                    audioUrl = musicServiceTrack.url,
+                    title = musicServiceTrack.title,
+                    artist = musicServiceTrack.artist,
+                    onDismiss = { showExpandedMusicPlayer = false }
                 )
             }
 
@@ -2328,17 +2355,24 @@ fun VoiceMessagePlayer(
     textColor: Color,
     mediaUrl: String
 ) {
-    val playbackState by voicePlayer.playbackState.collectAsState()
-    val currentPosition by voicePlayer.currentPosition.collectAsState()
-    val duration by voicePlayer.duration.collectAsState()
-    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val servicePlaybackState by com.worldmates.messenger.services.MusicPlaybackService.playbackState.collectAsState()
+    val serviceTrackInfo by com.worldmates.messenger.services.MusicPlaybackService.currentTrackInfo.collectAsState()
+
+    // Чи саме цей трек грає у сервісі
+    val isThisTrackPlaying = serviceTrackInfo.url == mediaUrl && servicePlaybackState.isPlaying
+    val isThisTrackLoaded = serviceTrackInfo.url == mediaUrl
+
     val colorScheme = MaterialTheme.colorScheme
 
-    // Компактний аудіо плеєр в стилі Telegram
+    // Стан для відображення повноекранного плеєра
+    var showAdvancedPlayer by remember { mutableStateOf(false) }
+
+    // Компактний аудіо плеєр
     Surface(
         modifier = Modifier
             .wrapContentWidth()
-            .widthIn(min = 200.dp, max = 240.dp),
+            .widthIn(min = 200.dp, max = 260.dp),
         shape = RoundedCornerShape(18.dp),
         color = textColor.copy(alpha = 0.1f)
     ) {
@@ -2354,19 +2388,27 @@ fun VoiceMessagePlayer(
             ) {
                 IconButton(
                     onClick = {
-                        scope.launch {
-                            if (playbackState == VoicePlayer.PlaybackState.Playing) {
-                                voicePlayer.pause()
-                            } else {
-                                voicePlayer.play(mediaUrl)
-                            }
+                        if (isThisTrackPlaying) {
+                            com.worldmates.messenger.services.MusicPlaybackService.pausePlayback(context)
+                        } else if (isThisTrackLoaded) {
+                            com.worldmates.messenger.services.MusicPlaybackService.resumePlayback(context)
+                        } else {
+                            // Запускаємо через MusicPlaybackService для фонового відтворення
+                            com.worldmates.messenger.services.MusicPlaybackService.startPlayback(
+                                context = context,
+                                audioUrl = mediaUrl,
+                                title = message.senderName ?: "Аудіо",
+                                artist = "",
+                                timestamp = message.timeStamp,
+                                iv = message.iv,
+                                tag = message.tag
+                            )
                         }
                     },
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = if (playbackState == VoicePlayer.PlaybackState.Playing)
-                            Icons.Default.Pause else Icons.Default.PlayArrow,
+                        imageVector = if (isThisTrackPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = "Play",
                         tint = Color.White,
                         modifier = Modifier.size(18.dp)
@@ -2378,11 +2420,15 @@ fun VoiceMessagePlayer(
 
             // Прогрес + час
             Column(modifier = Modifier.weight(1f)) {
-                // Слайдер прогресу
                 Slider(
-                    value = if (duration > 0) currentPosition.toFloat() else 0f,
-                    onValueChange = { voicePlayer.seek(it.toLong()) },
-                    valueRange = 0f..(duration.toFloat().coerceAtLeast(1f)),
+                    value = if (isThisTrackLoaded && servicePlaybackState.duration > 0)
+                        servicePlaybackState.currentPosition.toFloat() else 0f,
+                    onValueChange = { newPos ->
+                        if (isThisTrackLoaded) {
+                            com.worldmates.messenger.services.MusicPlaybackService.seekTo(context, newPos.toLong())
+                        }
+                    },
+                    valueRange = 0f..(if (isThisTrackLoaded) servicePlaybackState.duration.toFloat().coerceAtLeast(1f) else 1f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(24.dp),
@@ -2398,13 +2444,50 @@ fun VoiceMessagePlayer(
 
             // Час
             Text(
-                text = voicePlayer.formatTime(if (currentPosition > 0) currentPosition else duration),
+                text = if (isThisTrackLoaded)
+                    formatAudioTime(servicePlaybackState.currentPosition)
+                else
+                    "0:00",
                 color = textColor,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
+
+            // Кнопка розгортання плеєра
+            IconButton(
+                onClick = { showAdvancedPlayer = true },
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Fullscreen,
+                    contentDescription = "Відкрити плеєр",
+                    tint = textColor.copy(alpha = 0.5f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
+
+    // Повноекранний плеєр
+    if (showAdvancedPlayer) {
+        com.worldmates.messenger.ui.music.AdvancedMusicPlayer(
+            audioUrl = mediaUrl,
+            title = message.senderName ?: "Аудіо",
+            artist = "",
+            timestamp = message.timeStamp,
+            iv = message.iv,
+            tag = message.tag,
+            onDismiss = { showAdvancedPlayer = false }
+        )
+    }
+}
+
+private fun formatAudioTime(millis: Long): String {
+    if (millis <= 0) return "0:00"
+    val totalSeconds = millis / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format("%d:%02d", minutes, seconds)
 }
 
 @Composable

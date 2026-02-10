@@ -37,6 +37,26 @@ enum class BubbleStyle(
         displayName = "Ретро",
         description = "Яскраві кольори з товстими рамками",
         icon = "🔴"
+    ),
+    GLASS(
+        displayName = "Скляний",
+        description = "Glassmorphism з напівпрозорістю",
+        icon = "🪟"
+    ),
+    NEON(
+        displayName = "Неон",
+        description = "Cyberpunk світіння по контуру",
+        icon = "💡"
+    ),
+    GRADIENT(
+        displayName = "Градієнт",
+        description = "Яскраві кольорові переходи",
+        icon = "🌈"
+    ),
+    NEUMORPHISM(
+        displayName = "Неоморфізм",
+        description = "М'який 3D-ефект з тінями",
+        icon = "🎭"
     );
 
     companion object {

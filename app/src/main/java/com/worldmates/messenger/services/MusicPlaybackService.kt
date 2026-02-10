@@ -1,27 +1,22 @@
 package com.worldmates.messenger.services
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.annotation.OptIn
-import androidx.core.app.NotificationCompat
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import androidx.media3.session.MediaStyleNotificationHelper
 import com.worldmates.messenger.utils.EncryptedMediaHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,8 +29,8 @@ import java.io.File
  *
  * Функції:
  * - Відтворення аудіо у фоні (при згорнутому додатку)
- * - Управління з шторки повідомлень (play/pause/stop)
- * - Управління з екрану блокування
+ * - Управління з шторки повідомлень (play/pause/stop) через MediaSession
+ * - Управління з екрану блокування через MediaSession
  * - Підтримка AES-256-GCM шифрованих файлів
  * - MediaSession інтеграція для Bluetooth/headset кнопок
  */
@@ -86,28 +81,37 @@ class MusicPlaybackService : MediaSessionService() {
         }
 
         fun pausePlayback(context: Context) {
-            val intent = Intent(context, MusicPlaybackService::class.java).apply {
-                action = ACTION_PAUSE
-            }
-            context.startService(intent)
+            serviceInstance?.player?.pause()
+                ?: context.startService(Intent(context, MusicPlaybackService::class.java).apply {
+                    action = ACTION_PAUSE
+                })
         }
 
         fun resumePlayback(context: Context) {
-            val intent = Intent(context, MusicPlaybackService::class.java).apply {
-                action = ACTION_RESUME
-            }
-            context.startService(intent)
+            serviceInstance?.player?.play()
+                ?: context.startService(Intent(context, MusicPlaybackService::class.java).apply {
+                    action = ACTION_RESUME
+                })
         }
 
         fun stopPlayback(context: Context) {
-            val intent = Intent(context, MusicPlaybackService::class.java).apply {
+            serviceInstance?.let {
+                it.player.stop()
+                it.player.clearMediaItems()
+                _playbackState.value = MusicPlaybackState()
+                _currentTrackInfo.value = TrackInfo()
+                it.stopSelf()
+            } ?: context.startService(Intent(context, MusicPlaybackService::class.java).apply {
                 action = ACTION_STOP
-            }
-            context.startService(intent)
+            })
         }
 
         fun seekTo(context: Context, position: Long) {
             serviceInstance?.player?.seekTo(position)
+        }
+
+        fun setSpeed(speed: Float) {
+            serviceInstance?.player?.setPlaybackSpeed(speed)
         }
 
         private const val ACTION_PLAY = "com.worldmates.messenger.action.PLAY"
@@ -128,36 +132,59 @@ class MusicPlaybackService : MediaSessionService() {
         serviceInstance = this
         createNotificationChannel()
 
-        player = ExoPlayer.Builder(this).build().apply {
-            addListener(object : Player.Listener {
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    _playbackState.value = _playbackState.value.copy(isPlaying = isPlaying)
-                }
+        // Audio attributes for music - critical for quality, audio focus, and notification routing
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
 
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    when (playbackState) {
-                        Player.STATE_BUFFERING -> {
-                            _playbackState.value = _playbackState.value.copy(isBuffering = true)
-                        }
-                        Player.STATE_READY -> {
-                            _playbackState.value = _playbackState.value.copy(
-                                isBuffering = false,
-                                duration = duration.coerceAtLeast(0)
-                            )
-                        }
-                        Player.STATE_ENDED -> {
-                            _playbackState.value = _playbackState.value.copy(
-                                isPlaying = false,
-                                currentPosition = 0L
-                            )
-                        }
-                        Player.STATE_IDLE -> {}
+        player = ExoPlayer.Builder(this)
+            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
+            .setHandleAudioBecomingNoisy(true) // Pause when headphones disconnected
+            .build().apply {
+                addListener(object : Player.Listener {
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        _playbackState.value = _playbackState.value.copy(isPlaying = isPlaying)
                     }
-                }
-            })
+
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        when (playbackState) {
+                            Player.STATE_BUFFERING -> {
+                                _playbackState.value = _playbackState.value.copy(isBuffering = true)
+                            }
+                            Player.STATE_READY -> {
+                                _playbackState.value = _playbackState.value.copy(
+                                    isBuffering = false,
+                                    duration = duration.coerceAtLeast(0)
+                                )
+                            }
+                            Player.STATE_ENDED -> {
+                                _playbackState.value = _playbackState.value.copy(
+                                    isPlaying = false,
+                                    currentPosition = 0L
+                                )
+                            }
+                            Player.STATE_IDLE -> {}
+                        }
+                    }
+                })
+            }
+
+        // PendingIntent to open app when notification is tapped
+        val sessionActivityIntent = packageManager.getLaunchIntentForPackage(packageName)?.let { intent ->
+            PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
         }
 
-        mediaSession = MediaSession.Builder(this, player).build()
+        mediaSession = MediaSession.Builder(this, player)
+            .apply {
+                sessionActivityIntent?.let { setSessionActivity(it) }
+            }
+            .build()
 
         // Оновлення позиції кожні 200мс
         serviceScope.launch {
@@ -229,14 +256,16 @@ class MusicPlaybackService : MediaSessionService() {
             // Перевіряємо чи файл зашифрований
             if (EncryptedMediaHandler.isEncryptedFile(audioUrl) && iv != null && tag != null) {
                 Log.d(TAG, "Розшифровуємо аудіо файл...")
-                val decryptedPath = EncryptedMediaHandler.decryptMediaFile(
-                    mediaUrl = audioUrl,
-                    timestamp = timestamp,
-                    iv = iv,
-                    tag = tag,
-                    type = "audio",
-                    context = this@MusicPlaybackService
-                )
+                val decryptedPath = withContext(Dispatchers.IO) {
+                    EncryptedMediaHandler.decryptMediaFile(
+                        mediaUrl = audioUrl,
+                        timestamp = timestamp,
+                        iv = iv,
+                        tag = tag,
+                        type = "audio",
+                        context = this@MusicPlaybackService
+                    )
+                }
                 resolvedUrl = if (decryptedPath != null) {
                     Log.d(TAG, "Аудіо розшифровано: $decryptedPath")
                     decryptedPath
@@ -253,7 +282,8 @@ class MusicPlaybackService : MediaSessionService() {
             withContext(Dispatchers.Main) {
                 val mediaMetadata = MediaMetadata.Builder()
                     .setTitle(title)
-                    .setArtist(artist.ifEmpty { null })
+                    .setArtist(artist.ifEmpty { "WorldMates" })
+                    .setDisplayTitle(title)
                     .build()
 
                 val mediaItem = MediaItem.Builder()

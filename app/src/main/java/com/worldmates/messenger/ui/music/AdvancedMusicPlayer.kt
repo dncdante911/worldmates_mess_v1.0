@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.worldmates.messenger.services.MusicPlaybackService
-import com.worldmates.messenger.utils.EncryptedMediaHandler
 
 /**
  * Продвинутий музичний плеєр з підтримкою:
@@ -77,17 +78,6 @@ fun AdvancedMusicPlayer(
             label = "wave_$index"
         )
     }
-
-    // Обертання диска
-    val discRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "disc_rotation"
-    )
 
     var showSpeedMenu by remember { mutableStateOf(false) }
     var playbackSpeed by remember { mutableStateOf(1f) }
@@ -409,6 +399,7 @@ fun AdvancedMusicPlayer(
             currentSpeed = playbackSpeed,
             onSpeedSelect = { speed ->
                 playbackSpeed = speed
+                MusicPlaybackService.setSpeed(speed)
                 showSpeedMenu = false
             },
             onDismiss = { showSpeedMenu = false }
@@ -419,6 +410,7 @@ fun AdvancedMusicPlayer(
 /**
  * Мінімізований плеєр-бар для нижньої частини екрану.
  * Показується коли музика грає у фоні.
+ * Натисніть будь-де на бар для відкриття повного плеєра.
  */
 @Composable
 fun MusicMiniBar(
@@ -433,11 +425,28 @@ fun MusicMiniBar(
     // Не показуємо якщо сервіс не активний
     if (trackInfo.url.isEmpty()) return
 
-    Surface(
-        onClick = onExpand,
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shadowElevation = 8.dp
+    // Анімація пульсу для індикатора відтворення
+    val infiniteTransition = rememberInfiniteTransition(label = "mini_pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_alpha"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        onClick = onExpand
     ) {
         Column {
             // Прогрес бар зверху
@@ -449,23 +458,23 @@ fun MusicMiniBar(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp),
+                    .height(3.dp),
                 color = Color(0xFF0084FF),
-                trackColor = Color.Transparent
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
             )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Іконка
+                // Іконка з анімацією
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(
                             brush = Brush.linearGradient(
                                 colors = listOf(Color(0xFF0084FF), Color(0xFF00C6FF))
@@ -474,14 +483,14 @@ fun MusicMiniBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.MusicNote,
+                        imageVector = if (playbackState.isPlaying) Icons.Default.Equalizer else Icons.Default.MusicNote,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
-                // Назва
+                // Назва та час
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = trackInfo.title,
@@ -490,11 +499,25 @@ fun MusicMiniBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "${formatTime(playbackState.currentPosition)} / ${formatTime(playbackState.duration)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Живий індикатор відтворення
+                        if (playbackState.isPlaying) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF4CAF50).copy(alpha = pulseAlpha))
+                            )
+                        }
+                        Text(
+                            text = "${formatTime(playbackState.currentPosition)} / ${formatTime(playbackState.duration)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 // Play/Pause
@@ -509,8 +532,21 @@ fun MusicMiniBar(
                 ) {
                     Icon(
                         imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        contentDescription = if (playbackState.isPlaying) "Пауза" else "Грати",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                // Стрілка для відкриття повного плеєра
+                IconButton(
+                    onClick = onExpand
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Відкрити плеєр",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
@@ -522,7 +558,8 @@ fun MusicMiniBar(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Зупинити",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

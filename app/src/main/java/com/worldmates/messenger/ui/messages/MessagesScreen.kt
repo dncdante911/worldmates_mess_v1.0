@@ -166,6 +166,10 @@ fun MessagesScreen(
     var showContactPicker by remember { mutableStateOf(false) }  // 📇 Contact Picker
     var showStrapiPicker by remember { mutableStateOf(false) }  // 🛍️ Strapi Content Picker
 
+    // 🎵 Вибір якості аудіо (як в Telegram: стиснутий/оригінальний)
+    var showAudioQualityDialog by remember { mutableStateOf(false) }
+    var pendingAudioFile by remember { mutableStateOf<java.io.File?>(null) }
+
     // 🎯 Режим введення (Swipeable як в Telegram/Viber)
     var currentInputMode by remember { mutableStateOf(InputMode.TEXT) }
 
@@ -410,7 +414,8 @@ fun MessagesScreen(
             Log.d("MessagesScreen", "Вибрано аудіо: $it")
             val file = fileManager.copyUriToCache(it)
             if (file != null) {
-                viewModel.uploadAndSendMedia(file, "audio")
+                pendingAudioFile = file
+                showAudioQualityDialog = true
             } else {
                 Log.e("MessagesScreen", "Не вдалося скопіювати аудіо файл")
             }
@@ -1453,6 +1458,28 @@ fun MessagesScreen(
                         showStrapiPicker = false
                     },
                     onDismiss = { showStrapiPicker = false }
+                )
+            }
+
+            // 🎵 Діалог якості аудіо (як в Telegram: стиснутий/оригінальний)
+            if (showAudioQualityDialog && pendingAudioFile != null) {
+                AudioQualityDialog(
+                    fileName = pendingAudioFile!!.name,
+                    fileSize = pendingAudioFile!!.length(),
+                    onSendOriginal = {
+                        viewModel.uploadAndSendMedia(pendingAudioFile!!, "audio")
+                        showAudioQualityDialog = false
+                        pendingAudioFile = null
+                    },
+                    onSendCompressed = {
+                        viewModel.uploadAndSendMedia(pendingAudioFile!!, "voice")
+                        showAudioQualityDialog = false
+                        pendingAudioFile = null
+                    },
+                    onDismiss = {
+                        showAudioQualityDialog = false
+                        pendingAudioFile = null
+                    }
                 )
             }
 
@@ -3041,6 +3068,125 @@ fun MessageInputBar(
             )
         }
     }
+
+@Composable
+/**
+ * Діалог вибору якості аудіо при відправці (як в Telegram)
+ */
+@Composable
+fun AudioQualityDialog(
+    fileName: String,
+    fileSize: Long,
+    onSendOriginal: () -> Unit,
+    onSendCompressed: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val fileSizeMB = String.format("%.1f", fileSize / (1024.0 * 1024.0))
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Надіслати аудіо",
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Розмір: $fileSizeMB МБ",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Divider()
+
+                // Оригінальна якість
+                Surface(
+                    onClick = onSendOriginal,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.HighQuality,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Оригінальна якість",
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "Без стиснення, повна якість звуку",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Стиснута якість
+                Surface(
+                    onClick = onSendCompressed,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Compress,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Стиснутий (економія трафіку)",
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "Зменшений розмір, менше трафіку",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Скасувати")
+            }
+        }
+    )
+}
 
 @Composable
 fun VoiceRecordingBar(

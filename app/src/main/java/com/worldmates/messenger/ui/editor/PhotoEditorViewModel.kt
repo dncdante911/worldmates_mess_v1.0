@@ -11,7 +11,9 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
@@ -82,13 +84,15 @@ class PhotoEditorViewModel : ViewModel() {
             try {
                 Log.d(TAG, "Loading image: $imageUrl")
 
-                val bitmap = if (imageUrl.startsWith("http")) {
-                    // Load from URL
-                    val url = URL(imageUrl)
-                    BitmapFactory.decodeStream(url.openStream())
-                } else {
-                    // Load from file
-                    BitmapFactory.decodeFile(imageUrl)
+                val bitmap = withContext(Dispatchers.IO) {
+                    if (imageUrl.startsWith("http")) {
+                        // Load from URL
+                        val url = URL(imageUrl)
+                        BitmapFactory.decodeStream(url.openStream())
+                    } else {
+                        // Load from file
+                        BitmapFactory.decodeFile(imageUrl)
+                    }
                 }
 
                 if (bitmap != null) {

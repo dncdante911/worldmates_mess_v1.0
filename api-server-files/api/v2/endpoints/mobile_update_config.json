@@ -1,18 +1,17 @@
 {
-  "latest_version": "2.6.0",
-  "version_code": 8,
+  "latest_version": "2.7.0",
+  "version_code": 9,
   "apk_url": "https://worldmates.club/sources-app/worldmates-latest.apk",
   "changelog": [
-    "🎨 Розширена кастомізація: 10 стилів бульбашок (додано Glass, Neon, Gradient, Neumorphism)",
-    "🚀 10 готових пакетів оформлення в один клік (Creator Neon, Business Clean, Night Focus, Sunset Vibes, Forest Calm, Rose Gold, Nord Frost, Retro Pop, Deep Space, Classic Messenger)",
-    "🌈 15 градієнтних фонів для чатів (додано Cotton Candy, Deep Space, Spring, Neon City, Winter)",
-    "🧹 Видалено непрацюючі меню кастомізації (MessageBubbleStyle, AnimationStyle, FontVariant що не були підключені до рендерингу)",
-    "📦 Рефакторинг: ThemeSettingsScreen розділено на менші файли (ThemeOneClickPacks, ThemeBackgroundSection)",
-    "🔄 Фонове автооновлення: тиха загрузка APK як в Google Play",
-    "📊 Прогрес загрузки оновлення в реальному часі",
-    "📡 Автозагрузка оновлень по WiFi у фоновому режимі",
-    "💾 Виявлення вже завантаженого оновлення при старті додатку",
-    "⚙️ Налаштування автооновлення: увімкнути/вимкнути, тільки WiFi"
+    "📁 Папки для організації чатів: Усі, Особисті, Групи, Непрочитані + кастомні папки",
+    "📦 Архівування чатів з можливістю розархівації",
+    "🏷️ Теги/мітки для чатів: 8 готових + власні теги з кольорами",
+    "🎨 Кастомна тема для кожної групи: стиль бульбашок, фон, акцентний колір",
+    "✨ 8 готових шаблонів тем для груп (Стандартна, Бізнес, Неон, Природа, Романтика, Ретро, Зима, Космос)",
+    "📱 Рамки відеодзвінків та відеоповідомлень перенесено в розділ Теми",
+    "🔧 ContactContextMenu витягнуто в окремий файл (зменшення ChatsActivity)",
+    "📊 Горизонтальна панель папок зі свайпом на головному екрані чатів",
+    "🔍 Фільтрація чатів за папками з підтримкою архіву"
   ],
   "is_mandatory": false,
   "published_at": "2026-02-10T18:00:00Z",
@@ -130,20 +129,54 @@
       "progress_tracking": true,
       "pending_install_detection": true,
       "check_interval_minutes": 30
+    },
+    "chat_organization": {
+      "enabled": true,
+      "folders": {
+        "default_folders": ["all", "personal", "groups", "unread"],
+        "custom_folders": true,
+        "archive_folder": true
+      },
+      "tags": {
+        "preset_count": 8,
+        "custom_tags": true,
+        "max_tags_per_chat": 5
+      },
+      "archive": {
+        "local_only": true,
+        "todo_backend_sync": "POST /api/v2/endpoints/chat_archive.php"
+      }
+    },
+    "group_themes": {
+      "enabled": true,
+      "local_only": true,
+      "preset_themes": 8,
+      "customizable_properties": ["bubble_style", "preset_background", "accent_color"],
+      "admin_only": true,
+      "todo_backend_api": "POST /api/v2/endpoints/group_customization.php"
     }
   },
   "minimum_supported_version": "2.0.0",
   "force_update_below": "1.9.0",
   "new_files": [
     "ui/theme/ThemeOneClickPacks.kt",
-    "ui/theme/ThemeBackgroundSection.kt"
+    "ui/theme/ThemeBackgroundSection.kt",
+    "ui/chats/ChatOrganizationManager.kt",
+    "ui/chats/ChatOrganizationUI.kt",
+    "ui/chats/ChatContactMenu.kt",
+    "ui/groups/GroupThemeManager.kt",
+    "ui/groups/GroupThemeEditor.kt"
   ],
   "modified_files": [
     "ui/theme/ThemeSettingsScreen.kt",
     "ui/theme/CustomizationManager.kt",
     "ui/preferences/BubbleStyle.kt",
     "ui/messages/BubbleStyles.kt",
-    "update/AppUpdateManager.kt"
+    "update/AppUpdateManager.kt",
+    "ui/chats/ChatsActivity.kt",
+    "ui/chats/ChatsScreenModern.kt",
+    "ui/settings/SettingsActivity.kt",
+    "ui/groups/GroupDetailsActivity.kt"
   ],
   "dependencies": {
     "lottie": "6.4.0",

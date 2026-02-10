@@ -74,6 +74,9 @@ class GroupDetailsActivity : AppCompatActivity() {
         // Инициализируем ThemeManager
         ThemeManager.initialize(this)
 
+        // Ініціалізуємо менеджер тем для груп
+        GroupThemeManager.init(this)
+
         viewModel = ViewModelProvider(this).get(GroupsViewModel::class.java)
 
         setContent {
@@ -397,6 +400,16 @@ fun GroupDetailsScreen(
                             )
                         },
                         onFormattingClick = { showFormattingSettings = true }
+                    )
+                }
+
+                // Кнопка кастомної теми групи (тільки для адміна)
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    GroupThemeButton(
+                        groupId = group.id,
+                        groupName = group.name,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
             }

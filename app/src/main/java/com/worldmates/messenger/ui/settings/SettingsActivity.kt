@@ -101,17 +101,19 @@ class SettingsActivity : AppCompatActivity() {
                     }
                     SettingsScreen.Theme -> {
                         ThemeSettingsScreen(
-                            onBackClick = { currentScreen = SettingsScreen.Main }
+                            onBackClick = { currentScreen = SettingsScreen.Main },
+                            onNavigateToCallFrame = { currentScreen = SettingsScreen.CallFrameStyle },
+                            onNavigateToVideoFrame = { currentScreen = SettingsScreen.VideoMessageFrameStyle }
                         )
                     }
                     SettingsScreen.CallFrameStyle -> {
                         CallFrameSettingsScreen(
-                            onBackClick = { currentScreen = SettingsScreen.Main }
+                            onBackClick = { currentScreen = SettingsScreen.Theme }
                         )
                     }
                     SettingsScreen.VideoMessageFrameStyle -> {
                         VideoMessageFrameSettingsScreen(
-                            onBackClick = { currentScreen = SettingsScreen.Main }
+                            onBackClick = { currentScreen = SettingsScreen.Theme }
                         )
                     }
                     SettingsScreen.MyGroups -> {
@@ -446,22 +448,7 @@ fun SettingsScreen(
                     onClick = { onNavigate(SettingsScreen.Theme) }
                 )
             }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Videocam,
-                    title = "Стиль рамок відеодзвінків",
-                    subtitle = "Classic, Neon, Gradient, Rainbow...",
-                    onClick = { onNavigate(SettingsScreen.CallFrameStyle) }
-                )
-            }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.VideoLibrary,
-                    title = "Стиль відеоповідомлень",
-                    subtitle = "Круглий, Неоновий, Градієнт...",
-                    onClick = { onNavigate(SettingsScreen.VideoMessageFrameStyle) }
-                )
-            }
+            // Video frame styles moved to Theme settings
             item {
                 SettingsItem(
                     icon = Icons.Default.SystemUpdate,

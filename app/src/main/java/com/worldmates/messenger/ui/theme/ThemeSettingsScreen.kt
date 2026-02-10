@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Palette
@@ -168,6 +169,8 @@ enum class PresetBackground(
 @Composable
 fun ThemeSettingsScreen(
     onBackClick: () -> Unit,
+    onNavigateToCallFrame: (() -> Unit)? = null,
+    onNavigateToVideoFrame: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val themeViewModel = rememberThemeViewModel()
@@ -277,6 +280,16 @@ fun ThemeSettingsScreen(
                 OneClickInterfacePacksSection(themeViewModel = themeViewModel)
             }
 
+            // Стилі рамок відео (перенесено з налаштувань)
+            if (onNavigateToCallFrame != null || onNavigateToVideoFrame != null) {
+                item {
+                    VideoFrameStylesSection(
+                        onNavigateToCallFrame = onNavigateToCallFrame,
+                        onNavigateToVideoFrame = onNavigateToVideoFrame
+                    )
+                }
+            }
+
             // Сетка вариантов тем
             item {
                 Column {
@@ -291,6 +304,116 @@ fun ThemeSettingsScreen(
                         selectedVariant = themeState.variant,
                         onVariantSelected = { themeViewModel.setThemeVariant(it) }
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Секція стилів рамок відеодзвінків та відеоповідомлень
+ */
+@Composable
+fun VideoFrameStylesSection(
+    onNavigateToCallFrame: (() -> Unit)?,
+    onNavigateToVideoFrame: (() -> Unit)?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Стилі рамок відео",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            if (onNavigateToCallFrame != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onNavigateToCallFrame),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("📹", fontSize = 24.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Рамки відеодзвінків",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Classic, Neon, Gradient, Glass, Rainbow",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (onNavigateToCallFrame != null && onNavigateToVideoFrame != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (onNavigateToVideoFrame != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onNavigateToVideoFrame),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🎬", fontSize = 24.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Рамки відеоповідомлень",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Круглий, Неоновий, Градієнт, Rainbow",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

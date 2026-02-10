@@ -1095,14 +1095,15 @@ fun MessagesScreen(
                         selectedMessage = null
                     },
                     onEdit = { message ->
-                        // 🧪 ТЕСТОВЕ ПОВІДОМЛЕННЯ
-                        android.widget.Toast.makeText(
-                            context,
-                            "✏️ Редагування розпочато! Текст: ${message.decryptedText?.take(20)}...",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
-                        editingMessage = message
-                        messageText = message.decryptedText ?: ""
+                        val text = message.decryptedText ?: ""
+                        val trimmedText = text.trim()
+                        // Не ставимо URL медіа в текстове поле
+                        val isUrl = (trimmedText.startsWith("http://") || trimmedText.startsWith("https://") || trimmedText.startsWith("upload/")) &&
+                                !trimmedText.contains(" ") && !trimmedText.contains("\n")
+                        if (!isUrl) {
+                            editingMessage = message
+                            messageText = text
+                        }
                         showContextMenu = false
                         selectedMessage = null
                     },
@@ -3348,8 +3349,17 @@ fun MessageContextMenu(
                 onClick = { onReply(message) }
             )
 
-            // Edit (тільки для своїх текстових повідомлень)
-            if (message.fromId == UserSession.userId && !message.decryptedText.isNullOrEmpty()) {
+            // Edit (тільки для своїх ТЕКСТОВИХ повідомлень, не медіа)
+            val msgType = message.type?.lowercase() ?: ""
+            val isMediaMessage = msgType.contains("image") || msgType.contains("video") ||
+                    msgType.contains("audio") || msgType == "sticker" || msgType == "file" ||
+                    msgType.contains("photo")
+            val textIsMediaUrl = message.decryptedText?.let { text ->
+                val trimmed = text.trim()
+                (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("upload/")) &&
+                        !trimmed.contains(" ") && !trimmed.contains("\n")
+            } ?: false
+            if (message.fromId == UserSession.userId && !message.decryptedText.isNullOrEmpty() && !isMediaMessage && !textIsMediaUrl) {
                 ContextMenuItem(
                     icon = Icons.Default.Edit,
                     text = "Редагувати",
@@ -3364,8 +3374,8 @@ fun MessageContextMenu(
                 onClick = { onForward(message) }
             )
 
-            // Copy (якщо є текст)
-            if (!message.decryptedText.isNullOrEmpty()) {
+            // Copy (якщо є текст і це не просто URL медіа)
+            if (!message.decryptedText.isNullOrEmpty() && !isMediaMessage && !textIsMediaUrl) {
                 ContextMenuItem(
                     icon = Icons.Default.ContentCopy,
                     text = "Копіювати текст",

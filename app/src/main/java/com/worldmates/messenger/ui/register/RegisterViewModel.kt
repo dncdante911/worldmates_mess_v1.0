@@ -82,13 +82,17 @@ class RegisterViewModel : ViewModel() {
                         Log.d("RegisterViewModel", "Реєстрація успішна! Потрібна верифікація email: $email")
                     }
                     response.apiStatus == 400 -> {
-                        // Помилка від сервера
-                        val errorMsg = response.errorMessage ?: "Помилка реєстрації"
+                        val errorMsg = response.errors?.errorText
+                            ?: response.errorMessage
+                            ?: "Помилка реєстрації"
                         _registerState.value = RegisterState.Error(errorMsg)
                         Log.e("RegisterViewModel", "Помилка реєстрації: $errorMsg")
                     }
                     else -> {
-                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
+                        val errorMsg = response.errors?.errorText
+                            ?: response.errorMessage
+                            ?: response.message
+                            ?: "Невідома помилка"
                         _registerState.value = RegisterState.Error(errorMsg)
                         Log.e("RegisterViewModel", "Помилка: ${response.apiStatus} - $errorMsg")
                     }
@@ -188,12 +192,17 @@ class RegisterViewModel : ViewModel() {
                         }
                     }
                     response.apiStatus == 400 -> {
-                        val errorMsg = response.errorMessage ?: "Помилка реєстрації"
+                        val errorMsg = response.errors?.errorText
+                            ?: response.errorMessage
+                            ?: "Помилка реєстрації"
                         _registerState.value = RegisterState.Error(errorMsg)
                         Log.e("RegisterViewModel", "Помилка: $errorMsg")
                     }
                     else -> {
-                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
+                        val errorMsg = response.errors?.errorText
+                            ?: response.errorMessage
+                            ?: response.message
+                            ?: "Невідома помилка"
                         _registerState.value = RegisterState.Error(errorMsg)
                         Log.e("RegisterViewModel", "Помилка: $errorMsg")
                     }
@@ -280,12 +289,17 @@ class RegisterViewModel : ViewModel() {
                         Log.d("RegisterViewModel", "Успішно зареєстровано через телефон! User ID: ${response.userId}")
                     }
                     response.apiStatus == 400 -> {
-                        val errorMsg = response.errorMessage ?: "Помилка реєстрації"
+                        val errorMsg = response.errors?.errorText
+                            ?: response.errorMessage
+                            ?: "Помилка реєстрації"
                         _registerState.value = RegisterState.Error(errorMsg)
                         Log.e("RegisterViewModel", "Помилка: $errorMsg")
                     }
                     else -> {
-                        val errorMsg = response.errorMessage ?: response.message ?: "Невідома помилка"
+                        val errorMsg = response.errors?.errorText
+                            ?: response.errorMessage
+                            ?: response.message
+                            ?: "Невідома помилка"
                         _registerState.value = RegisterState.Error(errorMsg)
                         Log.e("RegisterViewModel", "Помилка: $errorMsg")
                     }
@@ -326,7 +340,7 @@ class RegisterViewModel : ViewModel() {
                 // Спроба розібрати JSON відповідь
                 val gson = com.google.gson.Gson()
                 try {
-                    val errorResponse = gson.fromJson(errorBody, com.worldmates.messenger.network.AuthResponse::class.java)
+                    val errorResponse = gson.fromJson(errorBody, com.worldmates.messenger.data.model.AuthResponse::class.java)
                     errorResponse?.errorMessage
                         ?: errorResponse?.errors?.errorText
                         ?: errorResponse?.message

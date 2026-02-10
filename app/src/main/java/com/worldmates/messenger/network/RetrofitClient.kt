@@ -155,11 +155,12 @@ object RetrofitClient {
     }
 
     private val client = OkHttpClient.Builder()
-        .cookieJar(MemoryCookieJar()) // Сохраняем cookies между запросами
-        .addInterceptor(ApiKeyInterceptor()) // Добавляем server_key сначала
-        .addInterceptor(loggingInterceptor) // Логируем после модификации запроса
+        .cookieJar(MemoryCookieJar()) // Сохраняем cookies між запитами
+        .addInterceptor(ApiKeyInterceptor()) // Додаємо server_key першим
+        .addInterceptor(loggingInterceptor) // Логуємо після модифікації запиту
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
     val retrofit: Retrofit = Retrofit.Builder()

@@ -8,6 +8,7 @@ import com.worldmates.messenger.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 class RegisterViewModel : ViewModel() {
 
@@ -92,6 +93,10 @@ class RegisterViewModel : ViewModel() {
                         Log.e("RegisterViewModel", "Помилка: ${response.apiStatus} - $errorMsg")
                     }
                 }
+            } catch (e: HttpException) {
+                val errorMsg = parseHttpError(e)
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "HTTP помилка реєстрації: ${e.code()}", e)
             } catch (e: java.net.ConnectException) {
                 val errorMsg = "Помилка з'єднання. Перевірте мережу"
                 _registerState.value = RegisterState.Error(errorMsg)
@@ -101,7 +106,7 @@ class RegisterViewModel : ViewModel() {
                 _registerState.value = RegisterState.Error(errorMsg)
                 Log.e("RegisterViewModel", "Тайм-аут", e)
             } catch (e: Exception) {
-                val errorMsg = "Помилка мережи: ${e.localizedMessage}"
+                val errorMsg = "Помилка мережі: ${e.localizedMessage}"
                 _registerState.value = RegisterState.Error(errorMsg)
                 Log.e("RegisterViewModel", "Помилка реєстрації", e)
             }
@@ -193,14 +198,18 @@ class RegisterViewModel : ViewModel() {
                         Log.e("RegisterViewModel", "Помилка: $errorMsg")
                     }
                 }
+            } catch (e: HttpException) {
+                val errorMsg = parseHttpError(e)
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "HTTP помилка email реєстрації: ${e.code()}", e)
             } catch (e: java.net.ConnectException) {
                 val errorMsg = "Помилка з'єднання. Перевірте мережу"
                 _registerState.value = RegisterState.Error(errorMsg)
                 Log.e("RegisterViewModel", "Помилка з'єднання", e)
             } catch (e: java.net.SocketTimeoutException) {
-                val errorMsg = "Тайм-аут з'єднання. Спробуйте ще раз"
+                val errorMsg = "Тайм-аут з'єднання. Сервер не відповідає, спробуйте ще раз"
                 _registerState.value = RegisterState.Error(errorMsg)
-                Log.e("RegisterViewModel", "Тайм-аут", e)
+                Log.e("RegisterViewModel", "Тайм-аут email реєстрації", e)
             } catch (e: Exception) {
                 val errorMsg = "Помилка мережі: ${e.localizedMessage}"
                 _registerState.value = RegisterState.Error(errorMsg)
@@ -281,14 +290,18 @@ class RegisterViewModel : ViewModel() {
                         Log.e("RegisterViewModel", "Помилка: $errorMsg")
                     }
                 }
+            } catch (e: HttpException) {
+                val errorMsg = parseHttpError(e)
+                _registerState.value = RegisterState.Error(errorMsg)
+                Log.e("RegisterViewModel", "HTTP помилка phone реєстрації: ${e.code()}", e)
             } catch (e: java.net.ConnectException) {
                 val errorMsg = "Помилка з'єднання. Перевірте мережу"
                 _registerState.value = RegisterState.Error(errorMsg)
                 Log.e("RegisterViewModel", "Помилка з'єднання", e)
             } catch (e: java.net.SocketTimeoutException) {
-                val errorMsg = "Тайм-аут з'єднання. Спробуйте ще раз"
+                val errorMsg = "Тайм-аут з'єднання. Сервер не відповідає, спробуйте ще раз"
                 _registerState.value = RegisterState.Error(errorMsg)
-                Log.e("RegisterViewModel", "Тайм-аут", e)
+                Log.e("RegisterViewModel", "Тайм-аут phone реєстрації", e)
             } catch (e: Exception) {
                 val errorMsg = "Помилка мережі: ${e.localizedMessage}"
                 _registerState.value = RegisterState.Error(errorMsg)
@@ -299,6 +312,46 @@ class RegisterViewModel : ViewModel() {
 
     fun resetState() {
         _registerState.value = RegisterState.Idle
+    }
+
+    /**
+     * Парсить помилку з HTTP-відповіді сервера
+     */
+    private fun parseHttpError(e: HttpException): String {
+        return try {
+            val errorBody = e.response()?.errorBody()?.string()
+            Log.e("RegisterViewModel", "HTTP ${e.code()} error body: $errorBody")
+
+            if (!errorBody.isNullOrBlank()) {
+                // Спроба розібрати JSON відповідь
+                val gson = com.google.gson.Gson()
+                try {
+                    val errorResponse = gson.fromJson(errorBody, com.worldmates.messenger.network.AuthResponse::class.java)
+                    errorResponse?.errorMessage
+                        ?: errorResponse?.errors?.errorText
+                        ?: errorResponse?.message
+                        ?: "Помилка сервера (${e.code()})"
+                } catch (jsonE: Exception) {
+                    // JSON не вдалося розібрати - шукаємо текстову помилку
+                    if (errorBody.contains("error", ignoreCase = true)) {
+                        "Помилка сервера: ${errorBody.take(200)}"
+                    } else {
+                        "Помилка сервера (${e.code()})"
+                    }
+                }
+            } else {
+                when (e.code()) {
+                    500 -> "Внутрішня помилка сервера. Спробуйте пізніше"
+                    502 -> "Сервер тимчасово недоступний"
+                    503 -> "Сервіс тимчасово недоступний"
+                    429 -> "Забагато запитів. Зачекайте та спробуйте ще раз"
+                    else -> "Помилка сервера (${e.code()})"
+                }
+            }
+        } catch (parseE: Exception) {
+            Log.e("RegisterViewModel", "Помилка парсингу HTTP error", parseE)
+            "Помилка сервера (${e.code()})"
+        }
     }
 
     /**

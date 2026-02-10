@@ -144,7 +144,8 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var phoneNumber by remember { mutableStateOf("") }
-    var selectedGender by remember { mutableStateOf("male") } // ✅ Добавлено
+    var selectedGender by remember { mutableStateOf("male") }
+    var selectedCountry by remember { mutableStateOf(com.worldmates.messenger.ui.components.popularCountries[0]) }
     var selectedTab by remember { mutableStateOf(0) }
     val registerState by viewModel.registerState.collectAsState()
     val isLoading = registerState is RegisterState.Loading
@@ -219,8 +220,10 @@ fun RegisterScreen(
                 onConfirmPasswordVisibilityToggle = { confirmPasswordVisible = !confirmPasswordVisible },
                 phoneNumber = phoneNumber,
                 onPhoneNumberChange = { phoneNumber = it },
-                selectedGender = selectedGender,  // ✅ Добавлено
-                onGenderChange = { selectedGender = it },  // ✅ Добавлено
+                selectedGender = selectedGender,
+                onGenderChange = { selectedGender = it },
+                selectedCountry = selectedCountry,
+                onCountryChange = { selectedCountry = it },
                 selectedTab = selectedTab,
                 onTabChange = { selectedTab = it },
                 isLoading = isLoading,
@@ -229,13 +232,16 @@ fun RegisterScreen(
                         // Email регистрация
                         if (username.isNotEmpty() && email.isNotEmpty() &&
                             password.isNotEmpty() && password == confirmPassword) {
-                            viewModel.registerWithEmail(username, email, password, confirmPassword, selectedGender)  // ✅ Добавлено gender
+                            viewModel.registerWithEmail(username, email, password, confirmPassword, selectedGender)
                         }
                     } else {
-                        // Phone регистрация
+                        // Phone регистрация - передаємо повний номер з кодом країни
                         if (username.isNotEmpty() && phoneNumber.isNotEmpty() &&
                             password.isNotEmpty() && password == confirmPassword) {
-                            viewModel.registerWithPhone(username, phoneNumber, password, confirmPassword, selectedGender)  // ✅ Добавлено gender
+                            val fullPhone = com.worldmates.messenger.ui.components.getFullPhoneNumber(
+                                selectedCountry.dialCode, phoneNumber
+                            )
+                            viewModel.registerWithPhone(username, fullPhone, password, confirmPassword, selectedGender)
                         }
                     }
                 },
@@ -285,15 +291,16 @@ fun RegisterFormCard(
     onConfirmPasswordVisibilityToggle: () -> Unit,
     phoneNumber: String,
     onPhoneNumberChange: (String) -> Unit,
-    selectedGender: String,  // ✅ Добавлено
-    onGenderChange: (String) -> Unit,  // ✅ Добавлено
+    selectedGender: String,
+    onGenderChange: (String) -> Unit,
+    selectedCountry: com.worldmates.messenger.ui.components.Country,
+    onCountryChange: (com.worldmates.messenger.ui.components.Country) -> Unit,
     selectedTab: Int,
     onTabChange: (Int) -> Unit,
     isLoading: Boolean,
     onRegisterClick: () -> Unit,
     registerState: RegisterState
 ) {
-    var selectedCountry by remember { mutableStateOf(popularCountries[0]) }  // Ukraine by default
 
     val colorScheme = MaterialTheme.colorScheme
 
@@ -390,7 +397,7 @@ fun RegisterFormCard(
                         phoneNumber = phoneNumber,
                         onPhoneNumberChange = onPhoneNumberChange,
                         selectedCountry = selectedCountry,
-                        onCountryChange = { selectedCountry = it },
+                        onCountryChange = onCountryChange,
                         enabled = !isLoading,
                         label = "Номер телефону"
                     )

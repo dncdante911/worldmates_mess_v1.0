@@ -77,8 +77,8 @@ class NetworkQualityMonitor(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pingJob: Job? = null
 
-    // Історія останніх пінгів для згладжування
-    private val pingHistory = mutableListOf<Long>()
+    // Історія останніх пінгів для згладжування (thread-safe)
+    private val pingHistory = java.util.Collections.synchronizedList(mutableListOf<Long>())
     private val maxHistorySize = 5
 
     init {
@@ -149,17 +149,21 @@ class NetworkQualityMonitor(private val context: Context) {
                 // Пінгуємо сервер для вимірювання затримки
                 val latency = measureLatency()
 
-                // Додаємо до історії
-                pingHistory.add(latency)
-                if (pingHistory.size > maxHistorySize) {
-                    pingHistory.removeAt(0)
+                // Додаємо до історії (thread-safe)
+                synchronized(pingHistory) {
+                    pingHistory.add(latency)
+                    if (pingHistory.size > maxHistorySize) {
+                        pingHistory.removeAt(0)
+                    }
                 }
 
                 // Середня затримка (згладжування)
-                val avgLatency = if (pingHistory.isNotEmpty()) {
-                    pingHistory.average().toLong()
-                } else {
-                    latency
+                val avgLatency = synchronized(pingHistory) {
+                    if (pingHistory.isNotEmpty()) {
+                        pingHistory.toList().average().toLong()
+                    } else {
+                        latency
+                    }
                 }
 
                 // Визначаємо якість

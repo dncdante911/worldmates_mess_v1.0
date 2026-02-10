@@ -92,7 +92,14 @@ class StrapiStickerRepository(private val context: Context) {
                 Log.d(TAG, "Завантаження пакетів з Strapi...")
                 val response = StrapiClient.api.getAllContent()
 
-                val packs = response.data.map { it.toStrapiContentPack(StrapiClient.CDN_URL) }
+                val packs = (response.data ?: emptyList()).mapNotNull {
+                    try {
+                        it.toStrapiContentPack(StrapiClient.CDN_URL)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Помилка парсингу паку ${it.id}: ${e.message}")
+                        null
+                    }
+                }
                 Log.d(TAG, "✅ Завантажено ${packs.size} пакетів з Strapi")
 
                 // Логування деталей
@@ -133,7 +140,7 @@ class StrapiStickerRepository(private val context: Context) {
             try {
                 _isLoading.value = true
                 val response = StrapiClient.api.getContentByType("sticker")
-                val packs = response.data.map { it.toStrapiContentPack(StrapiClient.CDN_URL) }
+                val packs = (response.data ?: emptyList()).map { it.toStrapiContentPack(StrapiClient.CDN_URL) }
                 _stickerPacks.value = packs
                 _isLoading.value = false
                 Log.d(TAG, "Завантажено ${packs.size} паків стікерів")
@@ -155,7 +162,7 @@ class StrapiStickerRepository(private val context: Context) {
             try {
                 _isLoading.value = true
                 val response = StrapiClient.api.getContentByType("gif")
-                val packs = response.data.map { it.toStrapiContentPack(StrapiClient.CDN_URL) }
+                val packs = (response.data ?: emptyList()).map { it.toStrapiContentPack(StrapiClient.CDN_URL) }
                 _gifPacks.value = packs
                 _isLoading.value = false
                 Log.d(TAG, "Завантажено ${packs.size} паків GIF")
@@ -177,7 +184,7 @@ class StrapiStickerRepository(private val context: Context) {
             try {
                 _isLoading.value = true
                 val response = StrapiClient.api.getContentByType("emoji")
-                val packs = response.data.map { it.toStrapiContentPack(StrapiClient.CDN_URL) }
+                val packs = (response.data ?: emptyList()).map { it.toStrapiContentPack(StrapiClient.CDN_URL) }
                 _emojiPacks.value = packs
                 _isLoading.value = false
                 Log.d(TAG, "Завантажено ${packs.size} паків емодзі")
@@ -198,7 +205,7 @@ class StrapiStickerRepository(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 val response = StrapiClient.api.getPackBySlug(slug)
-                val pack = response.data.firstOrNull()?.toStrapiContentPack(StrapiClient.CDN_URL)
+                val pack = response.data?.firstOrNull()?.toStrapiContentPack(StrapiClient.CDN_URL)
                 Result.success(pack)
             } catch (e: Exception) {
                 Log.e(TAG, "Помилка завантаження паку $slug", e)

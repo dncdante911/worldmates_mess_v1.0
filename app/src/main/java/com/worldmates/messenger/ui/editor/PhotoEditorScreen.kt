@@ -17,15 +17,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,17 +39,16 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * 🎨 PHOTO EDITOR SCREEN
+ * PHOTO EDITOR SCREEN
  *
  * Полнофункциональный редактор фото с:
- * - Обрезка (crop)
- * - Поворот (rotate)
+ * - Рисование (draw) - реально працює
  * - Фильтры (filters)
- * - Рисование (draw)
+ * - Яркость/Контраст/Насыщенность
+ * - Поворот (rotate)
  * - Текст (text)
  * - Стикеры (stickers)
- * - Яркость/Контраст/Насыщенность
- * - Сохранение и отправка
+ * - Зберігання з діалогом вибору
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +70,8 @@ fun PhotoEditorScreen(
     val selectedColor by viewModel.selectedColor.collectAsState()
     val brushSize by viewModel.brushSize.collectAsState()
 
+    var showSaveDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(imageUrl) {
         viewModel.loadImage(imageUrl, context)
     }
@@ -76,7 +82,7 @@ fun PhotoEditorScreen(
                 title = { Text("Редактор фото", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, "Закрыть")
+                        Icon(Icons.Default.Close, "Закрити")
                     }
                 },
                 actions = {
@@ -85,7 +91,7 @@ fun PhotoEditorScreen(
                         onClick = { viewModel.undo() },
                         enabled = viewModel.canUndo()
                     ) {
-                        Icon(Icons.Default.Undo, "Отменить")
+                        Icon(Icons.Default.Undo, "Скасувати")
                     }
 
                     // Redo button
@@ -93,25 +99,12 @@ fun PhotoEditorScreen(
                         onClick = { viewModel.redo() },
                         enabled = viewModel.canRedo()
                     ) {
-                        Icon(Icons.Default.Redo, "Вернуть")
+                        Icon(Icons.Default.Redo, "Повернути")
                     }
 
                     // Save button
-                    IconButton(
-                        onClick = {
-                            val savedFile = viewModel.saveImage(context)
-                            if (savedFile != null) {
-                                onSave(savedFile)
-                            } else {
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Ошибка сохранения",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Default.Check, "Сохранить")
+                    IconButton(onClick = { showSaveDialog = true }) {
+                        Icon(Icons.Default.Check, "Зберегти")
                     }
                 }
             )
@@ -157,7 +150,7 @@ fun PhotoEditorScreen(
                     )
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // Tool selector
                 ToolSelector(
@@ -177,61 +170,254 @@ fun PhotoEditorScreen(
             PhotoEditorCanvas(
                 viewModel = viewModel,
                 currentTool = currentTool,
-                onDrawPath = { path -> viewModel.addDrawPath(path) },
-                onAddText = { text, x, y -> viewModel.addTextAt(text, x, y) }
+                drawingPaths = drawingPaths,
+                textElements = textElements,
+                selectedColor = selectedColor,
+                brushSize = brushSize
             )
         }
+    }
+
+    // Save dialog with 3 options
+    if (showSaveDialog) {
+        SaveDialog(
+            onSaveModified = {
+                showSaveDialog = false
+                viewModel.applyAllDrawingsTobitmap()
+                val savedFile = viewModel.saveImage(context)
+                if (savedFile != null) {
+                    onSave(savedFile)
+                } else {
+                    android.widget.Toast.makeText(context, "Помилка збереження", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            },
+            onSaveBoth = {
+                showSaveDialog = false
+                // Save original first
+                val originalFile = viewModel.saveOriginalImage(context)
+                // Apply drawings and save modified
+                viewModel.applyAllDrawingsTobitmap()
+                val modifiedFile = viewModel.saveImage(context)
+                if (modifiedFile != null) {
+                    android.widget.Toast.makeText(context, "Збережено обидва варіанти", android.widget.Toast.LENGTH_SHORT).show()
+                    onSave(modifiedFile)
+                }
+            },
+            onDontSave = {
+                showSaveDialog = false
+                onDismiss()
+            },
+            onDismiss = { showSaveDialog = false }
+        )
     }
 }
 
 /**
- * 🎨 Photo Editor Canvas
+ * Save dialog with 3 options
+ */
+@Composable
+private fun SaveDialog(
+    onSaveModified: () -> Unit,
+    onSaveBoth: () -> Unit,
+    onDontSave: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Save, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text("Зберегти фото") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Оберіть варіант збереження:")
+
+                // Save modified only
+                Surface(
+                    onClick = onSaveModified,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text("Зберегти змінене", fontWeight = FontWeight.SemiBold)
+                            Text("Тільки відредагована версія", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                // Save both
+                Surface(
+                    onClick = onSaveBoth,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(Icons.Default.FileCopy, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column {
+                            Text("Зберегти обидва", fontWeight = FontWeight.SemiBold)
+                            Text("Оригінал + змінена версія", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDontSave) {
+                Text("Не зберігати")
+            }
+        }
+    )
+}
+
+/**
+ * Photo Editor Canvas with real drawing support
  */
 @Composable
 private fun PhotoEditorCanvas(
     viewModel: PhotoEditorViewModel,
     currentTool: EditorTool,
-    onDrawPath: (Path) -> Unit,
-    onAddText: (String, Float, Float) -> Unit
+    drawingPaths: List<DrawPath>,
+    textElements: List<TextElement>,
+    selectedColor: Color,
+    brushSize: Float
 ) {
     val editedBitmap by viewModel.editedBitmap.collectAsState()
-    val context = LocalContext.current
+
+    // Current path being drawn
+    var currentPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // Display image
         editedBitmap?.let { bitmap ->
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Edited photo",
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(currentTool) {
-                        when (currentTool) {
-                            EditorTool.DRAW -> {
-                                detectDragGestures { change, dragAmount ->
-                                    // Drawing logic handled in ViewModel
-                                    change.consume()
-                                }
+                    .onSizeChanged { canvasSize = it }
+            ) {
+                // Display base image
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Edited photo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+
+                // Drawing overlay Canvas
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(currentTool, selectedColor, brushSize) {
+                            if (currentTool == EditorTool.DRAW) {
+                                detectDragGestures(
+                                    onDragStart = { offset ->
+                                        currentPoints = listOf(offset)
+                                    },
+                                    onDrag = { change, _ ->
+                                        change.consume()
+                                        currentPoints = currentPoints + change.position
+                                    },
+                                    onDragEnd = {
+                                        if (currentPoints.size >= 2) {
+                                            viewModel.addDrawPathFromPoints(
+                                                currentPoints,
+                                                canvasSize,
+                                                selectedColor,
+                                                brushSize
+                                            )
+                                        }
+                                        currentPoints = emptyList()
+                                    },
+                                    onDragCancel = {
+                                        currentPoints = emptyList()
+                                    }
+                                )
                             }
-                            EditorTool.TEXT -> {
-                                detectTapGestures { offset ->
-                                    // Show text input dialog
-                                }
-                            }
-                            else -> {}
                         }
-                    },
-                contentScale = ContentScale.Fit
-            )
+                ) {
+                    // Draw saved paths
+                    drawingPaths.forEach { drawPath ->
+                        val path = Path()
+                        val points = drawPath.points
+                        if (points.size >= 2) {
+                            // Convert normalized points back to canvas coordinates
+                            val scaleX = size.width
+                            val scaleY = size.height
+                            path.moveTo(points[0].x * scaleX, points[0].y * scaleY)
+                            for (i in 1 until points.size) {
+                                path.lineTo(points[i].x * scaleX, points[i].y * scaleY)
+                            }
+                            drawPath(
+                                path = path,
+                                color = drawPath.color,
+                                style = Stroke(
+                                    width = drawPath.strokeWidth,
+                                    cap = StrokeCap.Round,
+                                    join = StrokeJoin.Round
+                                )
+                            )
+                        }
+                    }
+
+                    // Draw current active path
+                    if (currentPoints.size >= 2) {
+                        val activePath = Path()
+                        activePath.moveTo(currentPoints[0].x, currentPoints[0].y)
+                        for (i in 1 until currentPoints.size) {
+                            activePath.lineTo(currentPoints[i].x, currentPoints[i].y)
+                        }
+                        drawPath(
+                            path = activePath,
+                            color = selectedColor,
+                            style = Stroke(
+                                width = brushSize,
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
+
+                    // Draw text elements
+                    textElements.forEach { element ->
+                        drawContext.canvas.nativeCanvas.apply {
+                            val paint = android.graphics.Paint().apply {
+                                color = element.color.toArgb()
+                                textSize = element.size * 3f
+                                isAntiAlias = true
+                                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                            }
+                            drawText(
+                                element.text,
+                                element.x * size.width,
+                                element.y * size.height,
+                                paint
+                            )
+                        }
+                    }
+                }
+            }
+        } ?: run {
+            // Loading state
+            CircularProgressIndicator(color = Color.White)
         }
     }
 }
 
 /**
- * 🛠️ Tool Selector
+ * Tool Selector
  */
 @Composable
 private fun ToolSelector(
@@ -289,7 +475,7 @@ private fun ToolSelector(
 }
 
 /**
- * ✏️ Draw Controls
+ * Draw Controls
  */
 @Composable
 private fun DrawControls(
@@ -304,7 +490,7 @@ private fun DrawControls(
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {
-        Text("Цвет и размер кисти", fontWeight = FontWeight.Bold)
+        Text("Колір і розмір кисті", fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
         // Color picker
@@ -334,7 +520,7 @@ private fun DrawControls(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Размер:", fontSize = 14.sp)
+            Text("Розмір:", fontSize = 14.sp)
             Slider(
                 value = brushSize,
                 onValueChange = onBrushSizeChange,
@@ -347,7 +533,7 @@ private fun DrawControls(
 }
 
 /**
- * 🎭 Filter Controls
+ * Filter Controls
  */
 @Composable
 private fun FilterControls(
@@ -405,7 +591,7 @@ private fun FilterControls(
 }
 
 /**
- * 🎚️ Adjustment Controls
+ * Adjustment Controls
  */
 @Composable
 private fun AdjustmentControls(
@@ -422,15 +608,14 @@ private fun AdjustmentControls(
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {
-        Text("Настройка изображения", fontWeight = FontWeight.Bold)
+        Text("Налаштування зображення", fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Brightness
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("☀️ Яркость:", fontSize = 14.sp, modifier = Modifier.width(100.dp))
+            Text("Яскравість:", fontSize = 14.sp, modifier = Modifier.width(100.dp))
             Slider(
                 value = brightness,
                 onValueChange = onBrightnessChange,
@@ -440,12 +625,11 @@ private fun AdjustmentControls(
             Text("${(brightness * 100).toInt()}%", fontSize = 12.sp, modifier = Modifier.width(50.dp))
         }
 
-        // Contrast
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("🔲 Контраст:", fontSize = 14.sp, modifier = Modifier.width(100.dp))
+            Text("Контраст:", fontSize = 14.sp, modifier = Modifier.width(100.dp))
             Slider(
                 value = contrast,
                 onValueChange = onContrastChange,
@@ -455,12 +639,11 @@ private fun AdjustmentControls(
             Text("${(contrast * 100).toInt()}%", fontSize = 12.sp, modifier = Modifier.width(50.dp))
         }
 
-        // Saturation
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("🎨 Насыщен:", fontSize = 14.sp, modifier = Modifier.width(100.dp))
+            Text("Насиченість:", fontSize = 14.sp, modifier = Modifier.width(100.dp))
             Slider(
                 value = saturation,
                 onValueChange = onSaturationChange,
@@ -473,7 +656,7 @@ private fun AdjustmentControls(
 }
 
 /**
- * 🔄 Rotate Controls
+ * Rotate Controls
  */
 @Composable
 private fun RotateControls(
@@ -488,25 +671,25 @@ private fun RotateControls(
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         Button(onClick = { onRotate(-90) }) {
-            Icon(Icons.Default.RotateLeft, "Влево 90°")
+            Icon(Icons.Default.RotateLeft, "Вліво 90")
             Spacer(modifier = Modifier.width(4.dp))
-            Text("90° влево")
+            Text("90 вліво")
         }
 
         Button(onClick = { onRotate(180) }) {
-            Text("180°")
+            Text("180")
         }
 
         Button(onClick = { onRotate(90) }) {
-            Icon(Icons.Default.RotateRight, "Вправо 90°")
+            Icon(Icons.Default.RotateRight, "Вправо 90")
             Spacer(modifier = Modifier.width(4.dp))
-            Text("90° вправо")
+            Text("90 вправо")
         }
     }
 }
 
 /**
- * 📝 Text Controls
+ * Text Controls
  */
 @Composable
 private fun TextControls(
@@ -521,19 +704,18 @@ private fun TextControls(
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {
-        Text("Добавить текст", fontWeight = FontWeight.Bold)
+        Text("Додати текст", fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
             value = textInput,
             onValueChange = { textInput = it },
-            placeholder = { Text("Введите текст...") },
+            placeholder = { Text("Введіть текст...") },
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Color picker
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(textColors) { color ->
                 Box(
@@ -562,13 +744,13 @@ private fun TextControls(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Добавить текст")
+            Text("Додати текст")
         }
     }
 }
 
 /**
- * 😊 Sticker Controls
+ * Sticker Controls
  */
 @Composable
 private fun StickerControls(
@@ -595,7 +777,7 @@ private fun StickerControls(
 }
 
 /**
- * ✂️ Crop Controls
+ * Crop Controls
  */
 @Composable
 private fun CropControls(
@@ -609,18 +791,18 @@ private fun CropControls(
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         OutlinedButton(onClick = { /* Reset crop */ }) {
-            Text("Сбросить")
+            Text("Скинути")
         }
 
         Button(onClick = onCrop) {
-            Icon(Icons.Default.Crop, "Обрезать")
+            Icon(Icons.Default.Crop, "Обрізати")
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Применить обрезку")
+            Text("Застосувати обрізку")
         }
     }
 }
 
-// 🎨 Color palettes
+// Color palettes
 private val drawingColors = listOf(
     Color.Black, Color.White, Color.Red, Color.Blue,
     Color.Green, Color.Yellow, Color.Magenta, Color.Cyan
@@ -631,39 +813,39 @@ private val textColors = listOf(
     Color.Green, Color.Yellow
 )
 
-// 😊 Available stickers
+// Available stickers
 private val availableStickers = listOf(
     "😀", "😂", "😍", "😎", "🥳", "😢", "😡", "🤔",
-    "👍", "👎", "❤️", "💔", "🔥", "⭐", "🎉", "🎈"
+    "👍", "👎", "❤\uFE0F", "💔", "🔥", "⭐", "🎉", "🎈"
 )
 
 /**
- * 🛠️ Editor Tools
+ * Editor Tools
  */
 enum class EditorTool(
     val displayName: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
-    DRAW("Рисовать", Icons.Default.Brush),
-    FILTER("Фильтры", Icons.Default.FilterVintage),
-    ADJUST("Настройки", Icons.Default.Tune),
+    DRAW("Малювати", Icons.Default.Brush),
+    FILTER("Фільтри", Icons.Default.FilterVintage),
+    ADJUST("Налаштування", Icons.Default.Tune),
     ROTATE("Поворот", Icons.Default.RotateRight),
     TEXT("Текст", Icons.Default.TextFields),
-    STICKER("Стикеры", Icons.Default.EmojiEmotions),
-    CROP("Обрезка", Icons.Default.Crop)
+    STICKER("Стікери", Icons.Default.EmojiEmotions),
+    CROP("Обрізка", Icons.Default.Crop)
 }
 
 /**
- * 🎭 Photo Filters
+ * Photo Filters
  */
 enum class PhotoFilter(
     val displayName: String,
     val icon: String
 ) {
-    NONE("Нет", "🖼️"),
+    NONE("Ні", "🖼\uFE0F"),
     GRAYSCALE("Ч/Б", "⚫"),
-    SEPIA("Сепия", "🟤"),
+    SEPIA("Сепія", "🟤"),
     INVERT("Негатив", "🔄"),
-    BLUR("Размытие", "🌫️"),
-    SHARPEN("Резкость", "🔪")
+    BLUR("Розмиття", "🌫\uFE0F"),
+    SHARPEN("Різкість", "🔪")
 }

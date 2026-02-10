@@ -6,7 +6,7 @@ import com.google.gson.annotations.SerializedName
  * Strapi Response для пакетів стікерів/гіфок
  */
 data class StrapiResponse(
-    @SerializedName("data") val data: List<PackItem>,
+    @SerializedName("data") val data: List<PackItem>? = null,
     @SerializedName("meta") val meta: Meta? = null
 )
 
@@ -22,19 +22,20 @@ data class PackItem(
  * Атрибути пакету
  */
 data class PackAttributes(
-    @SerializedName("Name_pack") val namePack: String,
-    @SerializedName("gif") val type: String, // "sticker", "gif", або "emoji"
-    @SerializedName("slug") val slug: String,
-    @SerializedName("upload_gifs") val uploadGifs: MediaWrapper,
+    @SerializedName("Name_pack") val namePack: String? = null,
+    @SerializedName("gif") val type: String? = null, // "sticker", "gif", або "emoji"
+    @SerializedName("slug") val slug: String? = null,
+    @SerializedName("upload_gifs") val uploadGifs: MediaWrapper? = null,
     @SerializedName("createdAt") val createdAt: String? = null,
     @SerializedName("updatedAt") val updatedAt: String? = null
 )
 
 /**
  * Обгортка для медіа файлів
+ * data може бути null якщо в Strapi немає завантажених файлів
  */
 data class MediaWrapper(
-    @SerializedName("data") val data: List<MediaItem>
+    @SerializedName("data") val data: List<MediaItem>? = null
 )
 
 /**
@@ -116,10 +117,10 @@ data class StrapiContentItem(
 fun PackItem.toStrapiContentPack(cdnUrl: String = "https://cdn.worldmates.club"): StrapiContentPack {
     return StrapiContentPack(
         id = id,
-        name = attributes.namePack,
-        type = StrapiContentPack.ContentType.fromString(attributes.type),
-        slug = attributes.slug,
-        items = attributes.uploadGifs.data.map { mediaItem ->
+        name = attributes.namePack ?: "Pack #$id",
+        type = StrapiContentPack.ContentType.fromString(attributes.type ?: "sticker"),
+        slug = attributes.slug ?: "pack-$id",
+        items = attributes.uploadGifs?.data?.map { mediaItem ->
             StrapiContentItem(
                 id = mediaItem.id,
                 url = cdnUrl + mediaItem.attributes.url,
@@ -127,6 +128,6 @@ fun PackItem.toStrapiContentPack(cdnUrl: String = "https://cdn.worldmates.club")
                 width = mediaItem.attributes.width,
                 height = mediaItem.attributes.height
             )
-        }
+        } ?: emptyList()
     )
 }

@@ -77,7 +77,7 @@ class MusicPlaybackService : MediaSessionService() {
                 putExtra(EXTRA_IV, iv)
                 putExtra(EXTRA_TAG, tag)
             }
-            context.startForegroundService(intent)
+            context.startService(intent)
         }
 
         fun pausePlayback(context: Context) {

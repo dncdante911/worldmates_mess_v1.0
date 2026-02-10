@@ -129,6 +129,25 @@ fun ChatsScreenModern(
     // 📇 Стан для ContactPicker
     var showContactPicker by remember { mutableStateOf(false) }
 
+    // Організація чатів: папки, архів, теги
+    var selectedFolderId by remember { mutableStateOf("all") }
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
+    var showManageTagsDialog by remember { mutableStateOf(false) }
+    var showMoveFolderDialog by remember { mutableStateOf(false) }
+    var tagTargetChatId by remember { mutableStateOf<Long?>(null) }
+    var tagTargetChatName by remember { mutableStateOf("") }
+    var folderTargetChatId by remember { mutableStateOf<Long?>(null) }
+    var folderTargetChatName by remember { mutableStateOf("") }
+
+    val archivedIds by ChatOrganizationManager.archivedChatIds.collectAsState()
+    val folderMapping by ChatOrganizationManager.chatFolderMapping.collectAsState()
+    val chatFolders by ChatOrganizationManager.folders.collectAsState()
+
+    // Фільтрація чатів за обраною папкою
+    val filteredChats = remember(chats, selectedFolderId, archivedIds, folderMapping) {
+        filterChatsByFolder(chats, selectedFolderId, archivedIds, folderMapping)
+    }
+
     val context = LocalContext.current
     val nicknameRepository = remember { ContactNicknameRepository(context) }
 
@@ -185,7 +204,17 @@ fun ChatsScreenModern(
             GlassTopAppBar(
                 title = {
                     Text(
-                        text = if (pagerState.currentPage == 0) "Чати" else "Групи",
+                        text = when (pagerState.currentPage) {
+                            0 -> when {
+                                selectedFolderId == "all" -> "Чати"
+                                selectedFolderId == "archived" -> "📦 Архів"
+                                else -> chatFolders.find { it.id == selectedFolderId }?.let {
+                                    "${it.emoji} ${it.name}"
+                                } ?: "Чати"
+                            }
+                            1 -> "Канали"
+                            else -> "Групи"
+                        },
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
@@ -288,26 +317,36 @@ fun ChatsScreenModern(
             ) { page ->
                 when (page) {
                     0 -> {
-                        // Вкладка "Чати" з pull-to-refresh + Stories
-                        ChatListTabWithStories(
-                            chats = chats,
-                            stories = stories,
-                            isLoading = isLoadingChats,
-                            isLoadingStories = isLoadingStories,
-                            uiStyle = uiStyle,
-                            onRefresh = {
-                                viewModel.fetchChats()
-                                storyViewModel.loadStories()
-                            },
-                            onChatClick = onChatClick,
-                            onChatLongPress = { chat ->
-                                selectedChat = chat
-                                showContactMenu = true
-                            },
-                            onCreateStoryClick = {
-                                showCreateStoryDialog = true
-                            }
-                        )
+                        // Вкладка "Чати" з папками + pull-to-refresh + Stories
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // Горизонтальна смуга папок
+                            ChatFolderTabs(
+                                selectedFolderId = selectedFolderId,
+                                onFolderSelected = { selectedFolderId = it },
+                                onAddFolder = { showCreateFolderDialog = true }
+                            )
+
+                            // Список чатів (вже відфільтрований)
+                            ChatListTabWithStories(
+                                chats = filteredChats,
+                                stories = if (selectedFolderId == "all") stories else emptyList(),
+                                isLoading = isLoadingChats,
+                                isLoadingStories = isLoadingStories,
+                                uiStyle = uiStyle,
+                                onRefresh = {
+                                    viewModel.fetchChats()
+                                    storyViewModel.loadStories()
+                                },
+                                onChatClick = onChatClick,
+                                onChatLongPress = { chat ->
+                                    selectedChat = chat
+                                    showContactMenu = true
+                                },
+                                onCreateStoryClick = {
+                                    showCreateStoryDialog = true
+                                }
+                            )
+                        }
                     }
                     1 -> {
                         // Вкладка "Канали" з channel stories
@@ -449,7 +488,7 @@ fun ChatsScreenModern(
         )
     }
 
-    // Contact Context Menu
+    // Contact Context Menu з підтримкою архіву, тегів, папок
     if (showContactMenu && selectedChat != null) {
         ContactContextMenu(
             chat = selectedChat!!,
@@ -471,7 +510,35 @@ fun ChatsScreenModern(
                 }
                 selectedChat = null
             },
-            nicknameRepository = nicknameRepository
+            nicknameRepository = nicknameRepository,
+            onArchive = { chat ->
+                ChatOrganizationManager.archiveChat(chat.userId)
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Чат архівовано",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            },
+            onUnarchive = { chat ->
+                ChatOrganizationManager.unarchiveChat(chat.userId)
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Чат розархівовано",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            },
+            onManageTags = { chat ->
+                tagTargetChatId = chat.userId
+                tagTargetChatName = chat.username ?: "Чат"
+                showManageTagsDialog = true
+            },
+            onMoveToFolder = { chat ->
+                folderTargetChatId = chat.userId
+                folderTargetChatName = chat.username ?: "Чат"
+                showMoveFolderDialog = true
+            }
         )
     }
 
@@ -513,6 +580,41 @@ fun ChatsScreenModern(
         } else {
             showCreateChannelStoryDialog = false
         }
+    }
+
+    // Діалог створення нової папки
+    if (showCreateFolderDialog) {
+        CreateFolderDialog(
+            onDismiss = { showCreateFolderDialog = false },
+            onConfirm = { name, emoji ->
+                ChatOrganizationManager.addFolder(name, emoji)
+                showCreateFolderDialog = false
+            }
+        )
+    }
+
+    // Діалог управління тегами чату
+    if (showManageTagsDialog && tagTargetChatId != null) {
+        ManageTagsDialog(
+            chatId = tagTargetChatId!!,
+            chatName = tagTargetChatName,
+            onDismiss = {
+                showManageTagsDialog = false
+                tagTargetChatId = null
+            }
+        )
+    }
+
+    // Діалог переміщення чату в папку
+    if (showMoveFolderDialog && folderTargetChatId != null) {
+        MoveToChatFolderDialog(
+            chatId = folderTargetChatId!!,
+            chatName = folderTargetChatName,
+            onDismiss = {
+                showMoveFolderDialog = false
+                folderTargetChatId = null
+            }
+        )
     }
     }  // Закриваємо Box з фоновим зображенням
     }  // Закриваємо ModalNavigationDrawer
@@ -971,23 +1073,30 @@ fun ChatListTabWithStories(
             items(chats, key = { it.id }) { chat ->
                 val nickname by nicknameRepository.getNickname(chat.userId).collectAsState(initial = null)
 
-                when (uiStyle) {
-                    UIStyle.WORLDMATES -> {
-                        ModernChatCard(
-                            chat = chat,
-                            nickname = nickname,
-                            onClick = { onChatClick(chat) },
-                            onLongPress = { onChatLongPress(chat) }
-                        )
+                Column {
+                    when (uiStyle) {
+                        UIStyle.WORLDMATES -> {
+                            ModernChatCard(
+                                chat = chat,
+                                nickname = nickname,
+                                onClick = { onChatClick(chat) },
+                                onLongPress = { onChatLongPress(chat) }
+                            )
+                        }
+                        UIStyle.TELEGRAM -> {
+                            TelegramChatItem(
+                                chat = chat,
+                                nickname = nickname,
+                                onClick = { onChatClick(chat) },
+                                onLongPress = { onChatLongPress(chat) }
+                            )
+                        }
                     }
-                    UIStyle.TELEGRAM -> {
-                        TelegramChatItem(
-                            chat = chat,
-                            nickname = nickname,
-                            onClick = { onChatClick(chat) },
-                            onLongPress = { onChatLongPress(chat) }
-                        )
-                    }
+                    // Теги чату (якщо є)
+                    ChatTagsRow(
+                        chatId = chat.userId,
+                        modifier = Modifier.padding(start = 76.dp, bottom = 2.dp)
+                    )
                 }
             }
         }

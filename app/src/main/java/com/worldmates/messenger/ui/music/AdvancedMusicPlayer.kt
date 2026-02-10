@@ -49,17 +49,19 @@ fun AdvancedMusicPlayer(
     val playbackState by MusicPlaybackService.playbackState.collectAsState()
     val trackInfo by MusicPlaybackService.currentTrackInfo.collectAsState()
 
-    // Запускаємо сервіс при першому відкритті
+    // Запускаємо сервіс тільки якщо цей трек ще не грає
     LaunchedEffect(audioUrl) {
-        MusicPlaybackService.startPlayback(
-            context = context,
-            audioUrl = audioUrl,
-            title = title,
-            artist = artist,
-            timestamp = timestamp,
-            iv = iv,
-            tag = tag
-        )
+        if (trackInfo.url != audioUrl) {
+            MusicPlaybackService.startPlayback(
+                context = context,
+                audioUrl = audioUrl,
+                title = title,
+                artist = artist,
+                timestamp = timestamp,
+                iv = iv,
+                tag = tag
+            )
+        }
     }
 
     // Анімація візуалізатора

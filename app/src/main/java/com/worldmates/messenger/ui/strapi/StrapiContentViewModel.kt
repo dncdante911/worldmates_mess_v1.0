@@ -60,6 +60,13 @@ class StrapiContentViewModel(application: Application) : AndroidViewModel(applic
     init {
         // Завантажуємо контент при ініціалізації
         loadContent()
+
+        // Реактивне оновлення filteredPacks при зміні даних в репозиторії
+        viewModelScope.launch {
+            allPacks.collect {
+                updateFilteredPacks()
+            }
+        }
     }
 
     /**
@@ -137,9 +144,7 @@ class StrapiContentViewModel(application: Application) : AndroidViewModel(applic
      * Оновити контент
      */
     fun refresh() {
-        viewModelScope.launch {
-            repository.refresh()
-        }
+        loadContent(forceRefresh = true)
     }
 
     /**

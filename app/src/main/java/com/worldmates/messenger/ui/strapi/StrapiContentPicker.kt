@@ -1,5 +1,6 @@
 package com.worldmates.messenger.ui.strapi
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -29,12 +30,24 @@ fun StrapiContentPicker(
 ) {
     val allPacks by viewModel.allPacks.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val filteredPacks by viewModel.filteredPacks.collectAsState()
     val selectedPack by viewModel.selectedPack.collectAsState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Обробка кнопки "Назад" - повернення до списку паків або закриття
+    BackHandler(enabled = selectedPack != null) {
+        viewModel.selectPack(null)
+    }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            // При закритті скидаємо вибраний пак
+            viewModel.selectPack(null)
+            onDismiss()
+        },
+        sheetState = sheetState,
         modifier = Modifier.fillMaxHeight(0.7f)
     ) {
         Column(
@@ -49,7 +62,7 @@ fun StrapiContentPicker(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Стікери і GIF",
+                    text = if (selectedPack != null) selectedPack?.name ?: "Стікери і GIF" else "Стікери і GIF",
                     style = MaterialTheme.typography.titleLarge
                 )
 
@@ -57,56 +70,155 @@ fun StrapiContentPicker(
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(Icons.Default.Refresh, "Оновити")
                     }
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = {
+                        viewModel.selectPack(null)
+                        onDismiss()
+                    }) {
                         Icon(Icons.Default.Close, "Закрити")
                     }
                 }
             }
 
-            // Вкладки
-            TabRow(selectedTabIndex = selectedTab.ordinal) {
-                Tab(
-                    selected = selectedTab == StrapiContentViewModel.ContentTab.ALL,
-                    onClick = { viewModel.selectTab(StrapiContentViewModel.ContentTab.ALL) },
-                    text = { Text("Всі") }
-                )
-                Tab(
-                    selected = selectedTab == StrapiContentViewModel.ContentTab.STICKERS,
-                    onClick = { viewModel.selectTab(StrapiContentViewModel.ContentTab.STICKERS) },
-                    text = { Text("Стікери") }
-                )
-                Tab(
-                    selected = selectedTab == StrapiContentViewModel.ContentTab.GIFS,
-                    onClick = { viewModel.selectTab(StrapiContentViewModel.ContentTab.GIFS) },
-                    text = { Text("GIF") }
-                )
-                Tab(
-                    selected = selectedTab == StrapiContentViewModel.ContentTab.EMOJIS,
-                    onClick = { viewModel.selectTab(StrapiContentViewModel.ContentTab.EMOJIS) },
-                    text = { Text("Емодзі") }
-                )
+            // Вкладки (тільки коли не обрано пак)
+            if (selectedPack == null) {
+                TabRow(selectedTabIndex = selectedTab.ordinal) {
+                    Tab(
+                        selected = selectedTab == StrapiContentViewModel.ContentTab.ALL,
+                        onClick = { viewModel.selectTab(StrapiContentViewModel.ContentTab.ALL) },
+                        text = { Text("Всі") }
+                    )
+                    Tab(
+                        selected = selectedTab == StrapiContentViewModel.ContentTab.STICKERS,
+                        onClick = { viewModel.selectTab(StrapiContentViewModel.ContentTab.STICKERS) },
+                        text = { Text("Стікери") }
+                    )
+                    Tab(
+                        selected = selectedTab == StrapiContentViewModel.ContentTab.GIFS,
+                        onClick = { viewModel.selectTab(StrapiContentViewModel.ContentTab.GIFS) },
+                        text = { Text("GIF") }
+                    )
+                    Tab(
+                        selected = selectedTab == StrapiContentViewModel.ContentTab.EMOJIS,
+                        onClick = { viewModel.selectTab(StrapiContentViewModel.ContentTab.EMOJIS) },
+                        text = { Text("Емодзі") }
+                    )
+                }
             }
 
-            if (isLoading && allPacks.isEmpty()) {
-                // Індикатор завантаження
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+            when {
+                isLoading && allPacks.isEmpty() -> {
+                    // Індикатор завантаження
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Завантаження...", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
                 }
-            } else if (filteredPacks.isEmpty()) {
-                // Порожній стан
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Немає контенту")
+
+                error != null && allPacks.isEmpty() -> {
+                    // Помилка завантаження
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(32.dp)
+                        ) {
+                            Text(
+                                text = "Помилка завантаження",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = error ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.refresh() }) {
+                                Text("Спробувати ще раз")
+                            }
+                        }
+                    }
                 }
-            } else {
-                // Список паків або вміст паку
-                if (selectedPack == null) {
+
+                selectedPack != null -> {
+                    // Показуємо вміст паку
+                    val packItems = selectedPack?.items ?: emptyList()
+
+                    Column {
+                        // Кнопка "Назад"
+                        TextButton(
+                            onClick = { viewModel.selectPack(null) },
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Text("\u2190 Назад до паків")
+                        }
+
+                        if (packItems.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Пак порожній", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        } else {
+                            // Сітка з елементами
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(4),
+                                contentPadding = PaddingValues(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(packItems) { item ->
+                                    StrapiItemCard(
+                                        item = item,
+                                        onClick = {
+                                            onItemSelected(item.url)
+                                            viewModel.selectPack(null)
+                                            onDismiss()
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                filteredPacks.isEmpty() -> {
+                    // Порожній стан
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(32.dp)
+                        ) {
+                            Text("Немає контенту", style = MaterialTheme.typography.bodyMedium)
+                            if (!isLoading) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                TextButton(onClick = { viewModel.refresh() }) {
+                                    Text("Оновити")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                else -> {
                     // Показуємо список паків
+                    if (isLoading) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         contentPadding = PaddingValues(16.dp),
@@ -118,35 +230,6 @@ fun StrapiContentPicker(
                                 pack = pack,
                                 onClick = { viewModel.selectPack(pack) }
                             )
-                        }
-                    }
-                } else {
-                    // Показуємо вміст паку
-                    Column {
-                        // Кнопка "Назад"
-                        TextButton(
-                            onClick = { viewModel.selectPack(null) },
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            Text("← Назад до паків")
-                        }
-
-                        // Сітка з елементами
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(4),
-                            contentPadding = PaddingValues(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(selectedPack!!.items) { item ->
-                                StrapiItemCard(
-                                    item = item,
-                                    onClick = {
-                                        onItemSelected(item.url)
-                                        onDismiss()
-                                    }
-                                )
-                            }
                         }
                     }
                 }

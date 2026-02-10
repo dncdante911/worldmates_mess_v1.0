@@ -28,6 +28,15 @@ class VoiceRecorder(private val context: Context) {
     private var recordingStartTime = 0L
     private var pausedTime = 0L
 
+    // Якість запису
+    var audioQuality: AudioQuality = AudioQuality.STANDARD
+
+    enum class AudioQuality(val bitRate: Int, val sampleRate: Int, val label: String) {
+        COMPRESSED(64000, 22050, "Стиснутий (64 kbps)"),
+        STANDARD(128000, 44100, "Стандартний (128 kbps)"),
+        HIGH(256000, 48000, "Високий (256 kbps)")
+    }
+
     sealed class RecordingState {
         object Idle : RecordingState()
         object Recording : RecordingState()
@@ -55,8 +64,8 @@ class VoiceRecorder(private val context: Context) {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128000) // 128 kbps
-                setAudioSamplingRate(44100) // 44.1 kHz
+                setAudioEncodingBitRate(audioQuality.bitRate)
+                setAudioSamplingRate(audioQuality.sampleRate)
                 setOutputFile(currentRecordingFile!!.absolutePath)
                 prepare()
                 start()

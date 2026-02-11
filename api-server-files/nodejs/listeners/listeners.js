@@ -7,6 +7,7 @@ const moment = require("moment")
 const registerCallsListeners = require('./calls-listener');
 const registerChannelsListeners = require('./channels-listener');
 const registerStoriesListeners = require('./stories-listener');
+const registerBotsListeners = require('./bots-listener');
 
 
 const { AvatarChangedController } = require('../controllers/AvatarChangedController');
@@ -133,6 +134,7 @@ module.exports.registerListeners = async (socket, io, ctx) => {
     await registerCallsListeners(socket, io, ctx);
     await registerChannelsListeners(socket, io, ctx);
     await registerStoriesListeners(socket, io, ctx);
+    await registerBotsListeners(socket, io, ctx);
     ctx.reactions_types = await funcs.Wo_GetReactionsTypes(ctx);
 
     // ==================== ОСНОВНІ ОБРОБНИКИ ====================

@@ -1,5 +1,6 @@
 package com.worldmates.messenger.ui.profile
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,7 +45,15 @@ class UserProfileActivity : AppCompatActivity() {
                 UserProfileScreen(
                     viewModel = viewModel,
                     userId = userId,
-                    onBackClick = { finish() }
+                    onBackClick = { finish() },
+                    onSettingsClick = {
+                        startActivity(Intent(this, com.worldmates.messenger.ui.settings.SettingsActivity::class.java))
+                    },
+                    onThemesClick = {
+                        startActivity(Intent(this, com.worldmates.messenger.ui.settings.SettingsActivity::class.java).apply {
+                            putExtra("open_screen", "theme")
+                        })
+                    }
                 )
             }
         }
@@ -58,117 +68,207 @@ class UserProfileActivity : AppCompatActivity() {
 fun UserProfileScreen(
     viewModel: UserProfileViewModel,
     userId: Long?,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onSettingsClick: () -> Unit = {},
+    onThemesClick: () -> Unit = {}
 ) {
     val profileState by viewModel.profileState.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val ratingState by viewModel.ratingState.collectAsState()
+    val avatarUploadState by viewModel.avatarUploadState.collectAsState()
 
     var showEditDialog by remember { mutableStateOf(false) }
+    val isOwnProfile = userId == null
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Профіль") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                    }
-                },
-                actions = {
-                    // Show edit button only for own profile
-                    if (userId == null && profileState is ProfileState.Success) {
-                        IconButton(onClick = { showEditDialog = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Редагувати")
-                        }
-                    }
-                }
-            )
+    // Повідомлення про завантаження аватара
+    LaunchedEffect(avatarUploadState) {
+        when (avatarUploadState) {
+            is AvatarUploadState.Success -> {
+                snackbarHostState.showSnackbar("Аватар обновлен")
+                viewModel.resetAvatarUploadState()
+            }
+            is AvatarUploadState.Error -> {
+                snackbarHostState.showSnackbar(
+                    (avatarUploadState as AvatarUploadState.Error).message
+                )
+                viewModel.resetAvatarUploadState()
+            }
+            else -> {}
         }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (val state = profileState) {
-                is ProfileState.Loading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+    }
+
+    if (isOwnProfile) {
+        // Власний профіль - новий дизайн
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = MaterialTheme.colorScheme.background
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when (val state = profileState) {
+                    is ProfileState.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    is ProfileState.Error -> {
+                        ProfileErrorState(
+                            message = state.message,
+                            onRetry = { viewModel.loadUserProfile(userId) }
+                        )
+                    }
+                    is ProfileState.Success -> {
+                        MyProfileScreen(
+                            user = state.user,
+                            onEditClick = { showEditDialog = true },
+                            onSettingsClick = onSettingsClick,
+                            onThemesClick = onThemesClick,
+                            onAvatarSelected = { uri ->
+                                viewModel.uploadAvatar(uri, context)
+                            }
+                        )
+                    }
                 }
-                is ProfileState.Error -> {
-                    Column(
+
+                // Індикатор завантаження аватара
+                if (avatarUploadState is AvatarUploadState.Loading) {
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                            .background(Color.Black.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.Error,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = state.message,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadUserProfile(userId) }) {
-                            Text("Спробувати ще раз")
+                        Card(
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("Загрузка аватара...")
+                            }
                         }
                     }
                 }
-                is ProfileState.Success -> {
-                    UserProfileContent(
-                        user = state.user,
-                        isOwnProfile = userId == null,
-                        ratingState = ratingState,
-                        onRateUser = { ratingType, comment ->
-                            viewModel.rateUser(state.user.userId, ratingType, comment)
+            }
+        }
+    } else {
+        // Чужий профіль - старий дизайн з TopAppBar
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                TopAppBar(
+                    title = { Text("Профіль") },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
                         }
-                    )
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when (val state = profileState) {
+                    is ProfileState.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    is ProfileState.Error -> {
+                        ProfileErrorState(
+                            message = state.message,
+                            onRetry = { viewModel.loadUserProfile(userId) }
+                        )
+                    }
+                    is ProfileState.Success -> {
+                        UserProfileContent(
+                            user = state.user,
+                            isOwnProfile = false,
+                            ratingState = ratingState,
+                            onRateUser = { ratingType, comment ->
+                                viewModel.rateUser(state.user.userId, ratingType, comment)
+                            }
+                        )
+                    }
                 }
             }
         }
+    }
 
-        // Edit Profile Dialog
-        if (showEditDialog && profileState is ProfileState.Success) {
-            EditProfileDialog(
-                user = (profileState as ProfileState.Success).user,
-                updateState = updateState,
-                onDismiss = {
-                    showEditDialog = false
-                    viewModel.resetUpdateState()
-                },
-                onSave = { firstName, lastName, about, birthday, gender, phoneNumber, website, working, address, city, school ->
-                    viewModel.updateProfile(
-                        firstName = firstName,
-                        lastName = lastName,
-                        about = about,
-                        birthday = birthday,
-                        gender = gender,
-                        phoneNumber = phoneNumber,
-                        website = website,
-                        working = working,
-                        address = address,
-                        city = city,
-                        school = school
-                    )
-                }
-            )
-
-            // Auto-dismiss on success
-            LaunchedEffect(updateState) {
-                if (updateState is UpdateState.Success) {
-                    showEditDialog = false
-                    viewModel.resetUpdateState()
-                }
+    // Edit Profile Dialog
+    if (showEditDialog && profileState is ProfileState.Success) {
+        EditProfileDialog(
+            user = (profileState as ProfileState.Success).user,
+            updateState = updateState,
+            onDismiss = {
+                showEditDialog = false
+                viewModel.resetUpdateState()
+            },
+            onSave = { firstName, lastName, about, birthday, gender, phoneNumber, website, working, address, city, school ->
+                viewModel.updateProfile(
+                    firstName = firstName,
+                    lastName = lastName,
+                    about = about,
+                    birthday = birthday,
+                    gender = gender,
+                    phoneNumber = phoneNumber,
+                    website = website,
+                    working = working,
+                    address = address,
+                    city = city,
+                    school = school
+                )
             }
+        )
+
+        // Auto-dismiss on success
+        LaunchedEffect(updateState) {
+            if (updateState is UpdateState.Success) {
+                showEditDialog = false
+                viewModel.resetUpdateState()
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileErrorState(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Default.Error,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Text("Спробувати ще раз")
         }
     }
 }

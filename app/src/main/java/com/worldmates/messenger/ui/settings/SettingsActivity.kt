@@ -64,8 +64,18 @@ class SettingsActivity : AppCompatActivity() {
         // Загрузить данные пользователя при открытии настроек
         viewModel.fetchUserData()
 
+        // Перевіряємо чи потрібно відкрити конкретний екран
+        val openScreen = intent.getStringExtra("open_screen")
+
         setContent {
-            var currentScreen by remember { mutableStateOf<SettingsScreen>(SettingsScreen.Main) }
+            var currentScreen by remember {
+                mutableStateOf<SettingsScreen>(
+                    when (openScreen) {
+                        "theme" -> SettingsScreen.Theme
+                        else -> SettingsScreen.Main
+                    }
+                )
+            }
 
             WorldMatesThemedApp {
                 when (currentScreen) {

@@ -125,27 +125,97 @@ class ChatsActivity : AppCompatActivity() {
                     }
                 }
 
-                ChatsScreenModern(
-                    viewModel = viewModel,
-                    groupsViewModel = groupsViewModel,
-                    channelsViewModel = channelsViewModel,
-                    storyViewModel = storyViewModel,
-                    onChatClick = { chat ->
-                        navigateToMessages(chat)
+                // Нижня навігація: Чати | Контакти | Настройки | Профіль
+                var selectedBottomTab by remember {
+                    mutableStateOf(BottomNavTab.CHATS)
+                }
+
+                Scaffold(
+                    bottomBar = {
+                        AppBottomNavBar(
+                            selectedTab = selectedBottomTab,
+                            onTabSelected = { tab ->
+                                when (tab) {
+                                    BottomNavTab.CONTACTS -> {
+                                        // Відкриваємо ContactPicker як окрему активність або діалог
+                                        selectedBottomTab = tab
+                                    }
+                                    BottomNavTab.SETTINGS -> {
+                                        navigateToSettings()
+                                    }
+                                    BottomNavTab.PROFILE -> {
+                                        startActivity(
+                                            Intent(
+                                                this@ChatsActivity,
+                                                com.worldmates.messenger.ui.profile.UserProfileActivity::class.java
+                                            )
+                                        )
+                                    }
+                                    BottomNavTab.CHATS -> {
+                                        selectedBottomTab = BottomNavTab.CHATS
+                                    }
+                                }
+                            }
+                        )
                     },
-                    onGroupClick = { group ->
-                        navigateToGroupMessages(group)
-                    },
-                    onChannelClick = { channel ->
-                        navigateToChannelDetails(channel)
-                    },
-                    onSettingsClick = {
-                        navigateToSettings()
-                    },
-                    onCreateChannelClick = {
-                        navigateToCreateChannel()
+                    containerColor = Color.Transparent
+                ) { innerPadding ->
+                    Box(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+                        when (selectedBottomTab) {
+                            BottomNavTab.CHATS -> {
+                                ChatsScreenModern(
+                                    viewModel = viewModel,
+                                    groupsViewModel = groupsViewModel,
+                                    channelsViewModel = channelsViewModel,
+                                    storyViewModel = storyViewModel,
+                                    onChatClick = { chat ->
+                                        navigateToMessages(chat)
+                                    },
+                                    onGroupClick = { group ->
+                                        navigateToGroupMessages(group)
+                                    },
+                                    onChannelClick = { channel ->
+                                        navigateToChannelDetails(channel)
+                                    },
+                                    onSettingsClick = {
+                                        navigateToSettings()
+                                    },
+                                    onCreateChannelClick = {
+                                        navigateToCreateChannel()
+                                    }
+                                )
+                            }
+                            BottomNavTab.CONTACTS -> {
+                                com.worldmates.messenger.ui.components.ContactPicker(
+                                    onContactSelected = { contact ->
+                                        android.widget.Toast.makeText(
+                                            this@ChatsActivity,
+                                            "Контакт: ${contact.name}",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    onDismiss = {
+                                        selectedBottomTab = BottomNavTab.CHATS
+                                    }
+                                )
+                            }
+                            else -> {
+                                // Settings та Profile відкриваються як окремі Activity
+                                ChatsScreenModern(
+                                    viewModel = viewModel,
+                                    groupsViewModel = groupsViewModel,
+                                    channelsViewModel = channelsViewModel,
+                                    storyViewModel = storyViewModel,
+                                    onChatClick = { chat -> navigateToMessages(chat) },
+                                    onGroupClick = { group -> navigateToGroupMessages(group) },
+                                    onChannelClick = { channel -> navigateToChannelDetails(channel) },
+                                    onSettingsClick = { navigateToSettings() },
+                                    onCreateChannelClick = { navigateToCreateChannel() }
+                                )
+                            }
+                        }
                     }
-                )
+                }
             }
         }
     }

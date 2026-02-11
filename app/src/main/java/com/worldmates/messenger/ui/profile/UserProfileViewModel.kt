@@ -1,5 +1,7 @@
 package com.worldmates.messenger.ui.profile
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,6 +12,10 @@ import com.worldmates.messenger.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 
 class UserProfileViewModel : ViewModel() {
 
@@ -21,6 +27,9 @@ class UserProfileViewModel : ViewModel() {
 
     private val _ratingState = MutableStateFlow<RatingState>(RatingState.Loading)
     val ratingState: StateFlow<RatingState> = _ratingState
+
+    private val _avatarUploadState = MutableStateFlow<AvatarUploadState>(AvatarUploadState.Idle)
+    val avatarUploadState: StateFlow<AvatarUploadState> = _avatarUploadState
 
     /**
      * Завантажити дані профілю користувача
@@ -121,6 +130,64 @@ class UserProfileViewModel : ViewModel() {
     }
 
     /**
+     * Завантажити новий аватар користувача
+     */
+    fun uploadAvatar(uri: Uri, context: Context) {
+        _avatarUploadState.value = AvatarUploadState.Loading
+
+        viewModelScope.launch {
+            try {
+                val accessToken = UserSession.accessToken ?: throw Exception("No access token")
+
+                // Копіюємо файл з Uri в кеш
+                val inputStream = context.contentResolver.openInputStream(uri)
+                    ?: throw Exception("Cannot read image")
+                val tempFile = File(context.cacheDir, "avatar_upload_${System.currentTimeMillis()}.jpg")
+                tempFile.outputStream().use { output ->
+                    inputStream.copyTo(output)
+                }
+                inputStream.close()
+
+                val requestBody = tempFile.asRequestBody("image/*".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", tempFile.name, requestBody)
+
+                val response = RetrofitClient.apiService.uploadUserAvatar(
+                    accessToken = accessToken,
+                    file = filePart
+                )
+
+                // Видаляємо тимчасовий файл
+                tempFile.delete()
+
+                Log.d("UserProfileViewModel", "Avatar upload response: ${response.apiStatus}")
+
+                if (response.apiStatus == 200) {
+                    // Оновлюємо аватар в UserSession
+                    response.url?.let { url ->
+                        UserSession.avatar = url
+                    }
+                    _avatarUploadState.value = AvatarUploadState.Success
+                    // Перезавантажуємо профіль
+                    loadUserProfile()
+                } else {
+                    _avatarUploadState.value = AvatarUploadState.Error(
+                        response.message ?: "Не вдалося завантажити аватар"
+                    )
+                }
+            } catch (e: Exception) {
+                _avatarUploadState.value = AvatarUploadState.Error(
+                    "Помилка: ${e.localizedMessage}"
+                )
+                Log.e("UserProfileViewModel", "Exception uploading avatar", e)
+            }
+        }
+    }
+
+    fun resetAvatarUploadState() {
+        _avatarUploadState.value = AvatarUploadState.Idle
+    }
+
+    /**
      * Завантажити рейтинг користувача
      */
     fun loadUserRating(userId: Long) {
@@ -203,4 +270,11 @@ sealed class RatingState {
     object Loading : RatingState()
     data class Success(val rating: UserRating) : RatingState()
     data class Error(val message: String) : RatingState()
+}
+
+sealed class AvatarUploadState {
+    object Idle : AvatarUploadState()
+    object Loading : AvatarUploadState()
+    object Success : AvatarUploadState()
+    data class Error(val message: String) : AvatarUploadState()
 }

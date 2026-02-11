@@ -531,6 +531,39 @@ interface WorldMatesApi {
         @Field("id") groupId: Long
     ): GroupStatisticsResponse
 
+    // ==================== GROUP CUSTOMIZATION (theme API) ====================
+
+    // 🎨 Get Group Theme Customization
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_customization.php")
+    suspend fun getGroupCustomization(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "get_customization",
+        @Field("group_id") groupId: Long
+    ): GroupCustomizationResponse
+
+    // 🎨 Update Group Theme Customization
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_customization.php")
+    suspend fun updateGroupCustomization(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "update_customization",
+        @Field("group_id") groupId: Long,
+        @Field("bubble_style") bubbleStyle: String? = null,
+        @Field("preset_background") presetBackground: String? = null,
+        @Field("accent_color") accentColor: String? = null,
+        @Field("enabled_by_admin") enabledByAdmin: String? = null
+    ): GroupCustomizationResponse
+
+    // 🎨 Reset Group Theme to Defaults
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_customization.php")
+    suspend fun resetGroupCustomization(
+        @Field("access_token") accessToken: String,
+        @Field("type") type: String = "reset_customization",
+        @Field("group_id") groupId: Long
+    ): GenericResponse
+
     // ==================== SCHEDULED POSTS (consolidated API) ====================
 
     // 📅 Get Scheduled Posts
@@ -1648,6 +1681,26 @@ data class GroupSettingsData(
     @SerializedName("allow_members_send_links") val allowMembersSendLinks: Boolean = true,
     @SerializedName("allow_members_send_stickers") val allowMembersSendStickers: Boolean = true,
     @SerializedName("allow_members_invite") val allowMembersInvite: Boolean = false
+)
+
+/**
+ * 🎨 Response for group customization/theme
+ */
+data class GroupCustomizationResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("customization") val customization: GroupCustomizationData? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+data class GroupCustomizationData(
+    @SerializedName("group_id") val groupId: Long,
+    @SerializedName("bubble_style") val bubbleStyle: String = "STANDARD",
+    @SerializedName("preset_background") val presetBackground: String = "ocean",
+    @SerializedName("accent_color") val accentColor: String = "#2196F3",
+    @SerializedName("enabled_by_admin") val enabledByAdmin: Boolean = true,
+    @SerializedName("updated_at") val updatedAt: Long = 0,
+    @SerializedName("updated_by") val updatedBy: Long = 0
 )
 
 /**

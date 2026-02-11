@@ -1,19 +1,20 @@
 package com.worldmates.messenger.ui.chats
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Contacts
@@ -23,7 +24,7 @@ import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +56,7 @@ enum class BottomNavTab {
 /**
  * Нижня панель навігації в стилі VK/Telegram
  * Чати | Контакти | Налаштування | Профіль
+ * Враховує системні навігаційні кнопки (WindowInsets)
  */
 @Composable
 fun AppBottomNavBar(
@@ -69,11 +70,12 @@ fun AppBottomNavBar(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,
-        shadowElevation = 8.dp,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        shadowElevation = 8.dp
     ) {
-        Column {
-            Divider(
+        Column(
+            modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+        ) {
+            HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                 thickness = 0.5.dp
             )
@@ -87,7 +89,7 @@ fun AppBottomNavBar(
                 BottomNavItem(
                     icon = Icons.Outlined.Chat,
                     selectedIcon = Icons.Filled.Chat,
-                    label = "Чаты",
+                    label = "Чати",
                     isSelected = selectedTab == BottomNavTab.CHATS,
                     onClick = { onTabSelected(BottomNavTab.CHATS) },
                     modifier = Modifier.weight(1f)
@@ -96,7 +98,7 @@ fun AppBottomNavBar(
                 BottomNavItem(
                     icon = Icons.Outlined.Contacts,
                     selectedIcon = Icons.Filled.Contacts,
-                    label = "Контакты",
+                    label = "Контакти",
                     isSelected = selectedTab == BottomNavTab.CONTACTS,
                     onClick = { onTabSelected(BottomNavTab.CONTACTS) },
                     modifier = Modifier.weight(1f)
@@ -114,7 +116,7 @@ fun AppBottomNavBar(
                 // Профіль з аватаром замість іконки
                 ProfileNavItem(
                     avatarUrl = avatarUrl,
-                    label = "Профиль",
+                    label = "Профіль",
                     isSelected = selectedTab == BottomNavTab.PROFILE,
                     onClick = { onTabSelected(BottomNavTab.PROFILE) },
                     modifier = Modifier.weight(1f)

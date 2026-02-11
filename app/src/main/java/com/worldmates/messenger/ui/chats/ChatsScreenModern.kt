@@ -10,10 +10,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -129,7 +126,7 @@ fun ChatsScreenModern(
     // 📇 Стан для ContactPicker
     var showContactPicker by remember { mutableStateOf(false) }
 
-    // Організація чатів: папки, архів, теги
+    // Організація контенту: папки (Telegram-style), архів, теги
     var selectedFolderId by remember { mutableStateOf("all") }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showManageTagsDialog by remember { mutableStateOf(false) }
@@ -142,6 +139,22 @@ fun ChatsScreenModern(
     val archivedIds by ChatOrganizationManager.archivedChatIds.collectAsState()
     val folderMapping by ChatOrganizationManager.chatFolderMapping.collectAsState()
     val chatFolders by ChatOrganizationManager.folders.collectAsState()
+
+    // Визначаємо яку сторінку пейджера показувати за обраною папкою
+    val targetPagerPage = remember(selectedFolderId) {
+        when (selectedFolderId) {
+            "channels" -> 1
+            "groups" -> 2
+            else -> 0 // all, personal, unread, archived, custom folders -> chats page
+        }
+    }
+
+    // Синхронізуємо пейджер з обраною папкою
+    LaunchedEffect(targetPagerPage) {
+        if (pagerState.currentPage != targetPagerPage) {
+            pagerState.animateScrollToPage(targetPagerPage)
+        }
+    }
 
     // Фільтрація чатів за обраною папкою
     val filteredChats = remember(chats, selectedFolderId, archivedIds, folderMapping) {
@@ -204,16 +217,16 @@ fun ChatsScreenModern(
             GlassTopAppBar(
                 title = {
                     Text(
-                        text = when (pagerState.currentPage) {
-                            0 -> when {
-                                selectedFolderId == "all" -> "Чати"
-                                selectedFolderId == "archived" -> "📦 Архів"
-                                else -> chatFolders.find { it.id == selectedFolderId }?.let {
-                                    "${it.emoji} ${it.name}"
-                                } ?: "Чати"
-                            }
-                            1 -> "Канали"
-                            else -> "Групи"
+                        text = when {
+                            selectedFolderId == "all" -> "WorldMates"
+                            selectedFolderId == "archived" -> "📦 Архів"
+                            selectedFolderId == "channels" -> "Канали"
+                            selectedFolderId == "groups" -> "Групи"
+                            selectedFolderId == "personal" -> "Особисті"
+                            selectedFolderId == "unread" -> "Непрочитані"
+                            else -> chatFolders.find { it.id == selectedFolderId }?.let {
+                                "${it.emoji} ${it.name}"
+                            } ?: "WorldMates"
                         },
                         style = MaterialTheme.typography.titleLarge
                     )
@@ -270,62 +283,25 @@ fun ChatsScreenModern(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // TabRow для перемикання між вкладками
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                Tab(
-                    selected = pagerState.currentPage == 0,
-                    onClick = {
-                        scope.launch {
-                            pagerState.animateScrollToPage(0)
-                        }
-                    },
-                    text = { Text("Чати") },
-                    icon = { Icon(Icons.Default.Chat, contentDescription = null) }
-                )
-
-                Tab(
-                    selected = pagerState.currentPage == 1,
-                    onClick = {
-                        scope.launch {
-                            pagerState.animateScrollToPage(1)
-                        }
-                    },
-                    text = { Text("Канали") },
-                    icon = { Icon(Icons.Default.Label, contentDescription = null) }
-                )
-
-                Tab(
-                    selected = pagerState.currentPage == 2,
-                    onClick = {
-                        scope.launch {
-                            pagerState.animateScrollToPage(2)
-                        }
-                    },
-                    text = { Text("Групи") },
-                    icon = { Icon(Icons.Default.Group, contentDescription = null) }
-                )
-            }
+            // Telegram-style папки замінюють TabRow
+            ChatFolderTabs(
+                selectedFolderId = selectedFolderId,
+                onFolderSelected = { folderId ->
+                    selectedFolderId = folderId
+                },
+                onAddFolder = { showCreateFolderDialog = true }
+            )
 
             // HorizontalPager з вкладками
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = false // Контролюється папками
             ) { page ->
                 when (page) {
                     0 -> {
-                        // Вкладка "Чати" з папками + pull-to-refresh + Stories
+                        // Вкладка "Чати" з pull-to-refresh + Stories
                         Column(modifier = Modifier.fillMaxSize()) {
-                            // Горизонтальна смуга папок
-                            ChatFolderTabs(
-                                selectedFolderId = selectedFolderId,
-                                onFolderSelected = { selectedFolderId = it },
-                                onAddFolder = { showCreateFolderDialog = true }
-                            )
-
                             // Список чатів (вже відфільтрований)
                             ChatListTabWithStories(
                                 chats = filteredChats,

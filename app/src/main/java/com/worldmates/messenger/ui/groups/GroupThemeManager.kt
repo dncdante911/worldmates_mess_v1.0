@@ -2,33 +2,45 @@ package com.worldmates.messenger.ui.groups
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.worldmates.messenger.data.UserSession
+import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.ui.preferences.BubbleStyle
 import com.worldmates.messenger.ui.theme.PresetBackground
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Менеджер кастомних тем для групових чатів.
  *
- * Зберігає кастомізацію кожної групи локально в SharedPreferences.
- * TODO: Додати синхронізацію з сервером коли буде готове API:
+ * Зберігає кастомізацію кожної групи локально в SharedPreferences
+ * та синхронізує з сервером через API:
  *   POST /api/v2/endpoints/group_customization.php
- *   - save: { group_id, bubble_style, preset_background, accent_color }
- *   - load: { group_id } -> GroupTheme
- *   Потрібна таблиця Wo_GroupCustomization або нові колонки в Wo_GroupsChat
+ *   - get_customization: { group_id } -> GroupTheme
+ *   - update_customization: { group_id, bubble_style, preset_background, accent_color }
+ *   - reset_customization: { group_id }
  */
 object GroupThemeManager {
+    private const val TAG = "GroupThemeManager"
     private const val PREFS_NAME = "group_themes"
     private const val KEY_THEMES = "themes_map"
 
     private val gson = Gson()
     private var prefs: SharedPreferences? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _themes = MutableStateFlow<Map<Long, GroupTheme>>(emptyMap())
     val themes: StateFlow<Map<Long, GroupTheme>> = _themes.asStateFlow()
+
+    private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
+    val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -52,6 +64,8 @@ object GroupThemeManager {
         updated[groupId] = theme
         _themes.value = updated
         saveThemes()
+        // Синхронізуємо з сервером
+        syncThemeToServer(groupId, theme)
     }
 
     fun removeGroupTheme(groupId: Long) {
@@ -59,6 +73,8 @@ object GroupThemeManager {
         updated.remove(groupId)
         _themes.value = updated
         saveThemes()
+        // Скидаємо на сервері
+        resetThemeOnServer(groupId)
     }
 
     fun hasCustomTheme(groupId: Long): Boolean {
@@ -68,6 +84,114 @@ object GroupThemeManager {
     private fun saveThemes() {
         prefs?.edit()?.putString(KEY_THEMES, gson.toJson(_themes.value))?.apply()
     }
+
+    // ==================== SERVER SYNC ====================
+
+    /**
+     * Завантажити тему групи з сервера та оновити локальний кеш
+     */
+    fun loadThemeFromServer(groupId: Long) {
+        scope.launch {
+            try {
+                val accessToken = UserSession.accessToken ?: return@launch
+                _syncState.value = SyncState.Loading
+
+                val response = RetrofitClient.apiService.getGroupCustomization(
+                    accessToken = accessToken,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200 && response.customization != null) {
+                    val serverTheme = GroupTheme(
+                        bubbleStyle = response.customization.bubbleStyle,
+                        presetBackgroundId = response.customization.presetBackground,
+                        accentColor = response.customization.accentColor,
+                        enabledByAdmin = response.customization.enabledByAdmin
+                    )
+
+                    // Оновлюємо локальний кеш тільки якщо сервер має новішу версію
+                    val localTheme = _themes.value[groupId]
+                    if (localTheme == null || serverTheme != localTheme) {
+                        val updated = _themes.value.toMutableMap()
+                        updated[groupId] = serverTheme
+                        _themes.value = updated
+                        saveThemes()
+                        Log.d(TAG, "Theme loaded from server for group $groupId")
+                    }
+
+                    _syncState.value = SyncState.Success
+                } else {
+                    Log.w(TAG, "Failed to load theme from server: ${response.errorMessage}")
+                    _syncState.value = SyncState.Error(response.errorMessage ?: "Unknown error")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading theme from server", e)
+                _syncState.value = SyncState.Error(e.localizedMessage ?: "Network error")
+            }
+        }
+    }
+
+    /**
+     * Зберегти тему групи на сервер
+     */
+    private fun syncThemeToServer(groupId: Long, theme: GroupTheme) {
+        scope.launch {
+            try {
+                val accessToken = UserSession.accessToken ?: return@launch
+
+                val response = RetrofitClient.apiService.updateGroupCustomization(
+                    accessToken = accessToken,
+                    groupId = groupId,
+                    bubbleStyle = theme.bubbleStyle,
+                    presetBackground = theme.presetBackgroundId,
+                    accentColor = theme.accentColor,
+                    enabledByAdmin = if (theme.enabledByAdmin) "1" else "0"
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d(TAG, "Theme synced to server for group $groupId")
+                } else {
+                    Log.w(TAG, "Failed to sync theme to server: ${response.errorMessage}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error syncing theme to server for group $groupId", e)
+            }
+        }
+    }
+
+    /**
+     * Скинути тему групи на сервері
+     */
+    private fun resetThemeOnServer(groupId: Long) {
+        scope.launch {
+            try {
+                val accessToken = UserSession.accessToken ?: return@launch
+
+                val response = RetrofitClient.apiService.resetGroupCustomization(
+                    accessToken = accessToken,
+                    groupId = groupId
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d(TAG, "Theme reset on server for group $groupId")
+                } else {
+                    Log.w(TAG, "Failed to reset theme on server: ${response.errorMessage}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error resetting theme on server for group $groupId", e)
+            }
+        }
+    }
+}
+
+/**
+ * Стан синхронізації з сервером
+ */
+sealed class SyncState {
+    object Idle : SyncState()
+    object Loading : SyncState()
+    object Success : SyncState()
+    data class Error(val message: String) : SyncState()
 }
 
 /**

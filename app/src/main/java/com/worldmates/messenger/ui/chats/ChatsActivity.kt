@@ -159,6 +159,9 @@ class ChatsActivity : AppCompatActivity() {
                                     },
                                     onCreateChannelClick = {
                                         navigateToCreateChannel()
+                                    },
+                                    onBotStoreClick = {
+                                        navigateToBotStore()
                                     }
                                 )
                             }
@@ -187,7 +190,8 @@ class ChatsActivity : AppCompatActivity() {
                                     onGroupClick = { group -> navigateToGroupMessages(group) },
                                     onChannelClick = { channel -> navigateToChannelDetails(channel) },
                                     onSettingsClick = { navigateToSettings() },
-                                    onCreateChannelClick = { navigateToCreateChannel() }
+                                    onCreateChannelClick = { navigateToCreateChannel() },
+                                    onBotStoreClick = { navigateToBotStore() }
                                 )
                             }
                         }
@@ -263,6 +267,20 @@ class ChatsActivity : AppCompatActivity() {
 
     private fun navigateToCreateChannel() {
         startActivity(Intent(this, com.worldmates.messenger.ui.channels.CreateChannelActivity::class.java))
+    }
+
+    private fun navigateToBotStore() {
+        startActivity(Intent(this, com.worldmates.messenger.ui.bots.BotStoreActivity::class.java))
+    }
+
+    private fun navigateToBotChat(botId: String, botName: String, botAvatar: String?) {
+        startActivity(Intent(this, MessagesActivity::class.java).apply {
+            putExtra("recipient_id", botId.hashCode().toLong())
+            putExtra("recipient_name", botName)
+            putExtra("recipient_avatar", botAvatar ?: "")
+            putExtra("is_bot", true)
+            putExtra("bot_id", botId)
+        })
     }
 
     private fun navigateToLogin() {

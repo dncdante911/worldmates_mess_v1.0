@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -61,7 +62,8 @@ fun ChatsScreenModern(
     onGroupClick: (Group) -> Unit,
     onChannelClick: (com.worldmates.messenger.data.model.Channel) -> Unit,
     onSettingsClick: () -> Unit,
-    onCreateChannelClick: () -> Unit = {}
+    onCreateChannelClick: () -> Unit = {},
+    onBotStoreClick: () -> Unit = {}
 ) {
     val chats by viewModel.chatList.collectAsState()
     val groups by groupsViewModel.groupList.collectAsState()
@@ -257,8 +259,16 @@ fun ChatsScreenModern(
             )
         },
         floatingActionButton = {
-            // FAB для створення каналу/групи
+            // FAB для створення каналу/групи/ботів
             when (pagerState.currentPage) {
+                0 -> {
+                    // Вкладка Чати - Bot Store (как в Telegram)
+                    ExpressiveFAB(
+                        onClick = onBotStoreClick
+                    ) {
+                        Icon(Icons.Default.SmartToy, contentDescription = "Bot Store")
+                    }
+                }
                 1 -> {
                     // Вкладка Канали - створити канал
                     ExpressiveFAB(

@@ -46,6 +46,9 @@ class MessagesActivity : AppCompatActivity() {
     private var recipientName: String = ""
     private var recipientAvatar: String = ""
     private var isGroup: Boolean = false
+    private var isBot: Boolean = false      // Bot chat mode (Telegram-style)
+    private var botId: String = ""           // Bot identifier for API calls
+    private var botUsername: String = ""      // Bot @username
 
     // Permission request launcher
     private val audioPermissionLauncher = registerForActivityResult(
@@ -76,6 +79,9 @@ class MessagesActivity : AppCompatActivity() {
         recipientName = intent.getStringExtra("recipient_name") ?: "Unknown"
         recipientAvatar = intent.getStringExtra("recipient_avatar") ?: ""
         isGroup = intent.getBooleanExtra("is_group", false)
+        isBot = intent.getBooleanExtra("is_bot", false)
+        botId = intent.getStringExtra("bot_id") ?: ""
+        botUsername = intent.getStringExtra("bot_username") ?: ""
 
         // Ініціалізуємо утиліти
         fileManager = FileManager(this)

@@ -4,33 +4,25 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.animation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
 import com.worldmates.messenger.ui.messages.MessagesActivity
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
-import com.worldmates.messenger.ui.theme.ExpressiveIconButton
-import com.worldmates.messenger.ui.theme.GlassTopAppBar
 
 /**
- * BotStoreActivity - Bot Store как в Telegram
+ * BotStoreActivity - Bot Store (Telegram-style)
  *
- * Точка входа для пользователя:
- * - Каталог ботов (поиск, категории, популярные)
- * - Управление своими ботами (My Bots)
- * - Создание нового бота
- * - Клик по боту -> открывает чат с ботом (MessagesActivity с is_bot=true)
+ * Entry point for users:
+ * - Bot catalog (search, categories, popular)
+ * - My Bots management
+ * - Create new bot
+ * - Click bot -> open chat (MessagesActivity with is_bot=true)
  *
- * Доступ:
- * - Из ChatsActivity через FAB на вкладке Чаты
- * - Из меню / поиска
+ * Access:
+ * - From ChatsActivity via SmartToy FAB on Chats tab
+ * - From search / menu
  */
 class BotStoreActivity : AppCompatActivity() {
 
@@ -41,6 +33,7 @@ class BotStoreActivity : AppCompatActivity() {
         ThemeManager.initialize(this)
 
         botViewModel = ViewModelProvider(this).get(BotViewModel::class.java)
+        botViewModel.loadBotCatalog()
 
         setContent {
             WorldMatesThemedApp {
@@ -49,31 +42,41 @@ class BotStoreActivity : AppCompatActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun BotStoreScreen() {
-        // Навигация: catalog -> detail -> create -> myBots
         var currentScreen by remember { mutableStateOf<BotScreen>(BotScreen.Catalog) }
+
+        // Collect state flows from ViewModel
+        val catalogState by botViewModel.catalogState.collectAsState()
+        val botDetailState by botViewModel.botDetailState.collectAsState()
+        val myBotsState by botViewModel.myBotsState.collectAsState()
+        val createBotState by botViewModel.createBotState.collectAsState()
 
         when (val screen = currentScreen) {
             is BotScreen.Catalog -> {
                 BotCatalogScreen(
-                    viewModel = botViewModel,
+                    catalogState = catalogState,
+                    onSearch = { query -> botViewModel.searchBots(query) },
+                    onCategorySelected = { cat -> botViewModel.filterByCategory(cat) },
                     onBotClick = { bot ->
+                        botViewModel.loadBotDetails(botId = bot.botId)
                         currentScreen = BotScreen.Detail(bot.botId)
                     },
+                    onCreateBotClick = {
+                        botViewModel.resetCreateForm()
+                        currentScreen = BotScreen.CreateBot
+                    },
                     onMyBotsClick = {
+                        botViewModel.loadMyBots()
                         currentScreen = BotScreen.MyBots
                     },
-                    onBackClick = { finish() }
+                    onBack = { finish() }
                 )
             }
             is BotScreen.Detail -> {
                 BotDetailScreen(
-                    viewModel = botViewModel,
-                    botId = screen.botId,
+                    state = botDetailState,
                     onStartChat = { bot ->
-                        // Как в Telegram: клик "Start" -> открываем чат с ботом
                         startActivity(Intent(this@BotStoreActivity, MessagesActivity::class.java).apply {
                             putExtra("recipient_id", bot.botId.hashCode().toLong())
                             putExtra("recipient_name", bot.displayName)
@@ -83,26 +86,45 @@ class BotStoreActivity : AppCompatActivity() {
                             putExtra("bot_username", bot.username)
                         })
                     },
-                    onBackClick = {
+                    onBack = {
                         currentScreen = BotScreen.Catalog
                     }
                 )
             }
             is BotScreen.MyBots -> {
                 BotManagementScreen(
-                    viewModel = botViewModel,
-                    onCreateBotClick = {
+                    state = myBotsState,
+                    onCreateBot = {
+                        botViewModel.resetCreateForm()
                         currentScreen = BotScreen.CreateBot
                     },
-                    onBackClick = {
+                    onEditBot = { bot ->
+                        botViewModel.loadBotDetails(botId = bot.botId)
+                        currentScreen = BotScreen.Detail(bot.botId)
+                    },
+                    onDeleteBot = { botId -> botViewModel.deleteBot(botId) },
+                    onRegenerateToken = { botId -> botViewModel.regenerateToken(botId) },
+                    onBack = {
                         currentScreen = BotScreen.Catalog
                     }
                 )
             }
             is BotScreen.CreateBot -> {
                 CreateBotScreen(
-                    viewModel = botViewModel,
-                    onBackClick = {
+                    state = createBotState,
+                    onUpdateForm = { username, displayName, description, about, category, isPublic, canJoinGroups ->
+                        botViewModel.updateCreateForm(
+                            username = username,
+                            displayName = displayName,
+                            description = description,
+                            about = about,
+                            category = category,
+                            isPublic = isPublic,
+                            canJoinGroups = canJoinGroups
+                        )
+                    },
+                    onCreateBot = { botViewModel.createBot() },
+                    onBack = {
                         currentScreen = BotScreen.MyBots
                     }
                 )
@@ -112,7 +134,7 @@ class BotStoreActivity : AppCompatActivity() {
 }
 
 /**
- * Экраны навигации внутри BotStoreActivity
+ * Navigation screens inside BotStoreActivity
  */
 sealed class BotScreen {
     object Catalog : BotScreen()

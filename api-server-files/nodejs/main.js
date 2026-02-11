@@ -14,6 +14,7 @@ const { Sequelize, Op, DataTypes } = require("sequelize");
 // const notificationTemplate = Handlebars.compile(notification.toString());
 
 const listeners = require('./listeners/listeners')
+const { initializeBotNamespace, getBotStats } = require('./listeners/bots-listener')
 
 let serverPort
 let server
@@ -113,6 +114,23 @@ async function init() {
   ctx.wo_ice_candidates = require("./models/wo_ice_candidates")(sequelize, DataTypes)
   ctx.wo_call_statistics = require("./models/wo_call_statistics")(sequelize, DataTypes)
 
+  // ==================== Bot API Models ====================
+  ctx.wo_bots = require("./models/wo_bots")(sequelize, DataTypes)
+  ctx.wo_bot_commands = require("./models/wo_bot_commands")(sequelize, DataTypes)
+  ctx.wo_bot_messages = require("./models/wo_bot_messages")(sequelize, DataTypes)
+  ctx.wo_bot_users = require("./models/wo_bot_users")(sequelize, DataTypes)
+  ctx.wo_bot_callbacks = require("./models/wo_bot_callbacks")(sequelize, DataTypes)
+  ctx.wo_bot_polls = require("./models/wo_bot_polls")(sequelize, DataTypes)
+  ctx.wo_bot_poll_options = require("./models/wo_bot_poll_options")(sequelize, DataTypes)
+  ctx.wo_bot_poll_votes = require("./models/wo_bot_poll_votes")(sequelize, DataTypes)
+  ctx.wo_bot_webhook_log = require("./models/wo_bot_webhook_log")(sequelize, DataTypes)
+  ctx.wo_bot_keyboards = require("./models/wo_bot_keyboards")(sequelize, DataTypes)
+  ctx.wo_bot_tasks = require("./models/wo_bot_tasks")(sequelize, DataTypes)
+  ctx.wo_bot_rss_feeds = require("./models/wo_bot_rss_feeds")(sequelize, DataTypes)
+  ctx.wo_bot_rss_items = require("./models/wo_bot_rss_items")(sequelize, DataTypes)
+  ctx.wo_bot_rate_limits = require("./models/wo_bot_rate_limits")(sequelize, DataTypes)
+  ctx.wo_bot_api_keys = require("./models/wo_bot_api_keys")(sequelize, DataTypes)
+
   ctx.globalconfig = {}
   ctx.globallangs = {}
   ctx.socketIdUserHash = {}
@@ -122,6 +140,8 @@ async function init() {
   ctx.userIdSocket = {}  // ✅ ВИПРАВЛЕНО: Має бути ОБ'ЄКТ, не масив!
   ctx.userIdExtra = {}
   ctx.userIdGroupChatOpen = {}
+  ctx.botSockets = new Map()            // botId -> socket (connected bots)
+  ctx.userBotSubscriptions = new Map()  // userId -> Set<botId> (active bot chats)
 
   await loadConfig(ctx)
   await loadLangs(ctx)
@@ -199,8 +219,36 @@ async function main() {
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      bots: getBotStats(ctx)
     });
+  });
+
+  // GET /api/bots/stats - Bot connection statistics
+  app.get('/api/bots/stats', (req, res) => {
+    res.json({
+      success: true,
+      ...getBotStats(ctx)
+    });
+  });
+
+  // POST /api/bots/push-message - Push bot message from PHP backend
+  app.post('/api/bots/push-message', (req, res) => {
+    try {
+      const { bot_id, chat_id, text, media, reply_markup, message_id } = req.body;
+      if (!bot_id || !chat_id) {
+        return res.status(400).json({ success: false, error: 'bot_id and chat_id required' });
+      }
+
+      const { pushBotMessage } = require('./listeners/bots-listener');
+      pushBotMessage(io, bot_id, chat_id, { text, media, reply_markup, message_id });
+
+      res.json({ success: true, delivered: true });
+      console.log(`[Bot API] Push message: ${bot_id} -> ${chat_id}`);
+    } catch (error) {
+      console.error('[Bot API] Push message error:', error);
+      res.status(500).json({ success: false, error: 'Failed to push message' });
+    }
   });
 
   app.get('/', (req, res) => {
@@ -213,6 +261,9 @@ async function main() {
         credentials: true
     },
   });
+
+  // Initialize Bot API /bots namespace (bot-side connections)
+  initializeBotNamespace(io, ctx);
 
   io.on('connection', async (socket, query) => {
     await listeners.registerListeners(socket, io, ctx)

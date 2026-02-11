@@ -1,15 +1,20 @@
 {
-  "latest_version": "2.9.0",
-  "version_code": 11,
+  "latest_version": "2.10.0",
+  "version_code": 12,
   "apk_url": "https://worldmates.club/sources-app/worldmates-latest.apk",
   "changelog": [
-    "📂 Telegram-style папки: Усі, Особисті, Канали, Групи + кастомні (10 free / 50 pro)",
-    "🎨 Синхронізація тем групових чатів з сервером (group_customization API)",
-    "📱 Фікс: системні навігаційні кнопки більше не перекривають нижню панель",
-    "🧹 Фікс: прибрано фіолетовий фон між списком чатів та нижньою навігацією",
-    "🗂️ Компактні вкладки: Чати/Канали/Групи об'єднані в папки як у Telegram",
-    "🔄 Автоматична синхронізація кастомних тем при відкритті групи",
-    "💾 SQL-міграція: нові колонки theme_* в Wo_GroupChat для тем груп"
+    "🤖 Bot API v1.0: повноцінна платформа для створення ботів (аналог Telegram Bot API)",
+    "🏪 Bot Store: каталог ботів з пошуком, категоріями та рейтингами",
+    "📡 Webhooks: доставка подій ботам через HTTPS callbacks з підписом HMAC-SHA256",
+    "🗳️ Polls: опитування та квізи через ботів з візуальними результатами",
+    "📰 RSS News Bot: агрегатор новин з 10+ джерелами (BBC, Reuters, TechCrunch, Pravda.ua)",
+    "🌤️ Weather Bot: погода та прогноз з OpenWeatherMap + inline кнопки",
+    "🎫 Support Bot: FAQ, тікет-система та зворотній зв'язок",
+    "📋 Task Tracker Bot: управління завданнями з пріоритетами, дедлайнами та нагадуваннями",
+    "📊 Poll Bot: створення опитувань та голосувань з анонімним/публічним режимом",
+    "⌨️ Inline Keyboards: інтерактивні кнопки під повідомленнями ботів",
+    "🔌 Bot SDK: PHP бібліотека для швидкої розробки ботів (WorldMatesBotSDK.php)",
+    "🔧 Bot Management: CRUD операції, токени, rate limiting, статистика"
   ],
   "is_mandatory": false,
   "published_at": "2026-02-11T12:00:00Z",
@@ -157,6 +162,88 @@
       "customizable_properties": ["bubble_style", "preset_background", "accent_color"],
       "admin_only": true,
       "sql_columns": ["theme_bubble_style", "theme_preset_background", "theme_accent_color", "theme_enabled_by_admin", "theme_updated_at", "theme_updated_by"]
+    },
+    "bot_api": {
+      "enabled": true,
+      "version": "1.0.0",
+      "api_endpoint": "POST /api/v2/endpoints/bot_api.php",
+      "webhook_processor": "POST /api/v2/endpoints/bot_webhook_processor.php",
+      "socket_namespace": "/bots",
+      "features": {
+        "bot_management": true,
+        "slash_commands": true,
+        "inline_keyboards": true,
+        "reply_keyboards": true,
+        "callback_queries": true,
+        "webhooks": true,
+        "long_polling": true,
+        "file_upload": true,
+        "polls": true,
+        "message_editing": true,
+        "user_state_fsm": true,
+        "rate_limiting": true,
+        "bot_store": true,
+        "bot_categories": true,
+        "media_messages": true
+      },
+      "authentication": {
+        "user_auth": "access_token (query param)",
+        "bot_auth": "bot_token (POST field)",
+        "webhook_signature": "HMAC-SHA256 (X-WorldMates-Bot-Signature header)"
+      },
+      "rate_limits": {
+        "default_per_second": 30,
+        "default_per_minute": 1500,
+        "max_bots_per_user": 20,
+        "max_commands_per_bot": 100,
+        "max_webhook_connections": 100
+      },
+      "bot_types": ["standard", "system", "verified"],
+      "available_actions": [
+        "create_bot", "get_my_bots", "update_bot", "delete_bot", "regenerate_token",
+        "set_commands", "get_commands", "send_message", "edit_message", "delete_message",
+        "get_updates", "answer_callback_query", "set_webhook", "delete_webhook",
+        "get_webhook_info", "send_poll", "stop_poll", "get_bot_info", "search_bots",
+        "get_chat_member", "set_user_state", "get_user_state"
+      ],
+      "example_bots": {
+        "rss_news_bot": {
+          "file": "bot-examples/RSSNewsBot.php",
+          "description": "RSS feed aggregator with 10+ pre-configured sources",
+          "commands": ["start", "help", "add", "remove", "list", "latest", "sources", "settings"]
+        },
+        "weather_bot": {
+          "file": "bot-examples/WeatherBot.php",
+          "description": "Weather forecasts with OpenWeatherMap integration",
+          "commands": ["start", "help", "weather", "forecast", "setcity", "alerts"]
+        },
+        "support_bot": {
+          "file": "bot-examples/SupportBot.php",
+          "description": "Customer support with FAQ, tickets, and feedback",
+          "commands": ["start", "help", "ticket", "status", "feedback", "contact"]
+        },
+        "task_tracker_bot": {
+          "file": "bot-examples/TaskTrackerBot.php",
+          "description": "Task management with priorities, due dates, and reminders",
+          "commands": ["start", "help", "add", "list", "done", "edit", "delete", "priority", "due", "remind", "stats"]
+        },
+        "poll_bot": {
+          "file": "bot-examples/PollBot.php",
+          "description": "Polls and quizzes with anonymous/public voting",
+          "commands": ["start", "help", "poll", "quiz", "results", "close", "mypolls"]
+        }
+      },
+      "sdk": {
+        "php": "bot-sdk/WorldMatesBotSDK.php",
+        "features": ["long_polling", "webhook_handling", "inline_keyboards", "state_machine", "command_routing"]
+      },
+      "database_tables": [
+        "Wo_Bots", "Wo_Bot_Commands", "Wo_Bot_Messages", "Wo_Bot_Webhook_Log",
+        "Wo_Bot_Users", "Wo_Bot_Keyboards", "Wo_Bot_Callbacks", "Wo_Bot_Polls",
+        "Wo_Bot_Poll_Options", "Wo_Bot_Poll_Votes", "Wo_Bot_Tasks",
+        "Wo_Bot_RSS_Feeds", "Wo_Bot_RSS_Items", "Wo_Bot_Rate_Limits", "Wo_Bot_Api_Keys"
+      ],
+      "sql_migration": "sql-DB-newver/add_bot_api_tables.sql"
     }
   },
   "minimum_supported_version": "2.0.0",
@@ -172,7 +259,24 @@
     "ui/groups/GroupThemeEditor.kt",
     "ui/profile/MyProfileScreen.kt",
     "api-server-files/api/v2/endpoints/group_customization.php",
-    "api-server-files/sql-DB-newver/add_group_customization_columns.sql"
+    "api-server-files/sql-DB-newver/add_group_customization_columns.sql",
+    "data/model/Bot.kt",
+    "network/BotApi.kt",
+    "network/BotRepository.kt",
+    "ui/bots/BotViewModel.kt",
+    "ui/bots/BotCatalogScreen.kt",
+    "ui/bots/BotManagementScreen.kt",
+    "ui/bots/BotChatComponents.kt",
+    "api-server-files/api/v2/endpoints/bot_api.php",
+    "api-server-files/api/v2/endpoints/bot_webhook_processor.php",
+    "api-server-files/api/v2/bot-sdk/WorldMatesBotSDK.php",
+    "api-server-files/api/v2/bot-examples/RSSNewsBot.php",
+    "api-server-files/api/v2/bot-examples/WeatherBot.php",
+    "api-server-files/api/v2/bot-examples/SupportBot.php",
+    "api-server-files/api/v2/bot-examples/TaskTrackerBot.php",
+    "api-server-files/api/v2/bot-examples/PollBot.php",
+    "api-server-files/sql-DB-newver/add_bot_api_tables.sql",
+    "server/botSocketHandler.js"
   ],
   "modified_files": [
     "ui/theme/ThemeSettingsScreen.kt",
@@ -186,7 +290,10 @@
     "ui/groups/GroupDetailsActivity.kt",
     "ui/profile/UserProfileActivity.kt",
     "ui/profile/UserProfileViewModel.kt",
-    "network/WorldMatesApi.kt"
+    "network/WorldMatesApi.kt",
+    "network/RetrofitClient.kt",
+    "server/server-example.js",
+    "api-server-files/api/v2/endpoints/mobile_update_config.json"
   ],
   "dependencies": {
     "lottie": "6.4.0",

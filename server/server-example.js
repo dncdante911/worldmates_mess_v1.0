@@ -12,6 +12,7 @@ const cors = require('cors');
 // Імпорт обробників
 const { initializeCallsHandler, getActiveCallsStats } = require('./callsSocketHandler');
 const { getIceServers, generateTurnCredentials } = require('./generate-turn-credentials');
+const { initializeBotHandler, getBotStats } = require('./botSocketHandler');
 
 // ==================== EXPRESS SETUP ====================
 
@@ -38,6 +39,9 @@ const io = socketIO(server, {
 
 // Ініціалізувати обробники відеодзвінків
 initializeCallsHandler(io);
+
+// Ініціалізувати обробники Bot API
+initializeBotHandler(io);
 
 // Логування підключень
 io.on('connection', (socket) => {
@@ -153,6 +157,27 @@ app.get('/api/admin/calls/stats', (req, res) => {
 });
 
 /**
+ * GET /api/bots/stats
+ * Bot API статистика (кількість підключених ботів, підписок)
+ */
+app.get('/api/bots/stats', (req, res) => {
+    try {
+        const stats = getBotStats();
+        res.json({
+            success: true,
+            stats,
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.error('Error fetching bot stats:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch bot stats'
+        });
+    }
+});
+
+/**
  * GET /api/calls/active-count
  * Кількість активних дзвінків (публічний endpoint)
  */
@@ -211,6 +236,8 @@ server.listen(PORT, HOST, () => {
     console.log(`   POST /api/turn-credentials`);
     console.log(`   GET  /api/admin/calls/stats`);
     console.log(`   GET  /api/calls/active-count`);
+    console.log(`   GET  /api/bots/stats`);
+    console.log(`   WS   /bots (Bot API namespace)`);
     console.log('');
     console.log(`🕐 Started at: ${new Date().toISOString()}`);
     console.log('🚀 ========================================');

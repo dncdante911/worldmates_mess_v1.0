@@ -231,6 +231,19 @@ if (mysqli_query($wo['sqlConnect'], "DESCRIBE `wondertage_settings`" )) {
 		<?php echo Wo_LoadPage('footer/welcome');?>
 	</div>
 </div>
+
+
+<section class="wm-marketing" id="wm-marketing">
+  <div class="wm-marketing__container">
+    <div class="wm-lang-switch" role="tablist" aria-label="Language switcher">
+      <button type="button" class="wm-lang-btn is-active" data-lang="ua">Українська</button>
+      <button type="button" class="wm-lang-btn" data-lang="en">English</button>
+      <button type="button" class="wm-lang-btn" data-lang="ru">Русский</button>
+    </div>
+    <div id="wm-marketing-content"></div>
+  </div>
+</section>
+
 <script>
 (function($) {
 	$.fn.visible = function(partial) {
@@ -279,6 +292,140 @@ win.scroll(function(event) {
 });
 
 $(function() {
+
+const wmMarketingData = {
+  ua: {
+    html: `
+      <section class="wm-hero">
+        <span class="wm-badge">🇺🇦 Зроблено в Україні • Beta-тестерам Lifetime Premium безкоштовно</span>
+        <h1>WorldMates — український месенджер з серверами в Україні</h1>
+        <p>Твій месенджер. Твоя країна. Твої правила. Твої дані — в Україні, а приватність — під захистом. Сервери у Дніпрі та Києві.</p>
+        <div class="wm-cta-row">
+          <a href="https://worldmates.club/sources-app/worldmates-latest.apk" class="wm-cta wm-cta--primary wm-apk-link" download="worldmates-latest.apk">Завантажити Android APK</a>
+          <a href="#" class="wm-cta wm-cta--ghost">Ченджлоги (скоро)</a>
+          <a href="<?php echo Wo_SeoLink('index.php?link1=register');?>" class="wm-cta wm-cta--ghost">Стати beta-тестером</a>
+        </div>
+      </section>
+      <section class="wm-grid wm-features" id="features"><h2>Переваги</h2>
+        <article><h3>🔒 Максимальна безпека</h3><ul><li><strong>AES-256-GCM шифрування</strong> — військовий стандарт захисту</li><li><strong>End-to-end encryption</strong> для приватних чатів</li><li><strong>Двофакторна автентифікація</strong> для захисту акаунту</li><li><strong>Самознищувані повідомлення</strong> для конфіденційності</li></ul><p>Твої дані захищені як у банківському сейфі.</p></article>
+        <article><h3>🇺🇦 100% в Україні</h3><ul><li><strong>Сервери у двох містах:</strong> Дніпро, Київ</li><li><strong>Власний дата-центр</strong> — повний контроль</li><li><strong>Дані не покидають Україну</strong> — гарантовано</li><li><strong>Незалежність</strong> від іноземних платформ</li></ul><p>Твої дані — на українській землі.</p></article>
+        <article><h3>📶 Навіть при поганому інтернеті</h3><ul><li><strong>Автоматична компресія</strong> медіа</li><li><strong>Офлайн-режим</strong> з чергою відправки</li><li><strong>Адаптивна якість</strong> контенту</li><li><strong>Економія трафіку</strong> — працює навіть на 3G</li></ul><p>Створено для українських реалій.</p></article>
+        <article><h3>🚫 БЕЗ слідкування</h3><ul><li>Без доступу третіх сторін до ваших даних (окрім спецслужб за наявності всіх документів)</li><li>Повний контроль над приватністю</li></ul><p>Твоя приватність — твоє право.</p></article>
+        <article><h3>📱 Соцмережа + Месенджер</h3><ul><li>Профілі та стрічка новин</li><li>Групи та спільноти</li><li>Приватні чати та групові бесіди</li><li>100+ українських стікерів 🇺🇦</li></ul><p>Все в одному додатку.</p></article>
+        <article><h3>🐕 Знайомся: Wally</h3><p>Наш маскот — пес породи ші-тцу. Вірний, дружелюбний, завжди поруч. Як і WorldMates — ваш надійний компаньйон у спілкуванні.</p><p>Wally вітає кожного нового користувача!</p></article>
+      </section>
+      <section class="wm-section" id="comparison"><h2>Чим WorldMates кращий?</h2><div class="wm-table-wrap"><table><thead><tr><th>Що важливо</th><th>WorldMates</th><th>Telegram</th><th>Viber</th><th>WhatsApp</th></tr></thead><tbody><tr><td>🇺🇦 Українські сервери</td><td>✅ Так</td><td>❌ Ні</td><td>❌ Ні</td><td>❌ Ні</td></tr><tr><td>🔒 E2E шифрування</td><td>✅ Завжди</td><td>⚠️ Опціонально</td><td>✅ Так</td><td>✅ Так</td></tr><tr><td>📶 Працює офлайн</td><td>✅ Так</td><td>❌ Ні</td><td>❌ Ні</td><td>❌ Ні</td></tr><tr><td>🎨 Соцмережа</td><td>✅ Так</td><td>❌ Ні</td><td>❌ Ні</td><td>❌ Ні</td></tr><tr><td>🇺🇦 Стікери</td><td>✅ 100+</td><td>⚠️ Деякі</td><td>⚠️ Деякі</td><td>⚠️ Деякі</td></tr></tbody></table></div><p>Ми не конкуруємо — ми даємо вибір.</p></section>
+      <section class="wm-grid wm-two-cols" id="tech-specs"><h2>Під капотом</h2><article><h3>Backend</h3><ul><li>Node.js архітектура, Real-time WebSockets</li><li>Intel Xeon E5-2697v4 ×2 + 128GB DDR4</li><li>12TB HDD + 2TB NVMe під БД</li><li>Шлюз на базі HAProxy, мікросервіси</li></ul></article><article><h3>Security & Infrastructure</h3><ul><li>AES-256-GCM, TLS 1.3, 2FA</li><li>2 дата-центри в Україні, cross-city replication</li><li>DDoS захист</li><li>98.5% uptime SLA</li></ul></article></section>
+      <section class="wm-section" id="about"><h2>Чому я створив WorldMates</h2><p>Мене звати Олександр, я керівник ІТ-відділу наукового інституту з Дніпра. Після початку війни я зрозумів, наскільки ми залежні від іноземних платформ. Маючи 20 років досвіду в ІТ та власний дата-центр, я вирішив створити українську платформу під нашим контролем.</p><p>Я вклав 500,000+ грн власних коштів у обладнання та розробку. WorldMates — це contribution у майбутнє України.</p><p><strong>Олександр, Founder & Developer</strong> · support@worldmates.club · @dncdante</p></section>
+      <section class="wm-grid wm-three-cols" id="pricing"><h2>Ціни</h2><article><h3>FREE</h3><p class="price">₴0 / назавжди</p><ul><li>Базовий месенджер</li><li>Профіль та стрічка</li><li>2 ГБ сховища</li><li>Українські сервери</li></ul></article><article><h3>PREMIUM</h3><p class="price">₴99 / місяць</p><ul><li>50 ГБ сховища</li><li>Всі преміум стікери</li><li>Без реклами</li><li>Пріоритетна підтримка</li></ul></article><article><h3>BUSINESS</h3><p class="price">₴199 / користувач / місяць</p><ul><li>Корпоративне управління</li><li>Логи та аналітика</li><li>API та інтеграції</li><li>SLA 99.9%</li></ul></article></section>
+      <section class="wm-section" id="faq"><h2>FAQ</h2><details><summary>Чи безпечний WorldMates?</summary><p>Так. Використовуємо AES-256-GCM та E2E для приватних чатів.</p></details><details><summary>Де зберігаються дані?</summary><p>На серверах у Дніпрі та Києві, без вивезення за кордон.</p></details><details><summary>Чи є iOS версія?</summary><p>Android та Web доступні, iOS у розробці.</p></details></section>
+      <section class="wm-final-cta"><h2>Будуємо разом 💙💛</h2><p>WorldMates — це крок до технологічної незалежності України.</p><div class="wm-cta-row"><a href="<?php echo Wo_SeoLink('index.php?link1=register');?>" class="wm-cta wm-cta--primary">Приєднатися до Beta</a><a href="<?php echo $wo['config']['site_url'];?>" class="wm-cta wm-cta--ghost">Спробувати Web</a></div></section>
+    `
+  },
+  en: {
+    html: `
+      <section class="wm-hero">
+        <span class="wm-badge">🇺🇦 Built in Ukraine • Lifetime Premium for beta testers</span>
+        <h1>WorldMates — a Ukrainian messenger with servers in Ukraine</h1>
+        <p>Your messenger. Your country. Your rules. Your data stays in Ukraine, and your privacy stays protected. Servers are located in Dnipro and Kyiv.</p>
+        <div class="wm-cta-row">
+          <a href="https://worldmates.club/sources-app/worldmates-latest.apk" class="wm-cta wm-cta--primary wm-apk-link" download="worldmates-latest.apk">Download Android APK</a>
+          <a href="#" class="wm-cta wm-cta--ghost">Changelog (coming soon)</a>
+          <a href="<?php echo Wo_SeoLink('index.php?link1=register');?>" class="wm-cta wm-cta--ghost">Join beta testing</a>
+        </div>
+      </section>
+      <section class="wm-grid wm-features"><h2>Key advantages</h2>
+        <article><h3>🔒 Maximum security</h3><ul><li><strong>AES-256-GCM encryption</strong> — military-grade protection</li><li><strong>End-to-end encryption</strong> for private chats</li><li><strong>Two-factor authentication</strong> for account safety</li><li><strong>Self-destructing messages</strong> for confidentiality</li></ul><p>Your data is protected like in a bank vault.</p></article>
+        <article><h3>🇺🇦 100% hosted in Ukraine</h3><ul><li>Servers in two cities: Dnipro and Kyiv</li><li>Own data center for full control</li><li>Data never leaves Ukraine</li><li>Independent from foreign platforms</li></ul><p>Your data stays on Ukrainian soil.</p></article>
+        <article><h3>📶 Works in weak internet conditions</h3><ul><li>Automatic media compression</li><li>Offline mode with send queue</li><li>Adaptive content quality</li><li>Traffic saving, works even on 3G</li></ul><p>Designed for real-world Ukrainian conditions.</p></article>
+        <article><h3>🚫 No tracking</h3><ul><li>No third-party access to your data (except lawful requests with proper documents)</li><li>Full control over privacy settings</li></ul><p>Your privacy is your right.</p></article>
+        <article><h3>📱 More than a messenger</h3><ul><li>Profiles and news feed</li><li>Groups and communities</li><li>Private and group chats</li><li>100+ Ukrainian stickers 🇺🇦</li></ul><p>Everything in one app.</p></article>
+        <article><h3>🐕 Meet Wally</h3><p>Our mascot is a Shih Tzu dog: loyal, friendly, and always nearby. Just like WorldMates — your trusted communication companion.</p><p>Wally welcomes every new user!</p></article>
+      </section>
+      <section class="wm-section"><h2>How is WorldMates better?</h2><div class="wm-table-wrap"><table><thead><tr><th>What matters</th><th>WorldMates</th><th>Telegram</th><th>Viber</th><th>WhatsApp</th></tr></thead><tbody><tr><td>🇺🇦 Ukrainian servers</td><td>✅ Yes</td><td>❌ No</td><td>❌ No</td><td>❌ No</td></tr><tr><td>🔒 E2E encryption</td><td>✅ Always</td><td>⚠️ Optional</td><td>✅ Yes</td><td>✅ Yes</td></tr><tr><td>📶 Offline mode</td><td>✅ Yes</td><td>❌ No</td><td>❌ No</td><td>❌ No</td></tr><tr><td>🎨 Social network features</td><td>✅ Yes</td><td>❌ No</td><td>❌ No</td><td>❌ No</td></tr></tbody></table></div><p>We are not competing directly — we are giving people a choice.</p></section>
+      <section class="wm-grid wm-two-cols"><h2>Under the hood</h2><article><h3>Backend</h3><ul><li>Node.js architecture and real-time WebSockets</li><li>Intel Xeon E5-2697v4 ×2 + 128GB DDR4</li><li>12TB HDD + 2TB NVMe for databases</li><li>HAProxy-based gateway and microservices</li></ul></article><article><h3>Security & Infrastructure</h3><ul><li>AES-256-GCM, TLS 1.3, 2FA</li><li>Two data centers in Ukraine</li><li>Cross-city replication and DDoS protection</li><li>98.5% uptime SLA</li></ul></article></section>
+      <section class="wm-section"><h2>Why I built WorldMates</h2><p>My name is Oleksandr, I lead the IT department of a research institute in Dnipro. After the war started, it became obvious how dependent we are on foreign communication platforms. With 20 years of IT experience and my own data center, I decided to build a Ukrainian platform under Ukrainian control.</p><p>I invested over UAH 500,000 of personal funds into infrastructure and development. WorldMates is my contribution to Ukraine’s technological future.</p><p><strong>Oleksandr, Founder & Developer</strong> · support@worldmates.club · @dncdante</p></section>
+      <section class="wm-grid wm-three-cols"><h2>Pricing</h2><article><h3>FREE</h3><p class="price">₴0 / forever</p><ul><li>Core messenger features</li><li>Profile and feed</li><li>2 GB cloud storage</li><li>Ukrainian hosting</li></ul></article><article><h3>PREMIUM</h3><p class="price">₴99 / month</p><ul><li>50 GB cloud storage</li><li>All premium stickers</li><li>No ads</li><li>Priority support</li></ul></article><article><h3>BUSINESS</h3><p class="price">₴199 / user / month</p><ul><li>Enterprise management</li><li>Logs and analytics</li><li>API and integrations</li><li>99.9% SLA</li></ul></article></section>
+      <section class="wm-section"><h2>FAQ</h2><details><summary>Is WorldMates secure?</summary><p>Yes. We use AES-256-GCM encryption and E2E protection in private chats.</p></details><details><summary>Where is my data stored?</summary><p>On our servers in Dnipro and Kyiv, with no foreign storage.</p></details><details><summary>Is there an iOS app?</summary><p>Android and Web are available now. iOS is currently in development.</p></details></section>
+      <section class="wm-final-cta"><h2>Let’s build it together 💙💛</h2><p>WorldMates is a step toward Ukraine’s technological independence.</p><div class="wm-cta-row"><a href="<?php echo Wo_SeoLink('index.php?link1=register');?>" class="wm-cta wm-cta--primary">Join beta</a><a href="<?php echo $wo['config']['site_url'];?>" class="wm-cta wm-cta--ghost">Try Web</a></div></section>
+    `
+  },
+  ru: {
+    html: `
+      <section class="wm-hero">
+        <span class="wm-badge">🇺🇦 Сделано в Украине • Lifetime Premium для beta-тестеров</span>
+        <h1>WorldMates — украинский мессенджер с серверами в Украине</h1>
+        <p>Твой мессенджер. Твоя страна. Твои правила. Твои данные хранятся в Украине, а приватность — под защитой. Серверы расположены в Днепре и Киеве.</p>
+        <div class="wm-cta-row">
+          <a href="https://worldmates.club/sources-app/worldmates-latest.apk" class="wm-cta wm-cta--primary wm-apk-link" download="worldmates-latest.apk">Скачать Android APK</a>
+          <a href="#" class="wm-cta wm-cta--ghost">Ченджлоги (скоро)</a>
+          <a href="<?php echo Wo_SeoLink('index.php?link1=register');?>" class="wm-cta wm-cta--ghost">Стать beta-тестером</a>
+        </div>
+      </section>
+      <section class="wm-grid wm-features"><h2>Преимущества</h2>
+        <article><h3>🔒 Максимальная безопасность</h3><ul><li><strong>AES-256-GCM шифрование</strong> — военный стандарт защиты</li><li><strong>End-to-end encryption</strong> для приватных чатов</li><li><strong>Двухфакторная аутентификация</strong> для защиты аккаунта</li><li><strong>Самоуничтожающиеся сообщения</strong> для конфиденциальности</li></ul><p>Твои данные защищены как в банковском сейфе.</p></article>
+        <article><h3>🇺🇦 100% в Украине</h3><ul><li>Серверы в двух городах: Днепр и Киев</li><li>Собственный дата-центр</li><li>Данные не покидают Украину</li><li>Независимость от зарубежных платформ</li></ul><p>Твои данные — на украинской земле.</p></article>
+        <article><h3>📶 Работает даже при плохом интернете</h3><ul><li>Автоматическая компрессия медиа</li><li>Офлайн-режим с очередью отправки</li><li>Адаптивное качество контента</li><li>Экономия трафика, работает даже на 3G</li></ul><p>Создано для украинских реалий.</p></article>
+        <article><h3>🚫 Без слежки</h3><ul><li>Без доступа третьих сторон к данным (кроме законных запросов с полным пакетом документов)</li><li>Полный контроль приватности</li></ul><p>Твоя приватность — твое право.</p></article>
+        <article><h3>📱 Больше, чем мессенджер</h3><ul><li>Профили и лента новостей</li><li>Группы и сообщества</li><li>Личные и групповые чаты</li><li>100+ украинских стикеров 🇺🇦</li></ul><p>Все в одном приложении.</p></article>
+        <article><h3>🐕 Знакомься: Wally</h3><p>Наш маскот — пес породы ши-тцу. Верный, дружелюбный и всегда рядом. Как и WorldMates — ваш надежный компаньон в общении.</p><p>Wally приветствует каждого нового пользователя!</p></article>
+      </section>
+      <section class="wm-section"><h2>Чем WorldMates лучше?</h2><div class="wm-table-wrap"><table><thead><tr><th>Что важно</th><th>WorldMates</th><th>Telegram</th><th>Viber</th><th>WhatsApp</th></tr></thead><tbody><tr><td>🇺🇦 Украинские серверы</td><td>✅ Да</td><td>❌ Нет</td><td>❌ Нет</td><td>❌ Нет</td></tr><tr><td>🔒 E2E шифрование</td><td>✅ Всегда</td><td>⚠️ Опционально</td><td>✅ Да</td><td>✅ Да</td></tr><tr><td>📶 Офлайн-режим</td><td>✅ Да</td><td>❌ Нет</td><td>❌ Нет</td><td>❌ Нет</td></tr><tr><td>🎨 Соцсеть + мессенджер</td><td>✅ Да</td><td>❌ Нет</td><td>❌ Нет</td><td>❌ Нет</td></tr></tbody></table></div><p>Мы не конкурируем напрямую — мы даем выбор.</p></section>
+      <section class="wm-grid wm-two-cols"><h2>Техническая база</h2><article><h3>Backend</h3><ul><li>Node.js архитектура и WebSockets в реальном времени</li><li>Intel Xeon E5-2697v4 ×2 + 128GB DDR4</li><li>12TB HDD + 2TB NVMe для базы данных</li><li>Шлюз на базе HAProxy и микросервисы</li></ul></article><article><h3>Security & Infrastructure</h3><ul><li>AES-256-GCM, TLS 1.3, 2FA</li><li>2 дата-центра в Украине</li><li>Cross-city replication и DDoS-защита</li><li>98.5% uptime SLA</li></ul></article></section>
+      <section class="wm-section"><h2>Почему я создал WorldMates</h2><p>Меня зовут Александр, я руководитель ИТ-отдела научного института из Днепра. После начала войны стало очевидно, насколько мы зависим от зарубежных платформ. Имея 20 лет опыта в ИТ и собственный дата-центр, я решил создать украинскую платформу под нашим контролем.</p><p>Я вложил более 500,000 грн личных средств в оборудование и разработку. WorldMates — это мой вклад в технологическое будущее Украины.</p><p><strong>Александр, Founder & Developer</strong> · support@worldmates.club · @dncdante</p></section>
+      <section class="wm-grid wm-three-cols"><h2>Цены</h2><article><h3>FREE</h3><p class="price">₴0 / навсегда</p><ul><li>Базовый мессенджер</li><li>Профиль и лента</li><li>2 ГБ хранилища</li><li>Украинские серверы</li></ul></article><article><h3>PREMIUM</h3><p class="price">₴99 / месяц</p><ul><li>50 ГБ хранилища</li><li>Все премиум-стикеры</li><li>Без рекламы</li><li>Приоритетная поддержка</li></ul></article><article><h3>BUSINESS</h3><p class="price">₴199 / пользователь / месяц</p><ul><li>Корпоративное управление</li><li>Логи и аналитика</li><li>API и интеграции</li><li>SLA 99.9%</li></ul></article></section>
+      <section class="wm-section"><h2>FAQ</h2><details><summary>Безопасен ли WorldMates?</summary><p>Да. Мы используем AES-256-GCM и E2E для приватных чатов.</p></details><details><summary>Где хранятся данные?</summary><p>На серверах в Днепре и Киеве, без размещения за рубежом.</p></details><details><summary>Есть ли iOS-версия?</summary><p>Сейчас доступны Android и Web, iOS находится в разработке.</p></details></section>
+      <section class="wm-final-cta"><h2>Строим вместе 💙💛</h2><p>WorldMates — это шаг к технологической независимости Украины.</p><div class="wm-cta-row"><a href="<?php echo Wo_SeoLink('index.php?link1=register');?>" class="wm-cta wm-cta--primary">Присоединиться к beta</a><a href="<?php echo $wo['config']['site_url'];?>" class="wm-cta wm-cta--ghost">Попробовать Web</a></div></section>
+    `
+  }
+};
+
+function setWmLanguage(lang) {
+  const selectedLang = wmMarketingData[lang] ? lang : 'ua';
+  const target = document.getElementById('wm-marketing-content');
+  if (!target) return;
+  target.innerHTML = wmMarketingData[selectedLang].html;
+  document.querySelectorAll('.wm-lang-btn').forEach((btn) => {
+    btn.classList.toggle('is-active', btn.dataset.lang === selectedLang);
+  });
+  bindApkDownloadButtons();
+}
+
+async function triggerApkDownload(event) {
+  event.preventDefault();
+  const link = event.currentTarget;
+  const apkUrl = link.getAttribute('href');
+  try {
+    const response = await fetch(apkUrl, { credentials: 'omit' });
+    if (!response.ok) {
+      throw new Error('HTTP ' + response.status);
+    }
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const tempLink = document.createElement('a');
+    tempLink.href = blobUrl;
+    tempLink.download = 'worldmates-latest.apk';
+    document.body.appendChild(tempLink);
+    tempLink.click();
+    tempLink.remove();
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    window.location.href = apkUrl;
+  }
+}
+
+function bindApkDownloadButtons() {
+  document.querySelectorAll('.wm-apk-link').forEach((link) => {
+    link.removeEventListener('click', triggerApkDownload);
+    link.addEventListener('click', triggerApkDownload);
+  });
+}
+
+document.querySelectorAll('.wm-lang-btn').forEach((btn) => {
+  btn.addEventListener('click', () => setWmLanguage(btn.dataset.lang));
+});
+setWmLanguage('ua');
+
 var working = false;
 var $this = $('#login');
 var $state = $this.find('.errors');

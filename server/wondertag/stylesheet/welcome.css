@@ -758,3 +758,43 @@ button, input, optgroup, select, textarea {color: inherit;}
 .lang_select_modal .language_select {flex: 1 1 160px;background: transparent !important;margin: 10px;}
 .lang_select_modal .language_select a {display: block;text-decoration: none;font-weight: 500;font-size: 13px;line-height: 39px;padding: 0 15px;transition: background-color .1s;border: 1px solid #ddd;text-align: center;border-radius: 7px;}
 .lang_select_modal .language_select:hover {background-color: rgb(0 0 0 / 3%) !important;}
+/* WorldMates marketing sections */
+.wm-marketing {background: linear-gradient(180deg,#f7f8ff 0%,#ffffff 40%);padding: 56px 16px 80px;}
+.wm-marketing__container {max-width: 1160px;margin: 0 auto;}
+.wm-lang-switch {display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:20px;}
+.wm-lang-btn {border:1px solid #d5d8ef;background:#fff;border-radius:999px;padding:8px 14px;font-weight:600;color:#4a4f7a;cursor:pointer;}
+.wm-lang-btn.is-active {background:#5d45aa;color:#fff;border-color:#5d45aa;box-shadow:0 8px 20px rgba(93,69,170,.25);}
+.wm-hero {background:#ffffff;border:1px solid #e8e9f8;border-radius:24px;padding:28px;box-shadow:0 15px 40px rgba(40,45,90,.08);margin-bottom:24px;}
+.wm-badge {display:inline-block;background:#eef0ff;color:#4f3aa7;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600;margin-bottom:12px;}
+.wm-hero h1 {font-size:34px;line-height:1.2;margin:0 0 10px;color:#21233f;}
+.wm-hero p {font-size:17px;color:#4c5072;max-width:900px;}
+.wm-cta-row {display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.wm-cta {display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:12px;font-weight:600;text-decoration:none;transition:.2s ease;}
+.wm-cta--primary {background:#5d45aa;color:#fff;}
+.wm-cta--primary:hover {background:#4a338f;color:#fff;}
+.wm-cta--ghost {background:#fff;border:1px solid #d6daef;color:#3f446d;}
+.wm-cta--ghost:hover {border-color:#5d45aa;color:#5d45aa;}
+.wm-grid {display:grid;gap:14px;margin-bottom:24px;}
+.wm-features {grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
+.wm-two-cols {grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}
+.wm-three-cols {grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+.wm-grid > h2,.wm-section h2 {grid-column:1/-1;font-size:30px;margin:8px 0 4px;color:#232744;}
+.wm-grid article,.wm-section,.wm-final-cta {background:#fff;border:1px solid #e8e9f8;border-radius:20px;padding:22px;box-shadow:0 10px 25px rgba(40,45,90,.06);}
+.wm-grid article h3 {font-size:20px;margin:0 0 8px;color:#252a4a;}
+.wm-grid article ul {margin:0;padding-left:20px;color:#4d5174;}
+.wm-grid article p,.wm-section p {color:#4d5174;}
+.wm-table-wrap {overflow:auto;margin-top:8px;}
+.wm-table-wrap table {width:100%;border-collapse:collapse;min-width:720px;}
+.wm-table-wrap th,.wm-table-wrap td {padding:10px;border-bottom:1px solid #eceffc;text-align:left;color:#40456b;}
+.wm-table-wrap th {background:#f8f9ff;color:#2d3156;}
+.price {font-size:24px;font-weight:700;color:#2c3159;margin:6px 0 10px;}
+.wm-section details {border-top:1px dashed #e1e5fa;padding:10px 0;}
+.wm-section summary {cursor:pointer;font-weight:600;color:#31365f;}
+.wm-final-cta {text-align:center;background:linear-gradient(135deg,#5d45aa,#6d56b8);color:#fff;}
+.wm-final-cta h2,.wm-final-cta p {color:#fff;}
+.wm-final-cta .wm-cta--ghost {background:transparent;border-color:rgba(255,255,255,.5);color:#fff;}
+
+@media (max-width: 768px) {
+  .wm-hero h1 {font-size:28px;}
+  .wm-grid > h2,.wm-section h2 {font-size:24px;}
+}

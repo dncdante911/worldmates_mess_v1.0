@@ -1,18 +1,18 @@
 {
-  "latest_version": "2.8.0",
-  "version_code": 10,
+  "latest_version": "2.9.0",
+  "version_code": 11,
   "apk_url": "https://worldmates.club/sources-app/worldmates-latest.apk",
   "changelog": [
-    "👤 Новий дизайн профілю: великий аватар, кнопки дій (Фото, Змінити, Настройки, Теми)",
-    "📸 Завантаження аватара з галереї прямо з профілю",
-    "🧭 Нижня панель навігації: Чати, Контакти, Настройки, Профіль (з аватаром)",
-    "🎨 Швидкий доступ до Тем прямо з профілю",
-    "📱 Інфо-карточка профілю у стилі VK: телефон, про себе, username, дн",
-    "📋 Вкладки Публікації / Архів публікацій на профілі",
-    "🔗 Прямий перехід до Тем з профілю через SettingsActivity"
+    "📂 Telegram-style папки: Усі, Особисті, Канали, Групи + кастомні (10 free / 50 pro)",
+    "🎨 Синхронізація тем групових чатів з сервером (group_customization API)",
+    "📱 Фікс: системні навігаційні кнопки більше не перекривають нижню панель",
+    "🧹 Фікс: прибрано фіолетовий фон між списком чатів та нижньою навігацією",
+    "🗂️ Компактні вкладки: Чати/Канали/Групи об'єднані в папки як у Telegram",
+    "🔄 Автоматична синхронізація кастомних тем при відкритті групи",
+    "💾 SQL-міграція: нові колонки theme_* в Wo_GroupChat для тем груп"
   ],
   "is_mandatory": false,
-  "published_at": "2026-02-10T18:00:00Z",
+  "published_at": "2026-02-11T12:00:00Z",
   "features": {
     "animated_stickers": {
       "enabled": true,
@@ -130,10 +130,14 @@
     },
     "chat_organization": {
       "enabled": true,
+      "universal_folders": true,
       "folders": {
-        "default_folders": ["all", "personal", "groups", "unread"],
+        "default_folders": ["all", "personal", "channels", "groups", "unread"],
         "custom_folders": true,
-        "archive_folder": true
+        "archive_folder": true,
+        "max_custom_free": 10,
+        "max_custom_pro": 50,
+        "content_types": ["chats", "channels", "groups"]
       },
       "tags": {
         "preset_count": 8,
@@ -147,11 +151,12 @@
     },
     "group_themes": {
       "enabled": true,
-      "local_only": true,
+      "server_sync": true,
+      "api_endpoint": "POST /api/v2/endpoints/group_customization.php",
       "preset_themes": 8,
       "customizable_properties": ["bubble_style", "preset_background", "accent_color"],
       "admin_only": true,
-      "todo_backend_api": "POST /api/v2/endpoints/group_customization.php"
+      "sql_columns": ["theme_bubble_style", "theme_preset_background", "theme_accent_color", "theme_enabled_by_admin", "theme_updated_at", "theme_updated_by"]
     }
   },
   "minimum_supported_version": "2.0.0",
@@ -165,7 +170,9 @@
     "ui/chats/BottomNavBar.kt",
     "ui/groups/GroupThemeManager.kt",
     "ui/groups/GroupThemeEditor.kt",
-    "ui/profile/MyProfileScreen.kt"
+    "ui/profile/MyProfileScreen.kt",
+    "api-server-files/api/v2/endpoints/group_customization.php",
+    "api-server-files/sql-DB-newver/add_group_customization_columns.sql"
   ],
   "modified_files": [
     "ui/theme/ThemeSettingsScreen.kt",
@@ -178,7 +185,8 @@
     "ui/settings/SettingsActivity.kt",
     "ui/groups/GroupDetailsActivity.kt",
     "ui/profile/UserProfileActivity.kt",
-    "ui/profile/UserProfileViewModel.kt"
+    "ui/profile/UserProfileViewModel.kt",
+    "network/WorldMatesApi.kt"
   ],
   "dependencies": {
     "lottie": "6.4.0",

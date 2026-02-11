@@ -53,7 +53,9 @@ import androidx.compose.ui.unit.sp
 import com.worldmates.messenger.data.model.Chat
 
 /**
- * Горизонтальна смуга з табами-папками
+ * Горизонтальна смуга з табами-папками (Telegram-style).
+ * Замінює окремий TabRow + старі папки.
+ * Включає системні папки (Усі, Особисті, Канали, Групи, Непрочитані) + кастомні.
  */
 @Composable
 fun ChatFolderTabs(
@@ -69,7 +71,7 @@ fun ChatFolderTabs(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -117,26 +119,26 @@ private fun FolderTabChip(
         targetValue = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer
         else
-            MaterialTheme.colorScheme.surfaceVariant
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
     )
 
     Card(
         modifier = Modifier
-            .height(36.dp)
+            .height(32.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = bgColor)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Text(folder.emoji, fontSize = 14.sp)
+            Text(folder.emoji, fontSize = 13.sp)
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = folder.name,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                 color = if (isSelected)
                     MaterialTheme.colorScheme.onPrimaryContainer
@@ -147,14 +149,14 @@ private fun FolderTabChip(
                 Spacer(modifier = Modifier.width(4.dp))
                 Box(
                     modifier = Modifier
-                        .size(18.dp)
+                        .size(16.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "$badge",
-                        fontSize = 10.sp,
+                        fontSize = 9.sp,
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold
                     )
@@ -236,7 +238,7 @@ fun ChatTagsRow(
 }
 
 /**
- * Діалог створення нової папки
+ * Діалог створення нової папки з інформацією про ліміти
  */
 @Composable
 fun CreateFolderDialog(
@@ -246,19 +248,42 @@ fun CreateFolderDialog(
     var name by remember { mutableStateOf("") }
     var emoji by remember { mutableStateOf("📁") }
 
-    val emojiOptions = listOf("📁", "💼", "🏠", "🎮", "📚", "🛒", "✈️", "🎵", "⭐", "🔒")
+    val emojiOptions = listOf("📁", "💼", "🏠", "🎮", "📚", "🛒", "✈️", "🎵", "⭐", "🔒", "💰", "🎯")
+    val customCount = ChatOrganizationManager.getCustomFolderCount()
+    val maxCount = ChatOrganizationManager.getMaxCustomFolders()
+    val canCreate = ChatOrganizationManager.canCreateFolder()
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Нова папка") },
         text = {
             Column {
+                // Лімітер папок
+                Text(
+                    text = "Папок: $customCount / $maxCount",
+                    fontSize = 12.sp,
+                    color = if (canCreate)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium
+                )
+                if (!canCreate) {
+                    Text(
+                        text = "Ліміт досягнуто. Оформіть підписку для більшої кількості.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Назва папки") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = canCreate
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Оберіть іконку:", fontSize = 14.sp)
@@ -287,8 +312,8 @@ fun CreateFolderDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(name.trim(), emoji) },
-                enabled = name.isNotBlank()
+                onClick = { if (name.isNotBlank() && canCreate) onConfirm(name.trim(), emoji) },
+                enabled = name.isNotBlank() && canCreate
             ) { Text("Створити") }
         },
         dismissButton = {

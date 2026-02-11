@@ -130,37 +130,14 @@ class ChatsActivity : AppCompatActivity() {
                     mutableStateOf(BottomNavTab.CHATS)
                 }
 
-                Scaffold(
-                    bottomBar = {
-                        AppBottomNavBar(
-                            selectedTab = selectedBottomTab,
-                            onTabSelected = { tab ->
-                                when (tab) {
-                                    BottomNavTab.CONTACTS -> {
-                                        // Відкриваємо ContactPicker як окрему активність або діалог
-                                        selectedBottomTab = tab
-                                    }
-                                    BottomNavTab.SETTINGS -> {
-                                        navigateToSettings()
-                                    }
-                                    BottomNavTab.PROFILE -> {
-                                        startActivity(
-                                            Intent(
-                                                this@ChatsActivity,
-                                                com.worldmates.messenger.ui.profile.UserProfileActivity::class.java
-                                            )
-                                        )
-                                    }
-                                    BottomNavTab.CHATS -> {
-                                        selectedBottomTab = BottomNavTab.CHATS
-                                    }
-                                }
-                            }
-                        )
-                    },
-                    containerColor = Color.Transparent
-                ) { innerPadding ->
-                    Box(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+                // Основна структура: контент + нижня навігація
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Контент займає весь простір мінус висота нижньої навігації
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 60.dp) // Місце для нижньої навігації
+                    ) {
                         when (selectedBottomTab) {
                             BottomNavTab.CHATS -> {
                                 ChatsScreenModern(
@@ -214,6 +191,34 @@ class ChatsActivity : AppCompatActivity() {
                                 )
                             }
                         }
+                    }
+
+                    // Нижня навігація прикріплена до низу
+                    Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                        AppBottomNavBar(
+                            selectedTab = selectedBottomTab,
+                            onTabSelected = { tab ->
+                                when (tab) {
+                                    BottomNavTab.CONTACTS -> {
+                                        selectedBottomTab = tab
+                                    }
+                                    BottomNavTab.SETTINGS -> {
+                                        navigateToSettings()
+                                    }
+                                    BottomNavTab.PROFILE -> {
+                                        startActivity(
+                                            Intent(
+                                                this@ChatsActivity,
+                                                com.worldmates.messenger.ui.profile.UserProfileActivity::class.java
+                                            )
+                                        )
+                                    }
+                                    BottomNavTab.CHATS -> {
+                                        selectedBottomTab = BottomNavTab.CHATS
+                                    }
+                                }
+                            }
+                        )
                     }
                 }
             }

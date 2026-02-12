@@ -168,6 +168,28 @@ $routes = [
     'get_site_settings' => 'endpoints/get-site-settings.php',
     'subscribe_channel_by_qr' => 'endpoints/subscribe_channel_by_qr.php',
     'check_mobile_update' => 'endpoints/check_mobile_update.php',
+
+    // Bot API (user-facing endpoints)
+    'search_bots' => 'endpoints/bot_api.php',
+    'get_bot_info' => 'endpoints/bot_api.php',
+    'create_bot' => 'endpoints/bot_api.php',
+    'get_my_bots' => 'endpoints/bot_api.php',
+    'update_bot' => 'endpoints/bot_api.php',
+    'delete_bot' => 'endpoints/bot_api.php',
+    'regenerate_token' => 'endpoints/bot_api.php',
+    'get_commands' => 'endpoints/bot_api.php',
+    'set_commands' => 'endpoints/bot_api.php',
+    'answer_callback_query' => 'endpoints/bot_api.php',
+    'set_webhook' => 'endpoints/bot_api.php',
+    'delete_webhook' => 'endpoints/bot_api.php',
+    'get_webhook_info' => 'endpoints/bot_api.php',
+    'send_poll' => 'endpoints/bot_api.php',
+    'stop_poll' => 'endpoints/bot_api.php',
+    'get_updates' => 'endpoints/bot_api.php',
+    'edit_message' => 'endpoints/bot_api.php',
+    'get_chat_member' => 'endpoints/bot_api.php',
+    'set_user_state' => 'endpoints/bot_api.php',
+    'get_user_state' => 'endpoints/bot_api.php',
 ];
 
 // Check if route exists

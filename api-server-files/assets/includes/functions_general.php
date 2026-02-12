@@ -1915,15 +1915,8 @@ function Wo_DeleteFromToS3($filename, $config = array()) {
         }
     }
 }
-if (!function_exists('glob_recursive')) {
-    function glob_recursive($pattern, $flags = 0) {
-        $files = glob($pattern, $flags);
-        foreach (glob(dirname($pattern) . '/*', GLOB_ONLYDIR | GLOB_NOSORT) as $dir) {
-            $files = array_merge($files, glob_recursive($dir . '/' . basename($pattern), $flags));
-        }
-        return $files;
-    }
-}
+// glob_recursive is defined below (line ~2084) with 3-param signature
+// used by cleanTempFiles(): glob_recursive($base, $pattern, $flags)
 function unzip_file($file, $destination) {
     // create object
     $zip = new ZipArchive();

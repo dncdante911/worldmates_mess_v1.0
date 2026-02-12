@@ -239,6 +239,17 @@ class SocketManager(
                 }
             }
 
+            // 11a. Bot message via bots-listener (Socket.IO)
+            socket?.on("bot_message") { args ->
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    val data = args[0] as JSONObject
+                    Log.d("SocketManager", "Bot message received: $data")
+                    if (listener is ExtendedSocketListener) {
+                        listener.onBotMessage(data)
+                    }
+                }
+            }
+
             // 12. Обработка статуса "онлайн"
             socket?.on(Constants.SOCKET_EVENT_USER_ONLINE) { args ->
                 Log.d("SocketManager", "Received ${Constants.SOCKET_EVENT_USER_ONLINE} event with ${args.size} args")
@@ -372,6 +383,45 @@ class SocketManager(
         } else {
             // Fallback: Если Socket не подключен, можно использовать REST API для отправки (send-message.php)
             Log.w("SocketManager", "Socket not connected. Message not sent via socket.")
+        }
+    }
+
+    fun subscribeBot(botId: String) {
+        if (socket?.connected() == true && botId.isNotBlank()) {
+            val payload = JSONObject().apply {
+                put("user_id", UserSession.accessToken ?: "")
+                put("bot_id", botId)
+            }
+            socket?.emit("subscribe_bot", payload)
+            Log.d(TAG, "Subscribed to bot room: $botId")
+        }
+    }
+
+    fun unsubscribeBot(botId: String) {
+        if (socket?.connected() == true && botId.isNotBlank()) {
+            val payload = JSONObject().apply {
+                put("user_id", UserSession.accessToken ?: "")
+                put("bot_id", botId)
+            }
+            socket?.emit("unsubscribe_bot", payload)
+            Log.d(TAG, "Unsubscribed from bot room: $botId")
+        }
+    }
+
+    fun sendUserToBot(botId: String, text: String) {
+        if (socket?.connected() == true && botId.isNotBlank()) {
+            val trimmed = text.trim()
+            val commandMatch = Regex("^/([a-zA-Z0-9_]+)(?:\\s+(.*))?$").find(trimmed)
+            val payload = JSONObject().apply {
+                put("user_id", UserSession.accessToken ?: "")
+                put("bot_id", botId)
+                put("text", text)
+                put("is_command", commandMatch != null)
+                put("command_name", commandMatch?.groupValues?.getOrNull(1) ?: JSONObject.NULL)
+                put("command_args", commandMatch?.groupValues?.getOrNull(2) ?: JSONObject.NULL)
+            }
+            socket?.emit("user_to_bot", payload)
+            Log.d(TAG, "Emitted user_to_bot: botId=$botId text=${text.take(40)}")
         }
     }
 
@@ -850,5 +900,6 @@ class SocketManager(
         fun onGroupMessage(messageJson: JSONObject) {}
         fun onUserOnline(userId: Long) {}
         fun onUserOffline(userId: Long) {}
+        fun onBotMessage(messageJson: JSONObject) {}
     }
 }

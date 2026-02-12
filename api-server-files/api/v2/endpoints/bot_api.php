@@ -9,25 +9,27 @@
 if (!isset($sqlConnect) || !$sqlConnect) {
     require_once(__DIR__ . '/../config.php');
 
-    // Validate access_token for user endpoints (same logic as index.php)
+    $request_type = $_POST['type'] ?? $_GET['type'] ?? '';
     $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
     $has_bot_token = !empty($_POST['bot_token']);
 
-    if (!$has_bot_token && !empty($access_token)) {
+    // Public discovery endpoints should not require user auth.
+    $public_types = array('search_bots', 'get_bot_info');
+    $requires_user_auth = !$has_bot_token && !in_array($request_type, $public_types, true);
+
+    if ($requires_user_auth) {
+        if (empty($access_token)) {
+            header('Content-Type: application/json; charset=UTF-8');
+            http_response_code(401);
+            echo json_encode(array(
+                'api_status' => 401,
+                'error_message' => 'access_token is required'
+            ));
+            exit;
+        }
+
         $user_id = validateAccessToken($db, $access_token);
-        if ($user_id) {
-            if (function_exists('Wo_UserData')) {
-                $user_data = Wo_UserData($user_id);
-                if (!empty($user_data)) {
-                    $wo['user'] = $user_data;
-                    $wo['loggedin'] = true;
-                }
-            } else {
-                $wo['user'] = array('user_id' => $user_id, 'id' => $user_id);
-                $wo['loggedin'] = true;
-            }
-        } elseif (!$has_bot_token) {
-            // No valid token at all - return 401 for non-bot requests
+        if (!$user_id) {
             header('Content-Type: application/json; charset=UTF-8');
             http_response_code(401);
             echo json_encode(array(
@@ -35,6 +37,23 @@ if (!isset($sqlConnect) || !$sqlConnect) {
                 'error_message' => 'Invalid or missing access_token'
             ));
             exit;
+        }
+
+        // Minimal user context is enough for bot owner checks.
+        $wo['user'] = array('user_id' => (int)$user_id, 'id' => (int)$user_id);
+        $wo['loggedin'] = true;
+
+        // Try to enrich user context, but never allow enrichment failures to crash endpoint.
+        if (function_exists('Wo_UserData')) {
+            try {
+                $user_data = Wo_UserData($user_id);
+                if (!empty($user_data)) {
+                    $wo['user'] = $user_data;
+                    $wo['loggedin'] = true;
+                }
+            } catch (Throwable $e) {
+                error_log('bot_api.php Wo_UserData failed: ' . $e->getMessage());
+            }
         }
     }
 }
@@ -935,6 +954,12 @@ if (empty($error_code)) {
                 ORDER BY total_users DESC, created_at DESC
                 LIMIT {$offset}, {$limit}");
 
+            if (!$result) {
+                $error_code = 500;
+                $error_message = 'search_bots query failed: ' . mysqli_error($sqlConnect);
+                break;
+            }
+
             $bots = array();
             while ($row = mysqli_fetch_assoc($result)) {
                 $bots[] = $row;
@@ -944,6 +969,13 @@ if (empty($error_code)) {
             $cats_result = mysqli_query($sqlConnect, "SELECT DISTINCT category, COUNT(*) as count
                 FROM Wo_Bots WHERE status = 'active' AND is_public = 1 AND category IS NOT NULL
                 GROUP BY category ORDER BY count DESC");
+
+            if (!$cats_result) {
+                $error_code = 500;
+                $error_message = 'search_bots categories query failed: ' . mysqli_error($sqlConnect);
+                break;
+            }
+
             $categories = array();
             while ($cat = mysqli_fetch_assoc($cats_result)) {
                 $categories[] = $cat;

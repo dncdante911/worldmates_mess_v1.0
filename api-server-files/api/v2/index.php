@@ -19,8 +19,15 @@ $type = $_GET['type'] ?? $_POST['type'] ?? '';
 // List of endpoints that don't require authentication
 $public_endpoints = [
     'auth',
+    'create-account',
+    'create_account',
+    'active_account_sms',
     'send_verification_code',
     'verify_code',
+    'send-reset-password-email',
+    'send_reset_password_email',
+    'reset_password',
+    'check_username',
     'get_site_settings',
     'get-site-settings',
     'test_init',
@@ -90,14 +97,23 @@ $routes = [
     'search_for_posts' => 'endpoints/search_for_posts.php',
     'search_group_messages' => 'endpoints/search_group_messages.php',
 
-    // Authentication
+    // Authentication & Registration
     'auth' => 'endpoints/auth.php',
+    'create-account' => 'endpoints/create-account.php',
+    'create_account' => 'endpoints/create-account.php',
+    'active_account_sms' => 'endpoints/active_account_sms.php',
+    'check_username' => 'endpoints/check_username.php',
     'get_chats' => 'endpoints/get_chats.php',
     'get_user_messages' => 'endpoints/get_messages.php',
 
     // Verification
     'send_verification_code' => 'endpoints/send_verification_code.php',
     'verify_code' => 'endpoints/verify_code.php',
+
+    // Password Reset
+    'send-reset-password-email' => 'endpoints/send-reset-password-email.php',
+    'send_reset_password_email' => 'endpoints/send-reset-password-email.php',
+    'reset_password' => 'endpoints/reset_password.php',
 
     // Messaging
     'send_message' => 'endpoints/send-message.php',
@@ -216,3 +232,22 @@ if (!file_exists($endpoint_file)) {
 
 // Include and execute endpoint
 require_once($endpoint_file);
+
+// ============================================
+// Output JSON response for WoWonder-style endpoints
+// ============================================
+// WoWonder endpoints set $response_data, $error_code, $error_message
+// but don't output JSON themselves — we handle it here.
+if (isset($error_code) && !empty($error_code)) {
+    $response_data = array(
+        'api_status' => 400,
+        'errors' => array(
+            'error_id' => $error_code,
+            'error_text' => isset($error_message) ? $error_message : 'Unknown error',
+        )
+    );
+}
+
+if (isset($response_data) && !empty($response_data)) {
+    echo json_encode($response_data);
+}

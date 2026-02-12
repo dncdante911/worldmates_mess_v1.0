@@ -89,6 +89,7 @@ class MessagesActivity : AppCompatActivity() {
         voicePlayer = VoicePlayer(this)
 
         viewModel = ViewModelProvider(this).get(MessagesViewModel::class.java)
+        viewModel.setBotMode(isBot = isBot, botId = botId)
 
         // Завантажуємо повідомлення
         if (isGroup) {

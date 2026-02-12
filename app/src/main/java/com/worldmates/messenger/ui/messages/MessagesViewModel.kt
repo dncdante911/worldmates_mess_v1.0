@@ -118,6 +118,8 @@ class MessagesViewModel(application: Application) :
     private var recipientId: Long = 0
     private var groupId: Long = 0
     private var topicId: Long = 0 // 📁 Topic/Subgroup ID for topic-based filtering
+    private var isBotChat: Boolean = false
+    private var botId: String = ""
     private var socketManager: SocketManager? = null
     private var mediaUploader: MediaUploader? = null
     private var fileManager: FileManager? = null
@@ -127,6 +129,12 @@ class MessagesViewModel(application: Application) :
     fun getRecipientId(): Long = recipientId
     fun getGroupId(): Long = groupId
     fun getTopicId(): Long = topicId
+
+    fun setBotMode(isBot: Boolean, botId: String) {
+        this.isBotChat = isBot
+        this.botId = botId
+        Log.d(TAG, "Bot mode: $isBot, botId=$botId")
+    }
 
     fun initialize(recipientId: Long) {
         Log.d("MessagesViewModel", "🔧 initialize() викликано для користувача $recipientId")
@@ -341,6 +349,10 @@ class MessagesViewModel(application: Application) :
                     } else {
                         socketManager?.sendMessage(recipientId, text)
                         Log.d("MessagesViewModel", "Socket.IO: Відправлено приватне повідомлення")
+
+                        if (isBotChat && botId.isNotBlank()) {
+                            notifyBotIncomingMessage(text)
+                        }
                     }
 
                     _error.value = null
@@ -1821,6 +1833,24 @@ class MessagesViewModel(application: Application) :
             } catch (e: Exception) {
                 // Тихо ігноруємо помилки polling - не турбуємо користувача
                 Log.w(TAG, "Polling error: ${e.message}")
+            }
+        }
+    }
+
+    private fun notifyBotIncomingMessage(text: String) {
+        val token = UserSession.accessToken ?: return
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.botApiService.sendUserMessageToBot(
+                    accessToken = token,
+                    botId = botId,
+                    text = text
+                )
+                if (response.apiStatus != 200) {
+                    Log.w(TAG, "Bot notify failed: ${response.errorMessage}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Bot notify exception", e)
             }
         }
     }

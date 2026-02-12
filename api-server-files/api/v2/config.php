@@ -122,9 +122,10 @@ if (file_exists($assets_path . 'tabels.php')) {
 
 // Load required WoWonder functions
 $required_functions = [
-    'cache.php',           // Cache functions
-    'functions_general.php', // Wo_Secure, Wo_GetConfig, etc.
-    'functions_one.php',   // Wo_ShareFile, Wo_RegisterUser, etc.
+    'cache.php',             // Cache functions
+    'functions_general.php', // Wo_Secure, Wo_LoadPage, etc.
+    'functions_one.php',     // Wo_RegisterUser, Wo_UserData, Wo_GetConfig, etc.
+    'functions_two.php',     // Wo_SendMessage, Wo_SendSMSMessage, Wo_IsNameExist, etc.
 ];
 
 foreach ($required_functions as $func_file) {
@@ -136,6 +137,22 @@ foreach ($required_functions as $func_file) {
     }
 }
 
+// ============================================
+// Initialize MysqliDb ORM object ($mysqliDb for WoWonder endpoints)
+// ============================================
+// WoWonder endpoints use $db->where()->getOne() style (MysqliDb ORM)
+// We keep PDO as $db for custom v2 endpoints, and add $mysqliDb for WoWonder compat
+$mysqlidb_path = __DIR__ . '/../../assets/libraries/DB/vendor/joshcam/mysqli-database-class/MysqliDb.php';
+if (file_exists($mysqlidb_path) && !class_exists('MysqliDb')) {
+    require_once($mysqlidb_path);
+}
+if (class_exists('MysqliDb')) {
+    $mysqliDb = new MysqliDb($sqlConnect);
+} else {
+    $mysqliDb = null;
+    error_log("Warning: MysqliDb class not available");
+}
+
 // Load site configuration from database if possible
 if (function_exists('Wo_GetConfig')) {
     try {
@@ -145,6 +162,33 @@ if (function_exists('Wo_GetConfig')) {
         error_log("Warning: Failed to load Wo_GetConfig: " . $e->getMessage());
         $wo['config'] = [];
     }
+}
+
+// Load language strings
+if (function_exists('Wo_LangsNamesFromDB') && function_exists('Wo_LangsFromDB')) {
+    $wo['lang'] = Wo_LangsFromDB(!empty($wo['config']['defualtLang']) ? $wo['config']['defualtLang'] : 'english');
+}
+
+// Initialize site_pages array for registration validation
+if (!isset($wo['site_pages'])) {
+    $wo['site_pages'] = array(
+        'admin', 'terms', 'about', 'privacy', 'contact',
+        'blog', 'events', 'games', 'funding', 'forum',
+        'movies', 'jobs', 'market', 'offers', 'nearby',
+        'app', 'api', 'login', 'logout', 'register',
+        'settings', 'messages', 'notifications', 'search'
+    );
+}
+
+// Initialize genders array for registration
+if (!isset($wo['genders']) && function_exists('Wo_GetGenders')) {
+    try {
+        $wo['genders'] = Wo_GetGenders(!empty($wo['config']['defualtLang']) ? $wo['config']['defualtLang'] : 'english', function_exists('Wo_LangsNamesFromDB') ? Wo_LangsNamesFromDB() : array());
+    } catch (Exception $e) {
+        $wo['genders'] = array('male' => 'Male', 'female' => 'Female');
+    }
+} elseif (!isset($wo['genders'])) {
+    $wo['genders'] = array('male' => 'Male', 'female' => 'Female');
 }
 
 // ============================================

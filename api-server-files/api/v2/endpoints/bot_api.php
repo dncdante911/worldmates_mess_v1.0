@@ -5,6 +5,45 @@
 // | All bot operations via POST ?type=<action>
 // +------------------------------------------------------------------------+
 
+// Self-bootstrap: load config if not already loaded (direct access without index.php router)
+if (!isset($sqlConnect) || !$sqlConnect) {
+    require_once(__DIR__ . '/../config.php');
+
+    // Validate access_token for user endpoints (same logic as index.php)
+    $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+    $has_bot_token = !empty($_POST['bot_token']);
+
+    if (!$has_bot_token && !empty($access_token)) {
+        $user_id = validateAccessToken($db, $access_token);
+        if ($user_id) {
+            if (function_exists('Wo_UserData')) {
+                $user_data = Wo_UserData($user_id);
+                if (!empty($user_data)) {
+                    $wo['user'] = $user_data;
+                    $wo['loggedin'] = true;
+                }
+            } else {
+                $wo['user'] = array('user_id' => $user_id, 'id' => $user_id);
+                $wo['loggedin'] = true;
+            }
+        } elseif (!$has_bot_token) {
+            // No valid token at all - return 401 for non-bot requests
+            header('Content-Type: application/json; charset=UTF-8');
+            http_response_code(401);
+            echo json_encode(array(
+                'api_status' => 401,
+                'error_message' => 'Invalid or missing access_token'
+            ));
+            exit;
+        }
+    }
+}
+
+// Set Content-Type header (may already be set by index.php)
+if (!headers_sent()) {
+    header('Content-Type: application/json; charset=UTF-8');
+}
+
 $response_data = array('api_status' => 400);
 
 // ==================== BOT TOKEN AUTHENTICATION ====================
@@ -1266,3 +1305,7 @@ function notifyViaBotSocket($bot_id, $chat_id, $text, $message_id, $reply_markup
         // Redis not available, Socket.IO will pick up on next poll
     }
 }
+
+// ==================== OUTPUT RESPONSE ====================
+// Output JSON response (works both for direct access and index.php router)
+echo json_encode($response_data);

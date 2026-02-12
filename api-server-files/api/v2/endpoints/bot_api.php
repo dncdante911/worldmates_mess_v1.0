@@ -935,6 +935,12 @@ if (empty($error_code)) {
                 ORDER BY total_users DESC, created_at DESC
                 LIMIT {$offset}, {$limit}");
 
+            if (!$result) {
+                $error_code = 500;
+                $error_message = 'search_bots query failed: ' . mysqli_error($sqlConnect);
+                break;
+            }
+
             $bots = array();
             while ($row = mysqli_fetch_assoc($result)) {
                 $bots[] = $row;
@@ -944,6 +950,13 @@ if (empty($error_code)) {
             $cats_result = mysqli_query($sqlConnect, "SELECT DISTINCT category, COUNT(*) as count
                 FROM Wo_Bots WHERE status = 'active' AND is_public = 1 AND category IS NOT NULL
                 GROUP BY category ORDER BY count DESC");
+
+            if (!$cats_result) {
+                $error_code = 500;
+                $error_message = 'search_bots categories query failed: ' . mysqli_error($sqlConnect);
+                break;
+            }
+
             $categories = array();
             while ($cat = mysqli_fetch_assoc($cats_result)) {
                 $categories[] = $cat;

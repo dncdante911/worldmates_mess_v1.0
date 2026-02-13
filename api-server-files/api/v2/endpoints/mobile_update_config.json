@@ -23,7 +23,7 @@
     "--- FCM токен тепер надсилається на сервер (підготовка до Firebase push)",
     "",
     "СЕРВЕР:",
-    "--- Node.js REST API: /api/messages/get, /api/messages/send, /api/messages/seen, /api/messages/chats",
+    "--- Node.js REST API: POST /nodejs/messages/get, /send, /seen, /chats, /typing",
     "--- PHP insert_new_message.php тепер публікує в Redis для Socket.IO доставки",
     "--- Скидання паролю через SMS (6-значний код) та email",
     "--- API quick_register + quick_verify для швидкої реєстрації",
@@ -218,13 +218,13 @@
     },
     "nodejs_messaging": {
       "enabled": true,
-      "base_url": "https://worldmates.club:449/api/messages/",
+      "base_url": "https://worldmates.club:449/nodejs/messages/",
       "endpoints": {
-        "get": "POST /api/messages/get — отримати історію повідомлень",
-        "send": "POST /api/messages/send — відправити + Socket.IO emit автоматично",
-        "seen": "POST /api/messages/seen — позначити прочитаними",
-        "chats": "POST /api/messages/chats — список бесід",
-        "typing": "POST /api/messages/typing — індикатор набору"
+        "get": "POST /nodejs/messages/get — отримати історію повідомлень",
+        "send": "POST /nodejs/messages/send — відправити + Socket.IO emit автоматично",
+        "seen": "POST /nodejs/messages/seen — позначити прочитаними",
+        "chats": "POST /nodejs/messages/chats — список бесід",
+        "typing": "POST /nodejs/messages/typing — індикатор набору"
       },
       "auth": "access_token в body, query або header (Access-Token)",
       "fallback": "При недоступності Node.js API, додаток автоматично перемикається на PHP API",

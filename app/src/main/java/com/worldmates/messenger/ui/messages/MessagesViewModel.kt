@@ -24,6 +24,7 @@ import com.worldmates.messenger.data.repository.DraftRepository
 import com.worldmates.messenger.data.local.entity.Draft
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import org.json.JSONObject
 import java.io.File
 
@@ -133,9 +134,6 @@ class MessagesViewModel(application: Application) :
     fun setBotMode(isBot: Boolean, botId: String) {
         this.isBotChat = isBot
         this.botId = botId
-        if (isBot && botId.isNotBlank()) {
-            socketManager?.subscribeBot(botId)
-        }
         Log.d(TAG, "Bot mode: $isBot, botId=$botId")
     }
 
@@ -1129,9 +1127,6 @@ class MessagesViewModel(application: Application) :
 
     override fun onSocketConnected() {
         Log.i("MessagesViewModel", "Socket підключено успішно")
-        if (isBotChat && botId.isNotBlank()) {
-            socketManager?.subscribeBot(botId)
-        }
         _error.value = null
     }
 
@@ -1172,35 +1167,6 @@ class MessagesViewModel(application: Application) :
             } else {
                 Log.d("MessagesViewModel", "⚠️ Ігноруємо offline для $userId (друкує)")
             }
-        }
-    }
-
-    override fun onBotMessage(messageJson: JSONObject) {
-        try {
-            if (!isBotChat) return
-            val text = messageJson.optString("text", "")
-            val messageId = messageJson.optLong("message_id", System.currentTimeMillis())
-            val timestampMs = messageJson.optLong("timestamp", System.currentTimeMillis())
-            val mediaObj = messageJson.optJSONObject("media")
-            val mediaUrl = mediaObj?.optString("url")
-
-            val incoming = Message(
-                id = messageId,
-                fromId = recipientId,
-                toId = UserSession.userId ?: 0,
-                encryptedText = text,
-                timeStamp = timestampMs / 1000,
-                mediaUrl = mediaUrl,
-                decryptedText = text,
-                decryptedMediaUrl = mediaUrl
-            )
-
-            val current = _messages.value.toMutableList()
-            current.add(incoming)
-            _messages.value = current.distinctBy { it.id }.sortedBy { it.timeStamp }
-            Log.d(TAG, "Bot message appended: ${text.take(80)}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to process bot_message", e)
         }
     }
 
@@ -1908,66 +1874,6 @@ class MessagesViewModel(application: Application) :
         }
     }
 
-    private fun sendBotChatMessage(text: String) {
-        val token = UserSession.accessToken ?: return
-        _isLoading.value = true
-
-        viewModelScope.launch {
-            try {
-                val apiResponse = RetrofitClient.botApiService.sendUserMessageToBot(
-                    accessToken = token,
-                    botId = botId,
-                    text = text
-                )
-
-                if (apiResponse.apiStatus == 200) {
-                    socketManager?.sendUserToBot(botId, text)
-
-                    val local = Message(
-                        id = System.currentTimeMillis(),
-                        fromId = UserSession.userId ?: 0,
-                        toId = recipientId,
-                        encryptedText = text,
-                        timeStamp = System.currentTimeMillis() / 1000,
-                        decryptedText = text,
-                        isLocalPending = false
-                    )
-
-                    val current = _messages.value.toMutableList()
-                    current.add(local)
-                    _messages.value = current.distinctBy { it.id }.sortedBy { it.timeStamp }
-                    _error.value = null
-                    deleteDraft()
-                } else {
-                    _error.value = apiResponse.errorMessage ?: "Не вдалося відправити повідомлення боту"
-                }
-            } catch (e: Exception) {
-                _error.value = "Помилка: ${e.localizedMessage}"
-                Log.e(TAG, "sendBotChatMessage error", e)
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    private fun notifyBotIncomingMessage(text: String) {
-        val token = UserSession.accessToken ?: return
-        viewModelScope.launch {
-            try {
-                val response = RetrofitClient.botApiService.sendUserMessageToBot(
-                    accessToken = token,
-                    botId = botId,
-                    text = text
-                )
-                if (response.apiStatus != 200) {
-                    Log.w(TAG, "Bot notify failed: ${response.errorMessage}")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Bot notify exception", e)
-            }
-        }
-    }
-
     override fun onCleared() {
         super.onCleared()
 
@@ -1975,9 +1881,6 @@ class MessagesViewModel(application: Application) :
         messagePollingJob?.cancel()
 
         // Зупиняємо Socket.IO
-        if (isBotChat && botId.isNotBlank()) {
-            socketManager?.unsubscribeBot(botId)
-        }
         socketManager?.disconnect()
 
         // Зупиняємо моніторинг якості

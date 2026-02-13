@@ -96,8 +96,26 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun sendTokenToServer(token: String) {
-        // Надішліть token на ваш сервер через API
-        // Це потрібно для отримання push-сповіщень на пристрої користувача
-        Log.d(TAG, "FCM Token should be sent to server: $token")
+        val accessToken = com.worldmates.messenger.data.UserSession.accessToken
+        if (accessToken.isNullOrEmpty()) {
+            Log.w(TAG, "Cannot send FCM token: no access token")
+            return
+        }
+
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val response = com.worldmates.messenger.network.RetrofitClient.apiService.updateFcmToken(
+                    accessToken = accessToken,
+                    fcmToken = token
+                )
+                if (response.apiStatus == 200) {
+                    Log.d(TAG, "FCM token sent to server successfully")
+                } else {
+                    Log.w(TAG, "FCM token upload failed: ${response.errorMessage}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending FCM token: ${e.message}")
+            }
+        }
     }
 }

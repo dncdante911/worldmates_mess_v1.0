@@ -48,25 +48,40 @@ if (empty($error_code)) {
     $confirm_password = $_POST['confirm_password'];
     if (in_array(true, Wo_IsNameExist($username, 0))) {
         $error_code    = 4;
-        $error_message = 'Username is already taken';
+        $error_message = 'This username is already taken. Please choose another one.';
+        $error_key     = 'username_taken';
     } else if (in_array($username, $wo['site_pages']) || !preg_match('/^[\w]+$/', $username)) {
         $error_code    = 5;
-        $error_message = 'Invalid username characters, please choose another username';
+        $error_message = 'Username contains invalid characters. Only letters, numbers and underscore are allowed.';
+        $error_key     = 'username_invalid';
     } else if (strlen($username) < 5 OR strlen($username) > 32) {
         $error_code    = 6;
-        $error_message = 'Username must be between 5 / 32 letters';
+        $error_message = 'Username must be between 5 and 32 characters.';
+        $error_key     = 'username_length';
     } else if (!empty($email) && Wo_EmailExists($email) === true) {
         $error_code    = 7;
-        $error_message = 'E-mail is already taken';
+        $error_message = 'This email is already registered. Please log in or use a different email.';
+        $error_key     = 'email_taken';
     } else if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_code    = 8;
-        $error_message = 'E-mail is invalid';
+        $error_message = 'Invalid email format. Please enter a valid email address.';
+        $error_key     = 'email_invalid';
+    } else if (!empty($phone_number) && (function_exists('Wo_PhoneExists') ? Wo_PhoneExists($phone_number) : (function_exists('Wo_IsPhoneExist') ? Wo_IsPhoneExist($phone_number) : false))) {
+        $error_code    = 13;
+        $error_message = 'This phone number is already registered. Please log in or use a different number.';
+        $error_key     = 'phone_taken';
     } else if (strlen($password) < 6) {
         $error_code    = 9;
-        $error_message = 'Password is too short';
+        $error_message = 'Password is too short. Minimum 6 characters required.';
+        $error_key     = 'password_weak';
+    } else if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+        $error_code    = 14;
+        $error_message = 'Password must contain at least one letter and one number.';
+        $error_key     = 'password_simple';
     } else if ($password != $confirm_password) {
         $error_code    = 10;
-        $error_message = 'Passwords don\'t match';
+        $error_message = 'Passwords do not match. Please make sure both passwords are identical.';
+        $error_key     = 'password_mismatch';
     }
     if (empty($error_code)) {
         // If registering with email and email validation is on, require verification

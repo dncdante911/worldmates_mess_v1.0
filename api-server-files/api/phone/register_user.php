@@ -39,67 +39,92 @@ if ($type == 'user_registration') {
     if (empty($_POST['username'])) {
         $json_error_data['errors'] = array(
             'error_id' => '2',
-            'error_text' => 'Please write your username.'
+            'error_text' => 'Please enter your username.',
+            'error_key' => 'username_empty'
         );
     } else if (in_array(true, Wo_IsNameExist($_POST['username'], 0))) {
     	$json_error_data['errors'] = array(
             'error_id' => '3',
-            'error_text' => 'Username is already exists.'
+            'error_text' => 'This username is already taken. Please choose another one.',
+            'error_key' => 'username_taken'
         );
     } else if (in_array($_POST['username'], $wo['site_pages'])) {
     	$json_error_data['errors'] = array(
             'error_id' => '4',
-            'error_text' => 'Invalid username characters.'
+            'error_text' => 'This username is reserved. Please choose another one.',
+            'error_key' => 'username_reserved'
         );
     } else if (mb_strlen($_POST['username'], 'UTF-8') < 3 OR mb_strlen($_POST['username'], 'UTF-8') > 32) {
     	$json_error_data['errors'] = array(
             'error_id' => '6',
-            'error_text' => 'Username must be between 3 / 32 characters'
+            'error_text' => 'Username must be between 3 and 32 characters.',
+            'error_key' => 'username_length'
         );
     } else if (!preg_match('/^[\w\p{Cyrillic}\p{Greek}\p{Arabic}]+$/u', $_POST['username'])) {
     	$json_error_data['errors'] = array(
             'error_id' => '7',
-            'error_text' => 'Invalid username characters. Only letters, numbers, and underscore allowed.'
+            'error_text' => 'Username contains invalid characters. Only letters, numbers, and underscore are allowed.',
+            'error_key' => 'username_invalid'
         );
     } else if (empty($_POST['email']) && empty($_POST['phone_number'])) {
         $json_error_data['errors'] = array(
             'error_id' => '8',
-            'error_text' => 'Please provide email or phone number.'
+            'error_text' => 'Please provide an email address or phone number.',
+            'error_key' => 'contact_empty'
         );
     } else if (!empty($_POST['email']) && Wo_EmailExists($_POST['email']) === true) {
     	$json_error_data['errors'] = array(
             'error_id' => '9',
-            'error_text' => 'This e-mail is already in use.'
+            'error_text' => 'This email is already registered. Please log in or use a different email.',
+            'error_key' => 'email_taken'
         );
     } else if (!empty($_POST['email']) && !filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
     	$json_error_data['errors'] = array(
             'error_id' => '10',
-            'error_text' => 'This e-mail is invalid.'
+            'error_text' => 'Invalid email format. Please enter a valid email address.',
+            'error_key' => 'email_invalid'
+        );
+    } else if (!empty($_POST['phone_number']) && (function_exists('Wo_PhoneExists') ? Wo_PhoneExists($_POST['phone_number']) : (function_exists('Wo_IsPhoneExist') ? Wo_IsPhoneExist($_POST['phone_number']) : false))) {
+        $json_error_data['errors'] = array(
+            'error_id' => '16',
+            'error_text' => 'This phone number is already registered. Please log in or use a different number.',
+            'error_key' => 'phone_taken'
         );
     } else if (empty($_POST['password'])) {
     	$json_error_data['errors'] = array(
             'error_id' => '11',
-            'error_text' => 'Please write your password.'
+            'error_text' => 'Please enter your password.',
+            'error_key' => 'password_empty'
         );
     } else if (strlen($_POST['password']) < 6) {
     	$json_error_data['errors'] = array(
             'error_id' => '12',
-            'error_text' => 'Password is too short.'
+            'error_text' => 'Password is too short. Minimum 6 characters required.',
+            'error_key' => 'password_weak'
+        );
+    } else if (!preg_match('/[A-Za-z]/', $_POST['password']) || !preg_match('/[0-9]/', $_POST['password'])) {
+        $json_error_data['errors'] = array(
+            'error_id' => '17',
+            'error_text' => 'Password must contain at least one letter and one number.',
+            'error_key' => 'password_simple'
         );
     } else if (empty($_POST['confirm_password'])) {
     	$json_error_data['errors'] = array(
             'error_id' => '13',
-            'error_text' => 'Please confirm your password.'
+            'error_text' => 'Please confirm your password.',
+            'error_key' => 'confirm_password_empty'
         );
     } else if ($_POST['password'] != $_POST['confirm_password']) {
     	$json_error_data['errors'] = array(
             'error_id' => '14',
-            'error_text' => 'Password not match.'
+            'error_text' => 'Passwords do not match. Please make sure both passwords are identical.',
+            'error_key' => 'password_mismatch'
         );
     } else if (empty($_POST['s'])) {
         $json_error_data['errors'] = array(
-            'error_id' => '14',
-            'error_text' => 'Error found, please try again later.'
+            'error_id' => '15',
+            'error_text' => 'Session error. Please try again.',
+            'error_key' => 'session_error'
         );
     } 
     if (empty($json_error_data['errors'])) {

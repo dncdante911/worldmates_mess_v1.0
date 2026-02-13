@@ -10,10 +10,9 @@
     "--- Підтримка реєстрації через телефон без email (автоактивація)",
     "",
     "ЧАТИ / ПОВІДОМЛЕННЯ:",
-    "--- Відправка та отримання повідомлень через Node.js REST API (в 3-5 разів швидше за PHP)",
-    "--- Socket.IO — основний транспорт, HTTP polling знижено до 15с (fallback)",
-    "--- При недоступності Node.js — автоматичний fallback на PHP API",
-    "--- Відправка через Node.js автоматично емітить Socket.IO (без окремого кроку)",
+    "--- Socket.IO — основний транспорт для реального часу (порт 449)",
+    "--- PHP API — REST запити для отримання/відправки повідомлень (/api/v2/)",
+    "--- HTTP polling кожні 15с як fallback якщо Socket.IO не підключено",
     "",
     "PUSH-СПОВІЩЕННЯ:",
     "--- Фонова служба (Foreground Service) слухає Socket.IO і показує сповіщення зі звуком і вібрацією",
@@ -23,7 +22,7 @@
     "--- FCM токен тепер надсилається на сервер (підготовка до Firebase push)",
     "",
     "СЕРВЕР:",
-    "--- Node.js REST API: POST /api/chat/get, /send, /seen, /chats, /typing (порт 449, Express)",
+    "--- Socket.IO (порт 449) для реалтайм доставки повідомлень",
     "--- PHP insert_new_message.php тепер публікує в Redis для Socket.IO доставки",
     "--- Скидання паролю через SMS (6-значний код) та email",
     "--- API quick_register + quick_verify для швидкої реєстрації",
@@ -216,24 +215,12 @@
       },
       "flow": "1) Надішліть email або phone_number → сервер шле код → 2) Надішліть код + новий пароль → пароль змінено, всі сесії видалені"
     },
-    "nodejs_messaging": {
-      "enabled": true,
-      "base_url": "https://worldmates.club:449/api/chat/",
-      "note": "Це Express віртуальні маршрути (як /api/bots/, /api/health) — НЕ фізичні папки",
-      "endpoints": {
-        "get": "POST /api/chat/get — отримати історію повідомлень",
-        "send": "POST /api/chat/send — відправити + Socket.IO emit автоматично",
-        "seen": "POST /api/chat/seen — позначити прочитаними",
-        "chats": "POST /api/chat/chats — список бесід",
-        "typing": "POST /api/chat/typing — індикатор набору"
-      },
-      "auth": "access_token в body, query або header (Access-Token)",
-      "fallback": "При недоступності Node.js API, додаток автоматично перемикається на PHP API",
-      "advantages": [
-        "Відправка через Node.js: ~100-300мс (PHP: ~1-1.5с)",
-        "Автоматичний Socket.IO emit при відправці (без окремого запиту)",
-        "Sequelize ORM замість raw SQL — безпечніше"
-      ]
+    "realtime_transport": {
+      "method": "socket_io",
+      "url": "https://worldmates.club:449/",
+      "server_path": "nodejs/",
+      "features": ["private_message", "group_message", "typing", "online_status", "seen_messages"],
+      "note": "REST API через PHP (/api/v2/), реалтайм через Node.js Socket.IO (порт 449)"
     },
     "push_notifications": {
       "method": "socket_io_foreground_service",
@@ -413,11 +400,10 @@
   "modified_files": [
     "--- v2.11.0 ---",
     "ui/login/LoginActivity.kt — кнопка 'Забули пароль' працює + кнопка 'Швидка реєстрація'",
-    "ui/messages/MessagesViewModel.kt — Node.js API для відправки/отримання (PHP fallback)",
+    "ui/messages/MessagesViewModel.kt — PHP API + Socket.IO + polling fallback",
     "ui/messages/MessagesActivity.kt — трекінг активного чату для push-сповіщень",
     "ui/chats/ChatsActivity.kt — запуск MessageNotificationService",
-    "network/WorldMatesApi.kt — нові endpoint'и: quickRegister, quickVerify, resetPassword, Node.js messaging, updateFcmToken",
-    "data/Constants.kt — NODEJS_API_URL",
+    "network/WorldMatesApi.kt — нові endpoint'и: quickRegister, quickVerify, resetPassword, updateFcmToken",
     "services/MyFirebaseMessagingService.kt — відправка FCM токена на сервер",
     "AndroidManifest.xml — нові Activity + MessageNotificationService + FOREGROUND_SERVICE_DATA_SYNC",
     "api-server-files/api/v2/index.php — маршрути quick_register, quick_verify, update_fcm_token",

@@ -157,6 +157,9 @@ $routes = [
     'delete_story_comment' => 'endpoints/delete_story_comment.php',
     'get_story_reactions' => 'endpoints/get_story_reactions.php',
 
+    // FCM Token
+    'update_fcm_token' => 'endpoints/update_fcm_token.php',
+
     // User Settings
     'get-user-data' => 'endpoints/get-user-data.php',
     'update-user-data' => 'endpoints/update-user-data.php',

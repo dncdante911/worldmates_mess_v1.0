@@ -201,12 +201,24 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.getMessages(
-                    accessToken = UserSession.accessToken!!,
-                    recipientId = recipientId,
-                    limit = Constants.MESSAGES_PAGE_SIZE,
-                    beforeMessageId = beforeMessageId
-                )
+                // Try Node.js API first (faster), fallback to PHP
+                val response = try {
+                    RetrofitClient.apiService.getMessagesNode(
+                        url = Constants.NODEJS_API_URL + "get",
+                        accessToken = UserSession.accessToken!!,
+                        recipientId = recipientId,
+                        limit = Constants.MESSAGES_PAGE_SIZE,
+                        beforeMessageId = beforeMessageId
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Node.js API failed, falling back to PHP: ${e.message}")
+                    RetrofitClient.apiService.getMessages(
+                        accessToken = UserSession.accessToken!!,
+                        recipientId = recipientId,
+                        limit = Constants.MESSAGES_PAGE_SIZE,
+                        beforeMessageId = beforeMessageId
+                    )
+                }
 
                 if (response.apiStatus == 200 && response.messages != null) {
                     val decryptedMessages = response.messages!!.map { msg ->
@@ -215,21 +227,20 @@ class MessagesViewModel(application: Application) :
 
                     val currentMessages = _messages.value.toMutableList()
                     currentMessages.addAll(decryptedMessages)
-                    // Сортируем по времени (старые сверху, новые внизу)
                     _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
 
                     _error.value = null
-                    Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень")
+                    Log.d(TAG, "Завантажено ${decryptedMessages.size} повідомлень")
                 } else {
                     _error.value = response.errorMessage ?: "Помилка завантаження повідомлень"
-                    Log.e("MessagesViewModel", "API Error: ${response.apiStatus}")
+                    Log.e(TAG, "API Error: ${response.apiStatus}")
                 }
 
                 _isLoading.value = false
             } catch (e: Exception) {
                 _error.value = "Помилка: ${e.localizedMessage}"
                 _isLoading.value = false
-                Log.e("MessagesViewModel", "Помилка завантаження повідомлень", e)
+                Log.e(TAG, "Помилка завантаження повідомлень", e)
             }
         }
     }
@@ -306,22 +317,33 @@ class MessagesViewModel(application: Application) :
                 val messageHashId = System.currentTimeMillis().toString()
 
                 val response = if (groupId != 0L) {
-                    // Використовуємо API для відправки в групу (з опціональним топіком)
                     RetrofitClient.apiService.sendGroupMessage(
                         accessToken = UserSession.accessToken!!,
                         groupId = groupId,
-                        topicId = topicId, // Якщо є топік, повідомлення буде прив'язане до нього
+                        topicId = topicId,
                         text = text,
                         replyToId = replyToId
                     )
                 } else {
-                    RetrofitClient.apiService.sendMessage(
-                        accessToken = UserSession.accessToken!!,
-                        recipientId = recipientId,
-                        text = text,
-                        messageHashId = messageHashId,
-                        replyToId = replyToId
-                    )
+                    // Try Node.js API first (faster + Socket.IO emit built-in), fallback to PHP
+                    try {
+                        RetrofitClient.apiService.sendMessageNode(
+                            url = Constants.NODEJS_API_URL + "send",
+                            accessToken = UserSession.accessToken!!,
+                            recipientId = recipientId,
+                            text = text,
+                            replyToId = replyToId
+                        )
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Node.js send failed, falling back to PHP: ${e.message}")
+                        RetrofitClient.apiService.sendMessage(
+                            accessToken = UserSession.accessToken!!,
+                            recipientId = recipientId,
+                            text = text,
+                            messageHashId = messageHashId,
+                            replyToId = replyToId
+                        )
+                    }
                 }
 
                 Log.d("MessagesViewModel", "API Response: status=${response.apiStatus}, messages=${response.messages?.size}, message=${response.message}, allMessages=${response.allMessages?.size}, errors=${response.errors}")
@@ -1824,11 +1846,11 @@ class MessagesViewModel(application: Application) :
         messagePollingJob?.cancel()
         messagePollingJob = viewModelScope.launch {
             while (isActive) {
-                kotlinx.coroutines.delay(5000) // Кожні 5 секунд
+                kotlinx.coroutines.delay(15000) // Кожні 15 секунд (Socket.IO — основний транспорт)
                 refreshLatestMessages()
             }
         }
-        Log.d(TAG, "🔄 Polling повідомлень запущено (кожні 5с)")
+        Log.d(TAG, "🔄 Polling повідомлень запущено (кожні 15с, fallback)")
     }
 
     /**
@@ -1848,12 +1870,23 @@ class MessagesViewModel(application: Application) :
                         beforeMessageId = 0
                     )
                 } else if (recipientId != 0L) {
-                    RetrofitClient.apiService.getMessages(
-                        accessToken = UserSession.accessToken!!,
-                        recipientId = recipientId,
-                        limit = 15,
-                        beforeMessageId = 0
-                    )
+                    // Try Node.js first, fallback to PHP
+                    try {
+                        RetrofitClient.apiService.getMessagesNode(
+                            url = Constants.NODEJS_API_URL + "get",
+                            accessToken = UserSession.accessToken!!,
+                            recipientId = recipientId,
+                            limit = 15,
+                            beforeMessageId = 0
+                        )
+                    } catch (e: Exception) {
+                        RetrofitClient.apiService.getMessages(
+                            accessToken = UserSession.accessToken!!,
+                            recipientId = recipientId,
+                            limit = 15,
+                            beforeMessageId = 0
+                        )
+                    }
                 } else return@launch
 
                 if (response.apiStatus == 200 && response.messages != null) {
@@ -1861,7 +1894,6 @@ class MessagesViewModel(application: Application) :
                     val currentMessages = _messages.value
                     val currentIds = currentMessages.map { it.id }.toSet()
 
-                    // Додаємо тільки нові повідомлення яких ще немає
                     val trulyNew = newMessages.filter { it.id !in currentIds }
 
                     if (trulyNew.isNotEmpty()) {
@@ -1871,7 +1903,6 @@ class MessagesViewModel(application: Application) :
                     }
                 }
             } catch (e: Exception) {
-                // Тихо ігноруємо помилки polling - не турбуємо користувача
                 Log.w(TAG, "Polling error: ${e.message}")
             }
         }

@@ -112,6 +112,9 @@ class ChatsActivity : AppCompatActivity() {
         callsViewModel = ViewModelProvider(this).get(com.worldmates.messenger.ui.calls.CallsViewModel::class.java)
         android.util.Log.d("ChatsActivity", "📞 CallsViewModel initialized for incoming calls")
 
+        // Start message notification service for push-like notifications via Socket.IO
+        com.worldmates.messenger.services.MessageNotificationService.start(this)
+
         setContent {
             WorldMatesThemedApp {
                 // Обробка необхідності перелогіну

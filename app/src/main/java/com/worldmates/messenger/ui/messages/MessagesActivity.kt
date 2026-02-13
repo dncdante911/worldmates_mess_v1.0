@@ -98,6 +98,10 @@ class MessagesActivity : AppCompatActivity() {
             viewModel.initialize(recipientId)
         }
 
+        // Track active chat so notification service doesn't show notifications for it
+        com.worldmates.messenger.services.MessageNotificationService.activeRecipientId = recipientId
+        com.worldmates.messenger.services.MessageNotificationService.activeGroupId = groupId
+
         // Ініціалізуємо ThemeManager
         ThemeManager.initialize(this)
 
@@ -144,6 +148,20 @@ class MessagesActivity : AppCompatActivity() {
                 false
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Clear active chat tracking so notifications resume
+        com.worldmates.messenger.services.MessageNotificationService.activeRecipientId = 0
+        com.worldmates.messenger.services.MessageNotificationService.activeGroupId = 0
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Suppress notifications for the active chat
+        com.worldmates.messenger.services.MessageNotificationService.activeRecipientId = recipientId
+        com.worldmates.messenger.services.MessageNotificationService.activeGroupId = groupId
     }
 
     override fun onDestroy() {

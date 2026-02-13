@@ -11,6 +11,9 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.worldmates.messenger.R
 import com.worldmates.messenger.ui.messages.MessagesActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -102,7 +105,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             return
         }
 
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = com.worldmates.messenger.network.RetrofitClient.apiService.updateFcmToken(
                     accessToken = accessToken,

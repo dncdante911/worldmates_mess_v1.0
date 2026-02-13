@@ -5,7 +5,7 @@ object Constants {
     const val BASE_URL = "https://worldmates.club/api/v2/"
     const val MEDIA_BASE_URL = "https://worldmates.club/" // For media files (images, videos, etc.)
     const val SOCKET_URL = "https://worldmates.club:449/"
-    const val NODEJS_API_URL = "https://worldmates.club:449/nodejs/messages/" // Node.js REST API for messaging
+    const val NODEJS_API_URL = "https://worldmates.club:449/api/chat/" // Node.js REST API for messaging (Express virtual routes, same as /api/bots/, /api/health etc.)
 
     // ==================== SECURITY ====================
     const val SITE_ENCRYPT_KEY = "2ad9c757daccdfff436dc226779e20b719f6d6f8"

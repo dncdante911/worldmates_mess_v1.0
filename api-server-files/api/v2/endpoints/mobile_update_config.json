@@ -23,7 +23,7 @@
     "--- FCM токен тепер надсилається на сервер (підготовка до Firebase push)",
     "",
     "СЕРВЕР:",
-    "--- Node.js REST API: POST /nodejs/messages/get, /send, /seen, /chats, /typing",
+    "--- Node.js REST API: POST /api/chat/get, /send, /seen, /chats, /typing (порт 449, Express)",
     "--- PHP insert_new_message.php тепер публікує в Redis для Socket.IO доставки",
     "--- Скидання паролю через SMS (6-значний код) та email",
     "--- API quick_register + quick_verify для швидкої реєстрації",
@@ -218,13 +218,14 @@
     },
     "nodejs_messaging": {
       "enabled": true,
-      "base_url": "https://worldmates.club:449/nodejs/messages/",
+      "base_url": "https://worldmates.club:449/api/chat/",
+      "note": "Це Express віртуальні маршрути (як /api/bots/, /api/health) — НЕ фізичні папки",
       "endpoints": {
-        "get": "POST /nodejs/messages/get — отримати історію повідомлень",
-        "send": "POST /nodejs/messages/send — відправити + Socket.IO emit автоматично",
-        "seen": "POST /nodejs/messages/seen — позначити прочитаними",
-        "chats": "POST /nodejs/messages/chats — список бесід",
-        "typing": "POST /nodejs/messages/typing — індикатор набору"
+        "get": "POST /api/chat/get — отримати історію повідомлень",
+        "send": "POST /api/chat/send — відправити + Socket.IO emit автоматично",
+        "seen": "POST /api/chat/seen — позначити прочитаними",
+        "chats": "POST /api/chat/chats — список бесід",
+        "typing": "POST /api/chat/typing — індикатор набору"
       },
       "auth": "access_token в body, query або header (Access-Token)",
       "fallback": "При недоступності Node.js API, додаток автоматично перемикається на PHP API",

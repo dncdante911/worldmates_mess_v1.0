@@ -368,23 +368,29 @@ class SocketManager(
         }
     }
 
-    fun sendMessage(recipientId: Long, text: String) {
+    fun sendMessage(recipientId: Long, text: String, replyToId: Long? = null) {
         if (socket?.connected() == true && UserSession.accessToken != null) {
             val messagePayload = JSONObject().apply {
-                // Сервер ожидает именно эти поля (см. PrivateMessageController.js)
-                put("msg", text)  // НЕ "text"!
-                put("from_id", UserSession.userId)  // НЕ "user_id"!
-                put("to_id", recipientId)  // НЕ "recipient_id"!
-                // TODO: Добавить поля для медиа, стикеров и т.д.
-                // mediaId, mediaFilename, record, message_reply_id, story_id, lng, lat, contact, color, isSticker
+                // Сервер ожидает: from_id = access_token (session hash)!
+                // PrivateMessageController.js делает ctx.userHashUserId[data.from_id]
+                put("msg", text)
+                put("from_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
+                put("to_id", recipientId)
+                if (replyToId != null && replyToId > 0) {
+                    put("message_reply_id", replyToId)
+                }
             }
             socket?.emit(Constants.SOCKET_EVENT_SEND_MESSAGE, messagePayload)
             Log.d("SocketManager", "Emitted private_message to user $recipientId: $text")
         } else {
-            // Fallback: Если Socket не подключен, можно использовать REST API для отправки (send-message.php)
             Log.w("SocketManager", "Socket not connected. Message not sent via socket.")
         }
     }
+
+    /**
+     * Проверяет, подключён ли Socket.IO
+     */
+    fun isConnected(): Boolean = socket?.connected() == true
 
     fun subscribeBot(botId: String) {
         if (socket?.connected() == true && botId.isNotBlank()) {
@@ -645,14 +651,17 @@ class SocketManager(
     /**
      * Отправляет групповое сообщение
      */
-    fun sendGroupMessage(groupId: Long, text: String) {
+    fun sendGroupMessage(groupId: Long, text: String, replyToId: Long? = null) {
         if (socket?.connected() == true && UserSession.accessToken != null) {
             val messagePayload = JSONObject().apply {
-                // Сервер ожидает именно эти поля (см. GroupMessageController.js)
-                put("msg", text)  // НЕ "text"!
-                put("from_id", UserSession.userId)  // НЕ "user_id"!
+                // Сервер ожидает: from_id = access_token (session hash)!
+                // GroupMessageController.js делает ctx.userHashUserId[data.from_id]
+                put("msg", text)
+                put("from_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
                 put("group_id", groupId)
-                // TODO: mediaId, message_reply_id, color, isSticker
+                if (replyToId != null && replyToId > 0) {
+                    put("message_reply_id", replyToId)
+                }
             }
             socket?.emit(Constants.SOCKET_EVENT_GROUP_MESSAGE, messagePayload)
             Log.d("SocketManager", "Emitted group_message to group $groupId: $text")

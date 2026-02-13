@@ -66,7 +66,7 @@ async function getUserBasicData(ctx, userId) {
 }
 
 /**
- * POST /nodejs/messages/get
+ * POST /api/chat/get
  * Fetch message history between current user and a recipient
  * Replaces: get_user_messages.php polling endpoint
  *
@@ -210,7 +210,7 @@ function getMessagesRoute(ctx, io) {
 }
 
 /**
- * POST /nodejs/messages/send
+ * POST /api/chat/send
  * Send a message via Node.js (creates in DB + emits via Socket.IO)
  * Replaces: insert_new_message.php
  *
@@ -354,7 +354,7 @@ function sendMessageRoute(ctx, io) {
 }
 
 /**
- * POST /nodejs/messages/seen
+ * POST /api/chat/seen
  * Mark messages from a user as seen
  * Replaces: seen_messages Socket.IO event for HTTP clients
  *
@@ -412,7 +412,7 @@ function seenMessagesRoute(ctx, io) {
 }
 
 /**
- * POST /nodejs/messages/chats
+ * POST /api/chat/chats
  * Get list of conversations with last message
  * Replaces: get_chats.php polling for mobile
  *
@@ -528,7 +528,7 @@ function getChatsRoute(ctx, io) {
 }
 
 /**
- * POST /nodejs/messages/typing
+ * POST /api/chat/typing
  * Notify recipient that user is typing
  *
  * Body params:
@@ -579,18 +579,18 @@ function registerMessagingRoutes(app, ctx, io) {
     // Auth middleware wrapper
     const auth = (req, res, next) => authMiddleware(ctx, req, res, next);
 
-    app.post('/nodejs/messages/get', auth, getMessagesRoute(ctx, io));
-    app.post('/nodejs/messages/send', auth, sendMessageRoute(ctx, io));
-    app.post('/nodejs/messages/seen', auth, seenMessagesRoute(ctx, io));
-    app.post('/nodejs/messages/chats', auth, getChatsRoute(ctx, io));
-    app.post('/nodejs/messages/typing', auth, typingRoute(ctx, io));
+    app.post('/api/chat/get', auth, getMessagesRoute(ctx, io));
+    app.post('/api/chat/send', auth, sendMessageRoute(ctx, io));
+    app.post('/api/chat/seen', auth, seenMessagesRoute(ctx, io));
+    app.post('/api/chat/chats', auth, getChatsRoute(ctx, io));
+    app.post('/api/chat/typing', auth, typingRoute(ctx, io));
 
     console.log('[Messaging API] REST endpoints registered:');
-    console.log('  POST /nodejs/messages/get    - Fetch message history');
-    console.log('  POST /nodejs/messages/send   - Send message');
-    console.log('  POST /nodejs/messages/seen   - Mark messages as read');
-    console.log('  POST /nodejs/messages/chats  - Get conversations list');
-    console.log('  POST /nodejs/messages/typing - Typing indicator');
+    console.log('  POST /api/chat/get    - Fetch message history');
+    console.log('  POST /api/chat/send   - Send message');
+    console.log('  POST /api/chat/seen   - Mark messages as read');
+    console.log('  POST /api/chat/chats  - Get conversations list');
+    console.log('  POST /api/chat/typing - Typing indicator');
 }
 
 module.exports = { registerMessagingRoutes };

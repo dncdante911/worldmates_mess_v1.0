@@ -295,78 +295,88 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                val messageHashId = System.currentTimeMillis().toString()
+                // Основной путь: Socket.IO → Node.js сохраняет в БД + доставляет получателю
+                val socketConnected = socketManager?.isConnected() == true
 
-                val response = if (groupId != 0L) {
-                    RetrofitClient.apiService.sendGroupMessage(
-                        accessToken = UserSession.accessToken!!,
-                        groupId = groupId,
-                        topicId = topicId,
-                        text = text,
-                        replyToId = replyToId
-                    )
-                } else {
-                    RetrofitClient.apiService.sendMessage(
-                        accessToken = UserSession.accessToken!!,
-                        recipientId = recipientId,
-                        text = text,
-                        messageHashId = messageHashId,
-                        replyToId = replyToId
-                    )
-                }
-
-                Log.d("MessagesViewModel", "API Response: status=${response.apiStatus}, messages=${response.messages?.size}, message=${response.message}, allMessages=${response.allMessages?.size}, errors=${response.errors}")
-
-                if (response.apiStatus == 200) {
-                    // Если API вернул сообщения, добавляем их в список
-                    val receivedMessages = response.allMessages
-                    Log.d("MessagesViewModel", "receivedMessages: $receivedMessages")
-                    if (receivedMessages != null && receivedMessages.isNotEmpty()) {
-                        val decryptedMessages = receivedMessages.map { msg ->
-                            decryptMessageFully(msg)
-                        }
-
-                        val currentMessages = _messages.value.toMutableList()
-                        currentMessages.addAll(decryptedMessages)
-                        // Сортируем по времени (старые сверху, новые внизу)
-                        _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
-                        Log.d("MessagesViewModel", "Додано ${decryptedMessages.size} нових повідомлень")
-                    } else {
-                        // Если API не вернул сообщения, перезагружаем весь список
-                        Log.d("MessagesViewModel", "API не повернув повідомлення, перезавантажуємо список")
-                        if (groupId != 0L) {
-                            fetchGroupMessages()
-                        } else {
-                            fetchMessages()
-                        }
-                    }
-
-                    // КРИТИЧНО: Эмитим Socket.IO событие для real-time доставки
+                if (socketConnected) {
+                    // ========== SOCKET.IO (Node.js) ==========
+                    // Node.js PrivateMessageController / GroupMessageController:
+                    // 1) Сохраняет в wo_messages
+                    // 2) Эмитит получателю через Socket.IO
+                    // 3) Возвращает callback с message_id
                     if (groupId != 0L) {
-                        socketManager?.sendGroupMessage(groupId, text)
-                        Log.d("MessagesViewModel", "Socket.IO: Відправлено групове повідомлення")
+                        socketManager?.sendGroupMessage(groupId, text, replyToId)
+                        Log.d(TAG, "Socket.IO: Відправлено групове повідомлення (Node.js збереже в БД)")
                     } else {
-                        socketManager?.sendMessage(recipientId, text)
-                        Log.d("MessagesViewModel", "Socket.IO: Відправлено приватне повідомлення")
-
-                        if (isBotChat && botId.isNotBlank()) {
-                            notifyBotIncomingMessage(text)
-                        }
+                        socketManager?.sendMessage(recipientId, text, replyToId)
+                        Log.d(TAG, "Socket.IO: Відправлено приватне повідомлення (Node.js збереже в БД)")
                     }
+
+                    // Оптимістичне локальне повідомлення (показуємо одразу в UI)
+                    val localMessage = Message(
+                        id = System.currentTimeMillis(),
+                        fromId = UserSession.userId ?: 0,
+                        toId = if (groupId != 0L) 0 else recipientId,
+                        groupId = groupId,
+                        encryptedText = text,
+                        timeStamp = System.currentTimeMillis() / 1000,
+                        decryptedText = text,
+                        isLocalPending = true
+                    )
+
+                    val currentMessages = _messages.value.toMutableList()
+                    currentMessages.add(localMessage)
+                    _messages.value = currentMessages.sortedBy { it.timeStamp }
 
                     _error.value = null
-                    deleteDraft() // Удаляем черновик после успешной отправки
-                    Log.d("MessagesViewModel", "Повідомлення надіслано")
+                    deleteDraft()
+                    Log.d(TAG, "Повідомлення надіслано через Socket.IO (Node.js)")
                 } else {
-                    _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати повідомлення"
-                    Log.e("MessagesViewModel", "Send Error: ${response.errors?.errorText ?: response.errorMessage}")
+                    // ========== FALLBACK: PHP API (коли Socket.IO недоступний) ==========
+                    Log.w(TAG, "Socket.IO не підключено, використовуємо PHP API")
+                    val messageHashId = System.currentTimeMillis().toString()
+
+                    val response = if (groupId != 0L) {
+                        RetrofitClient.apiService.sendGroupMessage(
+                            accessToken = UserSession.accessToken!!,
+                            groupId = groupId,
+                            topicId = topicId,
+                            text = text,
+                            replyToId = replyToId
+                        )
+                    } else {
+                        RetrofitClient.apiService.sendMessage(
+                            accessToken = UserSession.accessToken!!,
+                            recipientId = recipientId,
+                            text = text,
+                            messageHashId = messageHashId,
+                            replyToId = replyToId
+                        )
+                    }
+
+                    if (response.apiStatus == 200) {
+                        val receivedMessages = response.allMessages
+                        if (receivedMessages != null && receivedMessages.isNotEmpty()) {
+                            val decryptedMessages = receivedMessages.map { msg -> decryptMessageFully(msg) }
+                            val currentMessages = _messages.value.toMutableList()
+                            currentMessages.addAll(decryptedMessages)
+                            _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+                        } else {
+                            if (groupId != 0L) fetchGroupMessages() else fetchMessages()
+                        }
+                        _error.value = null
+                        deleteDraft()
+                        Log.d(TAG, "Повідомлення надіслано через PHP API (fallback)")
+                    } else {
+                        _error.value = response.errors?.errorText ?: response.errorMessage ?: "Не вдалося надіслати повідомлення"
+                    }
                 }
 
                 _isLoading.value = false
             } catch (e: Exception) {
                 _error.value = "Помилка: ${e.localizedMessage}"
                 _isLoading.value = false
-                Log.e("MessagesViewModel", "Помилка надсилання повідомлення", e)
+                Log.e(TAG, "Помилка надсилання повідомлення", e)
             }
         }
     }

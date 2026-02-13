@@ -215,12 +215,18 @@
       },
       "flow": "1) Надішліть email або phone_number → сервер шле код → 2) Надішліть код + новий пароль → пароль змінено, всі сесії видалені"
     },
-    "realtime_transport": {
-      "method": "socket_io",
+    "messaging_transport": {
+      "primary": "socket_io",
       "url": "https://worldmates.club:449/",
       "server_path": "nodejs/",
-      "features": ["private_message", "group_message", "typing", "online_status", "seen_messages"],
-      "note": "REST API через PHP (/api/v2/), реалтайм через Node.js Socket.IO (порт 449)"
+      "flow": {
+        "send_private": "Socket.IO 'private_message' → Node.js PrivateMessageController → saves to wo_messages + delivers to recipient",
+        "send_group": "Socket.IO 'group_message' → Node.js GroupMessageController → saves to wo_messages + broadcasts to group",
+        "fetch_history": "PHP API /api/v2/?type=get_user_messages (початкове завантаження + пагінація)",
+        "fallback": "PHP API /api/v2/ якщо Socket.IO не підключено"
+      },
+      "critical_note": "from_id в Socket.IO payload = access_token (session hash), НЕ числовий userId! Node.js робить ctx.userHashUserId[from_id]",
+      "channels": "channels-listener.js: channel:subscribe, channel:new_post, channel:post_updated, channel:post_deleted, channel:new_comment"
     },
     "push_notifications": {
       "method": "socket_io_foreground_service",

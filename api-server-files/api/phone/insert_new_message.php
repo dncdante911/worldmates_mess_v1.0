@@ -134,16 +134,44 @@ if ($type == 'insert_new_message' || $type == 'new_message') {
             if (!empty($_POST['contact'])) {
                 # code...
             }
+            $msg_time = time();
             $message_id    = Wo_RegisterMessage(array(
                 'from_id' => Wo_Secure($user_id),
                 'to_id' => Wo_Secure($recipient_id),
                 'text' => Wo_Secure($_POST['text']),
                 'media' => Wo_Secure($mediaFilename),
                 'mediaFileName' => Wo_Secure($mediaName),
-                'time' => time(),
+                'time' => $msg_time,
                 'type_two' => (!empty($_POST['contact'])) ? 'contact' : ''
             ));
             if (!empty($message_id)) {
+                // Publish to Redis for real-time delivery via Node.js Socket.IO
+                try {
+                    $redis = new Redis();
+                    if ($redis->connect('127.0.0.1', 6379)) {
+                        $sender_data = Wo_UserData($user_id);
+                        $msg_data = array(
+                            'id' => $message_id,
+                            'from_id' => (int)$user_id,
+                            'to_id' => (int)$recipient_id,
+                            'text' => $_POST['text'],
+                            'media' => $mediaFilename,
+                            'mediaFileName' => $mediaName,
+                            'time' => $msg_time,
+                            'seen' => 0,
+                            'user_data' => $sender_data
+                        );
+                        $socket_data = array(
+                            'event' => 'new_message',
+                            'data' => $msg_data,
+                            'to_id' => (int)$recipient_id,
+                            'from_id' => (int)$user_id
+                        );
+                        $redis->publish('messages', json_encode($socket_data));
+                    }
+                } catch (Exception $e) {
+                    // Redis unavailable — message still saved to DB
+                }
                 $message_info = array(
                     'user_id' => $user_id,
                     'recipient_id' => $recipient_id,

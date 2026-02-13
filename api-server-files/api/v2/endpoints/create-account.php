@@ -14,7 +14,6 @@ $response_data   = array(
 $required_fields = array(
     'username',
     'password',
-    'email',
     'confirm_password'
 );
 if ($wo['config']['auto_username'] == 1) {
@@ -35,10 +34,17 @@ foreach ($required_fields as $key => $value) {
     }
 }
 
+// Email or phone_number is required
+if (empty($error_code) && empty($_POST['email']) && empty($_POST['phone_number'])) {
+    $error_code    = 3;
+    $error_message = 'email or phone_number (POST) is required';
+}
+
 if (empty($error_code)) {
     $username         = $_POST['username'];
     $password         = $_POST['password'];
-    $email            = $_POST['email'];
+    $email            = !empty($_POST['email']) ? $_POST['email'] : '';
+    $phone_number     = !empty($_POST['phone_number']) ? $_POST['phone_number'] : '';
     $confirm_password = $_POST['confirm_password'];
     if (in_array(true, Wo_IsNameExist($username, 0))) {
         $error_code    = 4;
@@ -49,10 +55,10 @@ if (empty($error_code)) {
     } else if (strlen($username) < 5 OR strlen($username) > 32) {
         $error_code    = 6;
         $error_message = 'Username must be between 5 / 32 letters';
-    } else if (Wo_EmailExists($email) === true) {
+    } else if (!empty($email) && Wo_EmailExists($email) === true) {
         $error_code    = 7;
         $error_message = 'E-mail is already taken';
-    } else if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    } else if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_code    = 8;
         $error_message = 'E-mail is invalid';
     } else if (strlen($password) < 6) {
@@ -63,7 +69,12 @@ if (empty($error_code)) {
         $error_message = 'Passwords don\'t match';
     }
     if (empty($error_code)) {
-        $activate  = ($wo['config']['emailValidation'] == '1') ? 0 : 1;
+        // If registering with email and email validation is on, require verification
+        // If registering with phone only, auto-activate
+        $activate = 1;
+        if (!empty($email) && $wo['config']['emailValidation'] == '1') {
+            $activate = 0;
+        }
         //$device_id = (!empty($_POST['device_id'])) ? $_POST['device_id'] : '';
         $gender = 'male';
         if (in_array($_POST['gender'], array_keys($wo['genders']))) {
@@ -71,7 +82,6 @@ if (empty($error_code)) {
         }
         $code = md5(rand(1111, 9999) . time());
         $account_data = array(
-            'email' => Wo_Secure($email, 0),
             'username' => Wo_Secure($username, 0),
             'password' => $password,
             'email_code' => $code,
@@ -81,6 +91,12 @@ if (empty($error_code)) {
             'lastseen' => time(),
             'active' => Wo_Secure($activate)
         );
+        if (!empty($email)) {
+            $account_data['email'] = Wo_Secure($email, 0);
+        }
+        if (!empty($phone_number)) {
+            $account_data['phone_number'] = Wo_Secure($phone_number, 0);
+        }
         if (!empty($_POST['android_m_device_id'])) {
             $account_data['android_m_device_id']  = Wo_Secure($_POST['android_m_device_id']);
         }
@@ -192,11 +208,12 @@ if (empty($error_code)) {
                     $error_message = 'Error found while sending the verification email, please try again later.';
                 }
             }
-            elseif ($wo['config']['sms_or_email'] == 'sms' && !empty($_POST['phone_num'])) {
+            elseif ($wo['config']['sms_or_email'] == 'sms' && (!empty($_POST['phone_num']) || !empty($phone_number))) {
+                $sms_phone = !empty($_POST['phone_num']) ? $_POST['phone_num'] : $phone_number;
                 $random_activation = Wo_Secure(rand(11111, 99999));
                 $message           = "Your confirmation code is: {$random_activation}";
 
-                if (Wo_SendSMSMessage($_POST['phone_num'], $message) === true) {
+                if (Wo_SendSMSMessage($sms_phone, $message) === true) {
                     $user_id             = Wo_UserIdFromUsername($username);
                     $query             = mysqli_query($sqlConnect, "UPDATE " . T_USERS . " SET `sms_code` = '{$random_activation}' WHERE `user_id` = {$user_id}");
                     $response_data = array(
@@ -210,9 +227,9 @@ if (empty($error_code)) {
                     $error_message = 'Error found while sending the verification sms, please try again later.';
                 }
             }
-            elseif ($wo['config']['sms_or_email'] == 'sms' && empty($_POST['phone_num'])) {
+            elseif ($wo['config']['sms_or_email'] == 'sms' && empty($_POST['phone_num']) && empty($phone_number)) {
                 $error_code    = 12;
-                $error_message = 'phone_num can not be empty.';
+                $error_message = 'phone_num or phone_number can not be empty.';
             }
             if (!empty($response_data)) {
                 $response_data['membership'] = false;

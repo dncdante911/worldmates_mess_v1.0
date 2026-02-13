@@ -150,6 +150,20 @@ if ($type == 'user_registration') {
             $re_data['ios_n_device_id']  = Wo_Secure($_POST['ios_n_device_id']);
         }
         $register = Wo_RegisterUser($re_data);
+        if ($register !== true) {
+            $json_error_data = array(
+                'api_status' => '400',
+                'api_text' => 'failed',
+                'api_version' => $api_version,
+                'errors' => array(
+                    'error_id' => '15',
+                    'error_text' => 'Registration failed. Please try again later.'
+                )
+            );
+            header("Content-type: application/json");
+            echo json_encode($json_error_data, JSON_PRETTY_PRINT);
+            exit();
+        }
         if ($register === true) {
             if ($activate == 1) {
                 // Успішна реєстрація з автоматичною активацією

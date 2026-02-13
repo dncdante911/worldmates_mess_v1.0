@@ -24,6 +24,8 @@ $public_endpoints = [
     'active_account_sms',
     'send_verification_code',
     'verify_code',
+    'quick_register',
+    'quick_verify',
     'send-reset-password-email',
     'send_reset_password_email',
     'reset_password',
@@ -109,6 +111,10 @@ $routes = [
     // Verification
     'send_verification_code' => 'endpoints/send_verification_code.php',
     'verify_code' => 'endpoints/verify_code.php',
+
+    // Quick Registration (simplified: phone/email + code)
+    'quick_register' => 'endpoints/quick_register.php',
+    'quick_verify' => 'endpoints/quick_verify.php',
 
     // Password Reset
     'send-reset-password-email' => 'endpoints/send-reset-password-email.php',

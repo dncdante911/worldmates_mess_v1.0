@@ -111,46 +111,6 @@ interface WorldMatesApi {
         @Field("new_password") newPassword: String
     ): PasswordResetResponse
 
-    // ==================== NODE.JS MESSAGING API ====================
-
-    @FormUrlEncoded
-    @POST
-    suspend fun getMessagesNode(
-        @Url url: String,
-        @Field("access_token") accessToken: String,
-        @Field("recipient_id") recipientId: Long,
-        @Field("limit") limit: Int = 30,
-        @Field("before_message_id") beforeMessageId: Long = 0,
-        @Field("after_message_id") afterMessageId: Long = 0
-    ): MessageListResponse
-
-    @FormUrlEncoded
-    @POST
-    suspend fun sendMessageNode(
-        @Url url: String,
-        @Field("access_token") accessToken: String,
-        @Field("recipient_id") recipientId: Long,
-        @Field("text") text: String,
-        @Field("reply_id") replyToId: Long? = null
-    ): MessageResponse
-
-    @FormUrlEncoded
-    @POST
-    suspend fun markSeenNode(
-        @Url url: String,
-        @Field("access_token") accessToken: String,
-        @Field("recipient_id") recipientId: Long
-    ): GenericResponse
-
-    @FormUrlEncoded
-    @POST
-    suspend fun getChatsNode(
-        @Url url: String,
-        @Field("access_token") accessToken: String,
-        @Field("limit") limit: Int = 50,
-        @Field("offset") offset: Int = 0
-    ): ChatListResponse
-
     // ==================== FCM TOKEN ====================
 
     @FormUrlEncoded

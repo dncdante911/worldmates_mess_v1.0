@@ -199,24 +199,12 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                // Try Node.js API first (faster), fallback to PHP
-                val response = try {
-                    RetrofitClient.apiService.getMessagesNode(
-                        url = Constants.NODEJS_API_URL + "get",
-                        accessToken = UserSession.accessToken!!,
-                        recipientId = recipientId,
-                        limit = Constants.MESSAGES_PAGE_SIZE,
-                        beforeMessageId = beforeMessageId
-                    )
-                } catch (e: Exception) {
-                    Log.w(TAG, "Node.js API failed, falling back to PHP: ${e.message}")
-                    RetrofitClient.apiService.getMessages(
-                        accessToken = UserSession.accessToken!!,
-                        recipientId = recipientId,
-                        limit = Constants.MESSAGES_PAGE_SIZE,
-                        beforeMessageId = beforeMessageId
-                    )
-                }
+                val response = RetrofitClient.apiService.getMessages(
+                    accessToken = UserSession.accessToken!!,
+                    recipientId = recipientId,
+                    limit = Constants.MESSAGES_PAGE_SIZE,
+                    beforeMessageId = beforeMessageId
+                )
 
                 if (response.apiStatus == 200 && response.messages != null) {
                     val decryptedMessages = response.messages!!.map { msg ->
@@ -303,11 +291,6 @@ class MessagesViewModel(application: Application) :
             return
         }
 
-        if (isBotChat && groupId == 0L && botId.isNotBlank()) {
-            sendBotChatMessage(text)
-            return
-        }
-
         _isLoading.value = true
 
         viewModelScope.launch {
@@ -323,25 +306,13 @@ class MessagesViewModel(application: Application) :
                         replyToId = replyToId
                     )
                 } else {
-                    // Try Node.js API first (faster + Socket.IO emit built-in), fallback to PHP
-                    try {
-                        RetrofitClient.apiService.sendMessageNode(
-                            url = Constants.NODEJS_API_URL + "send",
-                            accessToken = UserSession.accessToken!!,
-                            recipientId = recipientId,
-                            text = text,
-                            replyToId = replyToId
-                        )
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Node.js send failed, falling back to PHP: ${e.message}")
-                        RetrofitClient.apiService.sendMessage(
-                            accessToken = UserSession.accessToken!!,
-                            recipientId = recipientId,
-                            text = text,
-                            messageHashId = messageHashId,
-                            replyToId = replyToId
-                        )
-                    }
+                    RetrofitClient.apiService.sendMessage(
+                        accessToken = UserSession.accessToken!!,
+                        recipientId = recipientId,
+                        text = text,
+                        messageHashId = messageHashId,
+                        replyToId = replyToId
+                    )
                 }
 
                 Log.d("MessagesViewModel", "API Response: status=${response.apiStatus}, messages=${response.messages?.size}, message=${response.message}, allMessages=${response.allMessages?.size}, errors=${response.errors}")
@@ -1836,23 +1807,12 @@ class MessagesViewModel(application: Application) :
                         beforeMessageId = 0
                     )
                 } else if (recipientId != 0L) {
-                    // Try Node.js first, fallback to PHP
-                    try {
-                        RetrofitClient.apiService.getMessagesNode(
-                            url = Constants.NODEJS_API_URL + "get",
-                            accessToken = UserSession.accessToken!!,
-                            recipientId = recipientId,
-                            limit = 15,
-                            beforeMessageId = 0
-                        )
-                    } catch (e: Exception) {
-                        RetrofitClient.apiService.getMessages(
-                            accessToken = UserSession.accessToken!!,
-                            recipientId = recipientId,
-                            limit = 15,
-                            beforeMessageId = 0
-                        )
-                    }
+                    RetrofitClient.apiService.getMessages(
+                        accessToken = UserSession.accessToken!!,
+                        recipientId = recipientId,
+                        limit = 15,
+                        beforeMessageId = 0
+                    )
                 } else return@launch
 
                 if (response.apiStatus == 200 && response.messages != null) {

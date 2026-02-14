@@ -457,6 +457,17 @@ class MessagesViewModel(application: Application) :
                     _messages.value = currentMessages
                     Log.d("MessagesViewModel", "Повідомлення видалено: $messageId")
 
+                    // Відправляємо подію через Socket.IO для реального часу
+                    socketManager?.emit("delete_message", JSONObject().apply {
+                        put("message_id", messageId)
+                        put("from_id", UserSession.userId)
+                        put("recipient_id", recipientId)
+                        if (isGroupChat && groupId > 0) {
+                            put("group_id", groupId)
+                        }
+                    })
+                    Log.d("MessagesViewModel", "✅ Відправлено delete_message event через Socket.IO")
+
                     _error.value = null
                 } else {
                     _error.value = response.errors?.errorText ?: "Не вдалося видалити повідомлення"
@@ -1151,6 +1162,15 @@ class MessagesViewModel(application: Application) :
                 Log.d("MessagesViewModel", "⚠️ Ігноруємо offline для $userId (друкує)")
             }
         }
+    }
+
+    override fun onMessageDeleted(messageId: Long) {
+        Log.d("MessagesViewModel", "🗑️ Отримано подію видалення повідомлення: $messageId")
+        // Видаляємо повідомлення з локального списку
+        val currentMessages = _messages.value.toMutableList()
+        currentMessages.removeAll { it.id == messageId }
+        _messages.value = currentMessages
+        Log.d("MessagesViewModel", "✅ Повідомлення $messageId видалено з UI")
     }
 
     /**

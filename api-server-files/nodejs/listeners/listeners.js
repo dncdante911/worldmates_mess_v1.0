@@ -308,6 +308,42 @@ module.exports.registerListeners = async (socket, io, ctx) => {
         ColorChangedController(ctx, data, io, socket);
     })
 
+    // ==================== DELETE MESSAGE ====================
+    socket.on('delete_message', async (data) => {
+        try {
+            console.log("🗑️ DELETE_MESSAGE event:", data);
+            const { message_id, recipient_id, group_id, from_id } = data;
+
+            if (!message_id) {
+                console.log("❌ delete_message - missing message_id");
+                return;
+            }
+
+            // Broadcast to recipient (for private chat)
+            if (recipient_id) {
+                io.to(String(recipient_id)).emit('message_deleted', {
+                    message_id,
+                    from_id,
+                    recipient_id
+                });
+                console.log(`✅ Broadcast message_deleted to user ${recipient_id}`);
+            }
+
+            // Broadcast to group
+            if (group_id) {
+                io.to(`group_${group_id}`).emit('message_deleted', {
+                    message_id,
+                    from_id,
+                    group_id
+                });
+                console.log(`✅ Broadcast message_deleted to group ${group_id}`);
+            }
+
+        } catch (e) {
+            console.log("❌ delete_message error:", e.message);
+        }
+    })
+
     // ==================== ГРУПОВІ ОБРОБНИКИ ====================
     // ✅ ВИПРАВЛЕНО: Винесено З disconnect!
 

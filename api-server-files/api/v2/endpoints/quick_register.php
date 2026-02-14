@@ -82,13 +82,16 @@ if (empty($error_code)) {
         $account_data['ios_m_device_id'] = Wo_Secure($_POST['ios_m_device_id']);
     }
 
+    error_log("[DEBUG] Attempting registration with data: " . json_encode($account_data));
     $register = Wo_RegisterUser($account_data);
 
     if ($register !== true) {
+        error_log("[ERROR] Registration failed: " . json_encode($register));
         $error_code = 5;
         $error_message = 'Registration failed. Please try again later.';
     } else {
         $user_id = Wo_UserIdFromUsername($auto_username);
+        error_log("[DEBUG] User registered successfully: user_id={$user_id}, username={$auto_username}");
 
         // Send verification code
         $code_sent = false;
@@ -117,15 +120,32 @@ if (empty($error_code)) {
                 'message_body' => $body,
                 'is_html'    => true
             );
+
+            error_log("[DEBUG] Attempting to send email to: {$email}, code: {$verification_code}");
+            error_log("[DEBUG] Email config: from={$from_email}, subject=" . $send_message_data['subject']);
+            error_log("[DEBUG] SMTP config: smtp_or_mail=" . ($wo['config']['smtp_or_mail'] ?? 'NOT SET'));
+
             $code_sent = Wo_SendMessage($send_message_data);
+
+            error_log("[DEBUG] Email send result: " . ($code_sent ? 'SUCCESS' : 'FAILED'));
+            if (!$code_sent && function_exists('error_get_last')) {
+                $last_error = error_get_last();
+                if ($last_error) {
+                    error_log("[ERROR] Last PHP error: " . json_encode($last_error));
+                }
+            }
         }
         elseif (!empty($phone_number)) {
             // Send via SMS
             $site_name = !empty($wo['config']['siteName']) ? $wo['config']['siteName'] : 'WorldMates';
             $sms_text = $site_name . ": Your verification code is " . $verification_code;
 
+            error_log("[DEBUG] Attempting to send SMS to: {$phone_number}, code: {$verification_code}");
             if (function_exists('Wo_SendSMSMessage')) {
                 $code_sent = Wo_SendSMSMessage($phone_number, $sms_text);
+                error_log("[DEBUG] SMS send result: " . ($code_sent ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("[ERROR] Wo_SendSMSMessage function does not exist!");
             }
         }
 
@@ -138,6 +158,8 @@ if (empty($error_code)) {
                 'user_id' => $user_id,
                 'username' => $auto_username,
                 'verification_method' => !empty($email) ? 'email' : 'phone',
+                // TEMPORARY: Include code for debugging (REMOVE IN PRODUCTION!)
+                'debug_verification_code' => $verification_code
             );
         } else {
             // Code not sent, but account created — allow retry
@@ -147,7 +169,14 @@ if (empty($error_code)) {
                 'user_id' => $user_id,
                 'username' => $auto_username,
                 'verification_method' => !empty($email) ? 'email' : 'phone',
-                'code_sent' => false
+                'code_sent' => false,
+                // TEMPORARY: Include code for debugging (REMOVE IN PRODUCTION!)
+                'debug_verification_code' => $verification_code,
+                'debug_email_config' => array(
+                    'smtp_or_mail' => $wo['config']['smtp_or_mail'] ?? 'NOT SET',
+                    'siteEmail' => $wo['config']['siteEmail'] ?? 'NOT SET',
+                    'siteName' => $wo['config']['siteName'] ?? 'NOT SET'
+                )
             );
         }
     }

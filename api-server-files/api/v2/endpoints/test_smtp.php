@@ -12,7 +12,7 @@ $email = $_POST['email'] ?? $_GET['email'] ?? 'test@example.com';
 $test_code = rand(100000, 999999);
 
 // Check if PHPMailer exists
-$phpmailer_path = __DIR__ . '/../../assets/libraries/PHPMailer-Master/vendor/autoload.php';
+$phpmailer_path = __DIR__ . '/../../../assets/libraries/PHPMailer-Master/vendor/autoload.php';
 if (!file_exists($phpmailer_path)) {
     echo json_encode([
         'api_status' => 500,

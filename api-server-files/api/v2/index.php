@@ -213,6 +213,12 @@ $routes = [
     'quick_register' => 'endpoints/quick_register.php',
     'quick_verify' => 'endpoints/quick_verify.php',
 
+    // Quick Login (email + code)
+    'send_login_code' => 'endpoints/send-login-code.php',
+    'send-login-code' => 'endpoints/send-login-code.php',
+    'verify_login_code' => 'endpoints/verify-login-code.php',
+    'verify-login-code' => 'endpoints/verify-login-code.php',
+
     // Password Reset
     'send-reset-password-email' => 'endpoints/send-reset-password-email.php',
     'send_reset_password_email' => 'endpoints/send-reset-password-email.php',

@@ -1922,6 +1922,44 @@ class MessagesViewModel(application: Application) :
         }
     }
 
+    /**
+     * Об'єднує вхідні повідомлення з поточними, віддаючи перевагу новішим версіям
+     * Видаляє дублікати за ID, зберігає унікальні повідомлення
+     */
+    private fun mergeMessagesPreferLatest(
+        incomingMessages: List<Message>,
+        currentMessages: List<Message>
+    ): List<Message> {
+        val messageMap = currentMessages.associateBy { it.id }.toMutableMap()
+
+        // Додаємо або оновлюємо повідомлення з вхідного списку
+        incomingMessages.forEach { msg ->
+            messageMap[msg.id] = msg
+        }
+
+        // Повертаємо відсортований список (старі зверху, нові знизу)
+        return messageMap.values.sortedBy { it.timeStamp }
+    }
+
+    /**
+     * Узгоджує поточні повідомлення з останнім вікном з сервера
+     * Замінює повідомлення в останньому вікні на серверні версії
+     */
+    private fun reconcileWithLatestWindow(
+        currentMessages: List<Message>,
+        latestWindowMessages: List<Message>
+    ): List<Message> {
+        val latestIds = latestWindowMessages.map { it.id }.toSet()
+
+        // Зберігаємо повідомлення, яких немає в останньому вікні
+        val olderMessages = currentMessages.filter { it.id !in latestIds }
+
+        // Об'єднуємо старі повідомлення з новим вікном
+        return (olderMessages + latestWindowMessages)
+            .distinctBy { it.id }
+            .sortedBy { it.timeStamp }
+    }
+
     override fun onCleared() {
         super.onCleared()
 

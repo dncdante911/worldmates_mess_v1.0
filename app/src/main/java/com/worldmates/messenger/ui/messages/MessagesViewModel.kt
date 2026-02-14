@@ -1,6 +1,8 @@
 package com.worldmates.messenger.ui.messages
 
 import android.app.Application
+import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -1113,8 +1115,13 @@ class MessagesViewModel(application: Application) :
                 currentMessages.add(message)
                 // Сортируем по времени (старые сверху, новые внизу)
                 _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+
+                // ✅ Відтворити звуковий сигнал, якщо повідомлення від іншого користувача
+                if (message.fromId != UserSession.userId) {
+                    playNotificationSound()
+                }
+
                 Log.d("MessagesViewModel", "Додано нове повідомлення від Socket.IO: ${message.decryptedText}")
-                Log.d("MessagesViewModel", "Нове повідомлення додано")
             }
         } catch (e: Exception) {
             Log.e("MessagesViewModel", "Помилка обробки повідомлення", e)
@@ -1909,6 +1916,24 @@ class MessagesViewModel(application: Application) :
             } catch (e: Exception) {
                 Log.w(TAG, "Polling error: ${e.message}")
             }
+        }
+    }
+
+    /**
+     * Відтворює звуковий сигнал при отриманні нового повідомлення
+     */
+    private fun playNotificationSound() {
+        try {
+            val notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val mediaPlayer = MediaPlayer.create(getApplication(), notificationUri)
+            mediaPlayer?.apply {
+                setOnCompletionListener { mp ->
+                    mp.release()
+                }
+                start()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Помилка відтворення звуку: ${e.message}")
         }
     }
 

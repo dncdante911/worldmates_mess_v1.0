@@ -165,6 +165,8 @@ class MessageNotificationService : Service() {
 
     private fun handleIncomingMessage(data: JSONObject, isGroup: Boolean) {
         try {
+            Log.d(TAG, "📨 handleIncomingMessage called: isGroup=$isGroup, data=$data")
+
             val senderId = data.optLong("from_id", data.optLong("sender_id", 0))
             val senderName = data.optString("sender_name",
                 data.optString("from_name", "WorldMates"))
@@ -173,15 +175,31 @@ class MessageNotificationService : Service() {
                     data.optString("message", "")))
             val groupId = data.optLong("group_id", 0)
 
+            Log.d(TAG, "   senderId=$senderId, senderName=$senderName, text=${text.take(30)}")
+            Log.d(TAG, "   UserSession.userId=${UserSession.userId}")
+            Log.d(TAG, "   activeRecipientId=$activeRecipientId, activeGroupId=$activeGroupId")
+
             // Don't show notification for our own messages
-            if (senderId == UserSession.userId) return
+            if (senderId == UserSession.userId) {
+                Log.d(TAG, "   ❌ Skipping: own message")
+                return
+            }
 
             // Don't show notification if the user is viewing this exact chat
-            if (!isGroup && senderId == activeRecipientId && activeRecipientId > 0) return
-            if (isGroup && groupId == activeGroupId && activeGroupId > 0) return
+            if (!isGroup && senderId == activeRecipientId && activeRecipientId > 0) {
+                Log.d(TAG, "   ❌ Skipping: chat is open")
+                return
+            }
+            if (isGroup && groupId == activeGroupId && activeGroupId > 0) {
+                Log.d(TAG, "   ❌ Skipping: group chat is open")
+                return
+            }
 
             // Don't notify for empty messages
-            if (text.isBlank()) return
+            if (text.isBlank()) {
+                Log.d(TAG, "   ❌ Skipping: empty text")
+                return
+            }
 
             val title = if (isGroup) {
                 val groupName = data.optString("group_name", "Група")
@@ -290,10 +308,14 @@ class MessageNotificationService : Service() {
         groupId: Long,
         isGroup: Boolean
     ) {
+        Log.d(TAG, "🔔 showMessageNotification: title=$title, message=${message.take(30)}")
+
         if (!canPostNotifications()) {
-            Log.w(TAG, "Notifications are disabled or permission is missing")
+            Log.w(TAG, "❌ Notifications are disabled or permission is missing")
             return
         }
+
+        Log.d(TAG, "✅ Notification permission granted, creating notification")
 
         val intent = Intent(this, MessagesActivity::class.java).apply {
             if (isGroup) {

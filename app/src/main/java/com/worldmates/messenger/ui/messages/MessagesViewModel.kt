@@ -421,7 +421,7 @@ class MessagesViewModel(application: Application) :
                     socketManager?.emit("edit_message", JSONObject().apply {
                         put("message_id", messageId)
                         put("new_text", newText)
-                        put("from_id", UserSession.userId)
+                        put("from_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
                         put("recipient_id", recipientId)
                         if (groupId > 0) {
                             put("group_id", groupId)
@@ -472,7 +472,7 @@ class MessagesViewModel(application: Application) :
                     // Відправляємо подію через Socket.IO для реального часу
                     socketManager?.emit("delete_message", JSONObject().apply {
                         put("message_id", messageId)
-                        put("from_id", UserSession.userId)
+                        put("from_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
                         put("recipient_id", recipientId)
                         if (groupId > 0) {
                             put("group_id", groupId)
@@ -1157,6 +1157,18 @@ class MessagesViewModel(application: Application) :
         }
     }
 
+    override fun onRecordingStatus(userId: Long?, isRecording: Boolean) {
+        if (userId == recipientId) {
+            // Можна додати StateFlow для відображення статусу запису
+            // Наприклад: _isRecording.value = isRecording
+            // Або показати в UI "🎤 Записує голосове повідомлення..."
+            if (isRecording) {
+                _recipientOnlineStatus.value = true
+            }
+            Log.d("MessagesViewModel", "🎤 Користувач $userId ${if (isRecording) "записує аудіо" else "зупинив запис"}")
+        }
+    }
+
     override fun onUserOnline(userId: Long) {
         if (userId == recipientId) {
             _recipientOnlineStatus.value = true
@@ -1209,7 +1221,7 @@ class MessagesViewModel(application: Application) :
         if (recipientId == 0L) return
 
         socketManager?.emit(Constants.SOCKET_EVENT_TYPING, JSONObject().apply {
-            put("user_id", UserSession.userId)  // Кто печатает
+            put("user_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
             put("recipient_id", recipientId)  // Кому отправляем
             // Формат WoWonder: is_typing = 200 (печатает) или 300 (закончил)
             put("is_typing", if (isTyping) 200 else 300)
@@ -1217,51 +1229,22 @@ class MessagesViewModel(application: Application) :
         Log.d("MessagesViewModel", "Відправлено статус 'печатає': $isTyping для користувача $recipientId")
     }
 
+    /**
+     * Отправляет событие "записывает аудио" через Socket.IO
+     */
+    fun sendRecordingStatus(isRecording: Boolean) {
+        if (recipientId == 0L) return
+
+        socketManager?.emit("recording", JSONObject().apply {
+            put("user_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
+            put("recipient_id", recipientId)
+            put("is_recording", if (isRecording) 200 else 300)  // 200 = записує, 300 = закінчив
+        })
+        Log.d("MessagesViewModel", "Відправлено статус 'записує аудіо': $isRecording для користувача $recipientId")
+    }
+
     fun clearError() {
         _error.value = null
-    }
-
-    /**
-     * Об'єднує поточні та нові повідомлення, віддаючи пріоритет свіжим даним з сервера.
-     * Це важливо для коректного оновлення видалених/відредагованих повідомлень без
-     * повторного входу в чат.
-     */
-    private fun mergeMessagesPreferLatest(
-        incomingMessages: List<Message>,
-        currentMessages: List<Message>
-    ): List<Message> {
-        return (incomingMessages + currentMessages)
-            .distinctBy { it.id }
-            .sortedBy { it.timeStamp }
-    }
-
-    /**
-     * Синхронізує локальний список з останнім "вікном" повідомлень від сервера.
-     *
-     * - Прибирає застарілі локальні повідомлення з цієї області (наприклад, видалені).
-     * - Зберігає старішу історію поза межами latest-window.
-     * - Зберігає локальні pending-повідомлення, які ще не підтверджені сервером.
-     */
-    private fun reconcileWithLatestWindow(
-        currentMessages: List<Message>,
-        latestWindowMessages: List<Message>
-    ): List<Message> {
-        if (latestWindowMessages.isEmpty()) return currentMessages
-
-        val latestWindowIds = latestWindowMessages.map { it.id }.toSet()
-        val latestWindowMinTimestamp = latestWindowMessages.minOf { it.timeStamp }
-
-        val preservedOlderHistory = currentMessages.filter { it.timeStamp < latestWindowMinTimestamp }
-
-        val localPendingRecentMessages = currentMessages.filter {
-            it.timeStamp >= latestWindowMinTimestamp &&
-                it.isLocalPending &&
-                it.id !in latestWindowIds
-        }
-
-        return (preservedOlderHistory + latestWindowMessages + localPendingRecentMessages)
-            .distinctBy { it.id }
-            .sortedBy { it.timeStamp }
     }
 
     /**

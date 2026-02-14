@@ -184,7 +184,14 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
       }
 
 
-      callback(responseData)
+      // ✅ ВИПРАВЛЕНО: Перевірка callback перед викликом
+      if (callback && typeof callback === 'function') {
+          callback(responseData)
+      } else {
+          console.log("⚠️ No callback provided for private_message, sending via socket emit instead")
+          socket.emit('private_message', responseData)
+      }
+
       // send same message to all tabs
       for (userSocket of remainingSameUserSockets) {
         responseData.messages_html = await compiledTemplates.chatListOwnerTrue(ctx, data, fromUser, m_sent.id, hasHTML, sendable_message, data.color);

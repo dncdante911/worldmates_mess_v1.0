@@ -1,6 +1,7 @@
 package com.worldmates.messenger.services
 
 import android.app.*
+import android.content.pm.PackageManager
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
@@ -8,7 +9,9 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.ui.messages.MessagesActivity
@@ -125,6 +128,19 @@ class MessageNotificationService : Service() {
                 }
             }
 
+            // Additional private-message events used by backend variants
+            socket?.on("private_message_page") { args ->
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    handleIncomingMessage(args[0] as JSONObject, isGroup = false)
+                }
+            }
+
+            socket?.on("page_message") { args ->
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    handleIncomingMessage(args[0] as JSONObject, isGroup = false)
+                }
+            }
+
             // Listen for group messages
             socket?.on(Constants.SOCKET_EVENT_GROUP_MESSAGE) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
@@ -188,6 +204,11 @@ class MessageNotificationService : Service() {
         groupId: Long,
         isGroup: Boolean
     ) {
+        if (!canPostNotifications()) {
+            Log.w(TAG, "Notifications are disabled or permission is missing")
+            return
+        }
+
         val intent = Intent(this, MessagesActivity::class.java).apply {
             if (isGroup) {
                 putExtra("group_id", groupId)
@@ -225,6 +246,20 @@ class MessageNotificationService : Service() {
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(notificationId, notification)
+    }
+
+    private fun canPostNotifications(): Boolean {
+        val enabledBySystem = NotificationManagerCompat.from(this).areNotificationsEnabled()
+        if (!enabledBySystem) return false
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
     }
 
     private fun buildForegroundNotification(): Notification {

@@ -211,9 +211,10 @@ class MessagesViewModel(application: Application) :
                         decryptMessageFully(msg)
                     }
 
-                    val currentMessages = _messages.value.toMutableList()
-                    currentMessages.addAll(decryptedMessages)
-                    _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+                    _messages.value = mergeMessagesPreferLatest(
+                        incomingMessages = decryptedMessages,
+                        currentMessages = _messages.value
+                    )
 
                     _error.value = null
                     Log.d(TAG, "Завантажено ${decryptedMessages.size} повідомлень")
@@ -258,10 +259,11 @@ class MessagesViewModel(application: Application) :
                         decryptMessageFully(msg)
                     }
 
-                    val currentMessages = _messages.value.toMutableList()
-                    currentMessages.addAll(decryptedMessages)
                     // Сортируем по времени (старые сверху, новые внизу)
-                    _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+                    _messages.value = mergeMessagesPreferLatest(
+                        incomingMessages = decryptedMessages,
+                        currentMessages = _messages.value
+                    )
 
                     _error.value = null
                     if (topicId != 0L) {
@@ -1901,16 +1903,17 @@ class MessagesViewModel(application: Application) :
                 } else return@launch
 
                 if (response.apiStatus == 200 && response.messages != null) {
-                    val newMessages = response.messages!!.map { msg -> decryptMessageFully(msg) }
+                    val latestWindowMessages = response.messages!!.map { msg -> decryptMessageFully(msg) }
                     val currentMessages = _messages.value
-                    val currentIds = currentMessages.map { it.id }.toSet()
 
-                    val trulyNew = newMessages.filter { it.id !in currentIds }
+                    val updated = reconcileWithLatestWindow(
+                        currentMessages = currentMessages,
+                        latestWindowMessages = latestWindowMessages
+                    )
 
-                    if (trulyNew.isNotEmpty()) {
-                        val updated = (currentMessages + trulyNew).distinctBy { it.id }.sortedBy { it.timeStamp }
+                    if (updated != currentMessages) {
                         _messages.value = updated
-                        Log.d(TAG, "🔄 Polling: додано ${trulyNew.size} нових повідомлень")
+                        Log.d(TAG, "🔄 Polling: синхронізовано останні ${latestWindowMessages.size} повідомлень")
                     }
                 }
             } catch (e: Exception) {

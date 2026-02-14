@@ -1,0 +1,601 @@
+================================================================================
+ЗВІТ ПРО ДУБЛІКАТИ ТАБЛИЦЬ
+================================================================================
+
+Група: wo_activities
+  Варіанти:
+    - Wo_Activities [❌ ВИДАЛИТИ]
+    - wo_activities [✅ ОСНОВНА]
+
+Група: wo_admininvitations
+  Варіанти:
+    - Wo_AdminInvitations [❌ ВИДАЛИТИ]
+    - wo_admininvitations [✅ ОСНОВНА]
+
+Група: wo_ads
+  Варіанти:
+    - Wo_Ads [❌ ВИДАЛИТИ]
+    - wo_ads [✅ ОСНОВНА]
+
+Група: wo_affiliates_requests
+  Варіанти:
+    - Wo_Affiliates_Requests [❌ ВИДАЛИТИ]
+    - wo_affiliates_requests [✅ ОСНОВНА]
+
+Група: wo_agoravideocall
+  Варіанти:
+    - wo_agoravideocall [✅ ОСНОВНА]
+    - Wo_AgoraVideoCall [❌ ВИДАЛИТИ]
+
+Група: wo_albums_media
+  Варіанти:
+    - wo_albums_media [✅ ОСНОВНА]
+    - Wo_Albums_Media [❌ ВИДАЛИТИ]
+
+Група: wo_announcement
+  Варіанти:
+    - wo_announcement [✅ ОСНОВНА]
+    - Wo_Announcement [❌ ВИДАЛИТИ]
+
+Група: wo_announcement_views
+  Варіанти:
+    - wo_announcement_views [✅ ОСНОВНА]
+    - Wo_Announcement_Views [❌ ВИДАЛИТИ]
+
+Група: wo_apps
+  Варіанти:
+    - Wo_Apps [❌ ВИДАЛИТИ]
+    - wo_apps [✅ ОСНОВНА]
+
+Група: wo_apps_hash
+  Варіанти:
+    - wo_apps_hash [✅ ОСНОВНА]
+    - Wo_Apps_Hash [❌ ВИДАЛИТИ]
+
+Група: wo_apps_permission
+  Варіанти:
+    - wo_apps_permission [✅ ОСНОВНА]
+    - Wo_Apps_Permission [❌ ВИДАЛИТИ]
+
+Група: wo_appssessions
+  Варіанти:
+    - Wo_AppsSessions [❌ ВИДАЛИТИ]
+    - wo_appssessions [✅ ОСНОВНА]
+
+Група: wo_audiocalls
+  Варіанти:
+    - wo_audiocalls [✅ ОСНОВНА]
+    - Wo_AudioCalls [❌ ВИДАЛИТИ]
+
+Група: wo_backup_codes
+  Варіанти:
+    - wo_backup_codes [✅ ОСНОВНА]
+    - Wo_Backup_Codes [❌ ВИДАЛИТИ]
+
+Група: wo_bad_login
+  Варіанти:
+    - wo_bad_login [✅ ОСНОВНА]
+    - Wo_Bad_Login [❌ ВИДАЛИТИ]
+
+Група: wo_banned_ip
+  Варіанти:
+    - wo_banned_ip [✅ ОСНОВНА]
+    - Wo_Banned_Ip [❌ ВИДАЛИТИ]
+
+Група: wo_blocks
+  Варіанти:
+    - Wo_Blocks [❌ ВИДАЛИТИ]
+    - wo_blocks [✅ ОСНОВНА]
+
+Група: wo_blog
+  Варіанти:
+    - Wo_Blog [❌ ВИДАЛИТИ]
+    - wo_blog [✅ ОСНОВНА]
+
+Група: wo_blog_reaction
+  Варіанти:
+    - wo_blog_reaction [✅ ОСНОВНА]
+    - Wo_Blog_Reaction [❌ ВИДАЛИТИ]
+
+Група: wo_blogcommentreplies
+  Варіанти:
+    - wo_blogcommentreplies [✅ ОСНОВНА]
+    - Wo_BlogCommentReplies [❌ ВИДАЛИТИ]
+
+Група: wo_blogcomments
+  Варіанти:
+    - wo_blogcomments [✅ ОСНОВНА]
+    - Wo_BlogComments [❌ ВИДАЛИТИ]
+
+Група: wo_blogmoviedislikes
+  Варіанти:
+    - Wo_BlogMovieDisLikes [❌ ВИДАЛИТИ]
+    - wo_blogmoviedislikes [✅ ОСНОВНА]
+
+Група: wo_blogmovielikes
+  Варіанти:
+    - wo_blogmovielikes [✅ ОСНОВНА]
+    - Wo_BlogMovieLikes [❌ ВИДАЛИТИ]
+
+Група: wo_blogs_categories
+  Варіанти:
+    - Wo_Blogs_Categories [❌ ВИДАЛИТИ]
+    - wo_blogs_categories [✅ ОСНОВНА]
+
+Група: wo_codes
+  Варіанти:
+    - wo_codes [✅ ОСНОВНА]
+    - Wo_Codes [❌ ВИДАЛИТИ]
+
+Група: wo_colored_posts
+  Варіанти:
+    - Wo_Colored_Posts [❌ ВИДАЛИТИ]
+    - wo_colored_posts [✅ ОСНОВНА]
+
+Група: wo_comment_replies
+  Варіанти:
+    - wo_comment_replies [✅ ОСНОВНА]
+    - Wo_Comment_Replies [❌ ВИДАЛИТИ]
+
+Група: wo_comment_replies_likes
+  Варіанти:
+    - wo_comment_replies_likes [✅ ОСНОВНА]
+    - Wo_Comment_Replies_Likes [❌ ВИДАЛИТИ]
+
+Група: wo_comment_replies_wonders
+  Варіанти:
+    - Wo_Comment_Replies_Wonders [❌ ВИДАЛИТИ]
+    - wo_comment_replies_wonders [✅ ОСНОВНА]
+
+Група: wo_commentlikes
+  Варіанти:
+    - wo_commentlikes [✅ ОСНОВНА]
+    - Wo_CommentLikes [❌ ВИДАЛИТИ]
+
+Група: wo_comments
+  Варіанти:
+    - wo_comments [✅ ОСНОВНА]
+    - Wo_Comments [❌ ВИДАЛИТИ]
+
+Група: wo_commentwonders
+  Варіанти:
+    - Wo_CommentWonders [❌ ВИДАЛИТИ]
+    - wo_commentwonders [✅ ОСНОВНА]
+
+Група: wo_config
+  Варіанти:
+    - Wo_Config [❌ ВИДАЛИТИ]
+    - wo_config [✅ ОСНОВНА]
+
+Група: wo_custom_fields
+  Варіанти:
+    - wo_custom_fields [✅ ОСНОВНА]
+    - Wo_Custom_Fields [❌ ВИДАЛИТИ]
+
+Група: wo_custompages
+  Варіанти:
+    - wo_custompages [✅ ОСНОВНА]
+    - Wo_CustomPages [❌ ВИДАЛИТИ]
+
+Група: wo_egoing
+  Варіанти:
+    - Wo_Egoing [❌ ВИДАЛИТИ]
+    - wo_egoing [✅ ОСНОВНА]
+
+Група: wo_einterested
+  Варіанти:
+    - Wo_Einterested [❌ ВИДАЛИТИ]
+    - wo_einterested [✅ ОСНОВНА]
+
+Група: wo_einvited
+  Варіанти:
+    - Wo_Einvited [❌ ВИДАЛИТИ]
+    - wo_einvited [✅ ОСНОВНА]
+
+Група: wo_emails
+  Варіанти:
+    - wo_emails [✅ ОСНОВНА]
+    - Wo_Emails [❌ ВИДАЛИТИ]
+
+Група: wo_events
+  Варіанти:
+    - Wo_Events [❌ ВИДАЛИТИ]
+    - wo_events [✅ ОСНОВНА]
+
+Група: wo_family
+  Варіанти:
+    - Wo_Family [❌ ВИДАЛИТИ]
+    - wo_family [✅ ОСНОВНА]
+
+Група: wo_followers
+  Варіанти:
+    - wo_followers [✅ ОСНОВНА]
+    - Wo_Followers [❌ ВИДАЛИТИ]
+
+Група: wo_forum_sections
+  Варіанти:
+    - Wo_Forum_Sections [❌ ВИДАЛИТИ]
+    - wo_forum_sections [✅ ОСНОВНА]
+
+Група: wo_forum_threads
+  Варіанти:
+    - wo_forum_threads [✅ ОСНОВНА]
+    - Wo_Forum_Threads [❌ ВИДАЛИТИ]
+
+Група: wo_forums
+  Варіанти:
+    - Wo_Forums [❌ ВИДАЛИТИ]
+    - wo_forums [✅ ОСНОВНА]
+
+Група: wo_forumthreadreplies
+  Варіанти:
+    - wo_forumthreadreplies [✅ ОСНОВНА]
+    - Wo_ForumThreadReplies [❌ ВИДАЛИТИ]
+
+Група: wo_funding
+  Варіанти:
+    - wo_funding [✅ ОСНОВНА]
+    - Wo_Funding [❌ ВИДАЛИТИ]
+
+Група: wo_funding_raise
+  Варіанти:
+    - Wo_Funding_Raise [❌ ВИДАЛИТИ]
+    - wo_funding_raise [✅ ОСНОВНА]
+
+Група: wo_games
+  Варіанти:
+    - Wo_Games [❌ ВИДАЛИТИ]
+    - wo_games [✅ ОСНОВНА]
+
+Група: wo_games_players
+  Варіанти:
+    - Wo_Games_Players [❌ ВИДАЛИТИ]
+    - wo_games_players [✅ ОСНОВНА]
+
+Група: wo_gender
+  Варіанти:
+    - Wo_Gender [❌ ВИДАЛИТИ]
+    - wo_gender [✅ ОСНОВНА]
+
+Група: wo_gifts
+  Варіанти:
+    - wo_gifts [✅ ОСНОВНА]
+    - Wo_Gifts [❌ ВИДАЛИТИ]
+
+Група: wo_group_members
+  Варіанти:
+    - Wo_Group_Members [❌ ВИДАЛИТИ]
+    - wo_group_members [✅ ОСНОВНА]
+
+Група: wo_groupadmins
+  Варіанти:
+    - Wo_GroupAdmins [❌ ВИДАЛИТИ]
+    - wo_groupadmins [✅ ОСНОВНА]
+
+Група: wo_groupchat
+  Варіанти:
+    - Wo_GroupChat [❌ ВИДАЛИТИ]
+    - wo_groupchat [✅ ОСНОВНА]
+
+Група: wo_groupchatusers
+  Варіанти:
+    - wo_groupchatusers [✅ ОСНОВНА]
+    - Wo_GroupChatUsers [❌ ВИДАЛИТИ]
+
+Група: wo_groups
+  Варіанти:
+    - Wo_Groups [❌ ВИДАЛИТИ]
+    - wo_groups [✅ ОСНОВНА]
+
+Група: wo_groups_categories
+  Варіанти:
+    - Wo_Groups_Categories [❌ ВИДАЛИТИ]
+    - wo_groups_categories [✅ ОСНОВНА]
+
+Група: wo_hashtags
+  Варіанти:
+    - wo_hashtags [✅ ОСНОВНА]
+    - Wo_Hashtags [❌ ВИДАЛИТИ]
+
+Група: wo_hiddenposts
+  Варіанти:
+    - Wo_HiddenPosts [❌ ВИДАЛИТИ]
+    - wo_hiddenposts [✅ ОСНОВНА]
+
+Група: wo_invitation_links
+  Варіанти:
+    - wo_invitation_links [✅ ОСНОВНА]
+    - Wo_Invitation_Links [❌ ВИДАЛИТИ]
+
+Група: wo_job
+  Варіанти:
+    - wo_job [✅ ОСНОВНА]
+    - Wo_Job [❌ ВИДАЛИТИ]
+
+Група: wo_job_apply
+  Варіанти:
+    - Wo_Job_Apply [❌ ВИДАЛИТИ]
+    - wo_job_apply [✅ ОСНОВНА]
+
+Група: wo_job_categories
+  Варіанти:
+    - Wo_Job_Categories [❌ ВИДАЛИТИ]
+    - wo_job_categories [✅ ОСНОВНА]
+
+Група: wo_langs
+  Варіанти:
+    - Wo_Langs [❌ ВИДАЛИТИ]
+    - wo_langs [✅ ОСНОВНА]
+
+Група: wo_likes
+  Варіанти:
+    - wo_likes [✅ ОСНОВНА]
+    - Wo_Likes [❌ ВИДАЛИТИ]
+
+Група: wo_live_sub_users
+  Варіанти:
+    - Wo_Live_Sub_Users [❌ ВИДАЛИТИ]
+    - wo_live_sub_users [✅ ОСНОВНА]
+
+Група: wo_manage_pro
+  Варіанти:
+    - Wo_Manage_Pro [❌ ВИДАЛИТИ]
+    - wo_manage_pro [✅ ОСНОВНА]
+
+Група: wo_messages
+  Варіанти:
+    - Wo_Messages [❌ ВИДАЛИТИ]
+    - wo_messages [✅ ОСНОВНА]
+
+Група: wo_monetizationsubscription
+  Варіанти:
+    - Wo_MonetizationSubscription [❌ ВИДАЛИТИ]
+    - wo_monetizationsubscription [✅ ОСНОВНА]
+
+Група: wo_moviecommentreplies
+  Варіанти:
+    - Wo_MovieCommentReplies [❌ ВИДАЛИТИ]
+    - wo_moviecommentreplies [✅ ОСНОВНА]
+
+Група: wo_moviecomments
+  Варіанти:
+    - Wo_MovieComments [❌ ВИДАЛИТИ]
+    - wo_moviecomments [✅ ОСНОВНА]
+
+Група: wo_movies
+  Варіанти:
+    - wo_movies [✅ ОСНОВНА]
+    - Wo_Movies [❌ ВИДАЛИТИ]
+
+Група: wo_notifications
+  Варіанти:
+    - Wo_Notifications [❌ ВИДАЛИТИ]
+    - wo_notifications [✅ ОСНОВНА]
+
+Група: wo_offers
+  Варіанти:
+    - Wo_Offers [❌ ВИДАЛИТИ]
+    - wo_offers [✅ ОСНОВНА]
+
+Група: wo_pageadmins
+  Варіанти:
+    - wo_pageadmins [✅ ОСНОВНА]
+    - Wo_PageAdmins [❌ ВИДАЛИТИ]
+
+Група: wo_pagerating
+  Варіанти:
+    - wo_pagerating [✅ ОСНОВНА]
+    - Wo_PageRating [❌ ВИДАЛИТИ]
+
+Група: wo_pages
+  Варіанти:
+    - Wo_Pages [❌ ВИДАЛИТИ]
+    - wo_pages [✅ ОСНОВНА]
+
+Група: wo_pages_categories
+  Варіанти:
+    - Wo_Pages_Categories [❌ ВИДАЛИТИ]
+    - wo_pages_categories [✅ ОСНОВНА]
+
+Група: wo_pages_invites
+  Варіанти:
+    - wo_pages_invites [✅ ОСНОВНА]
+    - Wo_Pages_Invites [❌ ВИДАЛИТИ]
+
+Група: wo_pages_likes
+  Варіанти:
+    - Wo_Pages_Likes [❌ ВИДАЛИТИ]
+    - wo_pages_likes [✅ ОСНОВНА]
+
+Група: wo_payment_transactions
+  Варіанти:
+    - wo_payment_transactions [✅ ОСНОВНА]
+    - Wo_Payment_Transactions [❌ ВИДАЛИТИ]
+
+Група: wo_payments
+  Варіанти:
+    - Wo_Payments [❌ ВИДАЛИТИ]
+    - wo_payments [✅ ОСНОВНА]
+
+Група: wo_pinnedposts
+  Варіанти:
+    - Wo_PinnedPosts [❌ ВИДАЛИТИ]
+    - wo_pinnedposts [✅ ОСНОВНА]
+
+Група: wo_pokes
+  Варіанти:
+    - Wo_Pokes [❌ ВИДАЛИТИ]
+    - wo_pokes [✅ ОСНОВНА]
+
+Група: wo_posts
+  Варіанти:
+    - wo_posts [✅ ОСНОВНА]
+    - Wo_Posts [❌ ВИДАЛИТИ]
+
+Група: wo_productreview
+  Варіанти:
+    - wo_productreview [✅ ОСНОВНА]
+    - Wo_ProductReview [❌ ВИДАЛИТИ]
+
+Група: wo_products
+  Варіанти:
+    - wo_products [✅ ОСНОВНА]
+    - Wo_Products [❌ ВИДАЛИТИ]
+
+Група: wo_products_categories
+  Варіанти:
+    - wo_products_categories [✅ ОСНОВНА]
+    - Wo_Products_Categories [❌ ВИДАЛИТИ]
+
+Група: wo_products_media
+  Варіанти:
+    - Wo_Products_Media [❌ ВИДАЛИТИ]
+    - wo_products_media [✅ ОСНОВНА]
+
+Група: wo_profilefields
+  Варіанти:
+    - Wo_ProfileFields [❌ ВИДАЛИТИ]
+    - wo_profilefields [✅ ОСНОВНА]
+
+Група: wo_purchases
+  Варіанти:
+    - Wo_Purchases [❌ ВИДАЛИТИ]
+    - wo_purchases [✅ ОСНОВНА]
+
+Група: wo_reactions
+  Варіанти:
+    - Wo_Reactions [❌ ВИДАЛИТИ]
+    - wo_reactions [✅ ОСНОВНА]
+
+Група: wo_reactions_types
+  Варіанти:
+    - wo_reactions_types [✅ ОСНОВНА]
+    - Wo_Reactions_Types [❌ ВИДАЛИТИ]
+
+Група: wo_recentsearches
+  Варіанти:
+    - wo_recentsearches [✅ ОСНОВНА]
+    - Wo_RecentSearches [❌ ВИДАЛИТИ]
+
+Група: wo_refund
+  Варіанти:
+    - wo_refund [✅ ОСНОВНА]
+    - Wo_Refund [❌ ВИДАЛИТИ]
+
+Група: wo_relationship
+  Варіанти:
+    - Wo_Relationship [❌ ВИДАЛИТИ]
+    - wo_relationship [✅ ОСНОВНА]
+
+Група: wo_reports
+  Варіанти:
+    - Wo_Reports [❌ ВИДАЛИТИ]
+    - wo_reports [✅ ОСНОВНА]
+
+Група: wo_savedposts
+  Варіанти:
+    - Wo_SavedPosts [❌ ВИДАЛИТИ]
+    - wo_savedposts [✅ ОСНОВНА]
+
+Група: wo_stickers
+  Варіанти:
+    - Wo_Stickers [❌ ВИДАЛИТИ]
+    - wo_stickers [✅ ОСНОВНА]
+
+Група: wo_story_seen
+  Варіанти:
+    - wo_story_seen [✅ ОСНОВНА]
+    - Wo_Story_Seen [❌ ВИДАЛИТИ]
+
+Група: wo_storycomments
+  Варіанти:
+    - wo_storycomments [✅ ОСНОВНА]
+    - Wo_StoryComments [❌ ВИДАЛИТИ]
+
+Група: wo_storyreactions
+  Варіанти:
+    - wo_storyreactions [✅ ОСНОВНА]
+    - Wo_StoryReactions [❌ ВИДАЛИТИ]
+
+Група: wo_sub_categories
+  Варіанти:
+    - wo_sub_categories [✅ ОСНОВНА]
+    - Wo_Sub_Categories [❌ ВИДАЛИТИ]
+
+Група: wo_terms
+  Варіанти:
+    - Wo_Terms [❌ ВИДАЛИТИ]
+    - wo_terms [✅ ОСНОВНА]
+
+Група: wo_tokens
+  Варіанти:
+    - Wo_Tokens [❌ ВИДАЛИТИ]
+    - wo_tokens [✅ ОСНОВНА]
+
+Група: wo_user_gifts
+  Варіанти:
+    - wo_user_gifts [✅ ОСНОВНА]
+    - Wo_User_Gifts [❌ ВИДАЛИТИ]
+
+Група: wo_useraddress
+  Варіанти:
+    - wo_useraddress [✅ ОСНОВНА]
+    - Wo_UserAddress [❌ ВИДАЛИТИ]
+
+Група: wo_userads_data
+  Варіанти:
+    - wo_userads_data [✅ ОСНОВНА]
+    - Wo_UserAds_Data [❌ ВИДАЛИТИ]
+
+Група: wo_usercard
+  Варіанти:
+    - Wo_UserCard [❌ ВИДАЛИТИ]
+    - wo_usercard [✅ ОСНОВНА]
+
+Група: wo_userfields
+  Варіанти:
+    - wo_userfields [✅ ОСНОВНА]
+    - Wo_UserFields [❌ ВИДАЛИТИ]
+
+Група: wo_usermonetization
+  Варіанти:
+    - wo_usermonetization [✅ ОСНОВНА]
+    - Wo_UserMonetization [❌ ВИДАЛИТИ]
+
+Група: wo_userorders
+  Варіанти:
+    - wo_userorders [✅ ОСНОВНА]
+    - Wo_UserOrders [❌ ВИДАЛИТИ]
+
+Група: wo_userschat
+  Варіанти:
+    - wo_userschat [✅ ОСНОВНА]
+    - Wo_UsersChat [❌ ВИДАЛИТИ]
+
+Група: wo_userstorymedia
+  Варіанти:
+    - Wo_UserStoryMedia [❌ ВИДАЛИТИ]
+    - wo_userstorymedia [✅ ОСНОВНА]
+
+Група: wo_verification_requests
+  Варіанти:
+    - Wo_Verification_Requests [❌ ВИДАЛИТИ]
+    - wo_verification_requests [✅ ОСНОВНА]
+
+Група: wo_videocalles
+  Варіанти:
+    - wo_videocalles [✅ ОСНОВНА]
+    - Wo_VideoCalles [❌ ВИДАЛИТИ]
+
+Група: wo_votes
+  Варіанти:
+    - wo_votes [✅ ОСНОВНА]
+    - Wo_Votes [❌ ВИДАЛИТИ]
+
+Група: wo_wonders
+  Варіанти:
+    - wo_wonders [✅ ОСНОВНА]
+    - Wo_Wonders [❌ ВИДАЛИТИ]
+
+
+Всього груп дублікатів: 119

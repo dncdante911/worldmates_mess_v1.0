@@ -105,48 +105,71 @@ class MessageNotificationService : Service() {
             socket = IO.socket(Constants.SOCKET_URL, opts)
 
             socket?.on(Socket.EVENT_CONNECT) {
-                Log.d(TAG, "Notification socket connected")
+                Log.d(TAG, "✅ Notification socket CONNECTED")
+                Log.d(TAG, "   Sending auth with access_token: ${accessToken?.take(10)}...")
                 // Authenticate
                 val authData = JSONObject().apply {
                     put("user_id", accessToken)
                 }
                 socket?.emit(Constants.SOCKET_EVENT_AUTH, authData)
+                Log.d(TAG, "   Auth event emitted")
             }
 
-            socket?.on(Socket.EVENT_DISCONNECT) {
-                Log.d(TAG, "Notification socket disconnected")
+            socket?.on(Socket.EVENT_DISCONNECT) { args ->
+                val reason = if (args.isNotEmpty()) args[0].toString() else "unknown"
+                Log.w(TAG, "❌ Notification socket DISCONNECTED: reason=$reason")
+            }
+
+            socket?.on(Socket.EVENT_CONNECT_ERROR) { args ->
+                val error = if (args.isNotEmpty()) args[0].toString() else "unknown"
+                Log.e(TAG, "❌ Socket CONNECT_ERROR: $error")
             }
 
             // Listen for private messages
             socket?.on(Constants.SOCKET_EVENT_PRIVATE_MESSAGE) { args ->
+                Log.d(TAG, "🔔 Event: private_message, args.size=${args.size}")
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     handleIncomingMessage(args[0] as JSONObject, isGroup = false)
+                } else {
+                    Log.w(TAG, "⚠️ private_message event with invalid args")
                 }
             }
 
             socket?.on(Constants.SOCKET_EVENT_NEW_MESSAGE) { args ->
+                Log.d(TAG, "🔔 Event: new_message, args.size=${args.size}")
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     handleIncomingMessage(args[0] as JSONObject, isGroup = false)
+                } else {
+                    Log.w(TAG, "⚠️ new_message event with invalid args")
                 }
             }
 
             // Additional private-message events used by backend variants
             socket?.on("private_message_page") { args ->
+                Log.d(TAG, "🔔 Event: private_message_page, args.size=${args.size}")
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     handleIncomingMessage(args[0] as JSONObject, isGroup = false)
+                } else {
+                    Log.w(TAG, "⚠️ private_message_page event with invalid args")
                 }
             }
 
             socket?.on("page_message") { args ->
+                Log.d(TAG, "🔔 Event: page_message, args.size=${args.size}")
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     handleIncomingMessage(args[0] as JSONObject, isGroup = false)
+                } else {
+                    Log.w(TAG, "⚠️ page_message event with invalid args")
                 }
             }
 
             // Listen for group messages
             socket?.on(Constants.SOCKET_EVENT_GROUP_MESSAGE) { args ->
+                Log.d(TAG, "🔔 Event: group_message, args.size=${args.size}")
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     handleIncomingMessage(args[0] as JSONObject, isGroup = true)
+                } else {
+                    Log.w(TAG, "⚠️ group_message event with invalid args")
                 }
             }
 

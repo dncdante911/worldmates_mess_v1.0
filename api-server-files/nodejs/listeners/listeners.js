@@ -344,6 +344,44 @@ module.exports.registerListeners = async (socket, io, ctx) => {
         }
     })
 
+    // ==================== EDIT MESSAGE ====================
+    socket.on('edit_message', async (data) => {
+        try {
+            console.log("✏️ EDIT_MESSAGE event:", data);
+            const { message_id, new_text, recipient_id, group_id, from_id } = data;
+
+            if (!message_id || !new_text) {
+                console.log("❌ edit_message - missing message_id or new_text");
+                return;
+            }
+
+            // Broadcast to recipient (for private chat)
+            if (recipient_id) {
+                io.to(String(recipient_id)).emit('message_edited', {
+                    message_id,
+                    new_text,
+                    from_id,
+                    recipient_id
+                });
+                console.log(`✅ Broadcast message_edited to user ${recipient_id}`);
+            }
+
+            // Broadcast to group
+            if (group_id) {
+                io.to(`group_${group_id}`).emit('message_edited', {
+                    message_id,
+                    new_text,
+                    from_id,
+                    group_id
+                });
+                console.log(`✅ Broadcast message_edited to group ${group_id}`);
+            }
+
+        } catch (e) {
+            console.log("❌ edit_message error:", e.message);
+        }
+    })
+
     // ==================== ГРУПОВІ ОБРОБНИКИ ====================
     // ✅ ВИПРАВЛЕНО: Винесено З disconnect!
 

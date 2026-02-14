@@ -28,7 +28,7 @@
     "--- API quick_register + quick_verify для швидкої реєстрації",
     "--- API update_fcm_token для збереження Firebase токенів"
   ],
-  "is_mandatory": true,
+  "is_mandatory": false,
   "published_at": "2026-02-13T12:00:00Z",
   "features": {
     "animated_stickers": {

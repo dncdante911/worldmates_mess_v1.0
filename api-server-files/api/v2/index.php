@@ -93,6 +93,7 @@ $public_endpoints = [
     'get-site-settings',
     'test_init',
     'test_email',  // DEBUG: Email testing endpoint
+    'test_smtp',   // DEBUG: SMTP configuration testing endpoint
     'check_mobile_update',
     'regsiter',  // Typo in WoWonder, keeping for compatibility
     'register',

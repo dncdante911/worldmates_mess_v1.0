@@ -15,6 +15,8 @@ import androidx.core.app.NotificationManagerCompat
 import com.worldmates.messenger.data.Constants
 import com.worldmates.messenger.data.UserSession
 import com.worldmates.messenger.ui.messages.MessagesActivity
+import com.worldmates.messenger.ui.calls.IncomingCallActivity
+import com.worldmates.messenger.ui.chats.ChatsActivity
 import io.socket.client.IO
 import io.socket.client.Socket
 import org.json.JSONObject
@@ -148,6 +150,13 @@ class MessageNotificationService : Service() {
                 }
             }
 
+            // Listen for incoming calls
+            socket?.on("call:incoming") { args ->
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    handleIncomingCall(args[0] as JSONObject)
+                }
+            }
+
             socket?.connect()
         } catch (e: Exception) {
             Log.e(TAG, "Socket connection error", e)
@@ -194,6 +203,70 @@ class MessageNotificationService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Error processing message for notification", e)
         }
+    }
+
+    private fun handleIncomingCall(data: JSONObject) {
+        try {
+            val fromId = data.optInt("fromId", data.optInt("from_id", 0))
+            val fromName = data.optString("fromName", data.optString("from_name", "WorldMates"))
+            val fromAvatar = data.optString("fromAvatar", data.optString("from_avatar", ""))
+            val callType = data.optString("callType", data.optString("call_type", "audio"))
+            val roomName = data.optString("roomName", data.optString("room_name", ""))
+            val sdpOffer = data.optString("sdpOffer", data.optString("sdp_offer", null))
+
+            // Don't show notification for our own calls
+            if (fromId.toLong() == UserSession.userId) return
+
+            // Launch IncomingCallActivity
+            val intent = IncomingCallActivity.createIntent(
+                context = this,
+                fromId = fromId,
+                fromName = fromName,
+                fromAvatar = fromAvatar,
+                callType = callType,
+                roomName = roomName,
+                sdpOffer = sdpOffer
+            )
+            startActivity(intent)
+
+            // Also show notification
+            showCallNotification(
+                fromName = fromName,
+                callType = callType,
+                fromId = fromId
+            )
+
+            Log.d(TAG, "📞 Incoming call notification: $fromName ($callType)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing incoming call notification", e)
+        }
+    }
+
+    private fun showCallNotification(
+        fromName: String,
+        callType: String,
+        fromId: Int
+    ) {
+        val callTypeText = if (callType == "video") "Відеодзвінок" else "Аудіодзвінок"
+
+        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("$callTypeText від $fromName")
+            .setContentText("Вхідний дзвінок...")
+            .setSmallIcon(android.R.drawable.ic_menu_call)
+            .setAutoCancel(true)
+            .setStyle(NotificationCompat.BigTextStyle().bigText("$callTypeText від $fromName"))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setSound(soundUri)
+            .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
+            .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
+            .setFullScreenIntent(null, true) // For incoming calls
+            .build()
+
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(fromId + 50000, notification)
     }
 
     private fun showMessageNotification(
@@ -263,6 +336,17 @@ class MessageNotificationService : Service() {
     }
 
     private fun buildForegroundNotification(): Notification {
+        // Intent to open ChatsActivity when clicked
+        val intent = Intent(this, ChatsActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, SERVICE_CHANNEL_ID)
             .setContentTitle("WorldMates")
             .setContentText("Очікуємо нові повідомлення")
@@ -270,13 +354,23 @@ class MessageNotificationService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setSilent(true)
+            .setContentIntent(pendingIntent)
             .build()
     }
 
     private fun createNotificationChannels() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Message notifications channel (high priority with sound)
+        // Delete old channels to recreate with correct settings
+        try {
+            nm.deleteNotificationChannel(CHANNEL_ID)
+            nm.deleteNotificationChannel(SERVICE_CHANNEL_ID)
+            Log.d(TAG, "🗑️ Deleted old notification channels")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to delete old channels: ${e.message}")
+        }
+
+        // Message notifications channel (HIGH priority with sound and vibration)
         val messageChannel = NotificationChannel(
             CHANNEL_ID,
             CHANNEL_NAME,
@@ -286,13 +380,18 @@ class MessageNotificationService : Service() {
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 250, 100, 250)
             enableLights(true)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            setShowBadge(true)
+
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             setSound(
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                soundUri,
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )
+            Log.d(TAG, "🔔 Message channel created with sound: $soundUri")
         }
         nm.createNotificationChannel(messageChannel)
 
@@ -303,8 +402,11 @@ class MessageNotificationService : Service() {
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Фонова служба WorldMates"
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             setSound(null, null)
         }
         nm.createNotificationChannel(serviceChannel)
+
+        Log.d(TAG, "✅ Notification channels created successfully")
     }
 }

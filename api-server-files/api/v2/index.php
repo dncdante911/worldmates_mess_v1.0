@@ -23,17 +23,24 @@ $type = $_GET['type'] ?? $_POST['type'] ?? '';
 $server_key = $_POST['server_key'] ?? $_GET['server_key'] ?? '';
 $server_key_valid = false;
 
+// DEBUG: Log received server_key (first 20 chars for security)
+error_log("API v2 DEBUG: type=$type, server_key=" . (empty($server_key) ? 'EMPTY' : substr($server_key, 0, 20) . '...'));
+error_log("API v2 DEBUG: config server_key=" . (empty($wo['config']['widnows_app_api_key']) ? 'NOT SET' : substr($wo['config']['widnows_app_api_key'], 0, 20) . '...'));
+
 if (!empty($server_key)) {
     // Check against WoWonder config
     if (!empty($wo['config']['widnows_app_api_key']) && $server_key === $wo['config']['widnows_app_api_key']) {
         $server_key_valid = true;
+        error_log("API v2 DEBUG: server_key VALID (matched widnows_app_api_key)");
     }
     // Also check against our custom server key if different
     elseif (defined('SERVER_KEY') && $server_key === SERVER_KEY) {
         $server_key_valid = true;
+        error_log("API v2 DEBUG: server_key VALID (matched SERVER_KEY constant)");
     }
 
     if (!$server_key_valid) {
+        error_log("API v2 ERROR: Invalid server_key for type=$type");
         http_response_code(403);
         echo json_encode([
             'api_status' => '404',
@@ -44,6 +51,8 @@ if (!empty($server_key)) {
         ]);
         exit;
     }
+} else {
+    error_log("API v2 DEBUG: No server_key provided for type=$type");
 }
 
 // ============================================
@@ -79,17 +88,22 @@ $public_endpoints = [
 // ============================================
 $is_public_endpoint = in_array($type, $public_endpoints);
 
+error_log("API v2 DEBUG: is_public=$is_public_endpoint, server_key_valid=$server_key_valid, type=$type");
+
 // If server_key is valid and endpoint is public, skip access_token check
 if ($server_key_valid && $is_public_endpoint) {
     // Public endpoint with valid server_key - no authentication needed
+    error_log("API v2 DEBUG: Public endpoint with valid server_key - allowing without access_token");
     $wo['loggedin'] = false;
 }
 // Protected endpoint OR public endpoint without server_key - check access_token
 elseif (!$is_public_endpoint || !$server_key_valid) {
     $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
+    error_log("API v2 DEBUG: Checking access_token, has_token=" . (!empty($access_token) ? 'YES' : 'NO'));
 
     // For protected endpoints, access_token is required
     if (!$is_public_endpoint && empty($access_token)) {
+        error_log("API v2 ERROR: Protected endpoint requires access_token");
         http_response_code(401);
         echo json_encode([
             'api_status' => '404',

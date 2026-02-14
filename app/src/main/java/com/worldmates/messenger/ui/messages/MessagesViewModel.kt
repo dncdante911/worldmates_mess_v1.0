@@ -1111,17 +1111,23 @@ class MessagesViewModel(application: Application) :
             }
 
             if (isRelevant) {
+                // ✅ ОПТИМІЗАЦІЯ: Нові повідомлення завжди мають найновіший timestamp,
+                // тому просто додаємо в кінець без сортування O(n log n)
                 val currentMessages = _messages.value.toMutableList()
-                currentMessages.add(message)
-                // Сортируем по времени (старые сверху, новые внизу)
-                _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
 
-                // ✅ Відтворити звуковий сигнал, якщо повідомлення від іншого користувача
-                if (message.fromId != UserSession.userId) {
-                    playNotificationSound()
+                // Перевіряємо, чи повідомлення вже існує (захист від дублів)
+                if (currentMessages.none { it.id == message.id }) {
+                    currentMessages.add(message)
+                    _messages.value = currentMessages
+                    Log.d("MessagesViewModel", "✅ Додано нове повідомлення #${message.id}: ${message.decryptedText?.take(30)}")
+
+                    // ✅ Відтворити звуковий сигнал, якщо повідомлення від іншого користувача
+                    if (message.fromId != UserSession.userId) {
+                        playNotificationSound()
+                    }
+                } else {
+                    Log.d("MessagesViewModel", "⚠️ Дублікат повідомлення #${message.id}, ігноруємо")
                 }
-
-                Log.d("MessagesViewModel", "Додано нове повідомлення від Socket.IO: ${message.decryptedText}")
             }
         } catch (e: Exception) {
             Log.e("MessagesViewModel", "Помилка обробки повідомлення", e)

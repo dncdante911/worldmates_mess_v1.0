@@ -203,6 +203,16 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
       responseData.messages_html = await compiledTemplates.chatListOwnerFalse(ctx, data, fromUser, m_sent.id, hasHTML, sendable_message);
       responseData.message_page_html = await compiledTemplates.messageListOwnerFalse(ctx, data, sendable_message, fromUser, hasHTML, sendable_message);
       responseData.id = ctx.userHashUserId[data.from_id];
+
+      // ✅ Add fields for mobile notification service (MessageNotificationService)
+      responseData.from_id = ctx.userHashUserId[data.from_id];  // Sender's numeric ID
+      responseData.sender_id = ctx.userHashUserId[data.from_id];  // Same as from_id
+      responseData.sender_name = responseData.username;  // Sender's name
+      responseData.from_name = responseData.username;  // Alternative field name
+      responseData.to_id = data.to_id;  // Recipient's numeric ID
+      responseData.text = data.msg;  // Plain text message
+      responseData.msg = data.msg;  // Alternative field name
+
       await MessageToOwnerFalse(ctx, io, data, responseData)
       await sendNotification(ctx, io, data, responseData);
       
@@ -267,6 +277,16 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
       responseData.messages_html = await compiledTemplates.chatListOwnerFalseWithMedia(ctx, data, fromUser, m_sent.id, hasHTML, data.isSticker);
       responseData.message_page_html = await compiledTemplates.messageListOwnerFalseWithMedia(ctx, data,  m_sent, fromUser,data.isSticker);
       responseData.id = ctx.userHashUserId[data.from_id];
+
+      // ✅ Add fields for mobile notification service (MessageNotificationService)
+      responseData.from_id = ctx.userHashUserId[data.from_id];  // Sender's numeric ID
+      responseData.sender_id = ctx.userHashUserId[data.from_id];  // Same as from_id
+      responseData.sender_name = responseData.username;  // Sender's name
+      responseData.from_name = responseData.username;  // Alternative field name
+      responseData.to_id = data.to_id;  // Recipient's numeric ID
+      responseData.text = data.msg || "[Media]";  // Plain text (or media placeholder)
+      responseData.msg = data.msg || "[Media]";  // Alternative field name
+
       await MessageToOwnerFalse(ctx, io, data, responseData)
       await sendNotification(ctx, io, data, responseData);
   }

@@ -282,7 +282,21 @@ class SocketManager(
                 }
             }
 
-            // 14. КРИТИЧНО: Обработка события "user_status_change" от WoWonder сервера
+            // 14. Обработка удаления сообщения
+            socket?.on("message_deleted") { args ->
+                Log.d("SocketManager", "Received message_deleted event with ${args.size} args")
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    val data = args[0] as JSONObject
+                    val messageId = data.optLong("message_id", 0)
+                    val fromId = data.optLong("from_id", 0)
+                    Log.d("SocketManager", "🗑️ Message $messageId deleted by user $fromId")
+                    if (listener is ExtendedSocketListener) {
+                        listener.onMessageDeleted(messageId)
+                    }
+                }
+            }
+
+            // 15. КРИТИЧНО: Обработка события "user_status_change" от WoWonder сервера
             // WoWonder отправляет HTML, нужно парсить онлайн пользователей из разметки
             socket?.on("user_status_change") { args ->
                 Log.d("SocketManager", "Received user_status_change event with ${args.size} args")
@@ -910,5 +924,6 @@ class SocketManager(
         fun onUserOnline(userId: Long) {}
         fun onUserOffline(userId: Long) {}
         fun onBotMessage(messageJson: JSONObject) {}
+        fun onMessageDeleted(messageId: Long) {}
     }
 }

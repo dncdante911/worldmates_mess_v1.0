@@ -3,9 +3,9 @@
  * API v2 Router
  * Routes requests based on 'type' parameter to appropriate endpoint files
  *
- * This router works alongside WoWonder's api-v2.php:
- * - api-v2.php requires server_key (used by official WoWonder app)
- * - This index.php works with access_token only (used by WorldMates messenger)
+ * HYBRID MODE: Works with both server_key and access_token
+ * - Requests WITH server_key: WorldMates app, WoWonder official app
+ * - Requests WITHOUT server_key: Direct API access, web clients
  */
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -16,7 +16,39 @@ require_once(__DIR__ . '/config.php');
 // Get request type
 $type = $_GET['type'] ?? $_POST['type'] ?? '';
 
-// List of endpoints that don't require authentication
+// ============================================
+// SERVER KEY VALIDATION (optional)
+// ============================================
+// If server_key is provided (WorldMates app), validate it
+$server_key = $_POST['server_key'] ?? $_GET['server_key'] ?? '';
+$server_key_valid = false;
+
+if (!empty($server_key)) {
+    // Check against WoWonder config
+    if (!empty($wo['config']['widnows_app_api_key']) && $server_key === $wo['config']['widnows_app_api_key']) {
+        $server_key_valid = true;
+    }
+    // Also check against our custom server key if different
+    elseif (defined('SERVER_KEY') && $server_key === SERVER_KEY) {
+        $server_key_valid = true;
+    }
+
+    if (!$server_key_valid) {
+        http_response_code(403);
+        echo json_encode([
+            'api_status' => '404',
+            'errors' => [
+                'error_id' => 1,
+                'error_text' => 'Invalid server_key'
+            ]
+        ]);
+        exit;
+    }
+}
+
+// ============================================
+// PUBLIC ENDPOINTS (no authentication required)
+// ============================================
 $public_endpoints = [
     'auth',
     'create-account',
@@ -33,48 +65,77 @@ $public_endpoints = [
     'get_site_settings',
     'get-site-settings',
     'test_init',
-    'check_mobile_update'
+    'check_mobile_update',
+    'regsiter',  // Typo in WoWonder, keeping for compatibility
+    'register',
+    'social-login',
+    'is-active',
+    'two-factor',
+    'validation_user'
 ];
 
-// Validate access_token for protected endpoints
-if (!in_array($type, $public_endpoints)) {
+// ============================================
+// AUTHENTICATION VALIDATION
+// ============================================
+$is_public_endpoint = in_array($type, $public_endpoints);
+
+// If server_key is valid and endpoint is public, skip access_token check
+if ($server_key_valid && $is_public_endpoint) {
+    // Public endpoint with valid server_key - no authentication needed
+    $wo['loggedin'] = false;
+}
+// Protected endpoint OR public endpoint without server_key - check access_token
+elseif (!$is_public_endpoint || !$server_key_valid) {
     $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
 
-    if (empty($access_token)) {
+    // For protected endpoints, access_token is required
+    if (!$is_public_endpoint && empty($access_token)) {
         http_response_code(401);
         echo json_encode([
-            'api_status' => 401,
-            'error_message' => 'access_token is required'
+            'api_status' => '404',
+            'errors' => [
+                'error_id' => 2,
+                'error_text' => 'Not authorized'
+            ]
         ]);
         exit;
     }
 
-    // Validate token using config.php's validateAccessToken function
-    $user_id = validateAccessToken($db, $access_token);
+    // Validate access_token if provided
+    if (!empty($access_token)) {
+        // Validate token using config.php's validateAccessToken function
+        $user_id = validateAccessToken($db, $access_token);
 
-    if (!$user_id) {
-        http_response_code(401);
-        echo json_encode([
-            'api_status' => 401,
-            'error_message' => 'Invalid or expired access_token'
-        ]);
-        exit;
-    }
+        if (!$user_id) {
+            http_response_code(401);
+            echo json_encode([
+                'api_status' => '404',
+                'errors' => [
+                    'error_id' => 2,
+                    'error_text' => 'Invalid or expired access_token'
+                ]
+            ]);
+            exit;
+        }
 
-    // Get full user data using WoWonder function
-    if (function_exists('Wo_UserData')) {
-        $user_data = Wo_UserData($user_id);
-        if (!empty($user_data)) {
-            $wo['user'] = $user_data;
+        // Get full user data using WoWonder function
+        if (function_exists('Wo_UserData')) {
+            $user_data = Wo_UserData($user_id);
+            if (!empty($user_data)) {
+                $wo['user'] = $user_data;
+                $wo['loggedin'] = true;
+            }
+        } else {
+            // Fallback: set minimal user data
+            $wo['user'] = [
+                'user_id' => $user_id,
+                'id' => $user_id
+            ];
             $wo['loggedin'] = true;
         }
-    } else {
-        // Fallback: set minimal user data
-        $wo['user'] = [
-            'user_id' => $user_id,
-            'id' => $user_id
-        ];
-        $wo['loggedin'] = true;
+    } elseif ($is_public_endpoint) {
+        // Public endpoint without authentication
+        $wo['loggedin'] = false;
     }
 }
 

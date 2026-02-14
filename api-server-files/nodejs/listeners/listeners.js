@@ -326,11 +326,24 @@ module.exports.registerListeners = async (socket, io, ctx) => {
                 return;
             }
 
+            // ✅ DELETE FROM DATABASE
+            try {
+                await ctx.wo_messages.destroy({
+                    where: {
+                        id: message_id,
+                        from_id: senderUserId  // Only sender can delete
+                    }
+                });
+                console.log(`✅ Deleted message ${message_id} from database`);
+            } catch (dbError) {
+                console.log(`❌ Database delete error: ${dbError.message}`);
+            }
+
             // Broadcast to recipient (for private chat)
             if (recipient_id) {
                 io.to(String(recipient_id)).emit('message_deleted', {
                     message_id,
-                    from_id: senderUserId,  // Send numeric user_id, not access_token
+                    from_id: senderUserId,
                     recipient_id
                 });
                 console.log(`✅ Broadcast message_deleted to user ${recipient_id} from ${senderUserId}`);
@@ -340,11 +353,19 @@ module.exports.registerListeners = async (socket, io, ctx) => {
             if (group_id) {
                 io.to(`group_${group_id}`).emit('message_deleted', {
                     message_id,
-                    from_id: senderUserId,  // Send numeric user_id, not access_token
+                    from_id: senderUserId,
                     group_id
                 });
                 console.log(`✅ Broadcast message_deleted to group ${group_id} from ${senderUserId}`);
             }
+
+            // Also send to sender's other devices
+            io.to(String(senderUserId)).emit('message_deleted', {
+                message_id,
+                from_id: senderUserId,
+                recipient_id,
+                group_id
+            });
 
         } catch (e) {
             console.log("❌ delete_message error:", e.message);
@@ -369,12 +390,28 @@ module.exports.registerListeners = async (socket, io, ctx) => {
                 return;
             }
 
+            // ✅ UPDATE IN DATABASE
+            try {
+                await ctx.wo_messages.update(
+                    { text: new_text },
+                    {
+                        where: {
+                            id: message_id,
+                            from_id: senderUserId  // Only sender can edit
+                        }
+                    }
+                );
+                console.log(`✅ Updated message ${message_id} in database`);
+            } catch (dbError) {
+                console.log(`❌ Database update error: ${dbError.message}`);
+            }
+
             // Broadcast to recipient (for private chat)
             if (recipient_id) {
                 io.to(String(recipient_id)).emit('message_edited', {
                     message_id,
                     new_text,
-                    from_id: senderUserId,  // Send numeric user_id, not access_token
+                    from_id: senderUserId,
                     recipient_id
                 });
                 console.log(`✅ Broadcast message_edited to user ${recipient_id} from ${senderUserId}`);
@@ -385,11 +422,20 @@ module.exports.registerListeners = async (socket, io, ctx) => {
                 io.to(`group_${group_id}`).emit('message_edited', {
                     message_id,
                     new_text,
-                    from_id: senderUserId,  // Send numeric user_id, not access_token
+                    from_id: senderUserId,
                     group_id
                 });
                 console.log(`✅ Broadcast message_edited to group ${group_id} from ${senderUserId}`);
             }
+
+            // Also send to sender's other devices
+            io.to(String(senderUserId)).emit('message_edited', {
+                message_id,
+                new_text,
+                from_id: senderUserId,
+                recipient_id,
+                group_id
+            });
 
         } catch (e) {
             console.log("❌ edit_message error:", e.message);

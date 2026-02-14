@@ -1,11 +1,30 @@
 <?php
 // Test SMTP configuration endpoint
 
+// Enable all error reporting
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Set header early
+header('Content-Type: application/json');
+
 $email = $_POST['email'] ?? $_GET['email'] ?? 'test@example.com';
 $test_code = rand(100000, 999999);
 
+// Check if PHPMailer exists
+$phpmailer_path = __DIR__ . '/../../assets/libraries/PHPMailer-Master/vendor/autoload.php';
+if (!file_exists($phpmailer_path)) {
+    echo json_encode([
+        'api_status' => 500,
+        'error_message' => 'PHPMailer not found',
+        'path_checked' => $phpmailer_path,
+        'dir' => __DIR__
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
 // Include PHPMailer
-require_once __DIR__ . '/../../assets/libraries/PHPMailer-Master/vendor/autoload.php';
+require_once $phpmailer_path;
 
 try {
     $mail = new PHPMailer\PHPMailer\PHPMailer(true);
@@ -95,14 +114,21 @@ try {
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
-    header('Content-Type: application/json');
     echo json_encode([
         'api_status' => 500,
         'error_message' => 'Failed to send SMTP test email',
         'config' => $config_info ?? [],
         'exception' => $e->getMessage(),
+        'exception_trace' => $e->getTraceAsString(),
         'smtp_debug' => $debug_output ?? '',
-        'mailer_error' => $mail->ErrorInfo ?? ''
+        'mailer_error' => isset($mail) ? $mail->ErrorInfo : 'N/A'
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+} catch (Error $e) {
+    echo json_encode([
+        'api_status' => 500,
+        'error_message' => 'PHP Error occurred',
+        'error' => $e->getMessage(),
+        'trace' => $e->getTraceAsString()
+    ], JSON_PRETTY_PRINT);
 }
 exit;

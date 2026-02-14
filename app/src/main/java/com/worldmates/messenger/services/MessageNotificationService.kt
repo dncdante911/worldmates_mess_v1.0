@@ -249,20 +249,33 @@ class MessageNotificationService : Service() {
     ) {
         val callTypeText = if (callType == "video") "Відеодзвінок" else "Аудіодзвінок"
 
+        // Intent для відкриття списку дзвінків при кліку
+        val intent = Intent(this, com.worldmates.messenger.ui.calls.CallHistoryActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            fromId + 50000,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("$callTypeText від $fromName")
-            .setContentText("Вхідний дзвінок...")
+            .setContentText("Натисніть, щоб переглянути історію дзвінків")
             .setSmallIcon(android.R.drawable.ic_menu_call)
             .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
             .setStyle(NotificationCompat.BigTextStyle().bigText("$callTypeText від $fromName"))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setSound(soundUri)
             .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
             .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
-            .setFullScreenIntent(null, true) // For incoming calls
+            .setFullScreenIntent(pendingIntent, true) // For incoming calls
             .build()
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

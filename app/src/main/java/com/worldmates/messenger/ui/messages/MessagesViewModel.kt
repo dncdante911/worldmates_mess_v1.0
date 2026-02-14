@@ -306,6 +306,7 @@ class MessagesViewModel(application: Application) :
                     // 1) Сохраняет в wo_messages
                     // 2) Эмитит получателю через Socket.IO
                     // 3) Возвращает callback с message_id
+                    // 4) Отправляет повідомлення назад відправнику через onNewMessage
                     if (groupId != 0L) {
                         socketManager?.sendGroupMessage(groupId, text, replyToId)
                         Log.d(TAG, "Socket.IO: Відправлено групове повідомлення (Node.js збереже в БД)")
@@ -314,25 +315,14 @@ class MessagesViewModel(application: Application) :
                         Log.d(TAG, "Socket.IO: Відправлено приватне повідомлення (Node.js збереже в БД)")
                     }
 
-                    // Оптимістичне локальне повідомлення (показуємо одразу в UI)
-                    val localMessage = Message(
-                        id = System.currentTimeMillis(),
-                        fromId = UserSession.userId ?: 0,
-                        toId = if (groupId != 0L) 0 else recipientId,
-                        groupId = groupId,
-                        encryptedText = text,
-                        timeStamp = System.currentTimeMillis() / 1000,
-                        decryptedText = text,
-                        isLocalPending = true
-                    )
-
-                    val currentMessages = _messages.value.toMutableList()
-                    currentMessages.add(localMessage)
-                    _messages.value = currentMessages.sortedBy { it.timeStamp }
+                    // ✅ НЕ створюємо локальне pending повідомлення!
+                    // Node.js відправить повідомлення назад через Socket.IO (private_message event)
+                    // і воно з'явиться через onNewMessage() з реальним ID з БД
+                    // Це запобігає дублюванню повідомлень
 
                     _error.value = null
                     deleteDraft()
-                    Log.d(TAG, "Повідомлення надіслано через Socket.IO (Node.js)")
+                    Log.d(TAG, "Повідомлення надіслано через Socket.IO (Node.js відправить назад через onNewMessage)")
                 } else {
                     // ========== FALLBACK: PHP API (коли Socket.IO недоступний) ==========
                     Log.w(TAG, "Socket.IO не підключено, використовуємо PHP API")

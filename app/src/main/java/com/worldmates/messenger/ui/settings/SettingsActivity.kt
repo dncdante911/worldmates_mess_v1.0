@@ -361,7 +361,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Shield,
                     title = "Двофакторна аутентифікація",
-                    subtitle = if (com.worldmates.messenger.utils.security.SecurePreferences.is2FAEnabled) "Увімкнено" else "Вимкнено",
+                    subtitle = try { if (com.worldmates.messenger.utils.security.SecurePreferences.is2FAEnabled) "Увімкнено" else "Вимкнено" } catch (_: Exception) { "Вимкнено" },
                     onClick = { onNavigate(SettingsScreen.TwoFactorAuth) }
                 )
             }
@@ -369,7 +369,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Lock,
                     title = "Блокування додатку",
-                    subtitle = if (com.worldmates.messenger.utils.security.SecurePreferences.isPINEnabled()) "PIN-код активний" else "Вимкнено",
+                    subtitle = try { if (com.worldmates.messenger.utils.security.SecurePreferences.isPINEnabled()) "PIN-код активний" else "Вимкнено" } catch (_: Exception) { "Вимкнено" },
                     onClick = { onNavigate(SettingsScreen.AppLock) }
                 )
             }

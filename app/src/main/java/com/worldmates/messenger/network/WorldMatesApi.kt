@@ -299,6 +299,17 @@ interface WorldMatesApi {
         @Field("offset") offset: Int = 0
     ): GroupListResponse
 
+    // Fallback: стандартний WoWonder endpoint для груп (через index.php router)
+    @FormUrlEncoded
+    @POST("/api/v2/")
+    suspend fun getGroupsWoWonder(
+        @Query("access_token") accessToken: String,
+        @Query("type") routeType: String = "get-my-groups",
+        @Field("type") type: String = "my_groups",
+        @Field("limit") limit: Int = 50,
+        @Field("offset") offset: Int = 0
+    ): GroupListResponse
+
     @FormUrlEncoded
     @POST("/api/v2/group_chat_v2.php")
     suspend fun getGroupDetails(

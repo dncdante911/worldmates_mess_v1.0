@@ -1,0 +1,38 @@
+# API v2 Router - Direct all requests to index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /api/v2/
+
+    # If the file or directory exists, serve it directly
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Otherwise, route everything through index.php
+    # This catches requests like /api/v2/?type=quick_register
+    RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+# Security: Disable directory listing
+Options -Indexes
+
+# Allow from all (if using Apache 2.4+)
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
+# Allow from all (if using Apache 2.2)
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
+
+# Set default charset
+AddDefaultCharset UTF-8
+
+# Enable CORS for API endpoints (if needed)
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, server_key, access_token"
+</IfModule>

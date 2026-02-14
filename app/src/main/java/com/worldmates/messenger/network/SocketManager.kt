@@ -202,6 +202,21 @@ class SocketManager(
                 }
             }
 
+            // 8a. Обработка индикатора записи аудио
+            socket?.on("recording") { args ->
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    val data = args[0] as? org.json.JSONObject
+                    // Сервер отправляет sender_id и is_recording: 200 (записывает) или 300 (закончил)
+                    val senderId = data?.optLong("sender_id", 0)
+                    val isRecordingCode = data?.optInt("is_recording", 0)
+                    val isRecording = isRecordingCode == 200  // 200 = записує, 300 = закінчив
+                    Log.d("SocketManager", "🎤 User $senderId is recording: $isRecording (code: $isRecordingCode)")
+                    if (listener is ExtendedSocketListener) {
+                        listener.onRecordingStatus(senderId, isRecording)
+                    }
+                }
+            }
+
             // 9. Обработка "последний раз в сети"
             socket?.on(Constants.SOCKET_EVENT_LAST_SEEN) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
@@ -933,6 +948,7 @@ class SocketManager(
      */
     interface ExtendedSocketListener : SocketListener {
         fun onTypingStatus(userId: Long?, isTyping: Boolean) {}
+        fun onRecordingStatus(userId: Long?, isRecording: Boolean) {}
         fun onLastSeen(userId: Long, lastSeen: Long) {}
         fun onMessageSeen(messageId: Long, userId: Long) {}
         fun onGroupMessage(messageJson: JSONObject) {}

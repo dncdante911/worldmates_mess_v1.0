@@ -41,11 +41,33 @@ try {
     // Get config from WoWonder
     $smtp_mode = $wo['config']['smtp_or_mail'] ?? 'mail';
 
+    // Decrypt password for debug
+    $decrypted_password = '';
+    $password_debug = [];
+    if (function_exists('getSMTPPassword') && !empty($wo['config']['smtp_password'])) {
+        $decrypted_password = getSMTPPassword($wo['config']['smtp_password']);
+        $password_debug = [
+            'encrypted_length' => strlen($wo['config']['smtp_password']),
+            'decrypted_length' => strlen($decrypted_password),
+            'decrypted_preview' => substr($decrypted_password, 0, 3) . '***' . substr($decrypted_password, -2),
+            'decryption_method' => 'getSMTPPassword()'
+        ];
+    } else {
+        $decrypted_password = $wo['config']['smtp_password'] ?? '';
+        $password_debug = [
+            'encrypted_length' => strlen($wo['config']['smtp_password'] ?? ''),
+            'decrypted_length' => strlen($decrypted_password),
+            'decrypted_preview' => 'N/A (no decryption)',
+            'decryption_method' => 'none'
+        ];
+    }
+
     $config_info = [
         'smtp_or_mail' => $smtp_mode,
         'smtp_host' => $wo['config']['smtp_host'] ?? 'not set',
         'smtp_username' => $wo['config']['smtp_username'] ?? 'not set',
         'smtp_password_encrypted' => !empty($wo['config']['smtp_password']) ? 'YES (encrypted)' : 'NO',
+        'smtp_password_debug' => $password_debug,
         'smtp_encryption' => $wo['config']['smtp_encryption'] ?? 'not set',
         'smtp_port' => $wo['config']['smtp_port'] ?? 'not set',
         'siteEmail' => $wo['config']['siteEmail'] ?? 'not set',
@@ -59,13 +81,7 @@ try {
         $mail->Host = $wo['config']['smtp_host'];
         $mail->SMTPAuth = true;
         $mail->Username = $wo['config']['smtp_username'];
-
-        // Decrypt password using WoWonder function
-        if (function_exists('getSMTPPassword')) {
-            $mail->Password = getSMTPPassword($wo['config']['smtp_password']);
-        } else {
-            $mail->Password = $wo['config']['smtp_password'];
-        }
+        $mail->Password = $decrypted_password;
 
         $mail->SMTPSecure = $wo['config']['smtp_encryption'];
         $mail->Port = $wo['config']['smtp_port'];

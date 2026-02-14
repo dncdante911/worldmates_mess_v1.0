@@ -186,6 +186,7 @@ if (empty($type)) {
 $routes = [
     // Debug
     'test_init' => 'endpoints/test_init.php',
+    'test_email' => 'endpoints/test_email.php',
 
     // Search endpoints
     'search' => 'endpoints/search.php',

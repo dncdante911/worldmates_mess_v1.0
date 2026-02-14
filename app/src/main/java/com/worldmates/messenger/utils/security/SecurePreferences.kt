@@ -2,6 +2,7 @@ package com.worldmates.messenger.utils.security
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.worldmates.messenger.WMApplication
@@ -13,6 +14,7 @@ import java.security.MessageDigest
  */
 object SecurePreferences {
 
+    private const val TAG = "SecurePreferences"
     private const val PREFS_NAME = "worldmates_secure_prefs"
 
     // Ключи для хранения
@@ -28,18 +30,57 @@ object SecurePreferences {
     private const val KEY_2FA_BACKUP_CODES = "2fa_backup_codes"
     private const val KEY_2FA_BACKUP_CODES_USED = "2fa_backup_codes_used"
 
-    private val masterKey = MasterKey.Builder(WMApplication.instance)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
     private val encryptedPrefs: SharedPreferences by lazy {
-        EncryptedSharedPreferences.create(
-            WMApplication.instance,
-            PREFS_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        createEncryptedPrefs()
+    }
+
+    /**
+     * Створює EncryptedSharedPreferences з обробкою помилок.
+     * Якщо Android Keystore пошкоджений (AEADBadTagException),
+     * видаляє старі дані та створює нові.
+     * У крайньому випадку використовує звичайні SharedPreferences.
+     */
+    private fun createEncryptedPrefs(): SharedPreferences {
+        val context = WMApplication.instance
+        try {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            return EncryptedSharedPreferences.create(
+                context,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create EncryptedSharedPreferences, clearing and retrying: ${e.message}")
+            // Видаляємо пошкоджений файл
+            try {
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+                val prefsFile = java.io.File(context.filesDir.parent, "shared_prefs/${PREFS_NAME}.xml")
+                if (prefsFile.exists()) prefsFile.delete()
+            } catch (cleanupError: Exception) {
+                Log.e(TAG, "Cleanup error: ${cleanupError.message}")
+            }
+            // Спробуємо ще раз з новим ключем
+            try {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                return EncryptedSharedPreferences.create(
+                    context,
+                    PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (e2: Exception) {
+                Log.e(TAG, "Second attempt failed, falling back to regular SharedPreferences: ${e2.message}")
+                // Крайній випадок: звичайні SharedPreferences (без шифрування)
+                return context.getSharedPreferences("${PREFS_NAME}_fallback", Context.MODE_PRIVATE)
+            }
+        }
     }
 
     // ==================== PIN-КОД ====================

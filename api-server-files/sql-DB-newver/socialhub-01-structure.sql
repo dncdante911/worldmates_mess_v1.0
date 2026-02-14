@@ -92,13 +92,13 @@ CREATE TABLE `wo_activities` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_AdminInvitations` (
+CREATE TABLE `wo_admininvitations` (
   `id` int(11) NOT NULL,
   `code` varchar(300) NOT NULL DEFAULT '0',
   `posted` varchar(50) NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_admininvitations` (
+CREATE TABLE `Wo_AdminInvitations` (
   `id` int(11) NOT NULL,
   `code` varchar(300) NOT NULL DEFAULT '0',
   `posted` varchar(50) NOT NULL DEFAULT '0'
@@ -118,7 +118,7 @@ CREATE TABLE `wo_ads` (
   `active` enum('0','1') NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Affiliates_Requests` (
+CREATE TABLE `wo_affiliates_requests` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `amount` varchar(100) NOT NULL DEFAULT '0',
@@ -134,7 +134,7 @@ CREATE TABLE `Wo_Affiliates_Requests` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_affiliates_requests` (
+CREATE TABLE `Wo_Affiliates_Requests` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `amount` varchar(100) NOT NULL DEFAULT '0',
@@ -180,14 +180,6 @@ CREATE TABLE `Wo_AgoraVideoCall` (
   `access_token_2` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_albums_media` (
-  `id` int(11) NOT NULL,
-  `post_id` int(11) NOT NULL DEFAULT 0,
-  `parent_id` int(11) NOT NULL DEFAULT 0,
-  `review_id` int(11) NOT NULL DEFAULT 0,
-  `image` varchar(255) NOT NULL DEFAULT ''
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_Albums_Media` (
   `id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL DEFAULT 0,
@@ -196,17 +188,25 @@ CREATE TABLE `Wo_Albums_Media` (
   `image` varchar(255) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_announcement` (
+CREATE TABLE `wo_albums_media` (
   `id` int(11) NOT NULL,
-  `text` mediumtext DEFAULT NULL,
-  `time` int(11) NOT NULL DEFAULT 0,
-  `active` enum('0','1') NOT NULL DEFAULT '1'
+  `post_id` int(11) NOT NULL DEFAULT 0,
+  `parent_id` int(11) NOT NULL DEFAULT 0,
+  `review_id` int(11) NOT NULL DEFAULT 0,
+  `image` varchar(255) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_Announcement` (
   `id` int(11) NOT NULL,
   `text` mediumtext DEFAULT NULL,
   `time` int(32) NOT NULL DEFAULT 0,
+  `active` enum('0','1') NOT NULL DEFAULT '1'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_announcement` (
+  `id` int(11) NOT NULL,
+  `text` mediumtext DEFAULT NULL,
+  `time` int(11) NOT NULL DEFAULT 0,
   `active` enum('0','1') NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -222,19 +222,6 @@ CREATE TABLE `Wo_Announcement_Views` (
   `announcement_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Apps` (
-  `id` int(11) NOT NULL,
-  `app_user_id` int(11) NOT NULL DEFAULT 0,
-  `app_name` varchar(32) NOT NULL,
-  `app_website_url` varchar(55) NOT NULL,
-  `app_description` mediumtext NOT NULL,
-  `app_avatar` varchar(100) NOT NULL DEFAULT 'upload/photos/app-default-icon.png',
-  `app_callback_url` varchar(255) NOT NULL,
-  `app_id` varchar(32) NOT NULL,
-  `app_secret` varchar(55) NOT NULL,
-  `active` enum('0','1') NOT NULL DEFAULT '1'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_apps` (
   `id` int(11) NOT NULL,
   `app_user_id` int(11) NOT NULL DEFAULT 0,
@@ -248,13 +235,17 @@ CREATE TABLE `wo_apps` (
   `active` enum('0','1') NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_AppsSessions` (
+CREATE TABLE `Wo_Apps` (
   `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `session_id` varchar(120) NOT NULL DEFAULT '',
-  `platform` varchar(32) NOT NULL DEFAULT '',
-  `platform_details` mediumtext DEFAULT NULL,
-  `time` int(11) NOT NULL DEFAULT 0
+  `app_user_id` int(11) NOT NULL DEFAULT 0,
+  `app_name` varchar(32) NOT NULL,
+  `app_website_url` varchar(55) NOT NULL,
+  `app_description` mediumtext NOT NULL,
+  `app_avatar` varchar(100) NOT NULL DEFAULT 'upload/photos/app-default-icon.png',
+  `app_callback_url` varchar(255) NOT NULL,
+  `app_id` varchar(32) NOT NULL,
+  `app_secret` varchar(55) NOT NULL,
+  `active` enum('0','1') NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_appssessions` (
@@ -266,14 +257,23 @@ CREATE TABLE `wo_appssessions` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_apps_hash` (
+CREATE TABLE `Wo_AppsSessions` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `session_id` varchar(120) NOT NULL DEFAULT '',
+  `platform` varchar(32) NOT NULL DEFAULT '',
+  `platform_details` mediumtext DEFAULT NULL,
+  `time` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Apps_Hash` (
   `id` int(11) NOT NULL,
   `hash_id` varchar(200) NOT NULL DEFAULT '',
   `user_id` int(11) NOT NULL DEFAULT 0,
   `active` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Apps_Hash` (
+CREATE TABLE `wo_apps_hash` (
   `id` int(11) NOT NULL,
   `hash_id` varchar(200) NOT NULL DEFAULT '',
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -324,13 +324,13 @@ CREATE TABLE `Wo_AudioCalls` (
   `status` varchar(100) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_backup_codes` (
+CREATE TABLE `Wo_Backup_Codes` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `codes` varchar(500) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Backup_Codes` (
+CREATE TABLE `wo_backup_codes` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `codes` varchar(500) NOT NULL DEFAULT ''
@@ -362,13 +362,13 @@ CREATE TABLE `Wo_Banned_Ip` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Blocks` (
+CREATE TABLE `wo_blocks` (
   `id` int(11) NOT NULL,
   `blocker` int(11) NOT NULL DEFAULT 0,
   `blocked` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_blocks` (
+CREATE TABLE `Wo_Blocks` (
   `id` int(11) NOT NULL,
   `blocker` int(11) NOT NULL DEFAULT 0,
   `blocked` int(11) NOT NULL DEFAULT 0
@@ -404,16 +404,6 @@ CREATE TABLE `wo_blog` (
   `active` enum('0','1') NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_blogcommentreplies` (
-  `id` int(11) NOT NULL,
-  `comm_id` int(11) NOT NULL DEFAULT 0,
-  `blog_id` int(11) NOT NULL DEFAULT 0,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `text` mediumtext DEFAULT NULL,
-  `likes` int(11) NOT NULL DEFAULT 0,
-  `posted` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_BlogCommentReplies` (
   `id` int(11) NOT NULL,
   `comm_id` int(11) NOT NULL DEFAULT 0,
@@ -424,7 +414,17 @@ CREATE TABLE `Wo_BlogCommentReplies` (
   `posted` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_blogcomments` (
+CREATE TABLE `wo_blogcommentreplies` (
+  `id` int(11) NOT NULL,
+  `comm_id` int(11) NOT NULL DEFAULT 0,
+  `blog_id` int(11) NOT NULL DEFAULT 0,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `text` mediumtext DEFAULT NULL,
+  `likes` int(11) NOT NULL DEFAULT 0,
+  `posted` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_BlogComments` (
   `id` int(11) NOT NULL,
   `blog_id` int(11) NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -433,7 +433,7 @@ CREATE TABLE `wo_blogcomments` (
   `posted` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_BlogComments` (
+CREATE TABLE `wo_blogcomments` (
   `id` int(11) NOT NULL,
   `blog_id` int(11) NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -464,17 +464,6 @@ CREATE TABLE `wo_blogmoviedislikes` (
   `movie_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_blogmovielikes` (
-  `id` int(11) NOT NULL,
-  `blog_comm_id` int(11) NOT NULL DEFAULT 0,
-  `blog_commreply_id` int(11) NOT NULL DEFAULT 0,
-  `movie_comm_id` int(11) NOT NULL DEFAULT 0,
-  `movie_commreply_id` int(11) NOT NULL DEFAULT 0,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `blog_id` int(11) NOT NULL DEFAULT 0,
-  `movie_id` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_BlogMovieLikes` (
   `id` int(11) NOT NULL,
   `blog_comm_id` int(20) NOT NULL DEFAULT 0,
@@ -484,6 +473,17 @@ CREATE TABLE `Wo_BlogMovieLikes` (
   `user_id` int(11) NOT NULL DEFAULT 0,
   `blog_id` int(50) NOT NULL DEFAULT 0,
   `movie_id` int(50) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_blogmovielikes` (
+  `id` int(11) NOT NULL,
+  `blog_comm_id` int(11) NOT NULL DEFAULT 0,
+  `blog_commreply_id` int(11) NOT NULL DEFAULT 0,
+  `movie_comm_id` int(11) NOT NULL DEFAULT 0,
+  `movie_commreply_id` int(11) NOT NULL DEFAULT 0,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `blog_id` int(11) NOT NULL DEFAULT 0,
+  `movie_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_Blogs_Categories` (
@@ -496,6 +496,16 @@ CREATE TABLE `wo_blogs_categories` (
   `lang_key` varchar(160) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `Wo_Blog_Reaction` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `blog_id` int(11) NOT NULL DEFAULT 0,
+  `comment_id` int(11) NOT NULL DEFAULT 0,
+  `reply_id` int(11) NOT NULL DEFAULT 0,
+  `reaction` varchar(50) NOT NULL DEFAULT '',
+  `time` varchar(50) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `wo_blog_reaction` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -506,14 +516,228 @@ CREATE TABLE `wo_blog_reaction` (
   `time` varchar(50) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Blog_Reaction` (
+CREATE TABLE `Wo_Bots` (
   `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `blog_id` int(11) NOT NULL DEFAULT 0,
-  `comment_id` int(11) NOT NULL DEFAULT 0,
-  `reply_id` int(11) NOT NULL DEFAULT 0,
-  `reaction` varchar(50) NOT NULL DEFAULT '',
-  `time` varchar(50) NOT NULL DEFAULT ''
+  `bot_id` varchar(64) NOT NULL COMMENT 'Unique bot identifier (e.g., bot_abc123)',
+  `owner_id` int(11) NOT NULL COMMENT 'User ID of bot creator',
+  `bot_token` varchar(128) NOT NULL COMMENT 'API token for bot authentication',
+  `username` varchar(64) NOT NULL COMMENT 'Bot username (unique, e.g., @weather_bot)',
+  `display_name` varchar(128) NOT NULL COMMENT 'Bot display name',
+  `avatar` varchar(512) DEFAULT NULL COMMENT 'Bot avatar URL',
+  `description` text DEFAULT NULL COMMENT 'Bot description',
+  `about` text DEFAULT NULL COMMENT 'Short about text shown in profile',
+  `bot_type` enum('standard','system','verified') NOT NULL DEFAULT 'standard',
+  `status` enum('active','disabled','suspended','pending_review') NOT NULL DEFAULT 'active',
+  `is_public` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Whether bot appears in bot store',
+  `is_inline` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Supports inline queries',
+  `can_join_groups` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Can be added to groups',
+  `can_read_all_group_messages` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Privacy mode off = reads all messages',
+  `supports_commands` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Has command menu',
+  `category` varchar(64) DEFAULT NULL COMMENT 'Bot category (news, weather, tools, etc)',
+  `tags` varchar(512) DEFAULT NULL COMMENT 'Comma-separated tags for search',
+  `webhook_url` varchar(512) DEFAULT NULL COMMENT 'Webhook URL for receiving updates',
+  `webhook_secret` varchar(128) DEFAULT NULL COMMENT 'Secret for webhook signature verification',
+  `webhook_enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `webhook_max_connections` int(11) NOT NULL DEFAULT 40,
+  `webhook_allowed_updates` text DEFAULT NULL COMMENT 'JSON array of allowed update types',
+  `rate_limit_per_second` int(11) NOT NULL DEFAULT 30 COMMENT 'Max API calls per second',
+  `rate_limit_per_minute` int(11) NOT NULL DEFAULT 1500 COMMENT 'Max API calls per minute',
+  `messages_sent` bigint(20) NOT NULL DEFAULT 0 COMMENT 'Total messages sent counter',
+  `messages_received` bigint(20) NOT NULL DEFAULT 0 COMMENT 'Total messages received counter',
+  `total_users` int(11) NOT NULL DEFAULT 0 COMMENT 'Total unique users interacted with',
+  `active_users_24h` int(11) NOT NULL DEFAULT 0 COMMENT 'Active users in last 24h',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `last_active_at` datetime DEFAULT NULL COMMENT 'Last time bot processed a message'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Api_Keys` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL COMMENT 'Developer user ID',
+  `api_key` varchar(128) NOT NULL,
+  `api_secret` varchar(128) NOT NULL,
+  `app_name` varchar(256) NOT NULL COMMENT 'Developer app name',
+  `description` text DEFAULT NULL,
+  `permissions` text DEFAULT NULL COMMENT 'JSON array of allowed scopes',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `rate_limit_per_minute` int(11) NOT NULL DEFAULT 60,
+  `total_requests` bigint(20) NOT NULL DEFAULT 0,
+  `last_used_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `expires_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Callbacks` (
+  `id` bigint(20) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `message_id` bigint(20) DEFAULT NULL,
+  `callback_data` varchar(256) NOT NULL,
+  `answered` tinyint(1) NOT NULL DEFAULT 0,
+  `answer_text` varchar(256) DEFAULT NULL,
+  `answer_show_alert` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Commands` (
+  `id` int(11) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `command` varchar(64) NOT NULL COMMENT 'Command without slash (e.g., start, help)',
+  `description` varchar(256) NOT NULL COMMENT 'Command description',
+  `usage_hint` varchar(256) DEFAULT NULL COMMENT 'Usage example (e.g., /weather <city>)',
+  `is_hidden` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Hidden from command menu',
+  `scope` enum('all','private','group','admin') NOT NULL DEFAULT 'all',
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Keyboards` (
+  `id` int(11) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `name` varchar(128) NOT NULL COMMENT 'Keyboard template name',
+  `keyboard_type` enum('inline','reply','remove') NOT NULL DEFAULT 'inline',
+  `keyboard_data` text NOT NULL COMMENT 'JSON keyboard layout',
+  `is_persistent` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Messages` (
+  `id` bigint(20) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `chat_id` varchar(64) NOT NULL COMMENT 'User ID or Group ID',
+  `chat_type` enum('private','group') NOT NULL DEFAULT 'private',
+  `direction` enum('incoming','outgoing') NOT NULL,
+  `message_id` bigint(20) DEFAULT NULL COMMENT 'Reference to Wo_Messages.id if applicable',
+  `text` text DEFAULT NULL,
+  `media_type` varchar(32) DEFAULT NULL COMMENT 'image, video, audio, file, sticker, location',
+  `media_url` varchar(512) DEFAULT NULL,
+  `reply_to_message_id` bigint(20) DEFAULT NULL,
+  `reply_markup` text DEFAULT NULL COMMENT 'JSON inline keyboard or reply keyboard',
+  `callback_data` varchar(256) DEFAULT NULL COMMENT 'Callback data from inline buttons',
+  `entities` text DEFAULT NULL COMMENT 'JSON array of message entities (bold, links, etc)',
+  `is_command` tinyint(1) NOT NULL DEFAULT 0,
+  `command_name` varchar(64) DEFAULT NULL,
+  `command_args` text DEFAULT NULL,
+  `processed` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Whether bot has processed this message',
+  `processed_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Polls` (
+  `id` int(11) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `chat_id` varchar(64) NOT NULL,
+  `question` varchar(512) NOT NULL,
+  `poll_type` enum('regular','quiz') NOT NULL DEFAULT 'regular',
+  `is_anonymous` tinyint(1) NOT NULL DEFAULT 1,
+  `allows_multiple_answers` tinyint(1) NOT NULL DEFAULT 0,
+  `correct_option_id` int(11) DEFAULT NULL COMMENT 'For quiz type',
+  `explanation` text DEFAULT NULL COMMENT 'For quiz type - explanation after answer',
+  `is_closed` tinyint(1) NOT NULL DEFAULT 0,
+  `close_date` datetime DEFAULT NULL COMMENT 'Auto-close datetime',
+  `total_voters` int(11) NOT NULL DEFAULT 0,
+  `message_id` bigint(20) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `closed_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Poll_Options` (
+  `id` int(11) NOT NULL,
+  `poll_id` int(11) NOT NULL,
+  `option_text` varchar(256) NOT NULL,
+  `option_index` int(11) NOT NULL DEFAULT 0,
+  `voter_count` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Poll_Votes` (
+  `id` int(11) NOT NULL,
+  `poll_id` int(11) NOT NULL,
+  `option_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Rate_Limits` (
+  `id` int(11) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `endpoint` varchar(128) NOT NULL,
+  `requests_count` int(11) NOT NULL DEFAULT 0,
+  `window_start` datetime NOT NULL,
+  `window_type` enum('second','minute','hour') NOT NULL DEFAULT 'minute'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_RSS_Feeds` (
+  `id` int(11) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `chat_id` varchar(64) NOT NULL COMMENT 'Chat/channel where to post',
+  `feed_url` varchar(512) NOT NULL,
+  `feed_name` varchar(256) DEFAULT NULL,
+  `feed_language` varchar(10) DEFAULT 'en',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `check_interval_minutes` int(11) NOT NULL DEFAULT 30,
+  `last_check_at` datetime DEFAULT NULL,
+  `last_item_hash` varchar(64) DEFAULT NULL COMMENT 'Hash of last posted item to avoid duplicates',
+  `items_posted` int(11) NOT NULL DEFAULT 0,
+  `max_items_per_check` int(11) NOT NULL DEFAULT 5,
+  `include_image` tinyint(1) NOT NULL DEFAULT 1,
+  `include_description` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_RSS_Items` (
+  `id` int(11) NOT NULL,
+  `feed_id` int(11) NOT NULL,
+  `item_hash` varchar(64) NOT NULL COMMENT 'MD5 hash of link+title',
+  `title` varchar(512) DEFAULT NULL,
+  `link` varchar(512) DEFAULT NULL,
+  `posted_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Tasks` (
+  `id` int(11) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `chat_id` varchar(64) NOT NULL,
+  `title` varchar(512) NOT NULL,
+  `description` text DEFAULT NULL,
+  `status` enum('todo','in_progress','done','cancelled') NOT NULL DEFAULT 'todo',
+  `priority` enum('low','medium','high','urgent') NOT NULL DEFAULT 'medium',
+  `due_date` datetime DEFAULT NULL,
+  `assigned_to` int(11) DEFAULT NULL COMMENT 'User ID assigned to task',
+  `reminder_at` datetime DEFAULT NULL,
+  `completed_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Users` (
+  `id` int(11) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `state` varchar(128) DEFAULT NULL COMMENT 'Current conversation state (FSM)',
+  `state_data` text DEFAULT NULL COMMENT 'JSON state data for conversation flow',
+  `is_blocked` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'User blocked the bot',
+  `is_banned` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Bot banned the user',
+  `first_interaction_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `last_interaction_at` datetime DEFAULT NULL,
+  `messages_count` int(11) NOT NULL DEFAULT 0,
+  `custom_data` text DEFAULT NULL COMMENT 'JSON - bot-specific user data'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Bot_Webhook_Log` (
+  `id` bigint(20) NOT NULL,
+  `bot_id` varchar(64) NOT NULL,
+  `event_type` varchar(64) NOT NULL COMMENT 'message, callback_query, command, member_joined, etc',
+  `payload` text NOT NULL COMMENT 'JSON payload sent to webhook',
+  `webhook_url` varchar(512) NOT NULL,
+  `response_code` int(11) DEFAULT NULL,
+  `response_body` text DEFAULT NULL,
+  `delivery_status` enum('pending','delivered','failed','retrying') NOT NULL DEFAULT 'pending',
+  `attempts` int(11) NOT NULL DEFAULT 0,
+  `max_attempts` int(11) NOT NULL DEFAULT 5,
+  `next_retry_at` datetime DEFAULT NULL,
+  `delivered_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_calls` (
@@ -625,7 +849,7 @@ CREATE TABLE `Wo_ChannelSubscribers` (
   `is_muted` tinyint(1) DEFAULT 0 COMMENT 'Mute notifications'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_codes` (
+CREATE TABLE `Wo_Codes` (
   `id` int(11) NOT NULL,
   `code` varchar(50) NOT NULL DEFAULT '',
   `app_id` varchar(50) NOT NULL DEFAULT '',
@@ -633,7 +857,7 @@ CREATE TABLE `wo_codes` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Codes` (
+CREATE TABLE `wo_codes` (
   `id` int(11) NOT NULL,
   `code` varchar(50) NOT NULL DEFAULT '',
   `app_id` varchar(50) NOT NULL DEFAULT '',
@@ -659,13 +883,6 @@ CREATE TABLE `wo_colored_posts` (
   `time` varchar(50) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_commentlikes` (
-  `id` int(11) NOT NULL,
-  `post_id` int(11) NOT NULL DEFAULT 0,
-  `comment_id` int(11) NOT NULL DEFAULT 0,
-  `user_id` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_CommentLikes` (
   `id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL DEFAULT 0,
@@ -673,15 +890,11 @@ CREATE TABLE `Wo_CommentLikes` (
   `user_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_comments` (
+CREATE TABLE `wo_commentlikes` (
   `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `page_id` int(11) NOT NULL DEFAULT 0,
   `post_id` int(11) NOT NULL DEFAULT 0,
-  `text` text DEFAULT NULL,
-  `record` varchar(255) NOT NULL DEFAULT '',
-  `c_file` varchar(255) NOT NULL DEFAULT '',
-  `time` int(11) NOT NULL DEFAULT 0
+  `comment_id` int(11) NOT NULL DEFAULT 0,
+  `user_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_Comments` (
@@ -695,14 +908,25 @@ CREATE TABLE `Wo_Comments` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_CommentWonders` (
+CREATE TABLE `wo_comments` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `page_id` int(11) NOT NULL DEFAULT 0,
+  `post_id` int(11) NOT NULL DEFAULT 0,
+  `text` text DEFAULT NULL,
+  `record` varchar(255) NOT NULL DEFAULT '',
+  `c_file` varchar(255) NOT NULL DEFAULT '',
+  `time` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_commentwonders` (
   `id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL DEFAULT 0,
   `comment_id` int(11) NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_commentwonders` (
+CREATE TABLE `Wo_CommentWonders` (
   `id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL DEFAULT 0,
   `comment_id` int(11) NOT NULL DEFAULT 0,
@@ -729,13 +953,13 @@ CREATE TABLE `Wo_Comment_Replies` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_comment_replies_likes` (
+CREATE TABLE `Wo_Comment_Replies_Likes` (
   `id` int(11) NOT NULL,
   `reply_id` int(11) NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Comment_Replies_Likes` (
+CREATE TABLE `wo_comment_replies_likes` (
   `id` int(11) NOT NULL,
   `reply_id` int(11) NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL DEFAULT 0
@@ -765,7 +989,7 @@ CREATE TABLE `wo_config` (
   `value` mediumtext NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_custompages` (
+CREATE TABLE `Wo_CustomPages` (
   `id` int(11) NOT NULL,
   `page_name` varchar(50) NOT NULL DEFAULT '',
   `page_title` varchar(200) NOT NULL DEFAULT '',
@@ -773,7 +997,7 @@ CREATE TABLE `wo_custompages` (
   `page_type` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_CustomPages` (
+CREATE TABLE `wo_custompages` (
   `id` int(11) NOT NULL,
   `page_name` varchar(50) NOT NULL DEFAULT '',
   `page_title` varchar(200) NOT NULL DEFAULT '',
@@ -805,13 +1029,13 @@ CREATE TABLE `Wo_Custom_Fields` (
   `active` int(11) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Egoing` (
+CREATE TABLE `wo_egoing` (
   `id` int(11) NOT NULL,
   `event_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_egoing` (
+CREATE TABLE `Wo_Egoing` (
   `id` int(11) NOT NULL,
   `event_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL
@@ -829,13 +1053,6 @@ CREATE TABLE `wo_einterested` (
   `user_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Einvited` (
-  `id` int(11) NOT NULL,
-  `event_id` int(11) NOT NULL,
-  `inviter_id` int(11) NOT NULL,
-  `invited_id` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_einvited` (
   `id` int(11) NOT NULL,
   `event_id` int(11) NOT NULL,
@@ -843,7 +1060,14 @@ CREATE TABLE `wo_einvited` (
   `invited_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_emails` (
+CREATE TABLE `Wo_Einvited` (
+  `id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `inviter_id` int(11) NOT NULL,
+  `invited_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Emails` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `email_to` varchar(50) NOT NULL DEFAULT '',
@@ -851,7 +1075,7 @@ CREATE TABLE `wo_emails` (
   `message` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Emails` (
+CREATE TABLE `wo_emails` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `email_to` varchar(50) NOT NULL DEFAULT '',
@@ -903,16 +1127,6 @@ CREATE TABLE `wo_family` (
   `requesting` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_followers` (
-  `id` int(11) NOT NULL,
-  `following_id` int(11) NOT NULL DEFAULT 0,
-  `follower_id` int(11) NOT NULL DEFAULT 0,
-  `is_typing` int(11) NOT NULL DEFAULT 0,
-  `active` int(11) NOT NULL DEFAULT 1,
-  `notify` int(11) NOT NULL DEFAULT 0,
-  `time` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_Followers` (
   `id` int(11) NOT NULL,
   `following_id` int(11) NOT NULL DEFAULT 0,
@@ -921,6 +1135,16 @@ CREATE TABLE `Wo_Followers` (
   `active` int(255) NOT NULL DEFAULT 1,
   `notify` int(11) NOT NULL DEFAULT 0,
   `time` int(50) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_followers` (
+  `id` int(11) NOT NULL,
+  `following_id` int(11) NOT NULL DEFAULT 0,
+  `follower_id` int(11) NOT NULL DEFAULT 0,
+  `is_typing` int(11) NOT NULL DEFAULT 0,
+  `active` int(11) NOT NULL DEFAULT 1,
+  `notify` int(11) NOT NULL DEFAULT 0,
+  `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_Forums` (
@@ -941,17 +1165,6 @@ CREATE TABLE `wo_forums` (
   `last_post` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_forumthreadreplies` (
-  `id` int(11) NOT NULL,
-  `thread_id` int(11) NOT NULL DEFAULT 0,
-  `forum_id` int(11) NOT NULL DEFAULT 0,
-  `poster_id` int(11) NOT NULL DEFAULT 0,
-  `post_subject` varchar(300) NOT NULL DEFAULT '',
-  `post_text` mediumtext NOT NULL,
-  `post_quoted` int(11) NOT NULL DEFAULT 0,
-  `posted_time` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_ForumThreadReplies` (
   `id` int(11) NOT NULL,
   `thread_id` int(11) NOT NULL DEFAULT 0,
@@ -963,10 +1176,15 @@ CREATE TABLE `Wo_ForumThreadReplies` (
   `posted_time` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Forum_Sections` (
+CREATE TABLE `wo_forumthreadreplies` (
   `id` int(11) NOT NULL,
-  `section_name` varchar(200) NOT NULL DEFAULT '',
-  `description` varchar(300) DEFAULT ''
+  `thread_id` int(11) NOT NULL DEFAULT 0,
+  `forum_id` int(11) NOT NULL DEFAULT 0,
+  `poster_id` int(11) NOT NULL DEFAULT 0,
+  `post_subject` varchar(300) NOT NULL DEFAULT '',
+  `post_text` mediumtext NOT NULL,
+  `post_quoted` int(11) NOT NULL DEFAULT 0,
+  `posted_time` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_forum_sections` (
@@ -975,15 +1193,10 @@ CREATE TABLE `wo_forum_sections` (
   `description` varchar(300) DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_forum_threads` (
+CREATE TABLE `Wo_Forum_Sections` (
   `id` int(11) NOT NULL,
-  `user` int(11) NOT NULL DEFAULT 0,
-  `views` int(11) NOT NULL DEFAULT 0,
-  `headline` varchar(300) NOT NULL DEFAULT '',
-  `post` mediumtext NOT NULL,
-  `posted` varchar(20) NOT NULL DEFAULT '0',
-  `last_post` int(11) NOT NULL DEFAULT 0,
-  `forum` int(11) NOT NULL DEFAULT 0
+  `section_name` varchar(200) NOT NULL DEFAULT '',
+  `description` varchar(300) DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_Forum_Threads` (
@@ -997,7 +1210,18 @@ CREATE TABLE `Wo_Forum_Threads` (
   `forum` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_funding` (
+CREATE TABLE `wo_forum_threads` (
+  `id` int(11) NOT NULL,
+  `user` int(11) NOT NULL DEFAULT 0,
+  `views` int(11) NOT NULL DEFAULT 0,
+  `headline` varchar(300) NOT NULL DEFAULT '',
+  `post` mediumtext NOT NULL,
+  `posted` varchar(20) NOT NULL DEFAULT '0',
+  `last_post` int(11) NOT NULL DEFAULT 0,
+  `forum` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Funding` (
   `id` int(11) NOT NULL,
   `hashed_id` varchar(100) NOT NULL DEFAULT '',
   `title` varchar(100) NOT NULL DEFAULT '',
@@ -1008,7 +1232,7 @@ CREATE TABLE `wo_funding` (
   `time` varchar(50) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Funding` (
+CREATE TABLE `wo_funding` (
   `id` int(11) NOT NULL,
   `hashed_id` varchar(100) NOT NULL DEFAULT '',
   `title` varchar(100) NOT NULL DEFAULT '',
@@ -1053,14 +1277,6 @@ CREATE TABLE `wo_games` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Games_Players` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `game_id` int(11) NOT NULL DEFAULT 0,
-  `last_play` int(11) NOT NULL DEFAULT 0,
-  `active` enum('0','1') NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_games_players` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -1069,10 +1285,12 @@ CREATE TABLE `wo_games_players` (
   `active` enum('0','1') NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Gender` (
+CREATE TABLE `Wo_Games_Players` (
   `id` int(11) NOT NULL,
-  `gender_id` varchar(50) NOT NULL DEFAULT '0',
-  `image` varchar(300) NOT NULL DEFAULT ''
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `game_id` int(11) NOT NULL DEFAULT 0,
+  `last_play` int(11) NOT NULL DEFAULT 0,
+  `active` enum('0','1') NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_gender` (
@@ -1081,15 +1299,21 @@ CREATE TABLE `wo_gender` (
   `image` varchar(300) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_gifts` (
-  `id` int(10) UNSIGNED NOT NULL,
+CREATE TABLE `Wo_Gender` (
+  `id` int(11) NOT NULL,
+  `gender_id` varchar(50) NOT NULL DEFAULT '0',
+  `image` varchar(300) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Gifts` (
+  `id` int(11) UNSIGNED NOT NULL,
   `name` varchar(250) DEFAULT NULL,
   `media_file` varchar(250) NOT NULL,
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Gifts` (
-  `id` int(11) UNSIGNED NOT NULL,
+CREATE TABLE `wo_gifts` (
+  `id` int(10) UNSIGNED NOT NULL,
   `name` varchar(250) DEFAULT NULL,
   `media_file` varchar(250) NOT NULL,
   `time` int(11) NOT NULL DEFAULT 0
@@ -1117,6 +1341,16 @@ CREATE TABLE `wo_groupadmins` (
   `members` int(11) NOT NULL DEFAULT 0,
   `analytics` int(11) NOT NULL DEFAULT 1,
   `delete_group` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_groupchat` (
+  `group_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `group_name` varchar(20) NOT NULL DEFAULT '',
+  `avatar` varchar(3000) NOT NULL DEFAULT 'upload/photos/d-group.jpg',
+  `time` varchar(30) NOT NULL DEFAULT '',
+  `type` varchar(50) NOT NULL DEFAULT 'group',
+  `destruct_at` int(10) UNSIGNED NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_GroupChat` (
@@ -1154,17 +1388,13 @@ CREATE TABLE `Wo_GroupChat` (
   `allow_voice_calls` tinyint(1) DEFAULT 1,
   `allow_video_calls` tinyint(1) DEFAULT 1,
   `qr_code` varchar(64) DEFAULT NULL,
-  `pinned_message_id` bigint(20) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `wo_groupchat` (
-  `group_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `group_name` varchar(20) NOT NULL DEFAULT '',
-  `avatar` varchar(3000) NOT NULL DEFAULT 'upload/photos/d-group.jpg',
-  `time` varchar(30) NOT NULL DEFAULT '',
-  `type` varchar(50) NOT NULL DEFAULT 'group',
-  `destruct_at` int(10) UNSIGNED NOT NULL DEFAULT 0
+  `pinned_message_id` bigint(20) DEFAULT NULL,
+  `theme_bubble_style` varchar(50) DEFAULT 'STANDARD',
+  `theme_preset_background` varchar(50) DEFAULT 'ocean',
+  `theme_accent_color` varchar(10) DEFAULT '#2196F3',
+  `theme_enabled_by_admin` tinyint(1) DEFAULT 1,
+  `theme_updated_at` int(11) DEFAULT 0,
+  `theme_updated_by` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_groupchatusers` (
@@ -1239,12 +1469,12 @@ CREATE TABLE `wo_groups` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Groups_Categories` (
+CREATE TABLE `wo_groups_categories` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_groups_categories` (
+CREATE TABLE `Wo_Groups_Categories` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1321,13 +1551,13 @@ CREATE TABLE `Wo_Hashtags` (
   `expire` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_HiddenPosts` (
+CREATE TABLE `wo_hiddenposts` (
   `id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_hiddenposts` (
+CREATE TABLE `Wo_HiddenPosts` (
   `id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL DEFAULT 0
@@ -1364,7 +1594,7 @@ CREATE TABLE `Wo_Invitation_Links` (
   `time` int(50) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_job` (
+CREATE TABLE `Wo_Job` (
   `id` int(11) NOT NULL,
   `user_id` int(11) DEFAULT 0,
   `page_id` int(11) NOT NULL DEFAULT 0,
@@ -1394,7 +1624,7 @@ CREATE TABLE `wo_job` (
   `time` varchar(50) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Job` (
+CREATE TABLE `wo_job` (
   `id` int(11) NOT NULL,
   `user_id` int(11) DEFAULT 0,
   `page_id` int(11) NOT NULL DEFAULT 0,
@@ -1464,12 +1694,12 @@ CREATE TABLE `wo_job_apply` (
   `time` varchar(50) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Job_Categories` (
+CREATE TABLE `wo_job_categories` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_job_categories` (
+CREATE TABLE `Wo_Job_Categories` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1482,7 +1712,7 @@ CREATE TABLE `Wo_LangIso` (
   `direction` varchar(50) NOT NULL DEFAULT 'ltr'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Langs` (
+CREATE TABLE `wo_langs` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) DEFAULT NULL,
   `type` varchar(100) NOT NULL DEFAULT '',
@@ -1490,7 +1720,7 @@ CREATE TABLE `Wo_Langs` (
   `russian` longtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_langs` (
+CREATE TABLE `Wo_Langs` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) DEFAULT NULL,
   `type` varchar(100) NOT NULL DEFAULT '',
@@ -1510,20 +1740,20 @@ CREATE TABLE `Wo_Likes` (
   `post_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Live_Sub_Users` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `post_id` int(11) NOT NULL DEFAULT 0,
-  `is_watching` int(11) NOT NULL DEFAULT 0,
-  `time` int(50) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_live_sub_users` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `post_id` int(11) NOT NULL DEFAULT 0,
   `is_watching` int(11) NOT NULL DEFAULT 0,
   `time` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Live_Sub_Users` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `post_id` int(11) NOT NULL DEFAULT 0,
+  `is_watching` int(11) NOT NULL DEFAULT 0,
+  `time` int(50) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_Manage_Pro` (
@@ -1668,16 +1898,6 @@ CREATE TABLE `Wo_MessageViews` (
   `ip_address` varchar(45) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_MonetizationSubscription` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `user_id` int(11) UNSIGNED NOT NULL DEFAULT 0,
-  `monetization_id` int(11) NOT NULL,
-  `status` tinyint(4) NOT NULL DEFAULT 1,
-  `last_payment_date` timestamp NOT NULL DEFAULT current_timestamp(),
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `expire` int(10) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_monetizationsubscription` (
   `id` int(10) UNSIGNED NOT NULL,
   `user_id` int(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -1686,6 +1906,16 @@ CREATE TABLE `wo_monetizationsubscription` (
   `last_payment_date` timestamp NOT NULL DEFAULT current_timestamp(),
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `expire` int(11) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_MonetizationSubscription` (
+  `id` int(11) UNSIGNED NOT NULL,
+  `user_id` int(11) UNSIGNED NOT NULL DEFAULT 0,
+  `monetization_id` int(11) NOT NULL,
+  `status` tinyint(4) NOT NULL DEFAULT 1,
+  `last_payment_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expire` int(10) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_MovieCommentReplies` (
@@ -1835,26 +2065,6 @@ CREATE TABLE `wo_notifications` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Offers` (
-  `id` int(11) NOT NULL,
-  `page_id` int(11) NOT NULL DEFAULT 0,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `discount_type` varchar(200) NOT NULL DEFAULT '',
-  `discount_percent` int(11) NOT NULL DEFAULT 0,
-  `discount_amount` int(11) NOT NULL DEFAULT 0,
-  `discounted_items` varchar(150) DEFAULT '',
-  `buy` int(11) NOT NULL DEFAULT 0,
-  `get_price` int(11) NOT NULL DEFAULT 0,
-  `spend` int(11) NOT NULL DEFAULT 0,
-  `amount_off` int(11) NOT NULL DEFAULT 0,
-  `description` mediumtext DEFAULT NULL,
-  `expire_date` date NOT NULL,
-  `expire_time` time NOT NULL,
-  `image` varchar(300) NOT NULL DEFAULT '',
-  `currency` varchar(50) NOT NULL DEFAULT '',
-  `time` int(50) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_offers` (
   `id` int(11) NOT NULL,
   `page_id` int(11) NOT NULL DEFAULT 0,
@@ -1873,6 +2083,26 @@ CREATE TABLE `wo_offers` (
   `image` varchar(300) NOT NULL DEFAULT '',
   `currency` varchar(50) NOT NULL DEFAULT '',
   `time` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Offers` (
+  `id` int(11) NOT NULL,
+  `page_id` int(11) NOT NULL DEFAULT 0,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `discount_type` varchar(200) NOT NULL DEFAULT '',
+  `discount_percent` int(11) NOT NULL DEFAULT 0,
+  `discount_amount` int(11) NOT NULL DEFAULT 0,
+  `discounted_items` varchar(150) DEFAULT '',
+  `buy` int(11) NOT NULL DEFAULT 0,
+  `get_price` int(11) NOT NULL DEFAULT 0,
+  `spend` int(11) NOT NULL DEFAULT 0,
+  `amount_off` int(11) NOT NULL DEFAULT 0,
+  `description` mediumtext DEFAULT NULL,
+  `expire_date` date NOT NULL,
+  `expire_time` time NOT NULL,
+  `image` varchar(300) NOT NULL DEFAULT '',
+  `currency` varchar(50) NOT NULL DEFAULT '',
+  `time` int(50) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_pageadmins` (
@@ -1903,14 +2133,6 @@ CREATE TABLE `Wo_PageAdmins` (
   `delete_page` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_pagerating` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `page_id` int(11) NOT NULL DEFAULT 0,
-  `valuation` int(11) DEFAULT 0,
-  `review` mediumtext DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_PageRating` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -1919,37 +2141,12 @@ CREATE TABLE `Wo_PageRating` (
   `review` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Pages` (
-  `page_id` int(11) NOT NULL,
+CREATE TABLE `wo_pagerating` (
+  `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
-  `page_name` varchar(32) NOT NULL DEFAULT '',
-  `page_title` varchar(32) NOT NULL DEFAULT '',
-  `page_description` varchar(1000) NOT NULL DEFAULT '',
-  `avatar` varchar(255) NOT NULL DEFAULT 'upload/photos/d-page.jpg',
-  `cover` varchar(255) NOT NULL DEFAULT 'upload/photos/d-cover.jpg',
-  `users_post` int(11) NOT NULL DEFAULT 0,
-  `page_category` int(11) NOT NULL DEFAULT 1,
-  `sub_category` varchar(50) NOT NULL DEFAULT '',
-  `website` varchar(255) NOT NULL DEFAULT '',
-  `facebook` varchar(32) NOT NULL DEFAULT '',
-  `google` varchar(32) NOT NULL DEFAULT '',
-  `vk` varchar(32) NOT NULL DEFAULT '',
-  `twitter` varchar(32) NOT NULL DEFAULT '',
-  `linkedin` varchar(32) NOT NULL DEFAULT '',
-  `company` varchar(32) NOT NULL DEFAULT '',
-  `phone` varchar(32) NOT NULL DEFAULT '',
-  `address` varchar(100) NOT NULL DEFAULT '',
-  `call_action_type` int(11) NOT NULL DEFAULT 0,
-  `call_action_type_url` varchar(255) NOT NULL DEFAULT '',
-  `background_image` varchar(200) NOT NULL DEFAULT '',
-  `background_image_status` int(11) NOT NULL DEFAULT 0,
-  `instgram` varchar(32) NOT NULL DEFAULT '',
-  `youtube` varchar(100) NOT NULL DEFAULT '',
-  `verified` enum('0','1') NOT NULL DEFAULT '0',
-  `active` enum('0','1') NOT NULL DEFAULT '0',
-  `registered` varchar(32) NOT NULL DEFAULT '0/0000',
-  `boosted` enum('0','1') NOT NULL DEFAULT '0',
-  `time` int(20) NOT NULL DEFAULT 0
+  `page_id` int(11) NOT NULL DEFAULT 0,
+  `valuation` int(11) DEFAULT 0,
+  `review` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_pages` (
@@ -1985,6 +2182,39 @@ CREATE TABLE `wo_pages` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `Wo_Pages` (
+  `page_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `page_name` varchar(32) NOT NULL DEFAULT '',
+  `page_title` varchar(32) NOT NULL DEFAULT '',
+  `page_description` varchar(1000) NOT NULL DEFAULT '',
+  `avatar` varchar(255) NOT NULL DEFAULT 'upload/photos/d-page.jpg',
+  `cover` varchar(255) NOT NULL DEFAULT 'upload/photos/d-cover.jpg',
+  `users_post` int(11) NOT NULL DEFAULT 0,
+  `page_category` int(11) NOT NULL DEFAULT 1,
+  `sub_category` varchar(50) NOT NULL DEFAULT '',
+  `website` varchar(255) NOT NULL DEFAULT '',
+  `facebook` varchar(32) NOT NULL DEFAULT '',
+  `google` varchar(32) NOT NULL DEFAULT '',
+  `vk` varchar(32) NOT NULL DEFAULT '',
+  `twitter` varchar(32) NOT NULL DEFAULT '',
+  `linkedin` varchar(32) NOT NULL DEFAULT '',
+  `company` varchar(32) NOT NULL DEFAULT '',
+  `phone` varchar(32) NOT NULL DEFAULT '',
+  `address` varchar(100) NOT NULL DEFAULT '',
+  `call_action_type` int(11) NOT NULL DEFAULT 0,
+  `call_action_type_url` varchar(255) NOT NULL DEFAULT '',
+  `background_image` varchar(200) NOT NULL DEFAULT '',
+  `background_image_status` int(11) NOT NULL DEFAULT 0,
+  `instgram` varchar(32) NOT NULL DEFAULT '',
+  `youtube` varchar(100) NOT NULL DEFAULT '',
+  `verified` enum('0','1') NOT NULL DEFAULT '0',
+  `active` enum('0','1') NOT NULL DEFAULT '0',
+  `registered` varchar(32) NOT NULL DEFAULT '0/0000',
+  `boosted` enum('0','1') NOT NULL DEFAULT '0',
+  `time` int(20) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `Wo_Pages_Categories` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) NOT NULL DEFAULT ''
@@ -1995,13 +2225,6 @@ CREATE TABLE `wo_pages_categories` (
   `lang_key` varchar(160) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_pages_invites` (
-  `id` int(11) NOT NULL,
-  `page_id` int(11) NOT NULL DEFAULT 0,
-  `inviter_id` int(11) NOT NULL DEFAULT 0,
-  `invited_id` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_Pages_Invites` (
   `id` int(11) NOT NULL,
   `page_id` int(11) NOT NULL DEFAULT 0,
@@ -2009,7 +2232,14 @@ CREATE TABLE `Wo_Pages_Invites` (
   `invited_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Pages_Likes` (
+CREATE TABLE `wo_pages_invites` (
+  `id` int(11) NOT NULL,
+  `page_id` int(11) NOT NULL DEFAULT 0,
+  `inviter_id` int(11) NOT NULL DEFAULT 0,
+  `invited_id` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_pages_likes` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `page_id` int(11) NOT NULL DEFAULT 0,
@@ -2017,7 +2247,7 @@ CREATE TABLE `Wo_Pages_Likes` (
   `active` enum('0','1') NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_pages_likes` (
+CREATE TABLE `Wo_Pages_Likes` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `page_id` int(11) NOT NULL DEFAULT 0,
@@ -2032,15 +2262,6 @@ CREATE TABLE `Wo_PatreonSubscribers` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Payments` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `amount` int(11) NOT NULL DEFAULT 0,
-  `type` varchar(15) NOT NULL DEFAULT '',
-  `date` varchar(30) NOT NULL DEFAULT '',
-  `time` int(20) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_payments` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -2048,6 +2269,15 @@ CREATE TABLE `wo_payments` (
   `type` varchar(15) NOT NULL DEFAULT '',
   `date` varchar(30) NOT NULL DEFAULT '',
   `time` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Payments` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `amount` int(11) NOT NULL DEFAULT 0,
+  `type` varchar(15) NOT NULL DEFAULT '',
+  `date` varchar(30) NOT NULL DEFAULT '',
+  `time` int(20) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_payment_transactions` (
@@ -2343,12 +2573,12 @@ CREATE TABLE `Wo_Products` (
   `active` enum('0','1') NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_products_categories` (
+CREATE TABLE `Wo_Products_Categories` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Products_Categories` (
+CREATE TABLE `wo_products_categories` (
   `id` int(11) NOT NULL,
   `lang_key` varchar(160) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2365,7 +2595,7 @@ CREATE TABLE `wo_products_media` (
   `image` varchar(100) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_ProfileFields` (
+CREATE TABLE `wo_profilefields` (
   `id` int(11) NOT NULL,
   `name` varchar(50) NOT NULL DEFAULT '',
   `description` mediumtext DEFAULT NULL,
@@ -2378,7 +2608,7 @@ CREATE TABLE `Wo_ProfileFields` (
   `active` enum('0','1') NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_profilefields` (
+CREATE TABLE `Wo_ProfileFields` (
   `id` int(11) NOT NULL,
   `name` varchar(50) NOT NULL DEFAULT '',
   `description` mediumtext DEFAULT NULL,
@@ -2455,13 +2685,6 @@ CREATE TABLE `Wo_Reactions_Types` (
   `status` int(11) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_recentsearches` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `search_id` int(11) NOT NULL DEFAULT 0,
-  `search_type` varchar(32) NOT NULL DEFAULT ''
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_RecentSearches` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -2469,14 +2692,11 @@ CREATE TABLE `Wo_RecentSearches` (
   `search_type` varchar(32) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_refund` (
+CREATE TABLE `wo_recentsearches` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
-  `order_hash_id` varchar(100) NOT NULL DEFAULT '',
-  `pro_type` varchar(50) NOT NULL DEFAULT '',
-  `description` mediumtext DEFAULT NULL,
-  `status` int(11) NOT NULL DEFAULT 0,
-  `time` int(11) NOT NULL DEFAULT 0
+  `search_id` int(11) NOT NULL DEFAULT 0,
+  `search_type` varchar(32) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_Refund` (
@@ -2487,6 +2707,16 @@ CREATE TABLE `Wo_Refund` (
   `description` mediumtext DEFAULT NULL,
   `status` int(11) NOT NULL DEFAULT 0,
   `time` int(50) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_refund` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `order_hash_id` varchar(100) NOT NULL DEFAULT '',
+  `pro_type` varchar(50) NOT NULL DEFAULT '',
+  `description` mediumtext DEFAULT NULL,
+  `status` int(11) NOT NULL DEFAULT 0,
+  `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_Relationship` (
@@ -2505,20 +2735,6 @@ CREATE TABLE `wo_relationship` (
   `active` enum('0','1') NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Reports` (
-  `id` int(11) NOT NULL,
-  `post_id` int(11) NOT NULL DEFAULT 0,
-  `comment_id` int(15) UNSIGNED NOT NULL DEFAULT 0,
-  `profile_id` int(11) NOT NULL DEFAULT 0,
-  `page_id` int(15) NOT NULL DEFAULT 0,
-  `group_id` int(15) NOT NULL DEFAULT 0,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `text` mediumtext DEFAULT NULL,
-  `reason` varchar(100) NOT NULL DEFAULT '',
-  `seen` int(11) NOT NULL DEFAULT 0,
-  `time` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_reports` (
   `id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL DEFAULT 0,
@@ -2533,13 +2749,27 @@ CREATE TABLE `wo_reports` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_SavedPosts` (
+CREATE TABLE `Wo_Reports` (
+  `id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL DEFAULT 0,
+  `comment_id` int(15) UNSIGNED NOT NULL DEFAULT 0,
+  `profile_id` int(11) NOT NULL DEFAULT 0,
+  `page_id` int(15) NOT NULL DEFAULT 0,
+  `group_id` int(15) NOT NULL DEFAULT 0,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `text` mediumtext DEFAULT NULL,
+  `reason` varchar(100) NOT NULL DEFAULT '',
+  `seen` int(11) NOT NULL DEFAULT 0,
+  `time` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_savedposts` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `post_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_savedposts` (
+CREATE TABLE `Wo_SavedPosts` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `post_id` int(11) NOT NULL DEFAULT 0
@@ -2575,14 +2805,6 @@ CREATE TABLE `wo_stickers` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_storycomments` (
-  `id` int(11) NOT NULL,
-  `story_id` int(11) NOT NULL DEFAULT 0,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `text` text DEFAULT NULL,
-  `time` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_StoryComments` (
   `id` int(11) NOT NULL,
   `story_id` int(11) NOT NULL DEFAULT 0,
@@ -2590,6 +2812,14 @@ CREATE TABLE `Wo_StoryComments` (
   `text` text DEFAULT NULL,
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `wo_storycomments` (
+  `id` int(11) NOT NULL,
+  `story_id` int(11) NOT NULL DEFAULT 0,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `text` text DEFAULT NULL,
+  `time` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `wo_storyreactions` (
   `id` int(11) NOT NULL,
@@ -2662,20 +2892,20 @@ CREATE TABLE `wo_terms` (
   `text` longtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_Tokens` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `app_id` int(11) NOT NULL DEFAULT 0,
-  `token` varchar(200) NOT NULL DEFAULT '',
-  `time` int(32) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `wo_tokens` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `app_id` int(11) NOT NULL DEFAULT 0,
   `token` varchar(200) NOT NULL DEFAULT '',
   `time` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `Wo_Tokens` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `app_id` int(11) NOT NULL DEFAULT 0,
+  `token` varchar(200) NOT NULL DEFAULT '',
+  `time` int(32) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `Wo_UploadedMedia` (
@@ -2733,22 +2963,22 @@ CREATE TABLE `Wo_UserAds` (
   `spent` float UNSIGNED NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_userads_data` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `ad_id` int(11) NOT NULL DEFAULT 0,
-  `clicks` int(11) NOT NULL DEFAULT 0,
-  `views` int(11) NOT NULL DEFAULT 0,
-  `spend` float UNSIGNED NOT NULL DEFAULT 0,
-  `dt` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `Wo_UserAds_Data` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `ad_id` int(11) NOT NULL DEFAULT 0,
   `clicks` int(15) NOT NULL DEFAULT 0,
   `views` int(15) NOT NULL DEFAULT 0,
+  `spend` float UNSIGNED NOT NULL DEFAULT 0,
+  `dt` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wo_userads_data` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `ad_id` int(11) NOT NULL DEFAULT 0,
+  `clicks` int(11) NOT NULL DEFAULT 0,
+  `views` int(11) NOT NULL DEFAULT 0,
   `spend` float UNSIGNED NOT NULL DEFAULT 0,
   `dt` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2828,12 +3058,12 @@ CREATE TABLE `Wo_UserExperience` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_userfields` (
+CREATE TABLE `Wo_UserFields` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_UserFields` (
+CREATE TABLE `wo_userfields` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2858,12 +3088,12 @@ CREATE TABLE `Wo_UserMediaSettings` (
   `updated_at` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_usermonetization` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `user_id` int(10) UNSIGNED NOT NULL DEFAULT 0,
+CREATE TABLE `Wo_UserMonetization` (
+  `id` int(11) UNSIGNED NOT NULL,
+  `user_id` int(11) UNSIGNED NOT NULL DEFAULT 0,
   `price` varchar(11) NOT NULL DEFAULT '0',
   `currency` varchar(5) NOT NULL DEFAULT 'USD',
-  `paid_every` int(11) NOT NULL DEFAULT 1,
+  `paid_every` int(3) NOT NULL DEFAULT 1,
   `period` varchar(10) NOT NULL DEFAULT 'Daily',
   `title` varchar(255) NOT NULL,
   `description` text NOT NULL,
@@ -2871,12 +3101,12 @@ CREATE TABLE `wo_usermonetization` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_UserMonetization` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `user_id` int(11) UNSIGNED NOT NULL DEFAULT 0,
+CREATE TABLE `wo_usermonetization` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL DEFAULT 0,
   `price` varchar(11) NOT NULL DEFAULT '0',
   `currency` varchar(5) NOT NULL DEFAULT 'USD',
-  `paid_every` int(3) NOT NULL DEFAULT 1,
+  `paid_every` int(11) NOT NULL DEFAULT 1,
   `period` varchar(10) NOT NULL DEFAULT 'Daily',
   `title` varchar(255) NOT NULL,
   `description` text NOT NULL,
@@ -2897,7 +3127,7 @@ CREATE TABLE `Wo_UserOpenTo` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_userorders` (
+CREATE TABLE `Wo_UserOrders` (
   `id` int(11) NOT NULL,
   `hash_id` varchar(100) NOT NULL DEFAULT '',
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -2914,7 +3144,7 @@ CREATE TABLE `wo_userorders` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_UserOrders` (
+CREATE TABLE `wo_userorders` (
   `id` int(11) NOT NULL,
   `hash_id` varchar(100) NOT NULL DEFAULT '',
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -3194,7 +3424,7 @@ CREATE TABLE `Wo_UserTiers` (
   `time` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `wo_user_gifts` (
+CREATE TABLE `Wo_User_Gifts` (
   `id` int(11) NOT NULL,
   `from` int(11) NOT NULL DEFAULT 0,
   `to` int(11) NOT NULL DEFAULT 0,
@@ -3202,7 +3432,7 @@ CREATE TABLE `wo_user_gifts` (
   `time` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `Wo_User_Gifts` (
+CREATE TABLE `wo_user_gifts` (
   `id` int(11) NOT NULL,
   `from` int(11) NOT NULL DEFAULT 0,
   `to` int(11) NOT NULL DEFAULT 0,
@@ -3262,13 +3492,6 @@ CREATE TABLE `Wo_VideoCalles` (
   `status` varchar(100) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
-CREATE TABLE `wo_votes` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT 0,
-  `post_id` int(11) NOT NULL DEFAULT 0,
-  `option_id` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
 CREATE TABLE `Wo_Votes` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
@@ -3276,14 +3499,21 @@ CREATE TABLE `Wo_Votes` (
   `option_id` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
-CREATE TABLE `wo_wonders` (
+CREATE TABLE `wo_votes` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL DEFAULT 0,
+  `post_id` int(11) NOT NULL DEFAULT 0,
+  `option_id` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+CREATE TABLE `Wo_Wonders` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `post_id` int(11) NOT NULL DEFAULT 0,
   `type` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
-CREATE TABLE `Wo_Wonders` (
+CREATE TABLE `wo_wonders` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `post_id` int(11) NOT NULL DEFAULT 0,
@@ -3349,11 +3579,11 @@ ALTER TABLE `wo_activities`
   ADD KEY `reply_id` (`reply_id`),
   ADD KEY `follow_id` (`follow_id`);
 
-ALTER TABLE `Wo_AdminInvitations`
+ALTER TABLE `wo_admininvitations`
   ADD PRIMARY KEY (`id`),
   ADD KEY `code` (`code`(255));
 
-ALTER TABLE `wo_admininvitations`
+ALTER TABLE `Wo_AdminInvitations`
   ADD PRIMARY KEY (`id`),
   ADD KEY `code` (`code`(255));
 
@@ -3367,14 +3597,14 @@ ALTER TABLE `wo_ads`
   ADD KEY `active` (`active`),
   ADD KEY `type` (`type`);
 
-ALTER TABLE `Wo_Affiliates_Requests`
+ALTER TABLE `wo_affiliates_requests`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `time` (`time`),
   ADD KEY `status` (`status`),
   ADD KEY `type` (`type`);
 
-ALTER TABLE `wo_affiliates_requests`
+ALTER TABLE `Wo_Affiliates_Requests`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `time` (`time`),
@@ -3399,13 +3629,6 @@ ALTER TABLE `Wo_AgoraVideoCall`
   ADD KEY `time` (`time`),
   ADD KEY `status` (`status`);
 
-ALTER TABLE `wo_albums_media`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `post_id` (`post_id`),
-  ADD KEY `order1` (`post_id`,`id`),
-  ADD KEY `parent_id` (`parent_id`),
-  ADD KEY `review_id` (`review_id`);
-
 ALTER TABLE `Wo_Albums_Media`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
@@ -3413,11 +3636,18 @@ ALTER TABLE `Wo_Albums_Media`
   ADD KEY `parent_id` (`parent_id`),
   ADD KEY `review_id` (`review_id`);
 
-ALTER TABLE `wo_announcement`
+ALTER TABLE `wo_albums_media`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `post_id` (`post_id`),
+  ADD KEY `order1` (`post_id`,`id`),
+  ADD KEY `parent_id` (`parent_id`),
+  ADD KEY `review_id` (`review_id`);
+
+ALTER TABLE `Wo_Announcement`
   ADD PRIMARY KEY (`id`),
   ADD KEY `active` (`active`);
 
-ALTER TABLE `Wo_Announcement`
+ALTER TABLE `wo_announcement`
   ADD PRIMARY KEY (`id`),
   ADD KEY `active` (`active`);
 
@@ -3431,24 +3661,17 @@ ALTER TABLE `Wo_Announcement_Views`
   ADD KEY `user_id` (`user_id`),
   ADD KEY `announcement_id` (`announcement_id`);
 
-ALTER TABLE `Wo_Apps`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `app_user_id` (`app_user_id`),
-  ADD KEY `app_id` (`app_id`),
-  ADD KEY `active` (`active`);
-
 ALTER TABLE `wo_apps`
   ADD PRIMARY KEY (`id`),
   ADD KEY `app_user_id` (`app_user_id`),
   ADD KEY `app_id` (`app_id`),
   ADD KEY `active` (`active`);
 
-ALTER TABLE `Wo_AppsSessions`
+ALTER TABLE `Wo_Apps`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `session_id` (`session_id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `platform` (`platform`),
-  ADD KEY `time` (`time`);
+  ADD KEY `app_user_id` (`app_user_id`),
+  ADD KEY `app_id` (`app_id`),
+  ADD KEY `active` (`active`);
 
 ALTER TABLE `wo_appssessions`
   ADD PRIMARY KEY (`id`),
@@ -3457,13 +3680,20 @@ ALTER TABLE `wo_appssessions`
   ADD KEY `platform` (`platform`),
   ADD KEY `time` (`time`);
 
-ALTER TABLE `wo_apps_hash`
+ALTER TABLE `Wo_AppsSessions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `session_id` (`session_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `platform` (`platform`),
+  ADD KEY `time` (`time`);
+
+ALTER TABLE `Wo_Apps_Hash`
   ADD PRIMARY KEY (`id`),
   ADD KEY `hash_id` (`hash_id`),
   ADD KEY `active` (`active`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `Wo_Apps_Hash`
+ALTER TABLE `wo_apps_hash`
   ADD PRIMARY KEY (`id`),
   ADD KEY `hash_id` (`hash_id`),
   ADD KEY `active` (`active`),
@@ -3493,10 +3723,10 @@ ALTER TABLE `Wo_AudioCalls`
   ADD KEY `called` (`called`),
   ADD KEY `declined` (`declined`);
 
-ALTER TABLE `wo_backup_codes`
+ALTER TABLE `Wo_Backup_Codes`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `Wo_Backup_Codes`
+ALTER TABLE `wo_backup_codes`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `wo_bad_login`
@@ -3515,12 +3745,12 @@ ALTER TABLE `Wo_Banned_Ip`
   ADD PRIMARY KEY (`id`),
   ADD KEY `ip_address` (`ip_address`);
 
-ALTER TABLE `Wo_Blocks`
+ALTER TABLE `wo_blocks`
   ADD PRIMARY KEY (`id`),
   ADD KEY `blocker` (`blocker`),
   ADD KEY `blocked` (`blocked`);
 
-ALTER TABLE `wo_blocks`
+ALTER TABLE `Wo_Blocks`
   ADD PRIMARY KEY (`id`),
   ADD KEY `blocker` (`blocker`),
   ADD KEY `blocked` (`blocked`);
@@ -3539,14 +3769,6 @@ ALTER TABLE `wo_blog`
   ADD KEY `category` (`category`),
   ADD KEY `active` (`active`);
 
-ALTER TABLE `wo_blogcommentreplies`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `comm_id` (`comm_id`),
-  ADD KEY `blog_id` (`blog_id`),
-  ADD KEY `order1` (`comm_id`,`id`),
-  ADD KEY `order2` (`blog_id`,`id`),
-  ADD KEY `order3` (`user_id`,`id`);
-
 ALTER TABLE `Wo_BlogCommentReplies`
   ADD PRIMARY KEY (`id`),
   ADD KEY `comm_id` (`comm_id`),
@@ -3555,12 +3777,20 @@ ALTER TABLE `Wo_BlogCommentReplies`
   ADD KEY `order2` (`blog_id`,`id`),
   ADD KEY `order3` (`user_id`,`id`);
 
-ALTER TABLE `wo_blogcomments`
+ALTER TABLE `wo_blogcommentreplies`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `comm_id` (`comm_id`),
+  ADD KEY `blog_id` (`blog_id`),
+  ADD KEY `order1` (`comm_id`,`id`),
+  ADD KEY `order2` (`blog_id`,`id`),
+  ADD KEY `order3` (`user_id`,`id`);
+
+ALTER TABLE `Wo_BlogComments`
   ADD PRIMARY KEY (`id`),
   ADD KEY `blog_id` (`blog_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `Wo_BlogComments`
+ALTER TABLE `wo_blogcomments`
   ADD PRIMARY KEY (`id`),
   ADD KEY `blog_id` (`blog_id`),
   ADD KEY `user_id` (`user_id`);
@@ -3585,7 +3815,7 @@ ALTER TABLE `wo_blogmoviedislikes`
   ADD KEY `blog_id` (`blog_id`),
   ADD KEY `movie_id` (`movie_id`);
 
-ALTER TABLE `wo_blogmovielikes`
+ALTER TABLE `Wo_BlogMovieLikes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `blog_id` (`blog_comm_id`),
   ADD KEY `movie_id` (`movie_comm_id`),
@@ -3595,7 +3825,7 @@ ALTER TABLE `wo_blogmovielikes`
   ADD KEY `blog_id_2` (`blog_id`),
   ADD KEY `movie_id_2` (`movie_id`);
 
-ALTER TABLE `Wo_BlogMovieLikes`
+ALTER TABLE `wo_blogmovielikes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `blog_id` (`blog_comm_id`),
   ADD KEY `movie_id` (`movie_comm_id`),
@@ -3613,6 +3843,13 @@ ALTER TABLE `wo_blogs_categories`
   ADD PRIMARY KEY (`id`),
   ADD KEY `lang_key` (`lang_key`);
 
+ALTER TABLE `Wo_Blog_Reaction`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `blog_id` (`blog_id`),
+  ADD KEY `comment_id` (`comment_id`),
+  ADD KEY `reply_id` (`reply_id`);
+
 ALTER TABLE `wo_blog_reaction`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
@@ -3620,12 +3857,101 @@ ALTER TABLE `wo_blog_reaction`
   ADD KEY `comment_id` (`comment_id`),
   ADD KEY `reply_id` (`reply_id`);
 
-ALTER TABLE `Wo_Blog_Reaction`
+ALTER TABLE `Wo_Bots`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `blog_id` (`blog_id`),
-  ADD KEY `comment_id` (`comment_id`),
-  ADD KEY `reply_id` (`reply_id`);
+  ADD UNIQUE KEY `idx_bot_id` (`bot_id`),
+  ADD UNIQUE KEY `idx_bot_token` (`bot_token`),
+  ADD UNIQUE KEY `idx_bot_username` (`username`),
+  ADD KEY `idx_owner_id` (`owner_id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_category` (`category`),
+  ADD KEY `idx_is_public` (`is_public`);
+
+ALTER TABLE `Wo_Bot_Api_Keys`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_api_key` (`api_key`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_is_active` (`is_active`);
+
+ALTER TABLE `Wo_Bot_Callbacks`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_bot_id` (`bot_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+ALTER TABLE `Wo_Bot_Commands`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_bot_command` (`bot_id`,`command`),
+  ADD KEY `idx_bot_id` (`bot_id`);
+
+ALTER TABLE `Wo_Bot_Keyboards`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_bot_id` (`bot_id`);
+
+ALTER TABLE `Wo_Bot_Messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_bot_chat` (`bot_id`,`chat_id`),
+  ADD KEY `idx_direction` (`direction`),
+  ADD KEY `idx_processed` (`processed`),
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_message_id` (`message_id`),
+  ADD KEY `idx_bot_unprocessed` (`bot_id`,`processed`,`created_at`);
+
+ALTER TABLE `Wo_Bot_Polls`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_bot_id` (`bot_id`),
+  ADD KEY `idx_chat_id` (`chat_id`),
+  ADD KEY `idx_is_closed` (`is_closed`);
+
+ALTER TABLE `Wo_Bot_Poll_Options`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_poll_id` (`poll_id`);
+
+ALTER TABLE `Wo_Bot_Poll_Votes`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_unique_vote` (`poll_id`,`user_id`,`option_id`),
+  ADD KEY `idx_poll_id` (`poll_id`),
+  ADD KEY `idx_user_id` (`user_id`);
+
+ALTER TABLE `Wo_Bot_Rate_Limits`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_bot_endpoint_window` (`bot_id`,`endpoint`,`window_start`,`window_type`),
+  ADD KEY `idx_window_start` (`window_start`);
+
+ALTER TABLE `Wo_Bot_RSS_Feeds`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_feed_chat` (`bot_id`,`chat_id`,`feed_url`(255)),
+  ADD KEY `idx_bot_id` (`bot_id`),
+  ADD KEY `idx_last_check` (`last_check_at`),
+  ADD KEY `idx_is_active` (`is_active`);
+
+ALTER TABLE `Wo_Bot_RSS_Items`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_feed_hash` (`feed_id`,`item_hash`),
+  ADD KEY `idx_feed_id` (`feed_id`);
+
+ALTER TABLE `Wo_Bot_Tasks`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_bot_user` (`bot_id`,`user_id`),
+  ADD KEY `idx_chat_id` (`chat_id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_due_date` (`due_date`),
+  ADD KEY `idx_reminder` (`reminder_at`);
+
+ALTER TABLE `Wo_Bot_Users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_bot_user` (`bot_id`,`user_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_last_interaction` (`last_interaction_at`),
+  ADD KEY `idx_bot_active_users` (`bot_id`,`is_blocked`,`last_interaction_at`);
+
+ALTER TABLE `Wo_Bot_Webhook_Log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_bot_id` (`bot_id`),
+  ADD KEY `idx_status` (`delivery_status`),
+  ADD KEY `idx_next_retry` (`next_retry_at`),
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_webhook_cleanup` (`created_at`,`delivery_status`);
 
 ALTER TABLE `wo_calls`
   ADD PRIMARY KEY (`id`),
@@ -3689,13 +4015,13 @@ ALTER TABLE `Wo_ChannelSubscribers`
   ADD KEY `channel_muted` (`channel_id`,`user_id`,`is_muted`),
   ADD KEY `idx_channel_muted` (`channel_id`,`user_id`,`is_muted`);
 
-ALTER TABLE `wo_codes`
+ALTER TABLE `Wo_Codes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `code` (`code`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `app_id` (`app_id`);
 
-ALTER TABLE `Wo_Codes`
+ALTER TABLE `wo_codes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `code` (`code`),
   ADD KEY `user_id` (`user_id`),
@@ -3711,29 +4037,17 @@ ALTER TABLE `wo_colored_posts`
   ADD KEY `color_1` (`color_1`),
   ADD KEY `color_2` (`color_2`);
 
-ALTER TABLE `wo_commentlikes`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `comment_id` (`comment_id`),
-  ADD KEY `post_id` (`post_id`);
-
 ALTER TABLE `Wo_CommentLikes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `comment_id` (`comment_id`),
   ADD KEY `post_id` (`post_id`);
 
-ALTER TABLE `wo_comments`
+ALTER TABLE `wo_commentlikes`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`),
-  ADD KEY `page_id` (`page_id`),
-  ADD KEY `order1` (`user_id`,`id`),
-  ADD KEY `order2` (`page_id`,`id`),
-  ADD KEY `order3` (`post_id`,`id`),
-  ADD KEY `order4` (`user_id`,`id`),
-  ADD KEY `order5` (`post_id`,`id`),
-  ADD KEY `time` (`time`);
+  ADD KEY `comment_id` (`comment_id`),
+  ADD KEY `post_id` (`post_id`);
 
 ALTER TABLE `Wo_Comments`
   ADD PRIMARY KEY (`id`),
@@ -3747,13 +4061,25 @@ ALTER TABLE `Wo_Comments`
   ADD KEY `order5` (`post_id`,`id`),
   ADD KEY `time` (`time`);
 
-ALTER TABLE `Wo_CommentWonders`
+ALTER TABLE `wo_comments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `post_id` (`post_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `page_id` (`page_id`),
+  ADD KEY `order1` (`user_id`,`id`),
+  ADD KEY `order2` (`page_id`,`id`),
+  ADD KEY `order3` (`post_id`,`id`),
+  ADD KEY `order4` (`user_id`,`id`),
+  ADD KEY `order5` (`post_id`,`id`),
+  ADD KEY `time` (`time`);
+
+ALTER TABLE `wo_commentwonders`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `comment_id` (`comment_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `wo_commentwonders`
+ALTER TABLE `Wo_CommentWonders`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `comment_id` (`comment_id`),
@@ -3771,12 +4097,12 @@ ALTER TABLE `Wo_Comment_Replies`
   ADD KEY `user_id` (`user_id`,`page_id`),
   ADD KEY `time` (`time`);
 
-ALTER TABLE `wo_comment_replies_likes`
+ALTER TABLE `Wo_Comment_Replies_Likes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `reply_id` (`reply_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `Wo_Comment_Replies_Likes`
+ALTER TABLE `wo_comment_replies_likes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `reply_id` (`reply_id`),
   ADD KEY `user_id` (`user_id`);
@@ -3797,11 +4123,11 @@ ALTER TABLE `wo_config`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `idx_name` (`name`);
 
-ALTER TABLE `wo_custompages`
+ALTER TABLE `Wo_CustomPages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `page_type` (`page_type`);
 
-ALTER TABLE `Wo_CustomPages`
+ALTER TABLE `wo_custompages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `page_type` (`page_type`);
 
@@ -3815,12 +4141,12 @@ ALTER TABLE `Wo_Custom_Fields`
   ADD KEY `name` (`name`),
   ADD KEY `active` (`active`);
 
-ALTER TABLE `Wo_Egoing`
+ALTER TABLE `wo_egoing`
   ADD PRIMARY KEY (`id`),
   ADD KEY `event_id` (`event_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `wo_egoing`
+ALTER TABLE `Wo_Egoing`
   ADD PRIMARY KEY (`id`),
   ADD KEY `event_id` (`event_id`),
   ADD KEY `user_id` (`user_id`);
@@ -3835,24 +4161,24 @@ ALTER TABLE `wo_einterested`
   ADD KEY `event_id` (`event_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `Wo_Einvited`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `event_id` (`event_id`),
-  ADD KEY `inviter_id` (`invited_id`),
-  ADD KEY `inviter_id_2` (`inviter_id`);
-
 ALTER TABLE `wo_einvited`
   ADD PRIMARY KEY (`id`),
   ADD KEY `event_id` (`event_id`),
   ADD KEY `inviter_id` (`invited_id`),
   ADD KEY `inviter_id_2` (`inviter_id`);
 
-ALTER TABLE `wo_emails`
+ALTER TABLE `Wo_Einvited`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `event_id` (`event_id`),
+  ADD KEY `inviter_id` (`invited_id`),
+  ADD KEY `inviter_id_2` (`inviter_id`);
+
+ALTER TABLE `Wo_Emails`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `email_to` (`email_to`);
 
-ALTER TABLE `Wo_Emails`
+ALTER TABLE `wo_emails`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `email_to` (`email_to`);
@@ -3893,7 +4219,7 @@ ALTER TABLE `wo_family`
   ADD KEY `user_id` (`user_id`),
   ADD KEY `requesting` (`requesting`);
 
-ALTER TABLE `wo_followers`
+ALTER TABLE `Wo_Followers`
   ADD PRIMARY KEY (`id`),
   ADD KEY `following_id` (`following_id`),
   ADD KEY `follower_id` (`follower_id`),
@@ -3904,7 +4230,7 @@ ALTER TABLE `wo_followers`
   ADD KEY `notify` (`notify`),
   ADD KEY `time` (`time`);
 
-ALTER TABLE `Wo_Followers`
+ALTER TABLE `wo_followers`
   ADD PRIMARY KEY (`id`),
   ADD KEY `following_id` (`following_id`),
   ADD KEY `follower_id` (`follower_id`),
@@ -3927,15 +4253,6 @@ ALTER TABLE `wo_forums`
   ADD KEY `description` (`description`(255)),
   ADD KEY `posts` (`posts`);
 
-ALTER TABLE `wo_forumthreadreplies`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `thread_id` (`thread_id`),
-  ADD KEY `forum_id` (`forum_id`),
-  ADD KEY `poster_id` (`poster_id`),
-  ADD KEY `post_subject` (`post_subject`(255)),
-  ADD KEY `post_quoted` (`post_quoted`),
-  ADD KEY `posted_time` (`posted_time`);
-
 ALTER TABLE `Wo_ForumThreadReplies`
   ADD PRIMARY KEY (`id`),
   ADD KEY `thread_id` (`thread_id`),
@@ -3945,23 +4262,24 @@ ALTER TABLE `Wo_ForumThreadReplies`
   ADD KEY `post_quoted` (`post_quoted`),
   ADD KEY `posted_time` (`posted_time`);
 
-ALTER TABLE `Wo_Forum_Sections`
+ALTER TABLE `wo_forumthreadreplies`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `section_name` (`section_name`),
-  ADD KEY `description` (`description`(255));
+  ADD KEY `thread_id` (`thread_id`),
+  ADD KEY `forum_id` (`forum_id`),
+  ADD KEY `poster_id` (`poster_id`),
+  ADD KEY `post_subject` (`post_subject`(255)),
+  ADD KEY `post_quoted` (`post_quoted`),
+  ADD KEY `posted_time` (`posted_time`);
 
 ALTER TABLE `wo_forum_sections`
   ADD PRIMARY KEY (`id`),
   ADD KEY `section_name` (`section_name`),
   ADD KEY `description` (`description`(255));
 
-ALTER TABLE `wo_forum_threads`
+ALTER TABLE `Wo_Forum_Sections`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `user` (`user`),
-  ADD KEY `views` (`views`),
-  ADD KEY `posted` (`posted`),
-  ADD KEY `headline` (`headline`(255)),
-  ADD KEY `forum` (`forum`);
+  ADD KEY `section_name` (`section_name`),
+  ADD KEY `description` (`description`(255));
 
 ALTER TABLE `Wo_Forum_Threads`
   ADD PRIMARY KEY (`id`),
@@ -3971,12 +4289,20 @@ ALTER TABLE `Wo_Forum_Threads`
   ADD KEY `headline` (`headline`(255)),
   ADD KEY `forum` (`forum`);
 
-ALTER TABLE `wo_funding`
+ALTER TABLE `wo_forum_threads`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user` (`user`),
+  ADD KEY `views` (`views`),
+  ADD KEY `posted` (`posted`),
+  ADD KEY `headline` (`headline`(255)),
+  ADD KEY `forum` (`forum`);
+
+ALTER TABLE `Wo_Funding`
   ADD PRIMARY KEY (`id`),
   ADD KEY `hashed_id` (`hashed_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `Wo_Funding`
+ALTER TABLE `wo_funding`
   ADD PRIMARY KEY (`id`),
   ADD KEY `hashed_id` (`hashed_id`),
   ADD KEY `user_id` (`user_id`);
@@ -3999,26 +4325,26 @@ ALTER TABLE `wo_games`
   ADD PRIMARY KEY (`id`),
   ADD KEY `active` (`active`);
 
-ALTER TABLE `Wo_Games_Players`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`,`game_id`,`active`);
-
 ALTER TABLE `wo_games_players`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`,`game_id`,`active`);
 
-ALTER TABLE `Wo_Gender`
+ALTER TABLE `Wo_Games_Players`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `gender_id` (`gender_id`);
+  ADD KEY `user_id` (`user_id`,`game_id`,`active`);
 
 ALTER TABLE `wo_gender`
   ADD PRIMARY KEY (`id`),
   ADD KEY `gender_id` (`gender_id`);
 
-ALTER TABLE `wo_gifts`
-  ADD PRIMARY KEY (`id`);
+ALTER TABLE `Wo_Gender`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `gender_id` (`gender_id`);
 
 ALTER TABLE `Wo_Gifts`
+  ADD PRIMARY KEY (`id`);
+
+ALTER TABLE `wo_gifts`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `Wo_GroupAdmins`
@@ -4033,6 +4359,12 @@ ALTER TABLE `wo_groupadmins`
   ADD KEY `group_id` (`group_id`),
   ADD KEY `members` (`members`);
 
+ALTER TABLE `wo_groupchat`
+  ADD PRIMARY KEY (`group_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `type` (`type`),
+  ADD KEY `destruct_at` (`destruct_at`);
+
 ALTER TABLE `Wo_GroupChat`
   ADD PRIMARY KEY (`group_id`),
   ADD UNIQUE KEY `username` (`username`),
@@ -4041,13 +4373,8 @@ ALTER TABLE `Wo_GroupChat`
   ADD KEY `destruct_at` (`destruct_at`),
   ADD KEY `is_private` (`is_private`),
   ADD KEY `idx_username` (`username`),
-  ADD KEY `idx_type` (`type`);
-
-ALTER TABLE `wo_groupchat`
-  ADD PRIMARY KEY (`group_id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `type` (`type`),
-  ADD KEY `destruct_at` (`destruct_at`);
+  ADD KEY `idx_type` (`type`),
+  ADD KEY `idx_group_theme_updated` (`theme_updated_at`);
 
 ALTER TABLE `wo_groupchatusers`
   ADD PRIMARY KEY (`id`),
@@ -4089,10 +4416,10 @@ ALTER TABLE `wo_groups`
   ADD KEY `group_name` (`group_name`),
   ADD KEY `registered` (`registered`);
 
-ALTER TABLE `Wo_Groups_Categories`
+ALTER TABLE `wo_groups_categories`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `wo_groups_categories`
+ALTER TABLE `Wo_Groups_Categories`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `Wo_GroupTopics`
@@ -4145,12 +4472,12 @@ ALTER TABLE `Wo_Hashtags`
   ADD KEY `expire` (`expire`),
   ADD KEY `hash` (`hash`);
 
-ALTER TABLE `Wo_HiddenPosts`
+ALTER TABLE `wo_hiddenposts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `wo_hiddenposts`
+ALTER TABLE `Wo_HiddenPosts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`);
@@ -4177,7 +4504,7 @@ ALTER TABLE `Wo_Invitation_Links`
   ADD KEY `time` (`time`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `wo_job`
+ALTER TABLE `Wo_Job`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `page_id` (`page_id`),
@@ -4190,7 +4517,7 @@ ALTER TABLE `wo_job`
   ADD KEY `minimum` (`minimum`),
   ADD KEY `maximum` (`maximum`);
 
-ALTER TABLE `Wo_Job`
+ALTER TABLE `wo_job`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `page_id` (`page_id`),
@@ -4217,10 +4544,10 @@ ALTER TABLE `wo_job_apply`
   ADD KEY `page_id` (`page_id`),
   ADD KEY `user_name` (`user_name`);
 
-ALTER TABLE `Wo_Job_Categories`
+ALTER TABLE `wo_job_categories`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `wo_job_categories`
+ALTER TABLE `Wo_Job_Categories`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `Wo_LangIso`
@@ -4229,12 +4556,12 @@ ALTER TABLE `Wo_LangIso`
   ADD KEY `iso` (`iso`),
   ADD KEY `image` (`image`);
 
-ALTER TABLE `Wo_Langs`
+ALTER TABLE `wo_langs`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `idx_name` (`lang_key`),
   ADD KEY `type` (`type`);
 
-ALTER TABLE `wo_langs`
+ALTER TABLE `Wo_Langs`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `idx_name` (`lang_key`),
   ADD KEY `type` (`type`);
@@ -4249,14 +4576,14 @@ ALTER TABLE `Wo_Likes`
   ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `Wo_Live_Sub_Users`
+ALTER TABLE `wo_live_sub_users`
   ADD PRIMARY KEY (`id`),
   ADD KEY `time` (`time`),
   ADD KEY `is_watching` (`is_watching`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `wo_live_sub_users`
+ALTER TABLE `Wo_Live_Sub_Users`
   ADD PRIMARY KEY (`id`),
   ADD KEY `time` (`time`),
   ADD KEY `is_watching` (`is_watching`),
@@ -4356,10 +4683,10 @@ ALTER TABLE `Wo_MessageViews`
   ADD KEY `idx_user_id` (`user_id`),
   ADD KEY `idx_time` (`time`);
 
-ALTER TABLE `Wo_MonetizationSubscription`
+ALTER TABLE `wo_monetizationsubscription`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `wo_monetizationsubscription`
+ALTER TABLE `Wo_MonetizationSubscription`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `Wo_MovieCommentReplies`
@@ -4471,14 +4798,14 @@ ALTER TABLE `wo_notifications`
   ADD KEY `event_id` (`event_id`),
   ADD KEY `thread_id` (`thread_id`);
 
-ALTER TABLE `Wo_Offers`
+ALTER TABLE `wo_offers`
   ADD PRIMARY KEY (`id`),
   ADD KEY `page_id` (`page_id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `spend` (`spend`),
   ADD KEY `time` (`time`);
 
-ALTER TABLE `wo_offers`
+ALTER TABLE `Wo_Offers`
   ADD PRIMARY KEY (`id`),
   ADD KEY `page_id` (`page_id`),
   ADD KEY `user_id` (`user_id`),
@@ -4495,17 +4822,17 @@ ALTER TABLE `Wo_PageAdmins`
   ADD KEY `user_id` (`user_id`),
   ADD KEY `page_id` (`page_id`);
 
-ALTER TABLE `wo_pagerating`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `page_id` (`page_id`);
-
 ALTER TABLE `Wo_PageRating`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `page_id` (`page_id`);
 
-ALTER TABLE `Wo_Pages`
+ALTER TABLE `wo_pagerating`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `page_id` (`page_id`);
+
+ALTER TABLE `wo_pages`
   ADD PRIMARY KEY (`page_id`),
   ADD KEY `registered` (`registered`),
   ADD KEY `user_id` (`user_id`),
@@ -4518,7 +4845,7 @@ ALTER TABLE `Wo_Pages`
   ADD KEY `page_title` (`page_title`),
   ADD KEY `sub_category` (`sub_category`);
 
-ALTER TABLE `wo_pages`
+ALTER TABLE `Wo_Pages`
   ADD PRIMARY KEY (`page_id`),
   ADD KEY `registered` (`registered`),
   ADD KEY `user_id` (`user_id`),
@@ -4537,21 +4864,21 @@ ALTER TABLE `Wo_Pages_Categories`
 ALTER TABLE `wo_pages_categories`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `wo_pages_invites`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `page_id` (`page_id`,`inviter_id`,`invited_id`);
-
 ALTER TABLE `Wo_Pages_Invites`
   ADD PRIMARY KEY (`id`),
   ADD KEY `page_id` (`page_id`,`inviter_id`,`invited_id`);
 
-ALTER TABLE `Wo_Pages_Likes`
+ALTER TABLE `wo_pages_invites`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `page_id` (`page_id`,`inviter_id`,`invited_id`);
+
+ALTER TABLE `wo_pages_likes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `active` (`active`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `page_id` (`page_id`);
 
-ALTER TABLE `wo_pages_likes`
+ALTER TABLE `Wo_Pages_Likes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `active` (`active`),
   ADD KEY `user_id` (`user_id`),
@@ -4563,12 +4890,12 @@ ALTER TABLE `Wo_PatreonSubscribers`
   ADD KEY `subscriber_id` (`subscriber_id`),
   ADD KEY `time` (`time`);
 
-ALTER TABLE `Wo_Payments`
+ALTER TABLE `wo_payments`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `date` (`date`);
 
-ALTER TABLE `wo_payments`
+ALTER TABLE `Wo_Payments`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `date` (`date`);
@@ -4747,10 +5074,10 @@ ALTER TABLE `Wo_Products`
   ADD KEY `active` (`active`),
   ADD KEY `units` (`units`);
 
-ALTER TABLE `wo_products_categories`
+ALTER TABLE `Wo_Products_Categories`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `Wo_Products_Categories`
+ALTER TABLE `wo_products_categories`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `Wo_Products_Media`
@@ -4761,13 +5088,13 @@ ALTER TABLE `wo_products_media`
   ADD PRIMARY KEY (`id`),
   ADD KEY `product_id` (`product_id`);
 
-ALTER TABLE `Wo_ProfileFields`
+ALTER TABLE `wo_profilefields`
   ADD PRIMARY KEY (`id`),
   ADD KEY `registration_page` (`registration_page`),
   ADD KEY `active` (`active`),
   ADD KEY `profile_page` (`profile_page`);
 
-ALTER TABLE `wo_profilefields`
+ALTER TABLE `Wo_ProfileFields`
   ADD PRIMARY KEY (`id`),
   ADD KEY `registration_page` (`registration_page`),
   ADD KEY `active` (`active`),
@@ -4829,23 +5156,23 @@ ALTER TABLE `wo_reactions_types`
 ALTER TABLE `Wo_Reactions_Types`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `wo_recentsearches`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`,`search_id`),
-  ADD KEY `search_type` (`search_type`);
-
 ALTER TABLE `Wo_RecentSearches`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`,`search_id`),
   ADD KEY `search_type` (`search_type`);
 
-ALTER TABLE `wo_refund`
+ALTER TABLE `wo_recentsearches`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`,`search_id`),
+  ADD KEY `search_type` (`search_type`);
+
+ALTER TABLE `Wo_Refund`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `pro_type` (`pro_type`),
   ADD KEY `status` (`status`);
 
-ALTER TABLE `Wo_Refund`
+ALTER TABLE `wo_refund`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `pro_type` (`pro_type`),
@@ -4865,16 +5192,6 @@ ALTER TABLE `wo_relationship`
   ADD KEY `active` (`active`),
   ADD KEY `to_id` (`to_id`);
 
-ALTER TABLE `Wo_Reports`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `post_id` (`post_id`),
-  ADD KEY `seen` (`seen`),
-  ADD KEY `profile_id` (`profile_id`),
-  ADD KEY `page_id` (`page_id`),
-  ADD KEY `group_id` (`group_id`),
-  ADD KEY `comment_id` (`comment_id`);
-
 ALTER TABLE `wo_reports`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
@@ -4885,12 +5202,22 @@ ALTER TABLE `wo_reports`
   ADD KEY `group_id` (`group_id`),
   ADD KEY `comment_id` (`comment_id`);
 
-ALTER TABLE `Wo_SavedPosts`
+ALTER TABLE `Wo_Reports`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `post_id` (`post_id`),
+  ADD KEY `seen` (`seen`),
+  ADD KEY `profile_id` (`profile_id`),
+  ADD KEY `page_id` (`page_id`),
+  ADD KEY `group_id` (`group_id`),
+  ADD KEY `comment_id` (`comment_id`);
+
+ALTER TABLE `wo_savedposts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `wo_savedposts`
+ALTER TABLE `Wo_SavedPosts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`);
@@ -4908,13 +5235,13 @@ ALTER TABLE `Wo_Stickers`
 ALTER TABLE `wo_stickers`
   ADD PRIMARY KEY (`id`);
 
+ALTER TABLE `Wo_StoryComments`
+  ADD PRIMARY KEY (`id`);
+
 ALTER TABLE `wo_storycomments`
   ADD PRIMARY KEY (`id`),
   ADD KEY `story_id` (`story_id`),
   ADD KEY `user_id` (`user_id`);
-
-ALTER TABLE `Wo_StoryComments`
-  ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `wo_storyreactions`
   ADD PRIMARY KEY (`id`),
@@ -4964,14 +5291,14 @@ ALTER TABLE `Wo_Terms`
 ALTER TABLE `wo_terms`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `Wo_Tokens`
+ALTER TABLE `wo_tokens`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `user_id_2` (`user_id`),
   ADD KEY `app_id` (`app_id`),
   ADD KEY `token` (`token`);
 
-ALTER TABLE `wo_tokens`
+ALTER TABLE `Wo_Tokens`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `user_id_2` (`user_id`),
@@ -5001,12 +5328,12 @@ ALTER TABLE `Wo_UserAds`
   ADD KEY `status` (`status`),
   ADD KEY `page_id` (`page_id`);
 
-ALTER TABLE `wo_userads_data`
+ALTER TABLE `Wo_UserAds_Data`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `ad_id` (`ad_id`);
 
-ALTER TABLE `Wo_UserAds_Data`
+ALTER TABLE `wo_userads_data`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `ad_id` (`ad_id`);
@@ -5038,11 +5365,11 @@ ALTER TABLE `Wo_UserExperience`
   ADD KEY `user_id` (`user_id`),
   ADD KEY `time` (`time`);
 
-ALTER TABLE `wo_userfields`
+ALTER TABLE `Wo_UserFields`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`);
 
-ALTER TABLE `Wo_UserFields`
+ALTER TABLE `wo_userfields`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`);
 
@@ -5055,10 +5382,10 @@ ALTER TABLE `Wo_UserMediaSettings`
   ADD UNIQUE KEY `user_id` (`user_id`),
   ADD KEY `backup_enabled` (`backup_enabled`);
 
-ALTER TABLE `wo_usermonetization`
+ALTER TABLE `Wo_UserMonetization`
   ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `Wo_UserMonetization`
+ALTER TABLE `wo_usermonetization`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `Wo_UserOpenTo`
@@ -5073,7 +5400,7 @@ ALTER TABLE `Wo_UserOpenTo`
   ADD KEY `services` (`services`(768)),
   ADD KEY `description` (`description`(768));
 
-ALTER TABLE `wo_userorders`
+ALTER TABLE `Wo_UserOrders`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `product_owner_id` (`product_owner_id`),
@@ -5085,7 +5412,7 @@ ALTER TABLE `wo_userorders`
   ADD KEY `units` (`units`),
   ADD KEY `address_id` (`address_id`);
 
-ALTER TABLE `Wo_UserOrders`
+ALTER TABLE `wo_userorders`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `product_owner_id` (`product_owner_id`),
@@ -5206,13 +5533,13 @@ ALTER TABLE `Wo_UserTiers`
   ADD KEY `chat` (`chat`),
   ADD KEY `live_stream` (`live_stream`);
 
-ALTER TABLE `wo_user_gifts`
+ALTER TABLE `Wo_User_Gifts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `from` (`from`),
   ADD KEY `to` (`to`),
   ADD KEY `gift_id` (`gift_id`);
 
-ALTER TABLE `Wo_User_Gifts`
+ALTER TABLE `wo_user_gifts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `from` (`from`),
   ADD KEY `to` (`to`),
@@ -5242,25 +5569,25 @@ ALTER TABLE `Wo_VideoCalles`
   ADD KEY `called` (`called`),
   ADD KEY `declined` (`declined`);
 
-ALTER TABLE `wo_votes`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `post_id` (`post_id`),
-  ADD KEY `option_id` (`option_id`);
-
 ALTER TABLE `Wo_Votes`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `option_id` (`option_id`);
 
-ALTER TABLE `wo_wonders`
+ALTER TABLE `wo_votes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `post_id` (`post_id`),
+  ADD KEY `option_id` (`option_id`);
+
+ALTER TABLE `Wo_Wonders`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `type` (`type`);
 
-ALTER TABLE `Wo_Wonders`
+ALTER TABLE `wo_wonders`
   ADD PRIMARY KEY (`id`),
   ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`),
@@ -5285,15 +5612,15 @@ ALTER TABLE `wondertage_settings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 ALTER TABLE `Wo_Activities`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 ALTER TABLE `wo_activities`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
-ALTER TABLE `Wo_AdminInvitations`
+ALTER TABLE `wo_admininvitations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_admininvitations`
+ALTER TABLE `Wo_AdminInvitations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Ads`
@@ -5302,10 +5629,10 @@ ALTER TABLE `Wo_Ads`
 ALTER TABLE `wo_ads`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
-ALTER TABLE `Wo_Affiliates_Requests`
+ALTER TABLE `wo_affiliates_requests`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_affiliates_requests`
+ALTER TABLE `Wo_Affiliates_Requests`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_agoravideocall`
@@ -5314,16 +5641,16 @@ ALTER TABLE `wo_agoravideocall`
 ALTER TABLE `Wo_AgoraVideoCall`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
-ALTER TABLE `wo_albums_media`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_Albums_Media`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_announcement`
+ALTER TABLE `wo_albums_media`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Announcement`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `wo_announcement`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_announcement_views`
@@ -5332,22 +5659,22 @@ ALTER TABLE `wo_announcement_views`
 ALTER TABLE `Wo_Announcement_Views`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Apps`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
 ALTER TABLE `wo_apps`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_AppsSessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=330;
+ALTER TABLE `Wo_Apps`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 ALTER TABLE `wo_appssessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
 
-ALTER TABLE `wo_apps_hash`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `Wo_AppsSessions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=334;
 
 ALTER TABLE `Wo_Apps_Hash`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `wo_apps_hash`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_apps_permission`
@@ -5362,17 +5689,17 @@ ALTER TABLE `wo_audiocalls`
 ALTER TABLE `Wo_AudioCalls`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_backup_codes`
+ALTER TABLE `Wo_Backup_Codes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Backup_Codes`
+ALTER TABLE `wo_backup_codes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_bad_login`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 ALTER TABLE `Wo_Bad_Login`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 ALTER TABLE `wo_banned_ip`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5380,10 +5707,10 @@ ALTER TABLE `wo_banned_ip`
 ALTER TABLE `Wo_Banned_Ip`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Blocks`
+ALTER TABLE `wo_blocks`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_blocks`
+ALTER TABLE `Wo_Blocks`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Blog`
@@ -5392,16 +5719,16 @@ ALTER TABLE `Wo_Blog`
 ALTER TABLE `wo_blog`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_blogcommentreplies`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_BlogCommentReplies`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_blogcomments`
+ALTER TABLE `wo_blogcommentreplies`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_BlogComments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `wo_blogcomments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_BlogMovieDisLikes`
@@ -5410,10 +5737,10 @@ ALTER TABLE `Wo_BlogMovieDisLikes`
 ALTER TABLE `wo_blogmoviedislikes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_blogmovielikes`
+ALTER TABLE `Wo_BlogMovieLikes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_BlogMovieLikes`
+ALTER TABLE `wo_blogmovielikes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Blogs_Categories`
@@ -5422,14 +5749,59 @@ ALTER TABLE `Wo_Blogs_Categories`
 ALTER TABLE `wo_blogs_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
-ALTER TABLE `wo_blog_reaction`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
-
 ALTER TABLE `Wo_Blog_Reaction`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
+ALTER TABLE `wo_blog_reaction`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+
+ALTER TABLE `Wo_Bots`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+ALTER TABLE `Wo_Bot_Api_Keys`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_Callbacks`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_Commands`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+ALTER TABLE `Wo_Bot_Keyboards`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_Messages`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+ALTER TABLE `Wo_Bot_Polls`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_Poll_Options`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_Poll_Votes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_Rate_Limits`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_RSS_Feeds`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_RSS_Items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_Tasks`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Bot_Users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+ALTER TABLE `Wo_Bot_Webhook_Log`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+
 ALTER TABLE `wo_calls`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=108;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
 
 ALTER TABLE `wo_call_statistics`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5452,11 +5824,11 @@ ALTER TABLE `Wo_ChannelSettings`
 ALTER TABLE `Wo_ChannelSubscribers`
   MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_Codes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=109;
+
+ALTER TABLE `wo_codes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Colored_Posts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5464,22 +5836,22 @@ ALTER TABLE `Wo_Colored_Posts`
 ALTER TABLE `wo_colored_posts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_commentlikes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_CommentLikes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_comments`
+ALTER TABLE `wo_commentlikes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Comments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
-ALTER TABLE `Wo_CommentWonders`
+ALTER TABLE `wo_comments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_commentwonders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_CommentWonders`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_comment_replies`
@@ -5488,10 +5860,10 @@ ALTER TABLE `wo_comment_replies`
 ALTER TABLE `Wo_Comment_Replies`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_comment_replies_likes`
+ALTER TABLE `Wo_Comment_Replies_Likes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Comment_Replies_Likes`
+ALTER TABLE `wo_comment_replies_likes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Comment_Replies_Wonders`
@@ -5506,11 +5878,11 @@ ALTER TABLE `Wo_Config`
 ALTER TABLE `wo_config`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=577;
 
-ALTER TABLE `wo_custompages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_CustomPages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+ALTER TABLE `wo_custompages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_custom_fields`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5518,10 +5890,10 @@ ALTER TABLE `wo_custom_fields`
 ALTER TABLE `Wo_Custom_Fields`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Egoing`
+ALTER TABLE `wo_egoing`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_egoing`
+ALTER TABLE `Wo_Egoing`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Einterested`
@@ -5530,16 +5902,16 @@ ALTER TABLE `Wo_Einterested`
 ALTER TABLE `wo_einterested`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Einvited`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `wo_einvited`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_emails`
+ALTER TABLE `Wo_Einvited`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Emails`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `wo_emails`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Events`
@@ -5554,11 +5926,11 @@ ALTER TABLE `Wo_Family`
 ALTER TABLE `wo_family`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_followers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
 ALTER TABLE `Wo_Followers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+
+ALTER TABLE `wo_followers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 ALTER TABLE `Wo_Forums`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
@@ -5566,28 +5938,28 @@ ALTER TABLE `Wo_Forums`
 ALTER TABLE `wo_forums`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_forumthreadreplies`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_ForumThreadReplies`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
-ALTER TABLE `Wo_Forum_Sections`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+ALTER TABLE `wo_forumthreadreplies`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_forum_sections`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_forum_threads`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `Wo_Forum_Sections`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 ALTER TABLE `Wo_Forum_Threads`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
-ALTER TABLE `wo_funding`
+ALTER TABLE `wo_forum_threads`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Funding`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `wo_funding`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Funding_Raise`
@@ -5602,23 +5974,23 @@ ALTER TABLE `Wo_Games`
 ALTER TABLE `wo_games`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Games_Players`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `wo_games_players`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Gender`
+ALTER TABLE `Wo_Games_Players`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_gender`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_gifts`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+ALTER TABLE `Wo_Gender`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Gifts`
   MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+ALTER TABLE `wo_gifts`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_GroupAdmins`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5626,11 +5998,11 @@ ALTER TABLE `Wo_GroupAdmins`
 ALTER TABLE `wo_groupadmins`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_GroupChat`
-  MODIFY `group_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
-
 ALTER TABLE `wo_groupchat`
   MODIFY `group_id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_GroupChat`
+  MODIFY `group_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 ALTER TABLE `wo_groupchatusers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5647,10 +6019,10 @@ ALTER TABLE `Wo_Groups`
 ALTER TABLE `wo_groups`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Groups_Categories`
+ALTER TABLE `wo_groups_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
-ALTER TABLE `wo_groups_categories`
+ALTER TABLE `Wo_Groups_Categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 ALTER TABLE `Wo_GroupTopics`
@@ -5674,17 +6046,17 @@ ALTER TABLE `wo_hashtags`
 ALTER TABLE `Wo_Hashtags`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
-ALTER TABLE `Wo_HiddenPosts`
+ALTER TABLE `wo_hiddenposts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_hiddenposts`
+ALTER TABLE `Wo_HiddenPosts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_HTML_Emails`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 ALTER TABLE `wo_ice_candidates`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2155;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2209;
 
 ALTER TABLE `wo_invitation_links`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5692,10 +6064,10 @@ ALTER TABLE `wo_invitation_links`
 ALTER TABLE `Wo_Invitation_Links`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_job`
+ALTER TABLE `Wo_Job`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
-ALTER TABLE `Wo_Job`
+ALTER TABLE `wo_job`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 ALTER TABLE `Wo_Job_Apply`
@@ -5704,19 +6076,19 @@ ALTER TABLE `Wo_Job_Apply`
 ALTER TABLE `wo_job_apply`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
-ALTER TABLE `Wo_Job_Categories`
+ALTER TABLE `wo_job_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
-ALTER TABLE `wo_job_categories`
+ALTER TABLE `Wo_Job_Categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 ALTER TABLE `Wo_LangIso`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
-ALTER TABLE `Wo_Langs`
+ALTER TABLE `wo_langs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2568;
 
-ALTER TABLE `wo_langs`
+ALTER TABLE `Wo_Langs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2568;
 
 ALTER TABLE `wo_likes`
@@ -5725,10 +6097,10 @@ ALTER TABLE `wo_likes`
 ALTER TABLE `Wo_Likes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
-ALTER TABLE `Wo_Live_Sub_Users`
+ALTER TABLE `wo_live_sub_users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_live_sub_users`
+ALTER TABLE `Wo_Live_Sub_Users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Manage_Pro`
@@ -5744,7 +6116,7 @@ ALTER TABLE `Wo_MessageComments`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 ALTER TABLE `Wo_Messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=812;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=857;
 
 ALTER TABLE `wo_messages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
@@ -5752,11 +6124,11 @@ ALTER TABLE `wo_messages`
 ALTER TABLE `Wo_MessageViews`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
-ALTER TABLE `Wo_MonetizationSubscription`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `wo_monetizationsubscription`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_MonetizationSubscription`
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_MovieCommentReplies`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5783,15 +6155,15 @@ ALTER TABLE `Wo_Mute_Story`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Notifications`
-  MODIFY `id` int(255) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=82;
+  MODIFY `id` int(255) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85;
 
 ALTER TABLE `wo_notifications`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
-ALTER TABLE `Wo_Offers`
+ALTER TABLE `wo_offers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_offers`
+ALTER TABLE `Wo_Offers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_pageadmins`
@@ -5800,17 +6172,17 @@ ALTER TABLE `wo_pageadmins`
 ALTER TABLE `Wo_PageAdmins`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_pagerating`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_PageRating`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Pages`
-  MODIFY `page_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+ALTER TABLE `wo_pagerating`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_pages`
   MODIFY `page_id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Pages`
+  MODIFY `page_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 ALTER TABLE `Wo_Pages_Categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
@@ -5818,25 +6190,25 @@ ALTER TABLE `Wo_Pages_Categories`
 ALTER TABLE `wo_pages_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
-ALTER TABLE `wo_pages_invites`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_Pages_Invites`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Pages_Likes`
+ALTER TABLE `wo_pages_invites`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_pages_likes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+ALTER TABLE `Wo_Pages_Likes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
 ALTER TABLE `Wo_PatreonSubscribers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Payments`
+ALTER TABLE `wo_payments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
-ALTER TABLE `wo_payments`
+ALTER TABLE `Wo_Payments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 ALTER TABLE `wo_payment_transactions`
@@ -5867,7 +6239,7 @@ ALTER TABLE `wo_posts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 ALTER TABLE `Wo_Posts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
 
 ALTER TABLE `wo_productreview`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5881,10 +6253,10 @@ ALTER TABLE `wo_products`
 ALTER TABLE `Wo_Products`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_products_categories`
+ALTER TABLE `Wo_Products_Categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
-ALTER TABLE `Wo_Products_Categories`
+ALTER TABLE `wo_products_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 ALTER TABLE `Wo_Products_Media`
@@ -5893,10 +6265,10 @@ ALTER TABLE `Wo_Products_Media`
 ALTER TABLE `wo_products_media`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_ProfileFields`
+ALTER TABLE `wo_profilefields`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_profilefields`
+ALTER TABLE `Wo_ProfileFields`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Purchases`
@@ -5906,7 +6278,7 @@ ALTER TABLE `wo_purchases`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Reactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 ALTER TABLE `wo_reactions`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
@@ -5917,16 +6289,16 @@ ALTER TABLE `wo_reactions_types`
 ALTER TABLE `Wo_Reactions_Types`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
-ALTER TABLE `wo_recentsearches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
 ALTER TABLE `Wo_RecentSearches`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
-ALTER TABLE `wo_refund`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `wo_recentsearches`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 ALTER TABLE `Wo_Refund`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `wo_refund`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Relationship`
@@ -5935,16 +6307,16 @@ ALTER TABLE `Wo_Relationship`
 ALTER TABLE `wo_relationship`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_Reports`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `wo_reports`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_SavedPosts`
+ALTER TABLE `Wo_Reports`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_savedposts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_SavedPosts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_ScheduledPosts`
@@ -5956,11 +6328,11 @@ ALTER TABLE `Wo_Stickers`
 ALTER TABLE `wo_stickers`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_storycomments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_StoryComments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+ALTER TABLE `wo_storycomments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `wo_storyreactions`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -5972,7 +6344,7 @@ ALTER TABLE `wo_story_seen`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 ALTER TABLE `Wo_Story_Seen`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 ALTER TABLE `Wo_Subgroups`
   MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
@@ -5989,11 +6361,11 @@ ALTER TABLE `Wo_Terms`
 ALTER TABLE `wo_terms`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
-ALTER TABLE `Wo_Tokens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=94;
-
 ALTER TABLE `wo_tokens`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Wo_Tokens`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=94;
 
 ALTER TABLE `Wo_UploadedMedia`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -6007,10 +6379,10 @@ ALTER TABLE `Wo_UserAddress`
 ALTER TABLE `Wo_UserAds`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_userads_data`
+ALTER TABLE `Wo_UserAds_Data`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_UserAds_Data`
+ALTER TABLE `wo_userads_data`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_UserCard`
@@ -6028,11 +6400,11 @@ ALTER TABLE `Wo_UserCloudBackupSettings`
 ALTER TABLE `Wo_UserExperience`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+ALTER TABLE `Wo_UserFields`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=657;
+
 ALTER TABLE `wo_userfields`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
-
-ALTER TABLE `Wo_UserFields`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=653;
 
 ALTER TABLE `Wo_UserLanguages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
@@ -6040,19 +6412,19 @@ ALTER TABLE `Wo_UserLanguages`
 ALTER TABLE `Wo_UserMediaSettings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_usermonetization`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_UserMonetization`
   MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `wo_usermonetization`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_UserOpenTo`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_userorders`
+ALTER TABLE `Wo_UserOrders`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `Wo_UserOrders`
+ALTER TABLE `wo_userorders`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_UserProjects`
@@ -6062,7 +6434,7 @@ ALTER TABLE `Wo_UserRatings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 ALTER TABLE `Wo_Users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=659;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=663;
 
 ALTER TABLE `wo_userschat`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
@@ -6074,10 +6446,10 @@ ALTER TABLE `Wo_UserSkills`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_UserStory`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 ALTER TABLE `Wo_UserStoryMedia`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 ALTER TABLE `wo_userstorymedia`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
@@ -6085,11 +6457,11 @@ ALTER TABLE `wo_userstorymedia`
 ALTER TABLE `Wo_UserTiers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_user_gifts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_User_Gifts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+ALTER TABLE `wo_user_gifts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Verification_Requests`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
@@ -6103,16 +6475,16 @@ ALTER TABLE `wo_videocalles`
 ALTER TABLE `Wo_VideoCalles`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_votes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
 ALTER TABLE `Wo_Votes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
-ALTER TABLE `wo_wonders`
+ALTER TABLE `wo_votes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `Wo_Wonders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `wo_wonders`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `stickers`

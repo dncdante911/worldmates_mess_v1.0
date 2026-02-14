@@ -319,24 +319,31 @@ module.exports.registerListeners = async (socket, io, ctx) => {
                 return;
             }
 
+            // Convert from_id (access_token) to numeric user_id
+            const senderUserId = ctx.userHashUserId[from_id];
+            if (!senderUserId) {
+                console.log("❌ delete_message - invalid from_id, no user mapping found");
+                return;
+            }
+
             // Broadcast to recipient (for private chat)
             if (recipient_id) {
                 io.to(String(recipient_id)).emit('message_deleted', {
                     message_id,
-                    from_id,
+                    from_id: senderUserId,  // Send numeric user_id, not access_token
                     recipient_id
                 });
-                console.log(`✅ Broadcast message_deleted to user ${recipient_id}`);
+                console.log(`✅ Broadcast message_deleted to user ${recipient_id} from ${senderUserId}`);
             }
 
             // Broadcast to group
             if (group_id) {
                 io.to(`group_${group_id}`).emit('message_deleted', {
                     message_id,
-                    from_id,
+                    from_id: senderUserId,  // Send numeric user_id, not access_token
                     group_id
                 });
-                console.log(`✅ Broadcast message_deleted to group ${group_id}`);
+                console.log(`✅ Broadcast message_deleted to group ${group_id} from ${senderUserId}`);
             }
 
         } catch (e) {
@@ -355,15 +362,22 @@ module.exports.registerListeners = async (socket, io, ctx) => {
                 return;
             }
 
+            // Convert from_id (access_token) to numeric user_id
+            const senderUserId = ctx.userHashUserId[from_id];
+            if (!senderUserId) {
+                console.log("❌ edit_message - invalid from_id, no user mapping found");
+                return;
+            }
+
             // Broadcast to recipient (for private chat)
             if (recipient_id) {
                 io.to(String(recipient_id)).emit('message_edited', {
                     message_id,
                     new_text,
-                    from_id,
+                    from_id: senderUserId,  // Send numeric user_id, not access_token
                     recipient_id
                 });
-                console.log(`✅ Broadcast message_edited to user ${recipient_id}`);
+                console.log(`✅ Broadcast message_edited to user ${recipient_id} from ${senderUserId}`);
             }
 
             // Broadcast to group
@@ -371,10 +385,10 @@ module.exports.registerListeners = async (socket, io, ctx) => {
                 io.to(`group_${group_id}`).emit('message_edited', {
                     message_id,
                     new_text,
-                    from_id,
+                    from_id: senderUserId,  // Send numeric user_id, not access_token
                     group_id
                 });
-                console.log(`✅ Broadcast message_edited to group ${group_id}`);
+                console.log(`✅ Broadcast message_edited to group ${group_id} from ${senderUserId}`);
             }
 
         } catch (e) {

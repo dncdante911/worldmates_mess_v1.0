@@ -216,7 +216,7 @@ function getCallHistory($db, $user_id) {
                 u.avatar AS other_avatar,
                 u.verified AS other_verified
             FROM wo_calls c
-            LEFT JOIN Wo_Users u ON u.user_id = CASE WHEN c.from_id = :user_id_7 THEN c.to_id ELSE c.from_id END
+            LEFT JOIN wo_users u ON u.user_id = CASE WHEN c.from_id = :user_id_7 THEN c.to_id ELSE c.from_id END
             WHERE $where_sql
             $delete_filter
             ORDER BY c.created_at DESC
@@ -263,7 +263,7 @@ function getCallHistory($db, $user_id) {
                 gc.max_participants
             FROM wo_group_calls gc
             INNER JOIN wo_group_call_participants gcp ON gcp.call_id = gc.id AND gcp.user_id = :user_id_g2
-            LEFT JOIN Wo_GroupChat g ON g.group_id = gc.group_id
+            LEFT JOIN wo_group_chat g ON g.group_id = gc.group_id
             ORDER BY gc.created_at DESC
             LIMIT :g_limit OFFSET :g_offset
         ";

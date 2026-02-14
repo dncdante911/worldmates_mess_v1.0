@@ -417,6 +417,18 @@ class MessagesViewModel(application: Application) :
                         Log.d("MessagesViewModel", "Повідомлення відредаговано: $messageId")
                     }
 
+                    // Відправляємо подію через Socket.IO для реального часу
+                    socketManager?.emit("edit_message", JSONObject().apply {
+                        put("message_id", messageId)
+                        put("new_text", newText)
+                        put("from_id", UserSession.userId)
+                        put("recipient_id", recipientId)
+                        if (groupId > 0) {
+                            put("group_id", groupId)
+                        }
+                    })
+                    Log.d("MessagesViewModel", "✅ Відправлено edit_message event через Socket.IO")
+
                     _error.value = null
                 } else {
                     _error.value = response.errors?.errorText ?: "Не вдалося відредагувати повідомлення"
@@ -462,7 +474,7 @@ class MessagesViewModel(application: Application) :
                         put("message_id", messageId)
                         put("from_id", UserSession.userId)
                         put("recipient_id", recipientId)
-                        if (isGroupChat && groupId > 0) {
+                        if (groupId > 0) {
                             put("group_id", groupId)
                         }
                     })
@@ -1171,6 +1183,23 @@ class MessagesViewModel(application: Application) :
         currentMessages.removeAll { it.id == messageId }
         _messages.value = currentMessages
         Log.d("MessagesViewModel", "✅ Повідомлення $messageId видалено з UI")
+    }
+
+    override fun onMessageEdited(messageId: Long, newText: String) {
+        Log.d("MessagesViewModel", "✏️ Отримано подію редагування повідомлення: $messageId")
+        // Оновлюємо повідомлення в локальному списку
+        val currentMessages = _messages.value.toMutableList()
+        val index = currentMessages.indexOfFirst { it.id == messageId }
+
+        if (index != -1) {
+            val updatedMessage = currentMessages[index].copy(
+                encryptedText = newText,
+                decryptedText = newText
+            )
+            currentMessages[index] = updatedMessage
+            _messages.value = currentMessages
+            Log.d("MessagesViewModel", "✅ Повідомлення $messageId відредаговано в UI")
+        }
     }
 
     /**

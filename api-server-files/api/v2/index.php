@@ -3,30 +3,12 @@
  * API v2 Router
  * Routes requests based on 'type' parameter to appropriate endpoint files
  *
- * HYBRID MODE: Works with both server_key and access_token
- * - Requests WITH server_key: WorldMates app, WoWonder official app
- * - Requests WITHOUT server_key: Direct API access, web clients
+ * This router works alongside WoWonder's api-v2.php:
+ * - api-v2.php requires server_key (used by official WoWonder app)
+ * - This index.php works with access_token only (used by WorldMates messenger)
  */
 
 header('Content-Type: application/json; charset=UTF-8');
-
-// ============================================
-// LOGGING SETUP
-// ============================================
-$log_dir = __DIR__ . '/logs';
-if (!is_dir($log_dir)) {
-    @mkdir($log_dir, 0755, true);
-}
-$log_file = $log_dir . '/api_v2_' . date('Y-m-d') . '.log';
-
-function api_log($message, $level = 'INFO') {
-    global $log_file;
-    $timestamp = date('Y-m-d H:i:s');
-    $log_entry = "[{$timestamp}] [{$level}] {$message}\n";
-    @file_put_contents($log_file, $log_entry, FILE_APPEND);
-    // Also send to PHP error_log for backup
-    error_log("API_V2 {$level}: {$message}");
-}
 
 // Load API v2 configuration (sets up $db, $sqlConnect, $wo, WoWonder functions)
 require_once(__DIR__ . '/config.php');
@@ -34,48 +16,7 @@ require_once(__DIR__ . '/config.php');
 // Get request type
 $type = $_GET['type'] ?? $_POST['type'] ?? '';
 
-// ============================================
-// SERVER KEY VALIDATION (optional)
-// ============================================
-// If server_key is provided (WorldMates app), validate it
-$server_key = $_POST['server_key'] ?? $_GET['server_key'] ?? '';
-$server_key_valid = false;
-
-// DEBUG: Log received server_key (first 20 chars for security)
-api_log("Request: type=$type, server_key=" . (empty($server_key) ? 'EMPTY' : substr($server_key, 0, 20) . '...'), 'DEBUG');
-api_log("Config: server_key=" . (empty($wo['config']['widnows_app_api_key']) ? 'NOT SET' : substr($wo['config']['widnows_app_api_key'], 0, 20) . '...'), 'DEBUG');
-
-if (!empty($server_key)) {
-    // Check against WoWonder config
-    if (!empty($wo['config']['widnows_app_api_key']) && $server_key === $wo['config']['widnows_app_api_key']) {
-        $server_key_valid = true;
-        api_log("server_key VALID (matched widnows_app_api_key)", 'DEBUG');
-    }
-    // Also check against our custom server key if different
-    elseif (defined('SERVER_KEY') && $server_key === SERVER_KEY) {
-        $server_key_valid = true;
-        api_log("server_key VALID (matched SERVER_KEY constant)", 'DEBUG');
-    }
-
-    if (!$server_key_valid) {
-        api_log("Invalid server_key for type=$type", 'ERROR');
-        http_response_code(403);
-        echo json_encode([
-            'api_status' => '404',
-            'errors' => [
-                'error_id' => 1,
-                'error_text' => 'Invalid server_key'
-            ]
-        ]);
-        exit;
-    }
-} else {
-    api_log("No server_key provided for type=$type", 'DEBUG');
-}
-
-// ============================================
-// PUBLIC ENDPOINTS (no authentication required)
-// ============================================
+// List of endpoints that don't require authentication
 $public_endpoints = [
     'auth',
     'create-account',
@@ -92,84 +33,48 @@ $public_endpoints = [
     'get_site_settings',
     'get-site-settings',
     'test_init',
-    'test_email',  // DEBUG: Email testing endpoint
-    'test_smtp',   // DEBUG: SMTP configuration testing endpoint
-    'check_mobile_update',
-    'regsiter',  // Typo in WoWonder, keeping for compatibility
-    'register',
-    'social-login',
-    'is-active',
-    'two-factor',
-    'validation_user'
+    'check_mobile_update'
 ];
 
-// ============================================
-// AUTHENTICATION VALIDATION
-// ============================================
-$is_public_endpoint = in_array($type, $public_endpoints);
-
-api_log("Auth check: is_public=$is_public_endpoint, server_key_valid=" . ($server_key_valid ? 'YES' : 'NO') . ", type=$type", 'DEBUG');
-
-// If server_key is valid and endpoint is public, skip access_token check
-if ($server_key_valid && $is_public_endpoint) {
-    // Public endpoint with valid server_key - no authentication needed
-    api_log("Public endpoint with valid server_key - allowing without access_token", 'DEBUG');
-    $wo['loggedin'] = false;
-}
-// Protected endpoint OR public endpoint without server_key - check access_token
-elseif (!$is_public_endpoint || !$server_key_valid) {
+// Validate access_token for protected endpoints
+if (!in_array($type, $public_endpoints)) {
     $access_token = $_GET['access_token'] ?? $_POST['access_token'] ?? '';
-    api_log("Checking access_token, has_token=" . (!empty($access_token) ? 'YES' : 'NO'), 'DEBUG');
 
-    // For protected endpoints, access_token is required
-    if (!$is_public_endpoint && empty($access_token)) {
-        api_log("Protected endpoint requires access_token - BLOCKING", 'ERROR');
+    if (empty($access_token)) {
         http_response_code(401);
         echo json_encode([
-            'api_status' => '404',
-            'errors' => [
-                'error_id' => 2,
-                'error_text' => 'Not authorized'
-            ]
+            'api_status' => 401,
+            'error_message' => 'access_token is required'
         ]);
         exit;
     }
 
-    // Validate access_token if provided
-    if (!empty($access_token)) {
-        // Validate token using config.php's validateAccessToken function
-        $user_id = validateAccessToken($db, $access_token);
+    // Validate token using config.php's validateAccessToken function
+    $user_id = validateAccessToken($db, $access_token);
 
-        if (!$user_id) {
-            http_response_code(401);
-            echo json_encode([
-                'api_status' => '404',
-                'errors' => [
-                    'error_id' => 2,
-                    'error_text' => 'Invalid or expired access_token'
-                ]
-            ]);
-            exit;
-        }
+    if (!$user_id) {
+        http_response_code(401);
+        echo json_encode([
+            'api_status' => 401,
+            'error_message' => 'Invalid or expired access_token'
+        ]);
+        exit;
+    }
 
-        // Get full user data using WoWonder function
-        if (function_exists('Wo_UserData')) {
-            $user_data = Wo_UserData($user_id);
-            if (!empty($user_data)) {
-                $wo['user'] = $user_data;
-                $wo['loggedin'] = true;
-            }
-        } else {
-            // Fallback: set minimal user data
-            $wo['user'] = [
-                'user_id' => $user_id,
-                'id' => $user_id
-            ];
+    // Get full user data using WoWonder function
+    if (function_exists('Wo_UserData')) {
+        $user_data = Wo_UserData($user_id);
+        if (!empty($user_data)) {
+            $wo['user'] = $user_data;
             $wo['loggedin'] = true;
         }
-    } elseif ($is_public_endpoint) {
-        // Public endpoint without authentication
-        $wo['loggedin'] = false;
+    } else {
+        // Fallback: set minimal user data
+        $wo['user'] = [
+            'user_id' => $user_id,
+            'id' => $user_id
+        ];
+        $wo['loggedin'] = true;
     }
 }
 
@@ -187,8 +92,6 @@ if (empty($type)) {
 $routes = [
     // Debug
     'test_init' => 'endpoints/test_init.php',
-    'test_email' => 'endpoints/test_email.php',
-    'test_smtp' => 'endpoints/test_smtp.php',
 
     // Search endpoints
     'search' => 'endpoints/search.php',
@@ -212,12 +115,6 @@ $routes = [
     // Quick Registration (simplified: phone/email + code)
     'quick_register' => 'endpoints/quick_register.php',
     'quick_verify' => 'endpoints/quick_verify.php',
-
-    // Quick Login (email + code)
-    'send_login_code' => 'endpoints/send-login-code.php',
-    'send-login-code' => 'endpoints/send-login-code.php',
-    'verify_login_code' => 'endpoints/verify-login-code.php',
-    'verify-login-code' => 'endpoints/verify-login-code.php',
 
     // Password Reset
     'send-reset-password-email' => 'endpoints/send-reset-password-email.php',

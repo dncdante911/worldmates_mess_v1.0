@@ -71,8 +71,14 @@ async function initRedisSub(io) {
     if (redisSubscribed) return;
     try {
         console.log("=== Попытка подключения к Redis 127.0.0.1:6379... ===");
-        await sub.connect();
-        console.log("=== Node.js: ПОДКЛЮЧЕНО К REDIS успешно ===");
+
+        // ✅ ИСПРАВЛЕНИЕ: Проверяем, не открыт ли уже клиент
+        if (!sub.isOpen) {
+            await sub.connect();
+            console.log("=== Node.js: ПОДКЛЮЧЕНО К REDIS успешно ===");
+        } else {
+            console.log("=== Redis уже подключен, пропускаем connect() ===");
+        }
 
         await sub.subscribe('messages', async (message) => {
             try {

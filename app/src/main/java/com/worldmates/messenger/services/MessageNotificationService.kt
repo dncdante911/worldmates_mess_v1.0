@@ -106,13 +106,14 @@ class MessageNotificationService : Service() {
 
             socket?.on(Socket.EVENT_CONNECT) {
                 Log.d(TAG, "✅ Notification socket CONNECTED")
-                Log.d(TAG, "   Sending auth with access_token: ${accessToken?.take(10)}...")
-                // Authenticate
-                val authData = JSONObject().apply {
-                    put("user_id", accessToken)
+                Log.d(TAG, "   Sending join with access_token: ${accessToken?.take(10)}...")
+                // ✅ ИСПРАВЛЕНИЕ: Отправляем событие "join" с access_token как user_id
+                // JoinController на сервере ожидает событие "join", а не "auth"
+                val joinData = JSONObject().apply {
+                    put("user_id", accessToken)  // access_token как session_id
                 }
-                socket?.emit(Constants.SOCKET_EVENT_AUTH, authData)
-                Log.d(TAG, "   Auth event emitted")
+                socket?.emit("join", joinData)
+                Log.d(TAG, "   Join event emitted")
             }
 
             socket?.on(Socket.EVENT_DISCONNECT) { args ->

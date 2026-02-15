@@ -328,6 +328,18 @@ class MessagesViewModel(application: Application) :
                     currentMessages.add(localMessage)
                     _messages.value = currentMessages.sortedBy { it.timeStamp }
 
+                    // ✅ ИСПРАВЛЕНИЕ: Перезагружаем сообщения из БД через 1 секунду
+                    // чтобы гарантировать синхронизацию с сервером
+                    viewModelScope.launch {
+                        delay(1000) // Даем серверу время сохранить в БД
+                        if (groupId != 0L) {
+                            fetchGroupMessages()
+                        } else {
+                            fetchMessages()
+                        }
+                        Log.d(TAG, "✅ Сообщения перезагружены из БД после отправки")
+                    }
+
                     _error.value = null
                     deleteDraft()
                     Log.d(TAG, "Повідомлення надіслано через Socket.IO (Node.js)")

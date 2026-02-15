@@ -262,6 +262,8 @@ async function main() {
   // --- СОЗДАНИЕ СЕРВЕРА SOCKET.IO ---
   io = require('socket.io')(server, {
     allowEIO3: true,
+    transports: ['websocket', 'polling'],  // ✅ WebSocket приоритет, polling как fallback
+    upgradeTimeout: 30000,  // Увеличенный таймаут для апгрейда до WebSocket
     cors: {
         origin: true,
         credentials: true

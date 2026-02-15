@@ -1,8 +1,6 @@
 package com.worldmates.messenger.ui.messages
 
 import android.app.Application
-import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -213,10 +211,9 @@ class MessagesViewModel(application: Application) :
                         decryptMessageFully(msg)
                     }
 
-                    _messages.value = mergeMessagesPreferLatest(
-                        incomingMessages = decryptedMessages,
-                        currentMessages = _messages.value
-                    )
+                    val currentMessages = _messages.value.toMutableList()
+                    currentMessages.addAll(decryptedMessages)
+                    _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
 
                     _error.value = null
                     Log.d(TAG, "Завантажено ${decryptedMessages.size} повідомлень")
@@ -261,11 +258,10 @@ class MessagesViewModel(application: Application) :
                         decryptMessageFully(msg)
                     }
 
+                    val currentMessages = _messages.value.toMutableList()
+                    currentMessages.addAll(decryptedMessages)
                     // Сортируем по времени (старые сверху, новые внизу)
-                    _messages.value = mergeMessagesPreferLatest(
-                        incomingMessages = decryptedMessages,
-                        currentMessages = _messages.value
-                    )
+                    _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
 
                     _error.value = null
                     if (topicId != 0L) {
@@ -308,7 +304,6 @@ class MessagesViewModel(application: Application) :
                     // 1) Сохраняет в wo_messages
                     // 2) Эмитит получателю через Socket.IO
                     // 3) Возвращает callback с message_id
-                    // 4) Отправляет повідомлення назад відправнику через onNewMessage
                     if (groupId != 0L) {
                         socketManager?.sendGroupMessage(groupId, text, replyToId)
                         Log.d(TAG, "Socket.IO: Відправлено групове повідомлення (Node.js збереже в БД)")
@@ -317,14 +312,25 @@ class MessagesViewModel(application: Application) :
                         Log.d(TAG, "Socket.IO: Відправлено приватне повідомлення (Node.js збереже в БД)")
                     }
 
-                    // ✅ НЕ створюємо локальне pending повідомлення!
-                    // Node.js відправить повідомлення назад через Socket.IO (private_message event)
-                    // і воно з'явиться через onNewMessage() з реальним ID з БД
-                    // Це запобігає дублюванню повідомлень
+                    // Оптимістичне локальне повідомлення (показуємо одразу в UI)
+                    val localMessage = Message(
+                        id = System.currentTimeMillis(),
+                        fromId = UserSession.userId ?: 0,
+                        toId = if (groupId != 0L) 0 else recipientId,
+                        groupId = groupId,
+                        encryptedText = text,
+                        timeStamp = System.currentTimeMillis() / 1000,
+                        decryptedText = text,
+                        isLocalPending = true
+                    )
+
+                    val currentMessages = _messages.value.toMutableList()
+                    currentMessages.add(localMessage)
+                    _messages.value = currentMessages.sortedBy { it.timeStamp }
 
                     _error.value = null
                     deleteDraft()
-                    Log.d(TAG, "Повідомлення надіслано через Socket.IO (Node.js відправить назад через onNewMessage)")
+                    Log.d(TAG, "Повідомлення надіслано через Socket.IO (Node.js)")
                 } else {
                     // ========== FALLBACK: PHP API (коли Socket.IO недоступний) ==========
                     Log.w(TAG, "Socket.IO не підключено, використовуємо PHP API")
@@ -409,18 +415,6 @@ class MessagesViewModel(application: Application) :
                         Log.d("MessagesViewModel", "Повідомлення відредаговано: $messageId")
                     }
 
-                    // Відправляємо подію через Socket.IO для реального часу
-                    socketManager?.emit("edit_message", JSONObject().apply {
-                        put("message_id", messageId)
-                        put("new_text", newText)
-                        put("from_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
-                        put("recipient_id", recipientId)
-                        if (groupId > 0) {
-                            put("group_id", groupId)
-                        }
-                    })
-                    Log.d("MessagesViewModel", "✅ Відправлено edit_message event через Socket.IO")
-
                     _error.value = null
                 } else {
                     _error.value = response.errors?.errorText ?: "Не вдалося відредагувати повідомлення"
@@ -460,17 +454,6 @@ class MessagesViewModel(application: Application) :
                     currentMessages.removeAll { it.id == messageId }
                     _messages.value = currentMessages
                     Log.d("MessagesViewModel", "Повідомлення видалено: $messageId")
-
-                    // Відправляємо подію через Socket.IO для реального часу
-                    socketManager?.emit("delete_message", JSONObject().apply {
-                        put("message_id", messageId)
-                        put("from_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
-                        put("recipient_id", recipientId)
-                        if (groupId > 0) {
-                            put("group_id", groupId)
-                        }
-                    })
-                    Log.d("MessagesViewModel", "✅ Відправлено delete_message event через Socket.IO")
 
                     _error.value = null
                 } else {
@@ -1049,46 +1032,9 @@ class MessagesViewModel(application: Application) :
         try {
             Log.d("MessagesViewModel", "📨 Отримано Socket.IO повідомлення: $messageJson")
 
-            // Server sends "time_api" (unix timestamp) and "time" (HTML string) - use time_api
-            val timestamp = messageJson.optLong("time_api",
-                messageJson.optLong("time", System.currentTimeMillis() / 1000))
-
-            // Server sends text in multiple fields: "text", "msg", "message"
+            val timestamp = messageJson.getLong("time")
             val encryptedText = messageJson.optString("text", null)
-                ?: messageJson.optString("msg", null)
-                ?: messageJson.optString("message", null)
-
-            // Try to get media from messageData nested object, or from top-level "media"/"mediaLink"
             val mediaUrl = messageJson.optString("media", null)
-                ?: messageJson.optString("mediaLink", null)
-
-            // Server sends message_id (actual DB ID) and id (user ID) - use message_id
-            val messageId = messageJson.optLong("message_id",
-                messageJson.optLong("id", 0))
-
-            // Server sends from_id / sender_id for sender's numeric user ID
-            val fromId = messageJson.optLong("from_id",
-                messageJson.optLong("sender_id",
-                    messageJson.optLong("sender",
-                        messageJson.optLong("receiver", 0))))
-
-            // Server sends to_id for recipient's numeric user ID
-            val toId = messageJson.optLong("to_id", 0)
-
-            // Skip if we couldn't extract basic message info
-            if (messageId == 0L && fromId == 0L) {
-                Log.w("MessagesViewModel", "⚠️ Не вдалося розпарсити повідомлення, пропускаємо")
-                return
-            }
-
-            // Try to extract richer data from nested messageData object
-            val messageData = messageJson.optJSONObject("messageData")
-            val finalMessageId = if (messageId > 0) messageId else messageData?.optLong("id", 0) ?: 0
-            val finalFromId = if (fromId > 0) fromId else messageData?.optLong("from_id", 0) ?: 0
-            val finalToId = if (toId > 0) toId else messageData?.optLong("to_id", 0) ?: 0
-            val finalTimestamp = if (timestamp > 0) timestamp else messageData?.optLong("time", System.currentTimeMillis() / 1000) ?: (System.currentTimeMillis() / 1000)
-            val finalText = encryptedText ?: messageData?.optString("text", null)
-            val finalMediaUrl = mediaUrl ?: messageData?.optString("media", null)
 
             // Поддержка AES-GCM (v2) - новые поля
             val iv = messageJson.optString("iv", null)?.takeIf { it.isNotEmpty() }
@@ -1099,8 +1045,8 @@ class MessagesViewModel(application: Application) :
 
             // Дешифруем текст с поддержкой GCM
             val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                text = finalText,
-                timestamp = finalTimestamp,
+                text = encryptedText,
+                timestamp = timestamp,
                 iv = iv,
                 tag = tag,
                 cipherVersion = cipherVersion
@@ -1108,44 +1054,36 @@ class MessagesViewModel(application: Application) :
 
             // Дешифруем URL медиа с поддержкой GCM
             val decryptedMediaUrl = DecryptionUtility.decryptMediaUrl(
-                mediaUrl = finalMediaUrl,
-                timestamp = finalTimestamp,
+                mediaUrl = mediaUrl,
+                timestamp = timestamp,
                 iv = iv,
                 tag = tag,
                 cipherVersion = cipherVersion
             )
 
             // Пытаемся извлечь URL медиа из текста, если mediaUrl пуст
-            val resolvedMediaUrl = decryptedMediaUrl
+            val finalMediaUrl = decryptedMediaUrl
                 ?: DecryptionUtility.extractMediaUrlFromText(decryptedText)
 
-            // Sender name from multiple possible fields
-            val senderName = messageJson.optString("sender_name", null)
-                ?: messageJson.optString("from_name", null)
-                ?: messageJson.optString("username", null)
-
             val message = Message(
-                id = finalMessageId,
-                fromId = finalFromId,
-                toId = finalToId,
+                id = messageJson.getLong("id"),
+                fromId = messageJson.getLong("from_id"),
+                toId = messageJson.getLong("to_id"),
                 groupId = messageJson.optLong("group_id", 0).takeIf { it != 0L },
-                encryptedText = finalText,
-                timeStamp = finalTimestamp,
-                mediaUrl = finalMediaUrl,
+                encryptedText = encryptedText,
+                timeStamp = timestamp,
+                mediaUrl = mediaUrl,
                 type = messageJson.optString("type", Constants.MESSAGE_TYPE_TEXT),
-                senderName = senderName,
-                senderAvatar = messageJson.optString("sender_avatar", null)
-                    ?: messageJson.optString("avatar", null),
+                senderName = messageJson.optString("sender_name", null),
+                senderAvatar = messageJson.optString("sender_avatar", null),
                 // Поля для AES-GCM (v2)
                 iv = iv,
                 tag = tag,
                 cipherVersion = cipherVersion,
                 // Дешифрованные данные
                 decryptedText = decryptedText,
-                decryptedMediaUrl = resolvedMediaUrl
+                decryptedMediaUrl = finalMediaUrl
             )
-
-            Log.d("MessagesViewModel", "📋 Parsed message: id=${message.id}, from=${message.fromId}, to=${message.toId}, text=${message.decryptedText?.take(30)}")
 
             // Проверяем, принадлежит ли сообщение текущему диалогу
             val isRelevant = if (groupId != 0L) {
@@ -1155,26 +1093,13 @@ class MessagesViewModel(application: Application) :
                         (message.fromId == UserSession.userId && message.toId == recipientId)
             }
 
-            if (isRelevant && message.id > 0) {
-                // ✅ ОПТИМІЗАЦІЯ: Нові повідомлення завжди мають найновіший timestamp,
-                // тому просто додаємо в кінець без сортування O(n log n)
+            if (isRelevant) {
                 val currentMessages = _messages.value.toMutableList()
-
-                // Перевіряємо, чи повідомлення вже існує (захист від дублів)
-                if (currentMessages.none { it.id == message.id }) {
-                    currentMessages.add(message)
-                    _messages.value = currentMessages
-                    Log.d("MessagesViewModel", "✅ Додано нове повідомлення #${message.id}: ${message.decryptedText?.take(30)}")
-
-                    // ✅ Відтворити звуковий сигнал, якщо повідомлення від іншого користувача
-                    if (message.fromId != UserSession.userId) {
-                        playNotificationSound()
-                    }
-                } else {
-                    Log.d("MessagesViewModel", "⚠️ Дублікат повідомлення #${message.id}, ігноруємо")
-                }
-            } else {
-                Log.d("MessagesViewModel", "⚠️ Повідомлення не для цього чату (from=${message.fromId}, to=${message.toId}, recipientId=$recipientId, groupId=$groupId)")
+                currentMessages.add(message)
+                // Сортируем по времени (старые сверху, новые внизу)
+                _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+                Log.d("MessagesViewModel", "Додано нове повідомлення від Socket.IO: ${message.decryptedText}")
+                Log.d("MessagesViewModel", "Нове повідомлення додано")
             }
         } catch (e: Exception) {
             Log.e("MessagesViewModel", "Помилка обробки повідомлення", e)
@@ -1207,18 +1132,6 @@ class MessagesViewModel(application: Application) :
         }
     }
 
-    override fun onRecordingStatus(userId: Long?, isRecording: Boolean) {
-        if (userId == recipientId) {
-            // Можна додати StateFlow для відображення статусу запису
-            // Наприклад: _isRecording.value = isRecording
-            // Або показати в UI "🎤 Записує голосове повідомлення..."
-            if (isRecording) {
-                _recipientOnlineStatus.value = true
-            }
-            Log.d("MessagesViewModel", "🎤 Користувач $userId ${if (isRecording) "записує аудіо" else "зупинив запис"}")
-        }
-    }
-
     override fun onUserOnline(userId: Long) {
         if (userId == recipientId) {
             _recipientOnlineStatus.value = true
@@ -1238,32 +1151,6 @@ class MessagesViewModel(application: Application) :
         }
     }
 
-    override fun onMessageDeleted(messageId: Long) {
-        Log.d("MessagesViewModel", "🗑️ Отримано подію видалення повідомлення: $messageId")
-        // Видаляємо повідомлення з локального списку
-        val currentMessages = _messages.value.toMutableList()
-        currentMessages.removeAll { it.id == messageId }
-        _messages.value = currentMessages
-        Log.d("MessagesViewModel", "✅ Повідомлення $messageId видалено з UI")
-    }
-
-    override fun onMessageEdited(messageId: Long, newText: String) {
-        Log.d("MessagesViewModel", "✏️ Отримано подію редагування повідомлення: $messageId")
-        // Оновлюємо повідомлення в локальному списку
-        val currentMessages = _messages.value.toMutableList()
-        val index = currentMessages.indexOfFirst { it.id == messageId }
-
-        if (index != -1) {
-            val updatedMessage = currentMessages[index].copy(
-                encryptedText = newText,
-                decryptedText = newText
-            )
-            currentMessages[index] = updatedMessage
-            _messages.value = currentMessages
-            Log.d("MessagesViewModel", "✅ Повідомлення $messageId відредаговано в UI")
-        }
-    }
-
     /**
      * Отправляет событие "набирает текст" через Socket.IO
      */
@@ -1271,26 +1158,12 @@ class MessagesViewModel(application: Application) :
         if (recipientId == 0L) return
 
         socketManager?.emit(Constants.SOCKET_EVENT_TYPING, JSONObject().apply {
-            put("user_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
+            put("user_id", UserSession.userId)  // Кто печатает
             put("recipient_id", recipientId)  // Кому отправляем
             // Формат WoWonder: is_typing = 200 (печатает) или 300 (закончил)
             put("is_typing", if (isTyping) 200 else 300)
         })
         Log.d("MessagesViewModel", "Відправлено статус 'печатає': $isTyping для користувача $recipientId")
-    }
-
-    /**
-     * Отправляет событие "записывает аудио" через Socket.IO
-     */
-    fun sendRecordingStatus(isRecording: Boolean) {
-        if (recipientId == 0L) return
-
-        socketManager?.emit("recording", JSONObject().apply {
-            put("user_id", UserSession.accessToken)  // КРИТИЧНО: access_token, НЕ userId!
-            put("recipient_id", recipientId)
-            put("is_recording", if (isRecording) 200 else 300)  // 200 = записує, 300 = закінчив
-        })
-        Log.d("MessagesViewModel", "Відправлено статус 'записує аудіо': $isRecording для користувача $recipientId")
     }
 
     fun clearError() {
@@ -1953,79 +1826,22 @@ class MessagesViewModel(application: Application) :
                 } else return@launch
 
                 if (response.apiStatus == 200 && response.messages != null) {
-                    val latestWindowMessages = response.messages!!.map { msg -> decryptMessageFully(msg) }
+                    val newMessages = response.messages!!.map { msg -> decryptMessageFully(msg) }
                     val currentMessages = _messages.value
+                    val currentIds = currentMessages.map { it.id }.toSet()
 
-                    val updated = reconcileWithLatestWindow(
-                        currentMessages = currentMessages,
-                        latestWindowMessages = latestWindowMessages
-                    )
+                    val trulyNew = newMessages.filter { it.id !in currentIds }
 
-                    if (updated != currentMessages) {
+                    if (trulyNew.isNotEmpty()) {
+                        val updated = (currentMessages + trulyNew).distinctBy { it.id }.sortedBy { it.timeStamp }
                         _messages.value = updated
-                        Log.d(TAG, "🔄 Polling: синхронізовано останні ${latestWindowMessages.size} повідомлень")
+                        Log.d(TAG, "🔄 Polling: додано ${trulyNew.size} нових повідомлень")
                     }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Polling error: ${e.message}")
             }
         }
-    }
-
-    /**
-     * Відтворює звуковий сигнал при отриманні нового повідомлення
-     */
-    private fun playNotificationSound() {
-        try {
-            val notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            val mediaPlayer = MediaPlayer.create(getApplication(), notificationUri)
-            mediaPlayer?.apply {
-                setOnCompletionListener { mp ->
-                    mp.release()
-                }
-                start()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Помилка відтворення звуку: ${e.message}")
-        }
-    }
-
-    /**
-     * Об'єднує вхідні повідомлення з поточними, віддаючи перевагу новішим версіям
-     * Видаляє дублікати за ID, зберігає унікальні повідомлення
-     */
-    private fun mergeMessagesPreferLatest(
-        incomingMessages: List<Message>,
-        currentMessages: List<Message>
-    ): List<Message> {
-        val messageMap = currentMessages.associateBy { it.id }.toMutableMap()
-
-        // Додаємо або оновлюємо повідомлення з вхідного списку
-        incomingMessages.forEach { msg ->
-            messageMap[msg.id] = msg
-        }
-
-        // Повертаємо відсортований список (старі зверху, нові знизу)
-        return messageMap.values.sortedBy { it.timeStamp }
-    }
-
-    /**
-     * Узгоджує поточні повідомлення з останнім вікном з сервера
-     * Замінює повідомлення в останньому вікні на серверні версії
-     */
-    private fun reconcileWithLatestWindow(
-        currentMessages: List<Message>,
-        latestWindowMessages: List<Message>
-    ): List<Message> {
-        val latestIds = latestWindowMessages.map { it.id }.toSet()
-
-        // Зберігаємо повідомлення, яких немає в останньому вікні
-        val olderMessages = currentMessages.filter { it.id !in latestIds }
-
-        // Об'єднуємо старі повідомлення з новим вікном
-        return (olderMessages + latestWindowMessages)
-            .distinctBy { it.id }
-            .sortedBy { it.timeStamp }
     }
 
     override fun onCleared() {

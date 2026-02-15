@@ -66,6 +66,8 @@ import com.worldmates.messenger.ui.preferences.rememberQuickReaction
 import com.worldmates.messenger.ui.preferences.rememberUIStyle
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextOverflow
+import com.worldmates.messenger.ui.components.AnimatedStickerView
 import com.worldmates.messenger.utils.VoiceRecorder
 import com.worldmates.messenger.utils.VoicePlayer
 import kotlinx.coroutines.launch
@@ -3068,8 +3070,6 @@ fun MessageInputBar(
             )
         }
     }
-
-@Composable
 /**
  * Діалог вибору якості аудіо при відправці (як в Telegram)
  */

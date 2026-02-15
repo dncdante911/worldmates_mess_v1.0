@@ -1,12 +1,9 @@
 package com.worldmates.messenger.ui.chats
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,7 +44,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.Factory
-import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.worldmates.messenger.data.model.Chat
 import com.worldmates.messenger.data.ContactNicknameRepository
@@ -77,16 +73,6 @@ import com.worldmates.messenger.ui.theme.WMGradients
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 
 class ChatsActivity : AppCompatActivity() {
-
-    private val notificationsPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            com.worldmates.messenger.services.MessageNotificationService.start(this)
-        } else {
-            Toast.makeText(this, "Сповіщення вимкнені: не надано дозвіл", Toast.LENGTH_SHORT).show()
-        }
-    }
 
     private lateinit var viewModel: ChatsViewModel
     private lateinit var groupsViewModel: com.worldmates.messenger.ui.groups.GroupsViewModel
@@ -127,7 +113,7 @@ class ChatsActivity : AppCompatActivity() {
         android.util.Log.d("ChatsActivity", "📞 CallsViewModel initialized for incoming calls")
 
         // Start message notification service for push-like notifications via Socket.IO
-        startNotificationServiceWithPermissionCheck()
+        com.worldmates.messenger.services.MessageNotificationService.start(this)
 
         setContent {
             WorldMatesThemedApp {
@@ -243,23 +229,6 @@ class ChatsActivity : AppCompatActivity() {
                     }
                 }
             }
-        }
-    }
-
-    private fun startNotificationServiceWithPermissionCheck() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            val hasPermission = ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (hasPermission) {
-                com.worldmates.messenger.services.MessageNotificationService.start(this)
-            } else {
-                notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        } else {
-            com.worldmates.messenger.services.MessageNotificationService.start(this)
         }
     }
 

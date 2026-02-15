@@ -22,6 +22,8 @@ import kotlinx.coroutines.launch
 import com.worldmates.messenger.ui.messages.selection.ForwardRecipient
 import com.worldmates.messenger.data.repository.DraftRepository
 import com.worldmates.messenger.data.local.entity.Draft
+import com.worldmates.messenger.data.local.AppDatabase
+import com.worldmates.messenger.data.local.entity.CachedMessage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -93,6 +95,10 @@ class MessagesViewModel(application: Application) :
     // ==================== DRAFTS ====================
     private val draftRepository = DraftRepository.getInstance(context)
 
+    // ==================== DATABASE ====================
+    private val messageDao = AppDatabase.getInstance(context).messageDao()
+    // ==================== END DATABASE ====================
+
     private val _currentDraft = MutableStateFlow<String>("")
     val currentDraft: StateFlow<String> = _currentDraft
 
@@ -142,6 +148,13 @@ class MessagesViewModel(application: Application) :
         this.recipientId = recipientId
         this.groupId = 0
         this.topicId = 0
+
+        // ✅ ИСПРАВЛЕНИЕ: Сначала загружаем кешованные сообщения из БД
+        viewModelScope.launch {
+            loadCachedMessages(recipientId, CachedMessage.CHAT_TYPE_USER)
+        }
+
+        // Потом загружаем с сервера (обновляем кеш)
         fetchMessages()
         setupSocket()
         startMessagePolling()
@@ -153,6 +166,13 @@ class MessagesViewModel(application: Application) :
         this.groupId = groupId
         this.recipientId = 0
         this.topicId = topicId
+
+        // ✅ ИСПРАВЛЕНИЕ: Сначала загружаем кешованные сообщения из БД
+        viewModelScope.launch {
+            loadCachedMessages(groupId, CachedMessage.CHAT_TYPE_GROUP)
+        }
+
+        // Потом загружаем с сервера (обновляем кеш)
         fetchGroupDetails(groupId)
         fetchGroupMessages()
         setupSocket()
@@ -215,6 +235,9 @@ class MessagesViewModel(application: Application) :
                     currentMessages.addAll(decryptedMessages)
                     _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
 
+                    // ✅ ИСПРАВЛЕНИЕ: Сохраняем сообщения в базу данных
+                    saveMessagesToCache(decryptedMessages, CachedMessage.CHAT_TYPE_USER)
+
                     _error.value = null
                     Log.d(TAG, "Завантажено ${decryptedMessages.size} повідомлень")
                 } else {
@@ -262,6 +285,9 @@ class MessagesViewModel(application: Application) :
                     currentMessages.addAll(decryptedMessages)
                     // Сортируем по времени (старые сверху, новые внизу)
                     _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+
+                    // ✅ ИСПРАВЛЕНИЕ: Сохраняем групповые сообщения в базу данных
+                    saveMessagesToCache(decryptedMessages, CachedMessage.CHAT_TYPE_GROUP)
 
                     _error.value = null
                     if (topicId != 0L) {
@@ -327,6 +353,12 @@ class MessagesViewModel(application: Application) :
                     val currentMessages = _messages.value.toMutableList()
                     currentMessages.add(localMessage)
                     _messages.value = currentMessages.sortedBy { it.timeStamp }
+
+                    // ✅ ИСПРАВЛЕНИЕ: Сохраняем оптимистичное сообщение в базу данных
+                    viewModelScope.launch {
+                        val chatType = if (groupId != 0L) CachedMessage.CHAT_TYPE_GROUP else CachedMessage.CHAT_TYPE_USER
+                        saveMessagesToCache(listOf(localMessage), chatType)
+                    }
 
                     // ✅ ИСПРАВЛЕНИЕ: Перезагружаем сообщения из БД через 1 секунду
                     // чтобы гарантировать синхронизацию с сервером
@@ -1110,6 +1142,17 @@ class MessagesViewModel(application: Application) :
                 currentMessages.add(message)
                 // Сортируем по времени (старые сверху, новые внизу)
                 _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
+
+                // ✅ ИСПРАВЛЕНИЕ: Сохраняем входящее Socket.IO сообщение в базу данных
+                viewModelScope.launch {
+                    val chatType = if (message.groupId != null && message.groupId != 0L) {
+                        CachedMessage.CHAT_TYPE_GROUP
+                    } else {
+                        CachedMessage.CHAT_TYPE_USER
+                    }
+                    saveMessagesToCache(listOf(message), chatType)
+                }
+
                 Log.d("MessagesViewModel", "Додано нове повідомлення від Socket.IO: ${message.decryptedText}")
                 Log.d("MessagesViewModel", "Нове повідомлення додано")
             }
@@ -1855,6 +1898,103 @@ class MessagesViewModel(application: Application) :
             }
         }
     }
+
+    // ==================== DATABASE HELPER FUNCTIONS ====================
+
+    /**
+     * Конвертує Message в CachedMessage для збереження в базу даних
+     */
+    private fun messageToCachedMessage(message: Message, chatType: String): CachedMessage {
+        val chatId = if (chatType == CachedMessage.CHAT_TYPE_GROUP) {
+            message.groupId ?: 0
+        } else {
+            if (message.fromId == UserSession.userId) message.toId else message.fromId
+        }
+
+        return CachedMessage(
+            id = message.id,
+            chatId = chatId,
+            chatType = chatType,
+            fromId = message.fromId,
+            toId = message.toId,
+            groupId = message.groupId,
+            encryptedText = message.encryptedText,
+            iv = message.iv,
+            tag = message.tag,
+            cipherVersion = message.cipherVersion,
+            decryptedText = message.decryptedText,
+            timestamp = message.timeStamp,
+            mediaUrl = message.mediaUrl,
+            type = when {
+                message.mediaUrl != null && message.mediaUrl!!.endsWith(".jpg", true) ||
+                message.mediaUrl!!.endsWith(".png", true) ||
+                message.mediaUrl!!.endsWith(".jpeg", true) -> CachedMessage.TYPE_IMAGE
+                message.mediaUrl != null && message.mediaUrl!!.contains("video") -> CachedMessage.TYPE_VIDEO
+                message.mediaUrl != null && message.mediaUrl!!.contains("audio") -> CachedMessage.TYPE_AUDIO
+                else -> CachedMessage.TYPE_TEXT
+            },
+            senderName = message.userName,
+            senderAvatar = message.userAvatar,
+            isRead = message.seen != null && message.seen != "0",
+            replyToId = message.replyId,
+            isSynced = !message.isLocalPending
+        )
+    }
+
+    /**
+     * Конвертує CachedMessage в Message для відображення в UI
+     */
+    private fun cachedMessageToMessage(cached: CachedMessage): Message {
+        return Message(
+            id = cached.id,
+            fromId = cached.fromId,
+            toId = cached.toId,
+            groupId = cached.groupId,
+            encryptedText = cached.encryptedText,
+            iv = cached.iv,
+            tag = cached.tag,
+            cipherVersion = cached.cipherVersion,
+            decryptedText = cached.decryptedText,
+            timeStamp = cached.timestamp,
+            mediaUrl = cached.mediaUrl,
+            userName = cached.senderName,
+            userAvatar = cached.senderAvatar,
+            seen = if (cached.isRead) "1" else "0",
+            replyId = cached.replyToId,
+            isLocalPending = !cached.isSynced
+        )
+    }
+
+    /**
+     * Завантажує кешовані повідомлення з бази даних
+     */
+    private suspend fun loadCachedMessages(chatId: Long, chatType: String) {
+        try {
+            val cachedMessages = messageDao.getRecentMessages(chatId, chatType, 100)
+            if (cachedMessages.isNotEmpty()) {
+                val messages = cachedMessages.map { cachedMessageToMessage(it) }
+                _messages.value = messages.sortedBy { it.timeStamp }
+                Log.d(TAG, "📦 Завантажено ${cachedMessages.size} кешованих повідомлень")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Помилка завантаження кешу", e)
+        }
+    }
+
+    /**
+     * Зберігає повідомлення в базу даних
+     */
+    private suspend fun saveMessagesToCache(messages: List<Message>, chatType: String) {
+        try {
+            val cachedMessages = messages.map { messageToCachedMessage(it, chatType) }
+            messageDao.insertMessages(cachedMessages)
+            Log.d(TAG, "💾 Збережено ${messages.size} повідомлень в кеш")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Помилка збереження в кеш", e)
+        }
+    }
+
+    // ==================== END DATABASE HELPER FUNCTIONS ====================
 
     override fun onCleared() {
         super.onCleared()

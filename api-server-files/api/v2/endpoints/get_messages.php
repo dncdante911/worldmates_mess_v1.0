@@ -10,11 +10,15 @@ $response_data = array(
 );
 
 // Required: recipient user_id
-$recipient_id = !empty($_POST['user_id']) ? $_POST['user_id'] : (!empty($_GET['user_id']) ? $_GET['user_id'] : '');
+// ✅ ИСПРАВЛЕНИЕ: Поддержка обоих параметров - user_id и recipient_id
+$recipient_id = !empty($_POST['recipient_id']) ? $_POST['recipient_id'] : (!empty($_GET['recipient_id']) ? $_GET['recipient_id'] : '');
+if (empty($recipient_id)) {
+    $recipient_id = !empty($_POST['user_id']) ? $_POST['user_id'] : (!empty($_GET['user_id']) ? $_GET['user_id'] : '');
+}
 
 if (empty($recipient_id) || !is_numeric($recipient_id)) {
     $error_code    = 3;
-    $error_message = 'user_id (recipient) is required';
+    $error_message = 'user_id or recipient_id is required';
 }
 
 if (empty($error_code)) {

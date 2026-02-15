@@ -62,8 +62,13 @@ const { LeaveGroupController } = require('../controllers/LeaveGroupController');
 const { GetGroupDetailsController } = require('../controllers/GetGroupDetailsController');
 
 const redis = require("redis");
+const configFile = require("../config.json");
+
 let redisSubscribed = false;
-const sub = redis.createClient({ url: 'redis://127.0.0.1:6379' });
+// ✅ ИСПРАВЛЕНИЕ: Добавлен пароль для Redis из config.json
+const sub = redis.createClient({
+    url: `redis://:${configFile.redis_password}@${configFile.redis_host}:${configFile.redis_port}`
+});
 
 sub.on('error', (err) => console.log('Redis Sub Error:', err));
 

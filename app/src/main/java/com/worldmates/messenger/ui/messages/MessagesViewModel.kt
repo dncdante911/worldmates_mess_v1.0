@@ -1933,10 +1933,10 @@ class MessagesViewModel(application: Application) :
                 message.mediaUrl != null && message.mediaUrl!!.contains("audio") -> CachedMessage.TYPE_AUDIO
                 else -> CachedMessage.TYPE_TEXT
             },
-            senderName = message.userName,
-            senderAvatar = message.userAvatar,
-            isRead = message.seen != null && message.seen != "0",
-            replyToId = message.replyId,
+            senderName = message.senderName,
+            senderAvatar = message.senderAvatar,
+            isRead = message.isRead,
+            replyToId = message.replyToId,
             isSynced = !message.isLocalPending
         )
     }
@@ -1957,10 +1957,10 @@ class MessagesViewModel(application: Application) :
             decryptedText = cached.decryptedText,
             timeStamp = cached.timestamp,
             mediaUrl = cached.mediaUrl,
-            userName = cached.senderName,
-            userAvatar = cached.senderAvatar,
-            seen = if (cached.isRead) "1" else "0",
-            replyId = cached.replyToId,
+            senderName = cached.senderName,
+            senderAvatar = cached.senderAvatar,
+            isRead = cached.isRead,
+            replyToId = cached.replyToId,
             isLocalPending = !cached.isSynced
         )
     }

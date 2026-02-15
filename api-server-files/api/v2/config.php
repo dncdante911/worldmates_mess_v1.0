@@ -121,12 +121,15 @@ if (file_exists($assets_path . 'tabels.php')) {
 }
 
 // Load required WoWonder functions
+// NOTE: DO NOT add functions_two.php or functions_three.php here!
+// functions_two.php has `require_once "app_start.php"` which triggers the full
+// WoWonder initialization chain, overwrites $wo/$sqlConnect, and uses relative
+// paths that fail from the api/v2/ context → causes fatal PHP error.
+// Endpoints that need functions from those files must use function_exists() guards.
 $required_functions = [
     'cache.php',           // Cache functions
     'functions_general.php', // Wo_Secure, Wo_GetConfig, etc.
     'functions_one.php',   // Wo_ShareFile, Wo_RegisterUser, Wo_Login, etc.
-    'functions_two.php',   // Wo_IsBanned, Wo_SendMessage (email), etc.
-    'functions_three.php', // Wo_TwoFactor, Wo_AutoFollow, Wo_AutoPageLike, etc.
 ];
 
 foreach ($required_functions as $func_file) {

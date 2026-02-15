@@ -102,7 +102,9 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
           isMedia: true,
           isRecord: true,
           mediaLink: funcs.Wo_GetMedia(ctx, data.mediaId),
-          time: '<div class="messages-last-sent pull-right time ajax-time" title="' + moment().toISOString() + '">..</div>',
+          // ✅ ИСПРАВЛЕНИЕ: time должно быть числом (timestamp) для мобильных клиентов
+          time: data.sent_message.time,  // Unix timestamp
+          time_html: '<div class="messages-last-sent pull-right time ajax-time" title="' + moment().toISOString() + '">..</div>',
           lng: lng,
           lat: lat,
           message_id: new_message.id,
@@ -189,7 +191,9 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
           self: true,
           message: data.msg,
           message_html: sendable_message,
-          time: '<div class="messages-last-sent pull-right time ajax-time" title="' + moment().toISOString() + '">..</div>',
+          // ✅ ИСПРАВЛЕНИЕ: time должно быть числом (timestamp) для мобильных клиентов
+          time: data.sent_message.time,  // Unix timestamp
+          time_html: '<div class="messages-last-sent pull-right time ajax-time" title="' + moment().toISOString() + '">..</div>',
           isMedia: false,
           isRecord: false,
           lng: lng,
@@ -282,7 +286,9 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
           status: 200,
           color: data.color,
           message: data.msg,
-          time: '<div class="messages-last-sent pull-right time ajax-time" title="' + moment().toISOString() + '">..</div>',
+          // ✅ ИСПРАВЛЕНИЕ: time должно быть числом (timestamp) для мобильных клиентов
+          time: (data.sent_message && data.sent_message !== undefined && data.sent_message && data.sent_message.time !== undefined) ? data.sent_message.time : Math.floor(Date.now() / 1000),
+          time_html: '<div class="messages-last-sent pull-right time ajax-time" title="' + moment().toISOString() + '">..</div>',
           mediaLink: (m_sent.stickers && m_sent.stickers.length > 0 ? m_sent.stickers : funcs.Wo_GetMedia(ctx, m_sent.media)),
           isMedia: true,
           isRecord: true,

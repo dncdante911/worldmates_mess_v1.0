@@ -625,7 +625,9 @@ class SocketManager(
         if (socket?.connected() == true && UserSession.accessToken != null) {
             val typingPayload = JSONObject().apply {
                 put("access_token", UserSession.accessToken)
-                put("user_id", UserSession.userId)
+                // ✅ ИСПРАВЛЕНИЕ: user_id должен быть access_token (session_id), не numeric ID
+                // Node.js TypingController использует ctx.userHashUserId[data.user_id] где ключ = access_token
+                put("user_id", UserSession.accessToken)
                 put("recipient_id", recipientId)
                 put("is_typing", isTyping)
             }
@@ -640,7 +642,8 @@ class SocketManager(
         if (socket?.connected() == true && UserSession.accessToken != null) {
             val seenPayload = JSONObject().apply {
                 put("access_token", UserSession.accessToken)
-                put("user_id", UserSession.userId)
+                // ✅ ИСПРАВЛЕНИЕ: user_id должен быть access_token (session_id)
+                put("user_id", UserSession.accessToken)
                 put("message_id", messageId)
                 put("sender_id", senderId)
             }

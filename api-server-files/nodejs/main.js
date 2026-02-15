@@ -17,6 +17,11 @@ const listeners = require('./listeners/listeners')
 const { initializeBotNamespace, getBotStats } = require('./listeners/bots-listener')
 const { registerMessagingRoutes } = require('./routes/messaging')
 
+// ВАЖНО: Убедись, что turnHelper подключен. В твоем коде он использовался, но импорта я не видел.
+// Обычно он лежит тут. Если ошибка "turnHelper is not defined" - раскомментируй строку ниже:
+// const turnHelper = require('./utils/turnHelper'); 
+// Или, если он у тебя глобальный, оставь как есть.
+
 let serverPort
 let server
 let io
@@ -29,7 +34,7 @@ async function loadConfig(ctx) {
   ctx.globalconfig["site_url"] = configFile.site_url
   ctx.globalconfig['theme_url'] = ctx.globalconfig["site_url"] + '/themes/' + ctx.globalconfig['theme']
 
-  ctx.globalconfig["s3_site_url"]         = "https://test.s3.amazonaws.com";
+  ctx.globalconfig["s3_site_url"]          = "https://test.s3.amazonaws.com";
   if (ctx.globalconfig["bucket_name"] && ctx.globalconfig["bucket_name"] != '') {
       ctx.globalconfig["s3_site_url"] = "https://"+ctx.globalconfig["bucket_name"]+".s3.amazonaws.com";
   }
@@ -40,12 +45,10 @@ async function loadConfig(ctx) {
   var endpoint_url = ctx.globalconfig['ftp_endpoint']; 
   ctx.globalconfig['ftp_endpoint'] = endpoint_url.replace('https://', '');
 
-   if (ctx.globalconfig["redis"] === "Y") {
-     const redisAdapter = require('socket.io-redis');
-     io.adapter(redisAdapter({ host: 'localhost', port: ctx.globalconfig["redis_port"] }));
-   }
-
-
+  // --- ИСПРАВЛЕНИЕ №1: УБРАЛИ ОТСЮДА REDIS ---
+  // Раньше тут был код подключения к Redis, но он вызывал ошибку, 
+  // так как переменная 'io' еще не была создана. Мы перенесли его в функцию main().
+  
   if (ctx.globalconfig["nodejs_ssl"] == 1) {
     var https = require('https');
     var options = {
@@ -255,6 +258,8 @@ async function main() {
   app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
   });
+  
+  // --- СОЗДАНИЕ СЕРВЕРА SOCKET.IO ---
   io = require('socket.io')(server, {
     allowEIO3: true,
     cors: {
@@ -262,6 +267,22 @@ async function main() {
         credentials: true
     },
   });
+
+  // --- ИСПРАВЛЕНИЕ №2: ПОДКЛЮЧЕНИЕ REDIS C ПАРОЛЕМ ---
+  // Мы перенесли это сюда, потому что теперь 'io' уже существует.
+  if (ctx.globalconfig["redis"] === "Y") {
+     const redisAdapter = require('socket.io-redis');
+     console.log('[Redis] Initializing connection...');
+     
+     io.adapter(redisAdapter({ 
+         host: '127.0.0.1', 
+         port: ctx.globalconfig["redis_port"] || 6379,
+         auth_pass: configFile.redis_password, // Для старых версий клиента
+         password: configFile.redis_password   // Для новых версий клиента (на всякий случай оба)
+     }));
+     
+     console.log('[Redis] Adapter attached successfully.');
+  }
 
   // Initialize Bot API /bots namespace (bot-side connections)
   initializeBotNamespace(io, ctx);

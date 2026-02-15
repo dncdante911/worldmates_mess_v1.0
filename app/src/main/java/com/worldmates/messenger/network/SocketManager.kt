@@ -202,21 +202,6 @@ class SocketManager(
                 }
             }
 
-            // 8a. Обработка индикатора записи аудио
-            socket?.on("recording") { args ->
-                if (args.isNotEmpty() && args[0] is JSONObject) {
-                    val data = args[0] as? org.json.JSONObject
-                    // Сервер отправляет sender_id и is_recording: 200 (записывает) или 300 (закончил)
-                    val senderId = data?.optLong("sender_id", 0)
-                    val isRecordingCode = data?.optInt("is_recording", 0)
-                    val isRecording = isRecordingCode == 200  // 200 = записує, 300 = закінчив
-                    Log.d("SocketManager", "🎤 User $senderId is recording: $isRecording (code: $isRecordingCode)")
-                    if (listener is ExtendedSocketListener) {
-                        listener.onRecordingStatus(senderId, isRecording)
-                    }
-                }
-            }
-
             // 9. Обработка "последний раз в сети"
             socket?.on(Constants.SOCKET_EVENT_LAST_SEEN) { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
@@ -297,36 +282,7 @@ class SocketManager(
                 }
             }
 
-            // 14. Обработка удаления сообщения
-            socket?.on("message_deleted") { args ->
-                Log.d("SocketManager", "Received message_deleted event with ${args.size} args")
-                if (args.isNotEmpty() && args[0] is JSONObject) {
-                    val data = args[0] as JSONObject
-                    val messageId = data.optLong("message_id", 0)
-                    val fromId = data.optLong("from_id", 0)
-                    Log.d("SocketManager", "🗑️ Message $messageId deleted by user $fromId")
-                    if (listener is ExtendedSocketListener) {
-                        listener.onMessageDeleted(messageId)
-                    }
-                }
-            }
-
-            // 14a. Обработка редактирования сообщения
-            socket?.on("message_edited") { args ->
-                Log.d("SocketManager", "Received message_edited event with ${args.size} args")
-                if (args.isNotEmpty() && args[0] is JSONObject) {
-                    val data = args[0] as JSONObject
-                    val messageId = data.optLong("message_id", 0)
-                    val newText = data.optString("new_text", "")
-                    val fromId = data.optLong("from_id", 0)
-                    Log.d("SocketManager", "✏️ Message $messageId edited by user $fromId")
-                    if (listener is ExtendedSocketListener) {
-                        listener.onMessageEdited(messageId, newText)
-                    }
-                }
-            }
-
-            // 15. КРИТИЧНО: Обработка события "user_status_change" от WoWonder сервера
+            // 14. КРИТИЧНО: Обработка события "user_status_change" от WoWonder сервера
             // WoWonder отправляет HTML, нужно парсить онлайн пользователей из разметки
             socket?.on("user_status_change") { args ->
                 Log.d("SocketManager", "Received user_status_change event with ${args.size} args")
@@ -948,14 +904,11 @@ class SocketManager(
      */
     interface ExtendedSocketListener : SocketListener {
         fun onTypingStatus(userId: Long?, isTyping: Boolean) {}
-        fun onRecordingStatus(userId: Long?, isRecording: Boolean) {}
         fun onLastSeen(userId: Long, lastSeen: Long) {}
         fun onMessageSeen(messageId: Long, userId: Long) {}
         fun onGroupMessage(messageJson: JSONObject) {}
         fun onUserOnline(userId: Long) {}
         fun onUserOffline(userId: Long) {}
         fun onBotMessage(messageJson: JSONObject) {}
-        fun onMessageDeleted(messageId: Long) {}
-        fun onMessageEdited(messageId: Long, newText: String) {}
     }
 }

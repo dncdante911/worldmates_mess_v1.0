@@ -6,6 +6,8 @@
 
 $response_data = array('api_status' => 400);
 
+error_log("[QUICK_VERIFY] Request received: email=" . (!empty($_POST['email']) ? $_POST['email'] : 'EMPTY') . ", phone=" . (!empty($_POST['phone_number']) ? $_POST['phone_number'] : 'EMPTY') . ", code=" . (!empty($_POST['code']) ? $_POST['code'] : 'EMPTY'));
+
 $email = !empty($_POST['email']) ? trim($_POST['email']) : '';
 $phone_number = !empty($_POST['phone_number']) ? trim($_POST['phone_number']) : '';
 $code = !empty($_POST['code']) ? trim($_POST['code']) : '';
@@ -58,9 +60,13 @@ if (empty($error_code)) {
         // Code is correct — activate account
         $uid = $found_user_id;
         $new_email_code = md5(rand(1111, 9999) . time());
+
+        error_log("[QUICK_VERIFY] Code matched for user_id={$uid}, activating account...");
+
         $update = mysqli_query($sqlConnect, "UPDATE " . T_USERS . " SET `active` = '1', `email_code` = '{$new_email_code}', `sms_code` = '0' WHERE `user_id` = {$uid}");
 
         if (!$update) {
+            error_log("[QUICK_VERIFY] Failed to activate account: " . mysqli_error($sqlConnect));
             $error_code = 6;
             $error_message = 'Failed to activate account. Please try again.';
         } else {
@@ -69,24 +75,34 @@ if (empty($error_code)) {
             $time = time();
             $device_type = 'phone';
             if (!empty($_POST['device_type']) && in_array($_POST['device_type'], array('phone', 'windows'))) {
-                $device_type = Wo_Secure($_POST['device_type']);
+                $device_type = function_exists('Wo_Secure') ? Wo_Secure($_POST['device_type']) : mysqli_real_escape_string($sqlConnect, $_POST['device_type']);
             }
 
             $session_created = mysqli_query($sqlConnect, "INSERT INTO " . T_APP_SESSIONS . " (`user_id`, `session_id`, `platform`, `time`) VALUES ('{$uid}', '{$access_token}', '{$device_type}', '{$time}')");
 
-            // Auto-follow/auto-join if configured
+            if (!$session_created) {
+                error_log("[QUICK_VERIFY] Failed to create session: " . mysqli_error($sqlConnect));
+            } else {
+                error_log("[QUICK_VERIFY] Session created for user_id={$uid}");
+            }
+
+            // Auto-follow/auto-join if configured (functions_three.php may not be loaded)
             $username = $user_row['username'];
-            if (!empty($wo['config']['auto_friend_users'])) {
+            if (!empty($wo['config']['auto_friend_users']) && function_exists('Wo_AutoFollow')) {
                 Wo_AutoFollow($uid);
             }
-            if (!empty($wo['config']['auto_page_like'])) {
+            if (!empty($wo['config']['auto_page_like']) && function_exists('Wo_AutoPageLike')) {
                 Wo_AutoPageLike($uid);
             }
-            if (!empty($wo['config']['auto_group_join'])) {
+            if (!empty($wo['config']['auto_group_join']) && function_exists('Wo_AutoGroupJoin')) {
                 Wo_AutoGroupJoin($uid);
             }
 
-            cache($uid, 'users', 'delete');
+            if (function_exists('cache')) {
+                cache($uid, 'users', 'delete');
+            }
+
+            error_log("[QUICK_VERIFY] Account activated successfully: user_id={$uid}, username={$username}");
 
             $response_data = array(
                 'api_status' => 200,

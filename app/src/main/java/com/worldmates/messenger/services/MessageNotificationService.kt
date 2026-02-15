@@ -190,21 +190,25 @@ class MessageNotificationService : Service() {
         try {
             Log.d(TAG, "📨 handleIncomingMessage called: isGroup=$isGroup, data=$data")
 
-            val senderId = data.optLong("from_id", data.optLong("sender_id", 0))
+            val senderId = data.optLong("from_id", data.optLong("sender_id",
+                data.optLong("sender", data.optLong("receiver", 0))))
             val senderName = data.optString("sender_name",
-                data.optString("from_name", "WorldMates"))
+                data.optString("from_name",
+                    data.optString("username", "WorldMates")))
             val text = data.optString("msg",
                 data.optString("text",
                     data.optString("message", "")))
             val groupId = data.optLong("group_id", 0)
+            val isSelf = data.optBoolean("self", false)
 
-            Log.d(TAG, "   senderId=$senderId, senderName=$senderName, text=${text.take(30)}")
+            Log.d(TAG, "   senderId=$senderId, senderName=$senderName, text=${text.take(30)}, self=$isSelf")
             Log.d(TAG, "   UserSession.userId=${UserSession.userId}")
             Log.d(TAG, "   activeRecipientId=$activeRecipientId, activeGroupId=$activeGroupId")
 
             // Don't show notification for our own messages
-            if (senderId == UserSession.userId) {
-                Log.d(TAG, "   ❌ Skipping: own message")
+            // Check both: explicit "self" flag from server AND from_id match
+            if (isSelf || senderId == UserSession.userId) {
+                Log.d(TAG, "   ❌ Skipping: own message (self=$isSelf, senderId=$senderId)")
                 return
             }
 

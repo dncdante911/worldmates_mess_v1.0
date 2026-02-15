@@ -6,11 +6,21 @@ const striptags = require('striptags');
 const moment = require("moment")
 
 const MessageToOwnerFalse = async (ctx, io, data, responseData) => {
-  await io.to(data.to_id).emit('private_message', responseData);
+  // Emit to recipient's room using both string and numeric forms for compatibility
+  const recipientId = parseInt(data.to_id);
+  await io.to(String(recipientId)).emit('private_message', responseData);
+  // Also emit to numeric room variant (JoinController joins both)
+  if (String(recipientId) !== data.to_id) {
+    await io.to(data.to_id).emit('private_message', responseData);
+  }
 };
 
 const sendNotification = async (ctx, io, data, responseData) => {
-  await io.to(data.to_id).emit('notification', responseData);
+  const recipientId = parseInt(data.to_id);
+  await io.to(String(recipientId)).emit('notification', responseData);
+  if (String(recipientId) !== data.to_id) {
+    await io.to(data.to_id).emit('notification', responseData);
+  }
 };
 
 const PrivateMessageController = async (ctx, data, io,socket,callback) => {
@@ -99,6 +109,13 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
           time_api: data.sent_message.time,
           messageData: new_message,
           chatData: await data.sent_message.getChatData(),
+          // Mobile-friendly fields for sender's app (needed so sender's notification service can skip own messages)
+          from_id: ctx.userHashUserId[data.from_id],
+          sender_id: ctx.userHashUserId[data.from_id],
+          to_id: parseInt(data.to_id),
+          text: "[Media]",
+          msg: "[Media]",
+          self: true,
       });
   }
 
@@ -181,6 +198,14 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
           time_api: data.sent_message.time,
           messageData: data.sent_message,
           chatData: await data.sent_message.getChatData(),
+          // Mobile-friendly fields (MUST be present before callback so sender's notification service can skip own messages)
+          from_id: ctx.userHashUserId[data.from_id],
+          sender_id: ctx.userHashUserId[data.from_id],
+          sender_name: ((fromUser && fromUser.first_name !== undefined && fromUser.first_name != '' && fromUser.last_name !== undefined && fromUser.last_name != '') ? fromUser.first_name + ' ' + fromUser.last_name : fromUser.username),
+          from_name: ((fromUser && fromUser.first_name !== undefined && fromUser.first_name != '' && fromUser.last_name !== undefined && fromUser.last_name != '') ? fromUser.first_name + ' ' + fromUser.last_name : fromUser.username),
+          to_id: parseInt(data.to_id),
+          text: data.msg,
+          msg: data.msg,
       }
 
 
@@ -266,6 +291,15 @@ const PrivateMessageController = async (ctx, data, io,socket,callback) => {
           time_api: (data.sent_message && data.sent_message !== undefined && data.sent_message && data.sent_message.time !== undefined) ? data.sent_message.time : 0,
           messageData: data.sent_message,
           chatData: await data.sent_message.getChatData(),
+          // Mobile-friendly fields (present from start for sender's notification service)
+          from_id: ctx.userHashUserId[data.from_id],
+          sender_id: ctx.userHashUserId[data.from_id],
+          sender_name: ((fromUser && fromUser.first_name !== undefined && fromUser.first_name != '' && fromUser.last_name !== undefined && fromUser.last_name != '') ? fromUser.first_name + ' ' + fromUser.last_name : fromUser.username),
+          from_name: ((fromUser && fromUser.first_name !== undefined && fromUser.first_name != '' && fromUser.last_name !== undefined && fromUser.last_name != '') ? fromUser.first_name + ' ' + fromUser.last_name : fromUser.username),
+          to_id: parseInt(data.to_id),
+          text: data.msg || "[Media]",
+          msg: data.msg || "[Media]",
+          self: true,
       };
 
       for (userSocket of remainingSameUserSockets) {

@@ -1049,9 +1049,46 @@ class MessagesViewModel(application: Application) :
         try {
             Log.d("MessagesViewModel", "📨 Отримано Socket.IO повідомлення: $messageJson")
 
-            val timestamp = messageJson.getLong("time")
+            // Server sends "time_api" (unix timestamp) and "time" (HTML string) - use time_api
+            val timestamp = messageJson.optLong("time_api",
+                messageJson.optLong("time", System.currentTimeMillis() / 1000))
+
+            // Server sends text in multiple fields: "text", "msg", "message"
             val encryptedText = messageJson.optString("text", null)
+                ?: messageJson.optString("msg", null)
+                ?: messageJson.optString("message", null)
+
+            // Try to get media from messageData nested object, or from top-level "media"/"mediaLink"
             val mediaUrl = messageJson.optString("media", null)
+                ?: messageJson.optString("mediaLink", null)
+
+            // Server sends message_id (actual DB ID) and id (user ID) - use message_id
+            val messageId = messageJson.optLong("message_id",
+                messageJson.optLong("id", 0))
+
+            // Server sends from_id / sender_id for sender's numeric user ID
+            val fromId = messageJson.optLong("from_id",
+                messageJson.optLong("sender_id",
+                    messageJson.optLong("sender",
+                        messageJson.optLong("receiver", 0))))
+
+            // Server sends to_id for recipient's numeric user ID
+            val toId = messageJson.optLong("to_id", 0)
+
+            // Skip if we couldn't extract basic message info
+            if (messageId == 0L && fromId == 0L) {
+                Log.w("MessagesViewModel", "⚠️ Не вдалося розпарсити повідомлення, пропускаємо")
+                return
+            }
+
+            // Try to extract richer data from nested messageData object
+            val messageData = messageJson.optJSONObject("messageData")
+            val finalMessageId = if (messageId > 0) messageId else messageData?.optLong("id", 0) ?: 0
+            val finalFromId = if (fromId > 0) fromId else messageData?.optLong("from_id", 0) ?: 0
+            val finalToId = if (toId > 0) toId else messageData?.optLong("to_id", 0) ?: 0
+            val finalTimestamp = if (timestamp > 0) timestamp else messageData?.optLong("time", System.currentTimeMillis() / 1000) ?: (System.currentTimeMillis() / 1000)
+            val finalText = encryptedText ?: messageData?.optString("text", null)
+            val finalMediaUrl = mediaUrl ?: messageData?.optString("media", null)
 
             // Поддержка AES-GCM (v2) - новые поля
             val iv = messageJson.optString("iv", null)?.takeIf { it.isNotEmpty() }
@@ -1062,8 +1099,8 @@ class MessagesViewModel(application: Application) :
 
             // Дешифруем текст с поддержкой GCM
             val decryptedText = DecryptionUtility.decryptMessageOrOriginal(
-                text = encryptedText,
-                timestamp = timestamp,
+                text = finalText,
+                timestamp = finalTimestamp,
                 iv = iv,
                 tag = tag,
                 cipherVersion = cipherVersion
@@ -1071,36 +1108,44 @@ class MessagesViewModel(application: Application) :
 
             // Дешифруем URL медиа с поддержкой GCM
             val decryptedMediaUrl = DecryptionUtility.decryptMediaUrl(
-                mediaUrl = mediaUrl,
-                timestamp = timestamp,
+                mediaUrl = finalMediaUrl,
+                timestamp = finalTimestamp,
                 iv = iv,
                 tag = tag,
                 cipherVersion = cipherVersion
             )
 
             // Пытаемся извлечь URL медиа из текста, если mediaUrl пуст
-            val finalMediaUrl = decryptedMediaUrl
+            val resolvedMediaUrl = decryptedMediaUrl
                 ?: DecryptionUtility.extractMediaUrlFromText(decryptedText)
 
+            // Sender name from multiple possible fields
+            val senderName = messageJson.optString("sender_name", null)
+                ?: messageJson.optString("from_name", null)
+                ?: messageJson.optString("username", null)
+
             val message = Message(
-                id = messageJson.getLong("id"),
-                fromId = messageJson.getLong("from_id"),
-                toId = messageJson.getLong("to_id"),
+                id = finalMessageId,
+                fromId = finalFromId,
+                toId = finalToId,
                 groupId = messageJson.optLong("group_id", 0).takeIf { it != 0L },
-                encryptedText = encryptedText,
-                timeStamp = timestamp,
-                mediaUrl = mediaUrl,
+                encryptedText = finalText,
+                timeStamp = finalTimestamp,
+                mediaUrl = finalMediaUrl,
                 type = messageJson.optString("type", Constants.MESSAGE_TYPE_TEXT),
-                senderName = messageJson.optString("sender_name", null),
-                senderAvatar = messageJson.optString("sender_avatar", null),
+                senderName = senderName,
+                senderAvatar = messageJson.optString("sender_avatar", null)
+                    ?: messageJson.optString("avatar", null),
                 // Поля для AES-GCM (v2)
                 iv = iv,
                 tag = tag,
                 cipherVersion = cipherVersion,
                 // Дешифрованные данные
                 decryptedText = decryptedText,
-                decryptedMediaUrl = finalMediaUrl
+                decryptedMediaUrl = resolvedMediaUrl
             )
+
+            Log.d("MessagesViewModel", "📋 Parsed message: id=${message.id}, from=${message.fromId}, to=${message.toId}, text=${message.decryptedText?.take(30)}")
 
             // Проверяем, принадлежит ли сообщение текущему диалогу
             val isRelevant = if (groupId != 0L) {
@@ -1110,7 +1155,7 @@ class MessagesViewModel(application: Application) :
                         (message.fromId == UserSession.userId && message.toId == recipientId)
             }
 
-            if (isRelevant) {
+            if (isRelevant && message.id > 0) {
                 // ✅ ОПТИМІЗАЦІЯ: Нові повідомлення завжди мають найновіший timestamp,
                 // тому просто додаємо в кінець без сортування O(n log n)
                 val currentMessages = _messages.value.toMutableList()
@@ -1128,6 +1173,8 @@ class MessagesViewModel(application: Application) :
                 } else {
                     Log.d("MessagesViewModel", "⚠️ Дублікат повідомлення #${message.id}, ігноруємо")
                 }
+            } else {
+                Log.d("MessagesViewModel", "⚠️ Повідомлення не для цього чату (from=${message.fromId}, to=${message.toId}, recipientId=$recipientId, groupId=$groupId)")
             }
         } catch (e: Exception) {
             Log.e("MessagesViewModel", "Помилка обробки повідомлення", e)

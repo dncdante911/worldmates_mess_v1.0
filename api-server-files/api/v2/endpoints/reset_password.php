@@ -34,11 +34,12 @@ if (empty($error_code)) {
         $update = true;
     }
 
-    // Method 2: Email + email_code match (API-generated reset code)
+    // Method 2: Email + email_code OR sms_code match (API-generated reset code)
+    // Note: send-reset-password-email.php stores MD5 in email_code and 6-digit in sms_code
     if (!$update && !empty($email)) {
         $email_esc = mysqli_real_escape_string($sqlConnect, $email);
         $code_esc = mysqli_real_escape_string($sqlConnect, $code);
-        $check_query = mysqli_query($sqlConnect, "SELECT `user_id` FROM " . T_USERS . " WHERE `email` = '{$email_esc}' AND `email_code` = '{$code_esc}' AND `email_code` != '' LIMIT 1");
+        $check_query = mysqli_query($sqlConnect, "SELECT `user_id` FROM " . T_USERS . " WHERE `email` = '{$email_esc}' AND (`email_code` = '{$code_esc}' OR `sms_code` = '{$code_esc}') AND (`email_code` != '' OR `sms_code` != '') LIMIT 1");
         if ($check_query && mysqli_num_rows($check_query) > 0) {
             $row = mysqli_fetch_assoc($check_query);
             $found_user_id = (int)$row['user_id'];

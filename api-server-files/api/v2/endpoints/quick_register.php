@@ -25,19 +25,38 @@ if (empty($error_code)) {
 
     // Check if email already registered
     if (empty($error_code) && !empty($email) && Wo_EmailExists($email) === true) {
-        // Check if account is still inactive (not yet verified) - allow resending code
         $email_esc = mysqli_real_escape_string($sqlConnect, $email);
         $existing_q = mysqli_query($sqlConnect, "SELECT `user_id`, `username`, `active`, `sms_code` FROM " . T_USERS . " WHERE `email` = '{$email_esc}' LIMIT 1");
         if ($existing_q && mysqli_num_rows($existing_q) > 0) {
             $existing_user = mysqli_fetch_assoc($existing_q);
+            $uid_check = (int)$existing_user['user_id'];
+
+            // Check if account has any active app sessions
+            $has_sessions = false;
+            $sess_q = mysqli_query($sqlConnect, "SELECT COUNT(*) as cnt FROM " . T_APP_SESSIONS . " WHERE `user_id` = {$uid_check} LIMIT 1");
+            if ($sess_q) {
+                $sess_row = mysqli_fetch_assoc($sess_q);
+                $has_sessions = ($sess_row['cnt'] > 0);
+            }
+
             if ($existing_user['active'] == '0') {
-                // Account exists but not verified - regenerate code and resend
+                // Account not yet verified - allow resending code
                 $verification_code = rand(100000, 999999);
-                mysqli_query($sqlConnect, "UPDATE " . T_USERS . " SET `sms_code` = '{$verification_code}' WHERE `user_id` = " . (int)$existing_user['user_id']);
+                mysqli_query($sqlConnect, "UPDATE " . T_USERS . " SET `sms_code` = '{$verification_code}' WHERE `user_id` = {$uid_check}");
                 $resend_mode = true;
-                $user_id = (int)$existing_user['user_id'];
+                $user_id = $uid_check;
                 $auto_username = $existing_user['username'];
-                error_log("[QUICK_REG] Resend mode: existing unverified account user_id={$user_id}");
+                error_log("[QUICK_REG] Resend mode: unverified account user_id={$user_id}");
+            } elseif (!$has_sessions && preg_match('/^u\d+$/', $existing_user['username'])) {
+                // Account was activated by partial quick_verify but has no session
+                // (quick_verify crashed after activating but before returning token)
+                // Allow re-verification to get a session token
+                $verification_code = rand(100000, 999999);
+                mysqli_query($sqlConnect, "UPDATE " . T_USERS . " SET `sms_code` = '{$verification_code}', `active` = '0' WHERE `user_id` = {$uid_check}");
+                $resend_mode = true;
+                $user_id = $uid_check;
+                $auto_username = $existing_user['username'];
+                error_log("[QUICK_REG] Resend mode: activated but no session, user_id={$user_id}");
             } else {
                 $error_code = 3;
                 $error_message = 'This email is already registered. Please log in.';

@@ -124,7 +124,9 @@ if (file_exists($assets_path . 'tabels.php')) {
 $required_functions = [
     'cache.php',           // Cache functions
     'functions_general.php', // Wo_Secure, Wo_GetConfig, etc.
-    'functions_one.php',   // Wo_ShareFile, Wo_RegisterUser, etc.
+    'functions_one.php',   // Wo_ShareFile, Wo_RegisterUser, Wo_Login, etc.
+    'functions_two.php',   // Wo_IsBanned, Wo_SendMessage (email), etc.
+    'functions_three.php', // Wo_TwoFactor, Wo_AutoFollow, Wo_AutoPageLike, etc.
 ];
 
 foreach ($required_functions as $func_file) {

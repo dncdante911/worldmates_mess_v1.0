@@ -495,7 +495,7 @@ fun LoginFormCard(
                 modifier = Modifier.align(Alignment.End)
             ) {
                 Text(
-                    "Забули пароль?",
+                    "Відновлення доступу",
                     color = colorScheme.primary,
                     fontSize = 13.sp
                 )

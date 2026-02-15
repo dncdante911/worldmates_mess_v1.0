@@ -110,7 +110,48 @@ if (empty($error_code)) {
                 'message_body' => $body,
                 'is_html'    => true
             );
-            $send = Wo_SendMessage($send_message_data);
+            $send = false;
+            if (function_exists('Wo_SendMessage')) {
+                $send = Wo_SendMessage($send_message_data);
+            }
+
+            // Fallback: direct PHPMailer with hardcoded SMTP
+            if (!$send) {
+                try {
+                    $phpmailer_paths = array(
+                        dirname(dirname(dirname(__DIR__))) . '/assets/libraries/PHPMailer-Master/vendor/autoload.php',
+                        dirname(dirname(dirname(__DIR__))) . '/assets/libraries/PHPMailer/vendor/autoload.php',
+                        dirname(dirname(dirname(__DIR__))) . '/vendor/autoload.php',
+                    );
+                    foreach ($phpmailer_paths as $path) {
+                        if (file_exists($path)) {
+                            require_once $path;
+                            break;
+                        }
+                    }
+                    if (class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
+                        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                        $mail->isSMTP();
+                        $mail->Host       = 'mail.sthost.pro';
+                        $mail->SMTPAuth   = true;
+                        $mail->Username   = 'support@worldmates.club';
+                        $mail->Password   = '3344Frz@q0607';
+                        $mail->SMTPSecure = 'ssl';
+                        $mail->Port       = 465;
+                        $mail->SMTPOptions = array('ssl' => array('verify_peer' => false, 'verify_peer_name' => false, 'allow_self_signed' => true));
+                        $mail->CharSet = 'UTF-8';
+                        $mail->IsHTML(true);
+                        $mail->setFrom('support@worldmates.club', $site_name);
+                        $mail->addAddress($reset_email);
+                        $mail->Subject = $subject;
+                        $mail->Body = $body;
+                        $send = $mail->send();
+                    }
+                } catch (Exception $e) {
+                    error_log("[RESET_PASSWORD] PHPMailer fallback failed: " . $e->getMessage());
+                }
+            }
+
             if ($send) {
                 $response_data = array(
                     'api_status' => 200,

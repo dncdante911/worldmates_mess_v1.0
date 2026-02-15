@@ -119,7 +119,7 @@ fun ForgotPasswordScreen(
                     Icon(Icons.Default.ArrowBack, "Назад", tint = Color.White)
                 }
                 Text(
-                    "Відновлення паролю",
+                    "Відновлення доступу",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -146,7 +146,7 @@ fun ForgotPasswordScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Ми надішлемо код для відновлення паролю",
+                                "Введіть email або номер телефону для відновлення доступу",
                                 fontSize = 14.sp,
                                 color = colorScheme.onSurface.copy(alpha = 0.7f)
                             )

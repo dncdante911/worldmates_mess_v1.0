@@ -82,6 +82,51 @@ interface WorldMatesApi {
         @Field("platform") platform: String = "phone"
     ): SyncSessionResponse
 
+    // ==================== QUICK REGISTRATION (Passwordless) ====================
+
+    @FormUrlEncoded
+    @POST("/api/v2/?type=quick_register")
+    suspend fun quickRegister(
+        @Field("email") email: String? = null,
+        @Field("phoneNumber") phoneNumber: String? = null
+    ): QuickRegisterResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/?type=quick_verify")
+    suspend fun quickVerify(
+        @Field("email") email: String? = null,
+        @Field("phoneNumber") phoneNumber: String? = null,
+        @Field("code") code: String
+    ): VerifyCodeResponse
+
+    // ==================== PASSWORD RESET ====================
+
+    @FormUrlEncoded
+    @POST("/api/v2/?type=request_password_reset")
+    suspend fun requestPasswordReset(
+        @Field("email") email: String? = null,
+        @Field("phoneNumber") phoneNumber: String? = null
+    ): SendCodeResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/?type=reset_password")
+    suspend fun resetPassword(
+        @Field("email") email: String? = null,
+        @Field("phoneNumber") phoneNumber: String? = null,
+        @Field("code") code: String,
+        @Field("newPassword") newPassword: String
+    ): GenericResponse
+
+    // ==================== FCM / PUSH NOTIFICATIONS ====================
+
+    @FormUrlEncoded
+    @POST("/api/v2/?type=update_fcm_token")
+    suspend fun updateFcmToken(
+        @Query("access_token") accessToken: String,
+        @Field("fcm_token") fcmToken: String,
+        @Field("device_type") deviceType: String = "android"
+    ): GenericResponse
+
     // ==================== CHATS ====================
 
     @FormUrlEncoded
@@ -629,6 +674,36 @@ interface WorldMatesApi {
         @Field("type") type: String = "generate_invite_link",
         @Field("id") groupId: Long
     ): InviteLinkResponse
+
+    // ==================== GROUP CUSTOMIZATION (Themes) ====================
+
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_customization.php")
+    suspend fun getGroupCustomization(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "get_customization",
+        @Field("group_id") groupId: Long
+    ): GroupCustomizationResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_customization.php")
+    suspend fun updateGroupCustomization(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "update_customization",
+        @Field("group_id") groupId: Long,
+        @Field("bubble_style") bubbleStyle: String,
+        @Field("preset_background") presetBackground: String,
+        @Field("accent_color") accentColor: String,
+        @Field("enabled_by_admin") enabledByAdmin: String = "1"
+    ): GroupCustomizationResponse
+
+    @FormUrlEncoded
+    @POST("/api/v2/endpoints/group_customization.php")
+    suspend fun resetGroupCustomization(
+        @Query("access_token") accessToken: String,
+        @Field("type") type: String = "reset_customization",
+        @Field("group_id") groupId: Long
+    ): GroupCustomizationResponse
 
     // ==================== MESSAGES ====================
 
@@ -1743,5 +1818,36 @@ data class InviteLinkResponse(
     @SerializedName("invite_link") val inviteLink: String? = null,
     @SerializedName("message") val message: String? = null,
     @SerializedName("error_message") val errorMessage: String? = null
+)
+
+/**
+ * 🚀 Response for quick registration (passwordless)
+ */
+data class QuickRegisterResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("user_id") val userId: Long? = null,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("code_length") val codeLength: Int? = 6,
+    @SerializedName("expires_in") val expiresIn: Int? = 600,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+/**
+ * 🎨 Response for group customization (themes)
+ */
+data class GroupCustomizationResponse(
+    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("customization") val customization: GroupCustomizationData? = null,
+    @SerializedName("error_message") val errorMessage: String? = null
+)
+
+data class GroupCustomizationData(
+    @SerializedName("group_id") val groupId: Long,
+    @SerializedName("bubble_style") val bubbleStyle: String = "STANDARD",
+    @SerializedName("preset_background") val presetBackground: String = "OCEAN",
+    @SerializedName("accent_color") val accentColor: String = "#2196F3",
+    @SerializedName("enabled_by_admin") val enabledByAdmin: Boolean = true
 )
 

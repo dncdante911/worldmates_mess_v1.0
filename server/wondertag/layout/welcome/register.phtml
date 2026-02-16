@@ -1,0 +1,377 @@
+<?php 
+$wondertage_settings = array();
+if (mysqli_query($wo['sqlConnect'], "DESCRIBE `wondertage_settings`" )) {
+	$settings = $db->get('wondertage_settings');
+	foreach ($settings as $key => $value) {
+		$wondertage_settings[$value->name] = $value->value;
+	}
+}
+?>
+
+<script>window.addEventListener('resize', () => {let vh = window.innerHeight * 0.01;document.documentElement.style.setProperty('--vh', `${vh}px`);});</script>
+<div class="container-v5">
+      <div class="forms-container">
+        <div class="signin-signup">
+          <form id="login" method="post" class="sign-in-form form-class">
+			<h2 class="title"><?php echo $wo['lang']['welcome_']?></h2>
+			<div class="valign tag_auth_animation d-none log_in_auth"><svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 367.805 367.805" xml:space="preserve"> <g> <path style="fill:#5b158c;" d="M183.903,0.001c101.566,0,183.902,82.336,183.902,183.902s-82.336,183.902-183.902,183.902 S0.001,285.469,0.001,183.903l0,0C-0.288,82.625,81.579,0.29,182.856,0.001C183.205,0,183.554,0,183.903,0.001z"/> <polygon style="fill:#fff;" points="285.78,133.225 155.168,263.837 82.025,191.217 111.805,161.96 155.168,204.801 256.001,103.968"/> </g></svg><?php echo $wo['lang']['welcome_']?></h2></div>	            
+			<div class="errors"></div>
+			<?php if ($wo['config']['profile_privacy'] == 1) { ?>
+			<div class="tag_pro_users">
+				<?php echo Wo_LoadPage('welcome/welcome-users-profiles');?>
+			</div>
+			<?php } ?>
+            <div class="input-field">
+              <i><svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><path fill="currentColor" d="M256 256c52.805 0 96-43.201 96-96s-43.195-96-96-96-96 43.201-96 96 43.195 96 96 96zm0 48c-63.598 0-192 32.402-192 96v48h384v-48c0-63.598-128.402-96-192-96z"/></svg></i>
+              <input name="username" type="text" autocomplete="off" class="inputclass-wel" autofocus required placeholder="<?php echo $wo['lang']['username']?>" />
+            </div>
+            <div class="input-field">
+              <i><svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" viewBox="0 0 24 24"><path fill="currentColor" d="M17,9V7c0-2.8-2.2-5-5-5S7,4.2,7,7v2c-1.7,0-3,1.3-3,3v7c0,1.7,1.3,3,3,3h10c1.7,0,3-1.3,3-3v-7C20,10.3,18.7,9,17,9z M9,7c0-1.7,1.3-3,3-3s3,1.3,3,3v2H9V7z"/></svg></svg></i>
+              <input name="password" type="password" autocomplete="off" class="inputclass-wel" autofocus required placeholder="<?php echo $wo['lang']['password']?>" />
+            </div>
+			<?php if ($wo['config']['remember_device'] == 1) { ?>
+							<div class="round-check">
+								<input type="checkbox" name="remember_device" id="remember_device" <?php echo ($wo['config']['remember_device'] == 1 ? 'checked' : ''); ?>>
+								<label for="remember_device">
+									<?php echo $wo['lang']['remember_device'] ?>
+								</label>
+								<div class="clear"></div>
+							</div>
+			<?php } ?>
+			<label class="tag_field tag_wel_forgot label-class-welcome">
+				<a href="<?php echo Wo_SeoLink('index.php?link1=forgot-password');?>" title="<?php echo $wo['lang']['forget_password']?>" class="a-svg-forget" data-toggle="tooltip"><svg xmlns="http://www.w3.org/2000/svg" height="22" viewBox="0 0 24 24" width="22"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92c-.5.51-.86.97-1.04 1.69-.08.32-.13.68-.13 1.14h-2v-.5c0-.46.08-.9.22-1.31.2-.58.53-1.1.95-1.52l1.24-1.26c.46-.44.68-1.1.55-1.8-.13-.72-.69-1.33-1.39-1.53-1.11-.31-2.14.32-2.47 1.27-.12.37-.43.65-.82.65h-.3C8.4 9 8 8.44 8.16 7.88c.43-1.47 1.68-2.59 3.23-2.83 1.52-.24 2.97.55 3.87 1.8 1.18 1.63.83 3.38-.19 4.4z"/></svg>
+				<span><?php echo $wo['lang']['forget_password']?></span></a>
+			</label>
+            <input type="submit" value="<?php echo $wo['lang']['login']?>" id="login" class="btn solid disable_btn btn-welcome tag_wel_btn" />
+			<?php if ($wo['config']['facebookLogin'] != 0 || $wo['config']['googleLogin'] != 0 || $wo['config']['twitterLogin'] != 0 || $wo['config']['linkedinLogin'] != 0 || $wo['config']['VkontakteLogin'] != 0 || $wo['config']['instagramLogin'] != 0 || $wo['config']['qqLogin'] != 0 || $wo['config']['WeChatLogin'] != 0 || $wo['config']['DiscordLogin'] != 0 || $wo['config']['MailruLogin'] != 0) { ?>
+            <p class="social-text"><?php echo $wo['lang']['or']?></p>
+            <div class="social-media">
+			  <?php if($wo['config']['facebookLogin'] != 0): ?>
+              <a href="<?php echo $wo['facebookLoginUrl']?>" class="social-icon">
+                <svg enable-background="new 0 0 550 550" id="Layer_1" version="1.1" viewBox="0 0 550 550" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g><g><circle cx="275" cy="275" fill="#3F65A6" r="256"/><path d="M236.1,190.8c0,7.4,0,40.4,0,40.4h-29.6v49.4h29.6V416h60.8V280.5h40.8     c0,0,3.8-23.7,5.7-49.6c-5.3,0-46.2,0-46.2,0s0-28.7,0-33.8c0-5,6.6-11.8,13.2-11.8c6.5,0,20.3,0,33.1,0c0-6.7,0-30,0-51.4     c-17.1,0-36.5,0-45,0C234.6,134,236.1,183.4,236.1,190.8z" fill="#FFFFFF" id="Facebook_4_"/></g></g></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['twitterLogin'] != 0): ?>
+              <a href="<?php echo $wo['twitterLoginUrl']?>" class="social-icon">
+                <svg enable-background="new 0 0 550 550" id="Layer_1" version="1.1" viewBox="0 0 550 550" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g><g><circle cx="275" cy="275" fill="#2CBDE2" r="256"/><path d="M161.9,181.2c0,0,40.6,45.9,107.8,53.4c0,0-3.2-38.4,30.9-59.8c0,0,35.2-23.5,61.9,10.7     c0,0,25.6-5.3,35.2-11.7c0,0-7.5,14.5-20.3,27l28.8-5.7l-26.7,28.8c0,0,10.7,97.1-95.5,148.3c0,0-82.7,29.9-140.3-9.6     c0,0,70.4-10.7,77.9-26.7c0,0-37.4-4.3-47-36.3l20.3-1.1c0,0-35.2-3.2-39.5-53.4l23.5,3.2C179,248.4,141.6,237.8,161.9,181.2z" fill="#FFFFFF"/></g></g></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['linkedinLogin'] != 0): ?>
+              <a href="<?php echo $wo['linkedInLoginUrl']?>" class="social-icon">
+                <svg id="Capa_1" style="enable-background:new 0 0 112.196 112.196;" version="1.1" viewBox="0 0 112.196 112.196" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g><circle cx="56.098" cy="56.097" r="56.098" style="fill:#007AB9;"/><g><path d="M89.616,60.611v23.128H76.207V62.161c0-5.418-1.936-9.118-6.791-9.118    c-3.705,0-5.906,2.491-6.878,4.903c-0.353,0.862-0.444,2.059-0.444,3.268v22.524H48.684c0,0,0.18-36.546,0-40.329h13.411v5.715    c-0.027,0.045-0.065,0.089-0.089,0.132h0.089v-0.132c1.782-2.742,4.96-6.662,12.085-6.662    C83.002,42.462,89.616,48.226,89.616,60.611L89.616,60.611z M34.656,23.969c-4.587,0-7.588,3.011-7.588,6.967    c0,3.872,2.914,6.97,7.412,6.97h0.087c4.677,0,7.585-3.098,7.585-6.97C42.063,26.98,39.244,23.969,34.656,23.969L34.656,23.969z     M27.865,83.739H41.27V43.409H27.865V83.739z" style="fill:#F1F2F2;"/></g></g><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['VkontakteLogin'] != 0): ?>
+              <a href="<?php echo $wo['VkontakteLoginUrl']?>" class="social-icon">
+                <svg id="Capa_1" style="enable-background:new 0 0 112.196 112.196;" version="1.1" viewBox="0 0 112.196 112.196" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g><g><circle cx="56.098" cy="56.098" id="XMLID_11_" r="56.098" style="fill:#4D76A1;"/></g><path d="M53.979,80.702h4.403c0,0,1.33-0.146,2.009-0.878   c0.625-0.672,0.605-1.934,0.605-1.934s-0.086-5.908,2.656-6.778c2.703-0.857,6.174,5.71,9.853,8.235   c2.782,1.911,4.896,1.492,4.896,1.492l9.837-0.137c0,0,5.146-0.317,2.706-4.363c-0.2-0.331-1.421-2.993-7.314-8.463   c-6.168-5.725-5.342-4.799,2.088-14.702c4.525-6.031,6.334-9.713,5.769-11.29c-0.539-1.502-3.867-1.105-3.867-1.105l-11.076,0.069   c0,0-0.821-0.112-1.43,0.252c-0.595,0.357-0.978,1.189-0.978,1.189s-1.753,4.667-4.091,8.636c-4.932,8.375-6.904,8.817-7.71,8.297   c-1.875-1.212-1.407-4.869-1.407-7.467c0-8.116,1.231-11.5-2.397-12.376c-1.204-0.291-2.09-0.483-5.169-0.514   c-3.952-0.041-7.297,0.012-9.191,0.94c-1.26,0.617-2.232,1.992-1.64,2.071c0.732,0.098,2.39,0.447,3.269,1.644   c1.135,1.544,1.095,5.012,1.095,5.012s0.652,9.554-1.523,10.741c-1.493,0.814-3.541-0.848-7.938-8.446   c-2.253-3.892-3.954-8.194-3.954-8.194s-0.328-0.804-0.913-1.234c-0.71-0.521-1.702-0.687-1.702-0.687l-10.525,0.069   c0,0-1.58,0.044-2.16,0.731c-0.516,0.611-0.041,1.875-0.041,1.875s8.24,19.278,17.57,28.993   C44.264,81.287,53.979,80.702,53.979,80.702L53.979,80.702z" style="fill-rule:evenodd;clip-rule:evenodd;fill:#FFFFFF;"/></g><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/><g/></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['instagramLogin'] != 0): ?>
+			  <a href="<?php echo $wo['instagramLoginUrl']?>" class="social-icon">
+                <svg data-name="Layer 1" id="Layer_1" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><defs><style>.cls-1{fill:url(#linear-gradient);}.cls-2{fill:url(#linear-gradient-3);}</style><linearGradient gradientUnits="userSpaceOnUse" id="linear-gradient" x1="8" x2="506.325" y1="504" y2="5.675"><stop offset="0" stop-color="#ffcb52"/><stop offset="0.318" stop-color="#ff6341"/><stop offset="0.658" stop-color="#cd39a2"/><stop offset="1" stop-color="#515bca"/></linearGradient><linearGradient id="linear-gradient-3" x1="8" x2="506.325" xlink:href="#linear-gradient" y1="504" y2="5.675"/></defs><title/><path class="cls-1" d="M314.757,147.525H197.243a49.717,49.717,0,0,0-49.718,49.718V314.757a49.718,49.718,0,0,0,49.718,49.718H314.757a49.718,49.718,0,0,0,49.717-49.718V197.243A49.717,49.717,0,0,0,314.757,147.525ZM256,324.391A68.391,68.391,0,1,1,324.391,256,68.391,68.391,0,0,1,256,324.391ZM327.242,201.58a16.271,16.271,0,1,1,16.27-16.271A16.271,16.271,0,0,1,327.242,201.58Z"/><path class="cls-1" d="M256,211.545A44.455,44.455,0,1,0,300.455,256,44.455,44.455,0,0,0,256,211.545Z"/><path class="cls-2" d="M256,0C114.615,0,0,114.615,0,256S114.615,512,256,512,512,397.385,512,256,397.385,0,256,0ZM389.333,312.5A76.836,76.836,0,0,1,312.5,389.333H199.5A76.837,76.837,0,0,1,122.666,312.5V199.5A76.836,76.836,0,0,1,199.5,122.667H312.5A76.836,76.836,0,0,1,389.333,199.5Z"/></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['qqLogin'] != 0): ?>
+			  <a href="<?php echo $wo['QQLoginUrl']?>" class="social-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 24C0 10.7452 10.7452 0 24 0C37.2548 0 48 10.7452 48 24C48 37.2548 37.2548 48 24 48C10.7452 48 0 37.2548 0 24Z" fill="white"/><path d="M34.5683 37.8736C34.3835 39.3344 31.9995 40.2336 29.2459 39.884C26.4931 39.5328 24.4107 38.064 24.5979 36.6024C24.7835 35.1416 27.1667 34.2416 29.9195 34.5928C32.6739 34.9432 34.7539 36.4128 34.5683 37.8736" fill="#E48013"/><path d="M13.7898 37.7325C14.0066 39.1973 16.4826 40.1349 19.3234 39.8285C22.1634 39.5205 24.289 38.0837 24.0722 36.6181C23.8562 35.1541 21.377 34.2157 18.5378 34.5237C15.6978 34.8309 13.5706 36.2677 13.7898 37.7325" fill="#E48013"/><path d="M34.3218 18.6872C34.3218 24.1464 29.8618 28.5736 24.3578 28.5736C18.857 28.5736 14.3962 24.1464 14.3962 18.6872C14.3962 13.2256 18.857 8.80005 24.3578 8.80005C29.8618 8.80005 34.3218 13.2256 34.3218 18.6872" fill="black"/><path d="M13.7023 37.4411C13.9191 38.9059 16.3951 39.8435 19.2359 39.5371C22.0759 39.2291 24.2015 37.7923 23.9847 36.3267C23.7687 34.8627 21.2895 33.9243 18.4503 34.2323C15.6103 34.5395 13.4831 35.9763 13.7023 37.4411" fill="#F5A519"/><path d="M34.6808 37.5196C34.496 38.9804 32.112 39.8796 29.3584 39.53C26.6056 39.1788 24.5232 37.71 24.7104 36.2484C24.896 34.7876 27.2792 33.8876 30.032 34.2388C32.7864 34.5892 34.8664 36.0588 34.6808 37.5196" fill="#F5A519"/><path d="M33.8238 29.6365C33.8238 34.0597 29.519 37.6453 24.211 37.6453C18.903 37.6453 14.5998 34.0597 14.5998 29.6365C14.5998 25.2133 18.903 21.6277 24.211 21.6277C29.519 21.6277 33.8238 25.2133 33.8238 29.6365" fill="black"/><path d="M16.1727 28.045C14.7615 30.8618 12.5479 32.645 11.8903 32.2954C11.0207 31.8314 10.8103 28.9858 12.2223 26.1698C13.6359 23.3546 15.9143 21.5506 17.0055 22.097C18.0943 22.645 17.5847 25.229 16.1727 28.045" fill="black"/><path d="M32.4011 28.3997C33.6923 30.9589 35.5523 32.9453 36.3475 32.7701C36.9891 32.6293 37.4475 29.6365 36.2723 26.7701C35.0779 23.8557 32.9115 21.7629 31.8195 22.3101C30.7291 22.8573 30.9819 25.5877 32.4011 28.3997" fill="black"/><path d="M17.1601 24.6052C16.5665 25.8228 16.2265 27.2068 16.2265 28.6772C16.2265 33.5316 19.8833 37.4668 24.3945 37.4668C28.9057 37.4668 32.5617 33.5316 32.5617 28.6772C32.5617 27.2468 32.2377 25.9004 31.6745 24.7068C27.5177 26.826 19.9065 25.2732 17.1601 24.6052" fill="white"/><path d="M23.6726 16.4076C23.6726 17.726 22.7998 18.7948 21.7222 18.7948C20.6454 18.7948 19.7726 17.726 19.7726 16.4076C19.7726 15.0892 20.6454 14.0204 21.7222 14.0204C22.7998 14.0204 23.6726 15.0892 23.6726 16.4076" fill="white"/><path d="M29.2723 16.4209C29.2723 17.7393 28.3995 18.8081 27.3219 18.8081C26.2459 18.8081 25.3723 17.7393 25.3723 16.4209C25.3723 15.1025 26.2459 14.0337 27.3219 14.0337C28.3995 14.0337 29.2723 15.1025 29.2723 16.4209" fill="white"/><path d="M24.6988 19.4611C21.9836 19.4611 19.6124 20.0955 18.2964 21.0419C18.626 21.8187 19.622 22.4235 20.5988 22.9851C21.7788 23.6635 23.7172 24.1227 24.6924 24.1227C25.5924 24.1227 27.8204 23.5163 29.0236 22.7299C29.87 22.1779 30.7628 21.6907 31.0876 21.0323C29.7692 20.0915 27.4052 19.4611 24.6988 19.4611" fill="#F5A519"/><path d="M23.3711 16.4209C23.3711 17.2553 22.8247 17.9321 22.1519 17.9321C21.4783 17.9321 20.9319 17.2553 20.9319 16.4209C20.9319 15.5865 21.4783 14.9097 22.1519 14.9097C22.8247 14.9097 23.3711 15.5865 23.3711 16.4209" fill="black"/><path d="M22.916 16.0771C22.916 16.4139 22.6872 16.6875 22.4048 16.6875C22.1224 16.6875 21.8936 16.4139 21.8936 16.0771C21.8936 15.7411 22.1224 15.4683 22.4048 15.4683C22.6872 15.4683 22.916 15.7411 22.916 16.0771" fill="white"/><path d="M26.3679 16.8134C26.2535 16.8134 26.1527 16.731 26.1319 16.615C26.1191 16.5422 26.1127 16.4662 26.1127 16.3886C26.1127 15.7502 26.5655 15.231 27.1215 15.231C27.6775 15.231 28.1303 15.7502 28.1303 16.3886C28.1303 16.4446 28.1271 16.499 28.1207 16.5526C28.1039 16.6838 27.9823 16.7766 27.8519 16.7606C27.7207 16.7438 27.6279 16.6238 27.6439 16.4926C27.6487 16.459 27.6511 16.4238 27.6511 16.3886C27.6511 16.015 27.4135 15.711 27.1215 15.711C26.8295 15.711 26.5919 16.015 26.5919 16.3886C26.5919 16.4374 26.5967 16.4854 26.6047 16.531C26.6279 16.6622 26.5407 16.7862 26.4103 16.8094C26.3959 16.8118 26.3823 16.8134 26.3679 16.8134" fill="black"/><path d="M19.2574 20.6474C19.2574 20.6474 20.7566 21.9314 22.1358 22.3146C23.7486 22.7626 26.079 22.5514 26.9622 22.2554C28.5678 21.7162 30.2742 20.5546 30.2742 20.5546C30.2742 20.5546 28.7662 21.7082 27.211 22.725C26.4294 23.2354 25.5734 23.9626 23.7718 23.5722C23.315 23.4738 22.4974 22.9202 22.2374 22.7698C20.9062 21.9994 19.5694 20.9578 19.2574 20.6474" fill="#8A3322"/><path d="M20.9121 27.4904V31.8384C20.9121 31.8384 19.1153 32.6888 17.5057 31.1528C16.8889 30.5648 17.8361 26.38 17.8361 26.38L20.9121 27.4904Z" fill="#D42E19"/><path d="M17.5926 26.6497L20.8862 29.2873C20.8862 29.2873 20.9414 27.6385 20.8702 27.1689C20.7982 26.7001 17.5926 26.4169 17.5926 26.4169" fill="#B82C22"/><path d="M24.6984 28.2318C20.552 28.2318 16.6432 26.7582 13.5568 24.0574C13.4816 23.9918 13.5048 23.7822 13.5048 23.7822C13.5048 23.7822 13.6232 23.323 13.82 22.223C13.9576 21.4542 14.2696 20.511 14.4352 20.511C14.5408 20.5982 14.668 20.7142 14.7936 20.8318C15.02 21.0438 15.2392 21.2622 15.3112 21.3302C17.8664 23.7214 21.1768 25.0318 24.6984 25.0318C28.2024 25.0318 31.524 23.7214 34.0792 21.3358C34.1 21.3166 34.6544 22.035 34.9032 22.7654C35.1696 23.5478 35.4392 24.399 35.1936 24.5934C32.2136 26.9502 28.5456 28.2318 24.6984 28.2318" fill="#D42E19"/></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['WeChatLogin'] != 0): ?>
+			  <a href="<?php echo $wo['WeChatLoginUrl']?>" class="social-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 24C0 10.7452 10.7452 0 24 0C37.2548 0 48 10.7452 48 24C48 37.2548 37.2548 48 24 48C10.7452 48 0 37.2548 0 24Z" fill="#45B035"/><path fill-rule="evenodd" clip-rule="evenodd" d="M30.7232 19.296C30.564 19.2872 30.404 19.2856 30.2424 19.2856C24.4952 19.2856 19.8328 23.1912 19.8328 28.0112C19.8328 28.8 19.9616 29.564 20.196 30.2912C19.9416 30.304 19.6856 30.3144 19.428 30.3144C18.1648 30.3144 16.9472 30.1432 15.812 29.8272C15.7472 29.808 15.6176 29.7712 15.6176 29.7712L11.4864 31.8752L12.5904 28.4168L12.4856 28.3504C9.7584 26.604 8 23.8528 8 20.7576C8 15.4792 13.116 11.2 19.428 11.2C25.1448 11.2 29.8816 14.7096 30.7232 19.296ZM15.4512 19.02C14.5648 19.02 13.8464 18.3232 13.8464 17.4656C13.8464 16.6072 14.5648 15.9128 15.4512 15.9128C16.3376 15.9128 17.0576 16.6072 17.0576 17.4656C17.0576 18.3232 16.3376 19.02 15.4512 19.02ZM23.4048 15.9128C24.2912 15.9128 25.0088 16.6072 25.0088 17.4656C25.0088 18.3232 24.2912 19.02 23.4048 19.02C22.5176 19.02 21.8008 18.3232 21.8008 17.4656C21.8008 16.6072 22.5176 15.9128 23.4048 15.9128Z" fill="white"/><path fill-rule="evenodd" clip-rule="evenodd" d="M30.3297 36.1425C24.9969 36.1425 20.6729 32.5273 20.6729 28.0673C20.6729 23.6089 24.9969 19.9937 30.3297 19.9937C35.6601 19.9937 39.9825 23.6089 39.9825 28.0673C39.9825 30.6833 38.4961 33.0073 36.1929 34.4825L36.1041 34.5377L37.0369 37.4609L33.5481 35.6817C33.5481 35.6817 33.4385 35.7145 33.3833 35.7289C32.4249 35.9969 31.3961 36.1425 30.3297 36.1425ZM25.6129 25.2857C25.6129 24.5625 26.2209 23.9745 26.9689 23.9745C27.7185 23.9745 28.3257 24.5625 28.3257 25.2857C28.3257 26.0121 27.7185 26.6009 26.9689 26.6009C26.2209 26.6009 25.6129 26.0121 25.6129 25.2857ZM32.3321 25.2857C32.3321 24.5625 32.9385 23.9745 33.6873 23.9745C34.4369 23.9745 35.0433 24.5625 35.0433 25.2857C35.0433 26.0121 34.4369 26.6009 33.6873 26.6009C32.9385 26.6009 32.3321 26.0121 32.3321 25.2857Z" fill="white"/></svg> </a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['DiscordLogin'] != 0): ?>
+			  <a href="<?php echo $wo['DiscordLoginUrl']?>" class="social-icon">
+                <svg enable-background="new 0 0 157.728 157.731" height="157.731" id="Layer_1" overflow="visible" version="1.1" viewBox="0 0 157.728 157.731" width="157.728" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="icon_2_"><path d="M78.864,0c43.556,0,78.863,35.308,78.863,78.864c0,43.552-35.308,78.868-78.863,78.868   C35.308,157.731,0,122.416,0,78.864C0,35.308,35.308,0,78.864,0z" fill="#8C9EFF"/><path d="M113.101,53.34c0,0-9.76-7.635-21.284-8.514l-1.043,2.076c10.425,2.552,15.2,6.207,20.199,10.695   c-8.612-4.394-17.112-8.514-31.927-8.514c-14.815,0-23.322,4.12-31.926,8.514c4.985-4.488,10.677-8.545,20.192-10.695l-1.036-2.076   c-12.099,1.145-21.284,8.514-21.284,8.514S34.09,69.143,32.221,100.166c10.985,12.672,27.669,12.771,27.669,12.771l3.487-4.649   c-5.923-2.059-12.61-5.741-18.386-12.378c6.889,5.209,17.293,10.642,34.055,10.642c16.762,0,27.158-5.426,34.055-10.642   c-5.783,6.637-12.47,10.319-18.386,12.378l3.487,4.649c0,0,16.677-0.099,27.669-12.771C123.995,69.143,113.101,53.34,113.101,53.34   z M65.211,91.651c-4.117,0-7.449-3.809-7.449-8.514c0-4.701,3.333-8.513,7.449-8.513c4.117,0,7.45,3.812,7.45,8.513   C72.661,87.843,69.328,91.651,65.211,91.651z M92.881,91.651c-4.117,0-7.45-3.809-7.45-8.514c0-4.701,3.333-8.513,7.45-8.513   c4.116,0,7.449,3.812,7.449,8.513C100.33,87.843,96.99,91.651,92.881,91.651z" fill="#FFFFFF"/></g></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['MailruLogin'] != 0): ?>
+			  <a href="<?php echo $wo['MailruLoginUrl']?>" class="social-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 24C0 10.7452 10.7452 0 24 0C37.2548 0 48 10.7452 48 24C48 37.2548 37.2548 48 24 48C10.7452 48 0 37.2548 0 24Z" fill="#005FF9"/><path fill-rule="evenodd" clip-rule="evenodd" d="M10 23.9603C10 16.2625 16.2802 10 23.9998 10C31.7194 10 37.9997 16.2625 37.9997 23.9603C37.9997 25.0508 37.9087 25.9336 37.7048 26.8197L37.7018 26.8344C37.7013 26.837 37.6001 27.2455 37.5442 27.4237C37.1982 28.5272 36.5718 29.4463 35.7325 30.0815C34.9186 30.6977 33.9094 31.0371 32.891 31.0371C32.7652 31.0371 32.6385 31.032 32.5144 31.0221C31.0682 30.9063 29.7966 30.1474 29.0168 28.9373C27.6757 30.282 25.8964 31.0218 23.9998 31.0218C20.0951 31.0218 16.9184 27.854 16.9184 23.9603C16.9184 20.0666 20.0951 16.8989 23.9998 16.8989C27.9045 16.8989 31.0812 20.0666 31.0812 23.9603V26.2366C31.087 27.5648 31.9808 28.1077 32.7444 28.1691C33.5041 28.2276 34.5152 27.7863 34.8674 26.3461C35.0411 25.5562 35.1294 24.7533 35.1294 23.9603C35.1294 17.8407 30.1367 12.8621 23.9998 12.8621C17.8629 12.8621 12.8703 17.8407 12.8703 23.9603C12.8703 30.0798 17.8629 35.0585 23.9998 35.0585C26.136 35.0585 28.2136 34.4501 30.0079 33.2991L30.0401 33.2784L31.9261 35.465L31.8856 35.4926C29.5549 37.0811 26.828 37.9207 23.9998 37.9207C16.2802 37.9207 10 31.6581 10 23.9603ZM23.9998 28.1596C26.3218 28.1596 28.2109 26.2758 28.2109 23.9603C28.2109 21.6448 26.3218 19.7612 23.9998 19.7612C21.6777 19.7612 19.7887 21.6448 19.7887 23.9603C19.7887 26.2758 21.6777 28.1596 23.9998 28.1596Z" fill="#FF9E00"/></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['googleLogin'] != 0): ?>
+			  <a class="g-signin2 social-icon" data-onsuccess="onSignIn" data-theme="dark">
+                <svg id="Слой_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-380.2 274.7 65.7 65.8"><style>.st0{fill:#e0e0e0}.st1{fill:#fff}.st2{clip-path:url(#SVGID_2_);fill:#fbbc05}.st3{clip-path:url(#SVGID_4_);fill:#ea4335}.st4{clip-path:url(#SVGID_6_);fill:#34a853}.st5{clip-path:url(#SVGID_8_);fill:#4285f4}</style><circle class="st0" cx="-347.3" cy="307.6" r="32.9"/><circle class="st1" cx="-347.3" cy="307.1" r="32.4"/><g><defs><path id="SVGID_1_" d="M-326.3 303.3h-20.5v8.5h11.8c-1.1 5.4-5.7 8.5-11.8 8.5-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4c-3.9-3.4-8.9-5.5-14.5-5.5-12.2 0-22 9.8-22 22s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></defs><clipPath id="SVGID_2_"><use xlink:href="#SVGID_1_" overflow="visible"/></clipPath><path class="st2" d="M-370.8 320.3v-26l17 13z"/><defs><path id="SVGID_3_" d="M-326.3 303.3h-20.5v8.5h11.8c-1.1 5.4-5.7 8.5-11.8 8.5-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4c-3.9-3.4-8.9-5.5-14.5-5.5-12.2 0-22 9.8-22 22s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></defs><clipPath id="SVGID_4_"><use xlink:href="#SVGID_3_" overflow="visible"/></clipPath><path class="st3" d="M-370.8 294.3l17 13 7-6.1 24-3.9v-14h-48z"/><g><defs><path id="SVGID_5_" d="M-326.3 303.3h-20.5v8.5h11.8c-1.1 5.4-5.7 8.5-11.8 8.5-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4c-3.9-3.4-8.9-5.5-14.5-5.5-12.2 0-22 9.8-22 22s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></defs><clipPath id="SVGID_6_"><use xlink:href="#SVGID_5_" overflow="visible"/></clipPath><path class="st4" d="M-370.8 320.3l30-23 7.9 1 10.1-15v48h-48z"/></g><g><defs><path id="SVGID_7_" d="M-326.3 303.3h-20.5v8.5h11.8c-1.1 5.4-5.7 8.5-11.8 8.5-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4c-3.9-3.4-8.9-5.5-14.5-5.5-12.2 0-22 9.8-22 22s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></defs><clipPath id="SVGID_8_"><use xlink:href="#SVGID_7_" overflow="visible"/></clipPath><path class="st5" d="M-322.8 331.3l-31-24-4-3 35-10z"/></g></g></svg></a>
+			  <?php endif; ?>
+			  <?php if($wo['config']['OkLogin'] != 0): ?>
+			  <a href="<?php echo $wo['OkLoginUrl']?>" class="social-icon">
+				<svg enable-background="new 0 0 154.107 154.107" height="154.107" id="Layer_1" overflow="visible" version="1.1" viewBox="0 0 154.107 154.107" width="154.107" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="icon"><circle cx="77.054" cy="77.054" fill="#E27E35" r="77.054"/><path d="M86.966,98.328c4.933-1.129,9.693-3.078,14.064-5.828c3.311-2.094,4.316-6.472,2.224-9.789   c-2.094-3.325-6.465-4.327-9.782-2.237c-9.926,6.239-22.691,6.232-32.617,0c-3.325-2.089-7.689-1.087-9.782,2.237   c-2.093,3.311-1.088,7.695,2.223,9.789c4.371,2.75,9.125,4.699,14.058,5.828l-13.517,13.531c-2.777,2.777-2.777,7.258,0,10.028   c1.389,1.382,3.201,2.079,5.007,2.079c1.819,0,3.625-0.697,5.021-2.079l13.305-13.299l13.305,13.299   c2.777,2.777,7.252,2.777,10.029,0c2.777-2.771,2.777-7.265,0-10.028L86.966,98.328 M77.17,44.334   c5.534,0,10.028,4.498,10.028,10.032c0,5.521-4.494,10.019-10.028,10.019c-5.521,0-10.035-4.498-10.035-10.019   C67.135,48.832,71.649,44.334,77.17,44.334L77.17,44.334z M77.17,78.569c13.354,0,24.209-10.863,24.209-24.203   c0-13.367-10.855-24.229-24.209-24.229c-13.36,0-24.216,10.863-24.216,24.216S63.81,78.569,77.17,78.569z" fill="#FFFFFF"/></g></svg></a>
+			  <?php endif; ?>
+            </div>
+			<?php } ?>
+			<?php if (!empty($wo['config']['native_android_messenger_url']) || !empty($wo['config']['native_android_timeline_url']) || !empty($wo['config']['native_ios_messenger_url']) || !empty($wo['config']['native_ios_timeline_url']) || !empty($wo['config']['native_windows_messenger_url'])) { ?>
+					<div class="row_app">
+						<?php if (!empty($wo['config']['native_android_timeline_url']) || !empty($wo['config']['native_ios_timeline_url'])) { ?>
+							<div class="tag_wel_widget_app">
+								<?php if (!empty($wo['config']['native_android_timeline_url'])) { ?>
+									<a href="<?php echo($wo['config']['native_android_timeline_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/google.png"/>
+									</a>
+								<?php } ?>
+								<?php if (!empty($wo['config']['native_ios_timeline_url'])) { ?>
+									<a href="<?php echo($wo['config']['native_ios_timeline_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/apple.png"/>
+									</a>
+								<?php } ?>
+							</div>
+						<?php } ?>
+						<?php if (!empty($wo['config']['native_android_messenger_url']) || !empty($wo['config']['native_ios_messenger_url']) || !empty($wo['config']['native_windows_messenger_url'])) { ?>
+							<div class="tag_wel_widget_app">
+								<?php if (!empty($wo['config']['native_android_messenger_url'])) { ?>
+									<a href="<?php echo($wo['config']['native_android_messenger_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/google.png"/>
+									</a>
+								<?php } ?>
+								<?php if (!empty($wo['config']['native_ios_messenger_url'])) { ?>
+									<a  href="<?php echo($wo['config']['native_ios_messenger_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/apple.png"/>
+									</a>
+								<?php } ?>
+								<?php if (!empty($wo['config']['native_windows_messenger_url'])) { ?>
+									<a href="<?php echo($wo['config']['native_windows_messenger_url']) ?>" target="_blank">
+										<img width="130" src="<?php echo $wo['config']['theme_url'];?>/img/microsoft.png"/>
+									</a>
+								<?php } ?>
+							</div>
+						<?php } ?>
+					</div>
+			<?php } ?>
+          </form>
+		  <form id="register" method="post" class="sign-up-form form-class">
+			<h2 class="title"><?php echo $wo['lang']['sign_up']?></h2>
+			  <div class="valign tag_auth_animation d-none register_auth"><svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 367.805 367.805" xml:space="preserve"> <g> <path style="fill:#3BB54A;" d="M183.903,0.001c101.566,0,183.902,82.336,183.902,183.902s-82.336,183.902-183.902,183.902 S0.001,285.469,0.001,183.903l0,0C-0.288,82.625,81.579,0.29,182.856,0.001C183.205,0,183.554,0,183.903,0.001z"/> <polygon style="fill:#fff;" points="285.78,133.225 155.168,263.837 82.025,191.217 111.805,161.96 155.168,204.801 256.001,103.968"/> </g></svg>Welcome!</div>
+				<div class="errors_2"></div>            
+			  <div class="input-field input-field_reg">
+				<i><svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><path fill="currentColor" d="M256 256c52.805 0 96-43.201 96-96s-43.195-96-96-96-96 43.201-96 96 43.195 96 96 96zm0 48c-63.598 0-192 32.402-192 96v48h384v-48c0-63.598-128.402-96-192-96z"/></svg></i>
+				<input name="username" type="text" autocomplete="off" class="inputclass-wel" placeholder="<?php echo $wo['lang']['username']; ?>" autofocus required>
+			  </div>
+			  <div class="input-field input-field_reg">
+				<i><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><path fill="currentColor"  d="M40 8h-32c-2.21 0-3.98 1.79-3.98 4l-.02 24c0 2.21 1.79 4 4 4h32c2.21 0 4-1.79 4-4v-24c0-2.21-1.79-4-4-4zm0 8l-16 10-16-10v-4l16 10 16-10v4z"/><path fill="none" d="M0 0h48v48h-48z"/></svg></i>
+				<input name="email" type="email" autocomplete="off" class="inputclass-wel" placeholder="<?php echo $wo['lang']['email']; ?>" required>
+			  </div>
+			  <div class="input-field input-field_reg">
+				<i><svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" viewBox="0 0 24 24"><path fill="currentColor" d="M17,9V7c0-2.8-2.2-5-5-5S7,4.2,7,7v2c-1.7,0-3,1.3-3,3v7c0,1.7,1.3,3,3,3h10c1.7,0,3-1.3,3-3v-7C20,10.3,18.7,9,17,9z M9,7c0-1.7,1.3-3,3-3s3,1.3,3,3v2H9V7z"/></svg></svg></i>
+				<input name="password" type="password" id="password" class="inputclass-wel" autocomplete="off" placeholder="<?php echo $wo['lang']['password']; ?>" required>
+			  </div>
+			  <?php if ($wo['config']['password_complexity_system'] == 1) { ?>
+				<ul class="list-unstyled helper-text">
+					<li class="length"><?php echo $wo['lang']['least_characters']; ?></li>
+					<li class="lowercase"><?php echo $wo['lang']['contain_lowercase']; ?></li>
+					<li class="uppercase"><?php echo $wo['lang']['contain_uppercase']; ?></li>
+					<li class="special"><?php echo $wo['lang']['number_special']; ?></li>
+				</ul>
+			  <?php } ?>
+			  <div class="input-field input-field_reg">
+				<i><svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" viewBox="0 0 24 24"><path fill="currentColor" d="M17,9V7c0-2.8-2.2-5-5-5S7,4.2,7,7v2c-1.7,0-3,1.3-3,3v7c0,1.7,1.3,3,3,3h10c1.7,0,3-1.3,3-3v-7C20,10.3,18.7,9,17,9z M9,7c0-1.7,1.3-3,3-3s3,1.3,3,3v2H9V7z"/></svg></svg></i>
+				<input name="confirm_password" type="password" class="inputclass-wel" autocomplete="off" placeholder="<?php echo $wo['lang']['confirm_password']; ?>" required>
+			  </div>
+			  <?php 
+				if (!empty($fields) && count($fields) > 0) {
+						foreach ($fields as $key => $wo['field']) {
+						echo Wo_LoadPage('welcome/fields');
+					}
+				}
+			  ?>
+		    <div class="input-field input-field_reg">
+			<i><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="mdi-gender-male-female" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M17.58,4H14V2H21V9H19V5.41L15.17,9.24C15.69,10.03 16,11 16,12C16,14.42 14.28,16.44 12,16.9V19H14V21H12V23H10V21H8V19H10V16.9C7.72,16.44 6,14.42 6,12A5,5 0 0,1 11,7C12,7 12.96,7.3 13.75,7.83L17.58,4M11,9A3,3 0 0,0 8,12A3,3 0 0,0 11,15A3,3 0 0,0 14,12A3,3 0 0,0 11,9Z" /></svg></i>
+			<select name="gender" id="gender">
+				<?php foreach ($wo['genders'] as $key => $gender) { ?>
+					<option value="<?php echo($key) ?>"><?php echo $gender; ?></option>
+				<?php } ?>
+			</select>
+			</div>
+			<?php if($wo['config']['reCaptcha'] == 1) {?>
+			  <div class="form-group">
+				<div class="g-recaptcha" data-sitekey="<?php echo $wo['config']['reCaptchaKey']?>"></div>
+			  </div>
+			<?php } ?>
+			<?php if(!empty( $_GET['last_url'])){?>
+			  <div><input type="hidden" name="last_url" value="<?php echo urldecode(Wo_Secure($_GET['last_url']));?>"></div>
+			<?php } ?>
+			<div class="form-group1 form-check1">
+				<input type="checkbox" class="form-check-input" name="accept_terms" id="accept_terms" onchange="activateButton(this)">
+				<label class="form-check-label label-class-welcome" for="accept_terms"><?php echo $wo['lang']['terms_agreement'] ?> <a href="<?php echo Wo_SeoLink('index.php?link1=terms&type=terms');?>"><?php echo $wo['lang']['terms_of_use'] ?></a> & <a href="<?php echo Wo_SeoLink('index.php?link1=terms&type=privacy-policy');?>"><?php echo $wo['lang']['privacy_policy'] ?></a></label>
+			</div>
+		    <input type="submit" value="<?php echo $wo['lang']['lets_go']?>" id="sign_submit" class="btn solid disable_btn tag_wel_btn btn-welcome" disabled />	  
+         </form>
+        </div>
+      </div>
+
+      <div class="panels-container">
+        <div class="panel left-panel">
+          <div class="content">
+            <h3><?php echo $wo['lang']['welcome_connect_text']?></h3>
+            <button class="btn transparent btn-welcome" id="sign-up-btn" id="sign-up-btn">
+              <?php echo $wo['lang']['register']?>
+            </button>
+          </div>
+          <img src="<?php echo $wo['config']['theme_url']; ?>/img/log.svg" class="image" alt="" />
+        </div>
+        <div class="panel right-panel">
+          <div class="content">
+            <h3><?php echo $wo['lang']['welcome_share_text']?></h3>
+            <button class="btn transparent btn-welcome" id="sign-in-btn">
+              <?php echo $wo['lang']['login']?>
+            </button>
+          </div>
+          <img src="<?php echo $wo['config']['theme_url']; ?>/img/register.svg" class="image" alt="" />
+        </div>
+      </div>
+	  <div class="tag_wel_bottommm">
+		<?php echo Wo_LoadPage('footer/welcome');?>
+	</div>
+</div>
+<script>
+(function($) {
+	$.fn.visible = function(partial) {
+		var $t            = $(this),
+          $w            = $(window),
+          viewTop       = $w.scrollTop(),
+          viewBottom    = viewTop + $w.height(),
+          _top          = $t.offset().top,
+          _bottom       = _top + $t.height(),
+          compareTop    = partial === true ? _bottom : _top,
+          compareBottom = partial === true ? _top : _bottom;
+		return ((compareBottom <= viewBottom) && (compareTop >= viewTop));
+	};
+})(jQuery);
+
+const sign_in_btn = document.querySelector("#sign-in-btn");
+const sign_up_btn = document.querySelector("#sign-up-btn");
+const container = document.querySelector(".container");
+
+sign_up_btn.addEventListener("click", () => {
+  container.classList.add("sign-up-mode");
+});
+
+sign_in_btn.addEventListener("click", () => {
+  container.classList.remove("sign-up-mode");
+});
+
+	
+var win = $(window);
+var allTrends = $(".tag_stup_trend");
+
+allTrends.each(function(i, el) {
+	var el = $(el);
+	if (el.visible(true)) {
+		el.addClass("already-visible"); 
+	} 
+});
+
+win.scroll(function(event) {
+	allTrends.each(function(i, el) {
+		var el = $(el);
+		if (el.visible(true)) {
+			el.addClass("come-in"); 
+		} 
+	});
+});
+
+$(function() {
+var working = false;
+var $this = $('#login');
+var $state = $this.find('.errors');
+var $login_anim = $('.log_in_auth');
+      $('#login').ajaxForm({
+        url: Wo_Ajax_Requests_File() + '?f=login',
+        beforeSend: function() {
+			$('.errors').addClass('errors-sty');
+    		working = true;
+    		$this.find('.disable_btn').attr("disabled", true);
+        },
+        success: function(data) {
+          if (data.status == 200 || data.status == 600) {
+          	$login_anim.removeClass('d-none');
+            setTimeout(function () {
+            	window.location.href = data.location;
+            }, 1000);
+          } else {
+            var errors = data.errors.join("<br>");
+            $state.html(errors);
+          } 
+          working = false;
+    	  $this.find('.disable_btn').attr("disabled", false);
+        }
+      });
+    const sign_in_btn = document.querySelector("#sign-in-btn");
+    const sign_up_btn = document.querySelector("#sign-up-btn");
+    const container = document.querySelector(".container-v5");
+    sign_up_btn.addEventListener("click", () => {
+      container.classList.add("sign-up-mode");
+    });
+    sign_in_btn.addEventListener("click", () => {
+      container.classList.remove("sign-up-mode");
+    });
+      
+});
+<?php if($wo['config']['googleLogin'] != 0): ?>
+function signOut() {
+	var auth2 = gapi.auth2.getAuthInstance();
+	auth2.signOut().then(function () {
+	  console.log('User signed out.');
+	});
+}
+
+function onSignIn(googleUser) {
+    // The ID token you need to pass to your backend:
+    var id_token = googleUser.getAuthResponse().id_token;
+    $.post(Wo_Ajax_Requests_File() + '?f=google_login', {id_token: id_token}, function(data, textStatus, xhr) {
+    	if (data.status == 200) {
+    		signOut();
+	        window.location.href = data.location;
+    	}
+    	else{
+		$this.find('.disable_btn').attr("disabled", false);
+	        $state.html(data.message);
+    	}
+    });
+}
+<?php endif; ?>
+
+function activateButton(element) {
+	if(element.checked) {
+		document.getElementById("sign_submit").disabled = false;
+	}
+	else  {
+		document.getElementById("sign_submit").disabled = true;
+	}
+};
+
+var working_s = false;
+var $this_s = $('#register');
+var $state_s = $this_s.find('.errors_2');
+var $login_anim_s = $('.register_auth');
+
+$(function() {
+	$this_s.ajaxForm({
+		url: Wo_Ajax_Requests_File() + '?f=register',
+		beforeSend: function() {
+					$('.errors_2').addClass('errors-sty errors');
+					<?php if ($wo['config']['password_complexity_system'] == 1) { ?>
+					if ($('.helper-text .length').hasClass('valid') && $('.helper-text .lowercase').hasClass('valid') && $('.helper-text .uppercase').hasClass('valid') && $('.helper-text .special').hasClass('valid')) {
+						working_s = true;
+						$this_s.find('button').attr("disabled", true);
+					}
+					else{
+						$state_s.html("<?php echo($wo['lang']['complexity_requirements']) ?>");
+						return false;
+					}
+					<?php } else{ ?>
+					working_s = true;
+					$this_s.find('button').attr("disabled", true);
+					<?php } ?>
+					working_s = true;
+					$this_s.find('button').attr("disabled", true);
+				},
+				success: function(data) {
+			if (data.status == 200) {
+				$login_anim_s.removeClass('d-none');
+				setTimeout(function () {
+					window.location.href = data.location + '/?cash='+Math.random();
+				}, 1000);
+			} else if (data.status == 300) {
+				window.location.href = data.location + '/?cash='+Math.random();
+			} else {
+				$this_s.find('button').attr("disabled", false);
+				$state_s.html(data.errors);
+			} 
+			working_s = false;
+		}
+	});
+});
+
+</script>

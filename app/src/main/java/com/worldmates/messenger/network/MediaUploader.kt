@@ -292,28 +292,29 @@ class MediaUploader(private val context: Context) {
             val requestBody = ProgressRequestBody(file, "image/*", onProgress)
 
             val filePart = MultipartBody.Part.createFormData(
-                "file",
+                "avatar",  // API expects "avatar" not "file"
                 file.name,
                 requestBody
             )
 
             val groupIdBody = groupId.toString().toRequestBody("text/plain".toMediaType())
+            val accessTokenBody = accessToken.toRequestBody("text/plain".toMediaType())
 
             val response = RetrofitClient.apiService.uploadGroupAvatar(
-                accessToken = accessToken,
+                accessToken = accessTokenBody,
                 groupId = groupIdBody,
-                file = filePart
+                avatar = filePart
             )
 
             when (response.apiStatus) {
                 200 -> {
-                    if (response.url != null) {
-                        UploadResult.Success(response.mediaId ?: "", response.url)
+                    if (response.avatarUrl != null) {
+                        UploadResult.Success("", response.avatarUrl)
                     } else {
                         UploadResult.Error("Невідповідь від серверу")
                     }
                 }
-                else -> UploadResult.Error(response.errorMessage ?: "Помилка завантаження")
+                else -> UploadResult.Error(response.message ?: "Помилка завантаження")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error uploading avatar: ${e.message}", e)

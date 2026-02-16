@@ -23,11 +23,20 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- ✅ Bluetooth для наушников/гарнитуры во время звонков -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- ✅ Android 14+ Foreground Service Types для звонков и видео -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- App updates: allow installing APK from within the app -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Features -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -105,6 +114,8 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:windowSoftInputMode="adjustResize"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:parentActivityName=".ui.chats.ChatsActivity" />
 
         <!-- Groups Activity -->
@@ -123,6 +134,14 @@
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.groups.GroupsActivity" />
 
+        <!-- Group Admin Panel Activity -->
+        <activity
+            android:name=".ui.groups.GroupAdminPanelActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:parentActivityName=".ui.groups.GroupDetailsActivity" />
+
         <!-- Channel Details Activity -->
         <activity
             android:name=".ui.channels.ChannelDetailsActivity"
@@ -130,6 +149,14 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.chats.ChatsActivity" />
+
+        <!-- Channel Admin Panel Activity -->
+        <activity
+            android:name=".ui.channels.ChannelAdminPanelActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:parentActivityName=".ui.channels.ChannelDetailsActivity" />
 
         <!-- Create Channel Activity -->
         <activity
@@ -147,6 +174,14 @@
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.chats.ChatsActivity" />
 
+        <!-- Theme Settings Activity -->
+        <activity
+            android:name=".ui.theme.ThemeSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
+            android:parentActivityName=".ui.messages.MessagesActivity" />
+
         <!-- User Profile Activity -->
         <activity
             android:name=".ui.profile.UserProfileActivity"
@@ -154,6 +189,13 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.WorldMatesMessenger.NoActionBar"
             android:parentActivityName=".ui.chats.ChatsActivity" />
+
+        <!-- Call History Activity -->
+        <activity
+            android:name=".ui.calls.CallHistoryActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WorldMatesMessenger.NoActionBar" />
 
         <!-- Calls Activity -->
         <activity

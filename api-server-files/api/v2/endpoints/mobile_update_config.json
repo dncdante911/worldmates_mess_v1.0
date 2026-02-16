@@ -1,0 +1,113 @@
+{
+  "latest_version": "2.3.0",
+  "version_code": 5,
+  "apk_url": "https://worldmates.club/sources-app/worldmates-latest.apk",
+  "changelog": [
+    "🎭 Анімовані стікери! 200 вбудованих Lottie стікерів",
+    "✨ Підтримка TGS формату (Telegram stickers)",
+    "🎨 5 паків стікерів: Емоції, Тварини, Святкування, Жести, Серця",
+    "🔄 Інтеграція з CDN/Strapi для завантаження додаткових паків",
+    "🎬 Новий продвинутий видеоплеер с жестами управління",
+    "🎮 Свайп влево/вправо для перемотки видео",
+    "🔊 Свайп вверх/вниз для регулировки громкости и яркости",
+    "⏩ Скорость воспроизведения (0.5x - 2x)",
+    "📱 Picture-in-Picture режим (Android 8+)",
+    "💫 Двойной тап для быстрой перемотки ±10 секунд",
+    "📸 Увеличен лимит фото до 25MB",
+    "📄 Новые компоненты для медиафайлов",
+    "🐛 Исправлено открытие фото в группах",
+    "✅ Исправлена отправка сообщений в группы",
+    "⚙️ Исправлено сохранение настроек админки групп"
+  ],
+  "is_mandatory": false,
+  "published_at": "2026-02-08T15:00:00Z",
+  "features": {
+    "animated_stickers": {
+      "enabled": true,
+      "supported_formats": [
+        "lottie",
+        "tgs",
+        "gif",
+        "webp",
+        "png"
+      ],
+      "embedded_packs": 5,
+      "embedded_stickers_count": 200,
+      "packs": [
+        {
+          "id": -1,
+          "name": "Емоції",
+          "sticker_count": 40
+        },
+        {
+          "id": -2,
+          "name": "Тварини",
+          "sticker_count": 40
+        },
+        {
+          "id": -3,
+          "name": "Святкування",
+          "sticker_count": 40
+        },
+        {
+          "id": -4,
+          "name": "Жести",
+          "sticker_count": 40
+        },
+        {
+          "id": -5,
+          "name": "Серця",
+          "sticker_count": 40
+        }
+      ],
+      "cdn_integration": {
+        "enabled": true,
+        "base_url": "https://cdn.worldmates.club",
+        "strapi_endpoint": "/api/gifs-packs?populate=*",
+        "cache_duration_hours": 1
+      },
+      "tgs_decoder": {
+        "enabled": true,
+        "gzip_decompression": true
+      },
+      "lottie_version": "6.4.0"
+    },
+    "advanced_video_player": {
+      "enabled": true,
+      "supported_gestures": [
+        "horizontal_swipe_seek",
+        "vertical_left_brightness",
+        "vertical_right_volume",
+        "double_tap_seek"
+      ],
+      "playback_speeds": [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+      "pip_support": true,
+      "min_android_version": 24
+    },
+    "media_limits": {
+      "max_image_size_mb": 25,
+      "max_video_size_mb": 1024,
+      "max_audio_size_mb": 100,
+      "max_file_size_mb": 250
+    },
+    "group_messaging": {
+      "enabled": true,
+      "admin_settings_persist": true,
+      "fix_applied": true
+    }
+  },
+  "minimum_supported_version": "2.0.0",
+  "force_update_below": "1.9.0",
+  "new_files": [
+    "ui/components/AnimatedStickerView.kt",
+    "data/stickers/EmbeddedStickerPacks.kt"
+  ],
+  "modified_files": [
+    "ui/components/StickerPicker.kt"
+  ],
+  "dependencies": {
+    "lottie": "6.4.0",
+    "lottie-compose": "6.4.0",
+    "coil-gif": "2.7.0"
+  }
+}

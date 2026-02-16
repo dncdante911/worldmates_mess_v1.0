@@ -1,7 +1,10 @@
 package com.worldmates.messenger.ui.channels
-import com.worldmates.messenger.util.toFullMediaUrl
 
+import com.worldmates.messenger.util.toFullMediaUrl
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,15 +12,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -40,23 +49,63 @@ fun ChannelPostCard(
     onShareClick: () -> Unit = {},
     onMoreClick: () -> Unit = {},
     canEdit: Boolean = false,
+    userKarmaScore: Float? = null,
+    userTrustLevel: String? = null,
     modifier: Modifier = Modifier
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "post_scale"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 6.dp,
+        animationSpec = tween(200),
+        label = "post_elevation"
+    )
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .clickable(onClick = onPostClick),
-        shape = RoundedCornerShape(20.dp), // Современные rounded corners
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onPostClick
+            ),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp,
-            pressedElevation = 8.dp,
-            hoveredElevation = 6.dp
+            defaultElevation = elevation,
+            pressedElevation = 2.dp,
+            hoveredElevation = 8.dp
         )
     ) {
+        // Gradient accent line at top
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.tertiary,
+                            MaterialTheme.colorScheme.secondary
+                        )
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -139,13 +188,25 @@ fun ChannelPostCard(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
-                        Text(
-                            text = post.authorName ?: post.authorUsername ?: "Користувач #${post.authorId}",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            letterSpacing = 0.15.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = post.authorName ?: post.authorUsername ?: "User #${post.authorId}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                letterSpacing = 0.15.sp
+                            )
+                            // User karma/trust badge
+                            if (userKarmaScore != null && userKarmaScore > 0) {
+                                KarmaMiniBadge(score = userKarmaScore)
+                            }
+                            if (userTrustLevel != null) {
+                                TrustMiniBadge(trustLevel = userTrustLevel)
+                            }
+                        }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1004,33 +1065,74 @@ fun CommentsBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Add comment field
+            // Add comment field - redesigned for better UX
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
             ) {
+                // Main input row with TextField and Send button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    TextField(
+                    // Text input field - takes most of the space
+                    OutlinedTextField(
                         value = commentText,
                         onValueChange = { commentText = it },
                         modifier = Modifier
                             .weight(1f)
-                            .padding(end = 8.dp),
-                        placeholder = { Text("Додати коментар...") },
-                        maxLines = 3,
-                        shape = RoundedCornerShape(24.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
+                            .heightIn(min = 56.dp, max = 150.dp),
+                        placeholder = { Text("Напишіть коментар...") },
+                        maxLines = 5,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Send button - prominent
+                    Surface(
+                        onClick = {
+                            if (commentText.isNotBlank()) {
+                                onAddComment(commentText)
+                                commentText = ""
+                            }
+                        },
+                        enabled = commentText.isNotBlank(),
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = if (commentText.isNotBlank())
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "Надіслати",
+                                tint = if (commentText.isNotBlank())
+                                    MaterialTheme.colorScheme.onPrimary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Quick action buttons row (stickers, emoji, GIF)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     // Strapi Stickers button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             showStrapiPicker = !showStrapiPicker
                             if (showStrapiPicker) {
@@ -1041,14 +1143,22 @@ fun CommentsBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.InsertEmoticon,
-                            contentDescription = "Стікери",
+                            contentDescription = null,
                             tint = if (showStrapiPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Стікери",
+                            fontSize = 12.sp,
+                            color = if (showStrapiPicker) MaterialTheme.colorScheme.primary
                                    else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     // Emoji button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             showEmojiPicker = !showEmojiPicker
                             if (showEmojiPicker) {
@@ -1059,14 +1169,22 @@ fun CommentsBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.EmojiEmotions,
-                            contentDescription = "Емоджі",
+                            contentDescription = null,
                             tint = if (showEmojiPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Емодзі",
+                            fontSize = 12.sp,
+                            color = if (showEmojiPicker) MaterialTheme.colorScheme.primary
                                    else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     // GIF button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             showGifPicker = !showGifPicker
                             if (showGifPicker) {
@@ -1077,29 +1195,17 @@ fun CommentsBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Gif,
-                            contentDescription = "GIF",
+                            contentDescription = null,
                             tint = if (showGifPicker) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
-                    }
-
-                    // Send button
-                    IconButton(
-                        onClick = {
-                            if (commentText.isNotBlank()) {
-                                onAddComment(commentText)
-                                commentText = ""
-                            }
-                        },
-                        enabled = commentText.isNotBlank()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = "Надіслати",
-                            tint = if (commentText.isNotBlank())
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "GIF",
+                            fontSize = 12.sp,
+                            color = if (showGifPicker) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -2361,3 +2467,79 @@ fun PostDetailDialog(
         }
     )
 }
+
+// ==================== KARMA & TRUST BADGES ====================
+
+/**
+ * Мини-badge для отображения кармы пользователя в постах
+ */
+@Composable
+fun KarmaMiniBadge(
+    score: Float,
+    modifier: Modifier = Modifier
+) {
+    val scoreColor = when {
+        score >= 4.0f -> Color(0xFF00C851)
+        score >= 3.0f -> Color(0xFF00BCD4)
+        score >= 2.0f -> Color(0xFFFFBB33)
+        else -> Color(0xFFFF4444)
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(6.dp),
+        color = scoreColor.copy(alpha = 0.15f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Icon(
+                Icons.Default.Star,
+                contentDescription = null,
+                tint = scoreColor,
+                modifier = Modifier.size(10.dp)
+            )
+            Text(
+                text = String.format("%.1f", score),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = scoreColor
+            )
+        }
+    }
+}
+
+/**
+ * Мини-badge для отображения уровня доверия
+ */
+@Composable
+fun TrustMiniBadge(
+    trustLevel: String,
+    modifier: Modifier = Modifier
+) {
+    val (color, icon) = when (trustLevel.lowercase()) {
+        "verified" -> Pair(Color(0xFF00C851), Icons.Default.Verified)
+        "trusted" -> Pair(Color(0xFF0A84FF), Icons.Default.ThumbUp)
+        "neutral" -> Pair(Color(0xFF8E8E93), Icons.Default.Person)
+        "untrusted" -> Pair(Color(0xFFFF4444), Icons.Default.Warning)
+        else -> Pair(Color(0xFF8E8E93), Icons.Default.Person)
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(6.dp),
+        color = color.copy(alpha = 0.15f)
+    ) {
+        Icon(
+            icon,
+            contentDescription = trustLevel,
+            tint = color,
+            modifier = Modifier
+                .padding(3.dp)
+                .size(12.dp)
+        )
+    }
+}
+

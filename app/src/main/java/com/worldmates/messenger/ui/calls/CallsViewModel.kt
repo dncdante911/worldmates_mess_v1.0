@@ -1,6 +1,11 @@
 package com.worldmates.messenger.ui.calls
 
 import android.app.Application
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
@@ -53,7 +58,16 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     private var currentCallData: CallData? = null
     private var currentCallId: Int = 0
     private var isInitiator = false
-    private var pendingCallInitiation: (() -> Unit)? = null  // ✅ Очікуючий виклик
+    private var pendingCallInitiation: (() -> Unit)? = null  // ✅ Очікуючий вихідний виклик
+    private var pendingCallAcceptance: (() -> Unit)? = null  // ✅ Очікуюче прийняття вхідного виклику
+
+    // 🔊 Audio management
+    private val audioManager: AudioManager by lazy {
+        getApplication<Application>().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var savedAudioMode: Int = AudioManager.MODE_NORMAL
+    private var savedIsSpeakerphoneOn: Boolean = false
 
     init {
         socketManager.connect()
@@ -157,6 +171,68 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
             }
         }
 
+        // 🔄 Renegotiation offer от peer'а (когда он включил видео)
+        socketManager.on("call:renegotiate") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        Log.d("CallsViewModel", "🔄 Renegotiation offer received")
+                        val sdpOffer = it.optString("sdpOffer")
+                        val fromUserId = it.optInt("fromUserId")
+
+                        // Установить новый remote description
+                        val offerSdp = SessionDescription(SessionDescription.Type.OFFER, sdpOffer)
+                        webRTCManager.setRemoteDescription(offerSdp) { error ->
+                            Log.e("CallsViewModel", "Failed to set renegotiation offer: $error")
+                        }
+
+                        // Создать answer
+                        webRTCManager.createAnswer(
+                            onSuccess = { answer ->
+                                currentCallData?.let { callData ->
+                                    val answerEvent = JSONObject().apply {
+                                        put("roomName", callData.roomName)
+                                        put("fromUserId", getUserId())
+                                        put("toUserId", fromUserId)
+                                        put("sdpAnswer", answer.description)
+                                        put("type", "renegotiate_answer")
+                                    }
+                                    socketManager.emit("call:renegotiate_answer", answerEvent)
+                                    Log.d("CallsViewModel", "✅ Renegotiation answer sent")
+                                }
+                            },
+                            onError = { error ->
+                                Log.e("CallsViewModel", "Failed to create renegotiation answer: $error")
+                            }
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:renegotiate", e)
+            }
+        }
+
+        // 🔄 Renegotiation answer от peer'а
+        socketManager.on("call:renegotiate_answer") { args ->
+            try {
+                if (args.isNotEmpty()) {
+                    val data = args[0] as? JSONObject
+                    data?.let {
+                        Log.d("CallsViewModel", "🔄 Renegotiation answer received")
+                        val sdpAnswer = it.optString("sdpAnswer")
+
+                        val answerSdp = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
+                        webRTCManager.setRemoteDescription(answerSdp) { error ->
+                            Log.e("CallsViewModel", "Failed to set renegotiation answer: $error")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "Error processing call:renegotiate_answer", e)
+            }
+        }
+
         // 📴 Дзвінок завершено
         socketManager.on("call:ended") { args ->
             try {
@@ -223,6 +299,45 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         webRTCManager.onIceConnectionStateChangeListener = { state ->
             Log.d("CallsViewModel", "ICE Connection State: $state")
         }
+
+        // ✅ Обработка renegotiation когда добавляется/удаляется track
+        webRTCManager.onRenegotiationNeededListener = {
+            Log.d("CallsViewModel", "🔄 Renegotiation needed - creating new offer")
+            // Только если мы инициатор или уже в звонке
+            if (currentCallData != null) {
+                performRenegotiation()
+            }
+        }
+    }
+
+    /**
+     * 🔄 Выполнить renegotiation - создать новый offer и отправить peer'у
+     */
+    private fun performRenegotiation() {
+        viewModelScope.launch {
+            try {
+                webRTCManager.createOffer(
+                    onSuccess = { offer ->
+                        currentCallData?.let { callData ->
+                            val renegotiateEvent = JSONObject().apply {
+                                put("roomName", callData.roomName)
+                                put("fromUserId", getUserId())
+                                put("toUserId", if (callData.toId == getUserId()) callData.fromId else callData.toId)
+                                put("sdpOffer", offer.description)
+                                put("type", "renegotiate")
+                            }
+                            socketManager.emit("call:renegotiate", renegotiateEvent)
+                            Log.d("CallsViewModel", "✅ Renegotiation offer sent")
+                        }
+                    },
+                    onError = { error ->
+                        Log.e("CallsViewModel", "❌ Failed to create renegotiation offer: $error")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("CallsViewModel", "❌ Renegotiation error", e)
+            }
+        }
     }
 
     /**
@@ -232,6 +347,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         Log.d("CallsViewModel", "📞 Initiating call to $recipientName (ID: $recipientId), type: $callType")
 
         val callLogic: () -> Unit = {
+            // 🔊 CRITICAL: Setup audio for calls BEFORE creating WebRTC connection
+            setupCallAudio(isVideoCall = callType == "video")
+
             viewModelScope.launch {
                 try {
                     Log.d("CallsViewModel", "🔧 Fetching ICE servers before creating PeerConnection...")
@@ -283,6 +401,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                                 put("callType", callType)
                                 put("roomName", roomName)
                                 put("fromName", getUserName())
+                                put("fromAvatar", getUserAvatar())  // ✅ Додано аватар
                                 put("sdpOffer", offer.description)
                             }
 
@@ -292,6 +411,7 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
                             Log.d("CallsViewModel", "   callType: $callType")
                             Log.d("CallsViewModel", "   roomName: $roomName")
                             Log.d("CallsViewModel", "   fromName: ${getUserName()}")
+                            Log.d("CallsViewModel", "   fromAvatar: ${getUserAvatar()}")
 
                             socketManager.emit("call:initiate", callEvent)
                             Log.d("CallsViewModel", "✅ call:initiate emitted successfully")
@@ -331,6 +451,9 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
      */
     fun initiateGroupCall(groupId: Int, groupName: String, callType: String = "audio") {
         val callLogic: () -> Unit = {
+            // 🔊 CRITICAL: Setup audio for calls BEFORE creating WebRTC connection
+            setupCallAudio(isVideoCall = callType == "video")
+
             viewModelScope.launch {
                 try {
                     // ✅ Fetch ICE servers from API FIRST
@@ -395,58 +518,98 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     /**
      * Прийняти вхідний вызов
+     *
+     * ✅ ВИПРАВЛЕНО: Тепер правильно обробляє випадок коли Socket ще не підключений
+     * і отримує ICE сервери ПЕРЕД створенням PeerConnection
      */
     fun acceptCall(callData: CallData) {
-        viewModelScope.launch {
-            try {
-                currentCallData = callData
-                isInitiator = false
+        Log.d("CallsViewModel", "📞 acceptCall() called for room: ${callData.roomName}")
 
-                // 1. Создать PeerConnection
-                webRTCManager.createPeerConnection()
+        val acceptLogic: () -> Unit = {
+            // 🔊 CRITICAL: Setup audio for calls BEFORE creating WebRTC connection
+            setupCallAudio(isVideoCall = callData.callType == "video")
 
-                // 2. Создать локальный стрим
-                val videoEnabled = (callData.callType == "video")
-                webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = videoEnabled)
+            viewModelScope.launch {
+                try {
+                    currentCallData = callData
+                    isInitiator = false
 
-                // Опубліковати локальний стрім
-                getLocalStream()?.let { localStreamAdded.postValue(it) }
+                    Log.d("CallsViewModel", "🔧 Fetching ICE servers before accepting call...")
 
-                // 3. Установить remote description (offer от другого юзера)
-                callData.sdpOffer?.let { offerSdp ->
-                    val remoteDescription = SessionDescription(SessionDescription.Type.OFFER, offerSdp)
-                    webRTCManager.setRemoteDescription(remoteDescription) { error ->
-                        callError.postValue(error)
+                    // ✅ 1. КРИТИЧНО: Отримати ICE сервери ПЕРЕД створенням PeerConnection
+                    val iceServers = fetchIceServersFromApi()
+                    if (iceServers != null && iceServers.isNotEmpty()) {
+                        webRTCManager.setIceServers(iceServers)
+                        Log.d("CallsViewModel", "✅ ICE servers set for incoming call: ${iceServers.size} servers")
+                    } else {
+                        Log.w("CallsViewModel", "⚠️ Failed to fetch ICE servers, using default STUN")
                     }
-                }
 
-                // ✅ Join the Socket.IO room for this call BEFORE creating answer
-                val joinRoomData = JSONObject().apply {
-                    put("roomName", callData.roomName)
-                    put("userId", getUserId())
-                }
-                socketManager.emit("call:join_room", joinRoomData)
-                Log.d("CallsViewModel", "📍 Joined call room: ${callData.roomName}")
+                    // 2. Создать PeerConnection (з правильними ICE серверами)
+                    webRTCManager.createPeerConnection()
+                    Log.d("CallsViewModel", "✅ PeerConnection created")
 
-                // 4. Создать answer
-                webRTCManager.createAnswer(
-                    onSuccess = { answer ->
-                        // ✅ Використовуємо org.json.JSONObject для Socket.IO
-                        val acceptEvent = JSONObject().apply {
-                            put("roomName", callData.roomName)
-                            put("userId", getUserId())
-                            put("sdpAnswer", answer.description)
+                    // 3. Создать локальный стрим
+                    val videoEnabled = (callData.callType == "video")
+                    webRTCManager.createLocalMediaStream(audioEnabled = true, videoEnabled = videoEnabled)
+                    Log.d("CallsViewModel", "✅ Local media stream created (video=$videoEnabled)")
+
+                    // Опубліковати локальний стрім
+                    getLocalStream()?.let { localStreamAdded.postValue(it) }
+
+                    // 4. Установить remote description (offer от другого юзера)
+                    callData.sdpOffer?.let { offerSdp ->
+                        val remoteDescription = SessionDescription(SessionDescription.Type.OFFER, offerSdp)
+                        webRTCManager.setRemoteDescription(remoteDescription) { error ->
+                            Log.e("CallsViewModel", "❌ Failed to set remote description: $error")
+                            callError.postValue(error)
                         }
-                        socketManager.emit("call:accept", acceptEvent)
-                        Log.d("CallsViewModel", "Call accepted and answer sent")
-                    },
-                    onError = { error ->
-                        callError.postValue(error)
+                        Log.d("CallsViewModel", "✅ Remote description (offer) set")
+                    } ?: run {
+                        Log.e("CallsViewModel", "❌ No SDP offer in call data!")
+                        callError.postValue("No SDP offer received")
+                        return@launch
                     }
-                )
-            } catch (e: Exception) {
-                callError.postValue(e.message)
+
+                    // ✅ Join the Socket.IO room for this call BEFORE creating answer
+                    val joinRoomData = JSONObject().apply {
+                        put("roomName", callData.roomName)
+                        put("userId", getUserId())
+                    }
+                    socketManager.emit("call:join_room", joinRoomData)
+                    Log.d("CallsViewModel", "📍 Joined call room: ${callData.roomName}")
+
+                    // 5. Создать answer
+                    webRTCManager.createAnswer(
+                        onSuccess = { answer ->
+                            // ✅ Використовуємо org.json.JSONObject для Socket.IO
+                            val acceptEvent = JSONObject().apply {
+                                put("roomName", callData.roomName)
+                                put("userId", getUserId())
+                                put("sdpAnswer", answer.description)
+                            }
+                            socketManager.emit("call:accept", acceptEvent)
+                            Log.d("CallsViewModel", "✅ Call accepted and answer sent successfully!")
+                        },
+                        onError = { error ->
+                            Log.e("CallsViewModel", "❌ Failed to create answer: $error")
+                            callError.postValue(error)
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e("CallsViewModel", "❌ Error accepting call", e)
+                    callError.postValue(e.message ?: "Unknown error accepting call")
+                }
             }
+        }
+
+        // ✅ Перевірити чи Socket підключений
+        if (socketConnected.value == true) {
+            Log.d("CallsViewModel", "Socket ready, accepting call immediately")
+            acceptLogic()
+        } else {
+            Log.d("CallsViewModel", "Socket not ready, pending call acceptance...")
+            pendingCallAcceptance = acceptLogic  // ✅ Окрема черга для прийняття
         }
     }
 
@@ -486,6 +649,10 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         }
 
         webRTCManager.close()
+
+        // 🔊 Release audio after call ends
+        releaseCallAudio()
+
         callEnded.postValue(true)
         currentCallData = null
     }
@@ -500,20 +667,121 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
 
     /**
      * 📹 Увімкнути/вимкнути відео
+     *
+     * ✅ ВИПРАВЛЕНО: Тепер динамічно створює камеру якщо її немає
      */
     fun toggleVideo(enabled: Boolean) {
-        webRTCManager.setVideoEnabled(enabled)
-        Log.d("CallsViewModel", "Video ${if (enabled) "enabled" else "disabled"}")
+        if (enabled) {
+            // ✅ Включити відео - створити камеру якщо її немає
+            val success = webRTCManager.enableVideo()
+            if (success) {
+                // Оновити local stream в UI
+                getLocalStream()?.let { localStreamAdded.postValue(it) }
+                Log.d("CallsViewModel", "📹 Video enabled successfully")
+            } else {
+                Log.e("CallsViewModel", "❌ Failed to enable video")
+            }
+        } else {
+            // Вимкнути відео (камера зупиняється)
+            webRTCManager.disableVideo()
+            Log.d("CallsViewModel", "📹 Video disabled")
+        }
     }
 
     /**
      * 🔊 Увімкнути/вимкнути громку зв'язок (speaker)
      */
     fun toggleSpeaker(enabled: Boolean) {
-        // TODO: Implement AudioManager logic for speaker
-        val audioManager = getApplication<Application>().getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
         audioManager.isSpeakerphoneOn = enabled
         Log.d("CallsViewModel", "Speaker ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * 🔊 Setup audio for call - CRITICAL for hearing the other party
+     * This requests audio focus and sets the audio mode to MODE_IN_COMMUNICATION
+     */
+    private fun setupCallAudio(isVideoCall: Boolean = false) {
+        try {
+            // Save current state to restore later
+            savedAudioMode = audioManager.mode
+            savedIsSpeakerphoneOn = audioManager.isSpeakerphoneOn
+
+            // Request audio focus for voice call
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+
+                audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(audioAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener { focusChange ->
+                        Log.d("CallsViewModel", "🔊 Audio focus changed: $focusChange")
+                    }
+                    .build()
+
+                val result = audioManager.requestAudioFocus(audioFocusRequest!!)
+                Log.d("CallsViewModel", "🔊 Audio focus request result: $result")
+            } else {
+                @Suppress("DEPRECATION")
+                val result = audioManager.requestAudioFocus(
+                    { focusChange -> Log.d("CallsViewModel", "🔊 Audio focus changed: $focusChange") },
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                )
+                Log.d("CallsViewModel", "🔊 Audio focus request result: $result")
+            }
+
+            // ✅ CRITICAL: Set audio mode to MODE_IN_COMMUNICATION for WebRTC
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+
+            // Enable speakerphone for video calls by default, earpiece for audio calls
+            audioManager.isSpeakerphoneOn = isVideoCall
+
+            // ✅ Enable Bluetooth SCO if headset is connected
+            if (audioManager.isBluetoothScoAvailableOffCall) {
+                audioManager.startBluetoothSco()
+                audioManager.isBluetoothScoOn = true
+                Log.d("CallsViewModel", "🔊 Bluetooth SCO started")
+            }
+
+            Log.d("CallsViewModel", "🔊 Call audio setup complete - mode: MODE_IN_COMMUNICATION, speaker: $isVideoCall")
+        } catch (e: Exception) {
+            Log.e("CallsViewModel", "🔊 Error setting up call audio", e)
+        }
+    }
+
+    /**
+     * 🔊 Release audio after call ends
+     */
+    private fun releaseCallAudio() {
+        try {
+            // Stop Bluetooth SCO
+            if (audioManager.isBluetoothScoOn) {
+                audioManager.stopBluetoothSco()
+                audioManager.isBluetoothScoOn = false
+                Log.d("CallsViewModel", "🔊 Bluetooth SCO stopped")
+            }
+
+            // Abandon audio focus
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let {
+                    audioManager.abandonAudioFocusRequest(it)
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.abandonAudioFocus(null)
+            }
+
+            // Restore previous audio state
+            audioManager.mode = savedAudioMode
+            audioManager.isSpeakerphoneOn = savedIsSpeakerphoneOn
+
+            Log.d("CallsViewModel", "🔊 Call audio released, mode restored to: $savedAudioMode")
+        } catch (e: Exception) {
+            Log.e("CallsViewModel", "🔊 Error releasing call audio", e)
+        }
     }
 
     /**
@@ -522,6 +790,24 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     fun switchCamera() {
         webRTCManager.switchCamera()
         Log.d("CallsViewModel", "Camera switched")
+    }
+
+    /**
+     * 📹 Отримати поточну якість відео
+     */
+    fun getVideoQuality(): com.worldmates.messenger.network.VideoQuality {
+        return webRTCManager.getVideoQuality()
+    }
+
+    /**
+     * 📹 Змінити якість відео
+     */
+    fun setVideoQuality(quality: com.worldmates.messenger.network.VideoQuality): Boolean {
+        val success = webRTCManager.setVideoQuality(quality)
+        if (success) {
+            Log.d("CallsViewModel", "📹 Video quality changed to ${quality.label}")
+        }
+        return success
     }
 
     /**
@@ -542,11 +828,18 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
         // ✅ Налаштувати listeners для call events
         setupCallSocketListeners()
 
-        // ✅ Виконати відкладений дзвінок якщо є
+        // ✅ Виконати відкладений вихідний дзвінок якщо є
         pendingCallInitiation?.let {
             Log.d("CallsViewModel", "Executing pending call initiation...")
             it.invoke()
             pendingCallInitiation = null
+        }
+
+        // ✅ Виконати відкладене прийняття дзвінка якщо є
+        pendingCallAcceptance?.let {
+            Log.d("CallsViewModel", "Executing pending call acceptance...")
+            it.invoke()
+            pendingCallAcceptance = null
         }
     }
 
@@ -564,16 +857,42 @@ class CallsViewModel(application: Application) : AndroidViewModel(application), 
     fun onIncomingCall(data: org.json.JSONObject) { // Работаем напрямую с JSONObject
         val roomName = data.optString("roomName", "")
         try {
+            // ✅ ВИПРАВЛЕНО: Парсити fromName з різних можливих полів (camelCase та snake_case)
+            val fromNameRaw = data.optString("fromName", "")
+            val fromNameSnake = data.optString("from_name", "")
+            val callerNameRaw = data.optString("callerName", "")
+            val nameRaw = data.optString("name", "")
+
+            // Вибираємо перше непусте ім'я
+            val fromName = listOf(fromNameRaw, fromNameSnake, callerNameRaw, nameRaw)
+                .firstOrNull { it.isNotEmpty() } ?: "Користувач"
+
+            Log.d("CallsViewModel", "📞 Parsing incoming call - fromNameRaw: '$fromNameRaw', fromNameSnake: '$fromNameSnake', callerNameRaw: '$callerNameRaw', result: '$fromName'")
+
+            // ✅ Парсити fromAvatar з різних полів
+            val fromAvatarRaw = data.optString("fromAvatar", "")
+            val fromAvatarSnake = data.optString("from_avatar", "")
+            val avatarRaw = data.optString("avatar", "")
+            val fromAvatar = listOf(fromAvatarRaw, fromAvatarSnake, avatarRaw)
+                .firstOrNull { it.isNotEmpty() } ?: ""
+
+            // ✅ Парсити fromId з різних полів
+            val fromIdCamel = data.optInt("fromId", 0)
+            val fromIdSnake = data.optInt("from_id", 0)
+            val callerIdRaw = data.optInt("callerId", 0)
+            val fromId = listOf(fromIdCamel, fromIdSnake, callerIdRaw)
+                .firstOrNull { it > 0 } ?: 0
+
             val callData = CallData(
                 // optInt/optString никогда не вызовут NullPointerException
                 callId = data.optInt("callId", 0),
-                fromId = data.optInt("fromId", 0),
-                fromName = data.optString("fromName", "Анонім"),
-                fromAvatar = data.optString("fromAvatar", ""),
+                fromId = fromId,
+                fromName = fromName,
+                fromAvatar = fromAvatar,
                 toId = getUserId(),
-                callType = data.optString("callType", "audio"),
-                roomName = data.optString("roomName", ""),
-                sdpOffer = data.optString("sdpOffer", null)
+                callType = data.optString("callType", data.optString("call_type", "audio")),
+                roomName = data.optString("roomName", data.optString("room_name", "")),
+                sdpOffer = data.optString("sdpOffer", data.optString("sdp_offer", null))
             )
 
             // ✅ CRITICAL: Ignore calls from yourself (initiator receiving their own call)

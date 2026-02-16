@@ -85,17 +85,17 @@ data class Message(
 data class Group(
     @SerializedName("id") val id: Long,
     @SerializedName("name") val name: String,
-    @SerializedName("avatar") val avatarUrl: String,
+    @SerializedName("avatar") val avatarUrl: String = "",
     @SerializedName("description") val description: String? = null,
-    @SerializedName("members_count") val membersCount: Int,
-    @SerializedName("admin_id") val adminId: Long,
-    @SerializedName("admin_name") val adminName: String,
-    @SerializedName("is_private") val isPrivate: Boolean,
+    @SerializedName("members_count") val membersCount: Int = 0,
+    @SerializedName("admin_id") val adminId: Long = 0,
+    @SerializedName("admin_name") val adminName: String = "",
+    @SerializedName("is_private") val isPrivate: Boolean = false,
     @SerializedName("is_admin") val isAdmin: Boolean = false,
     @SerializedName("is_moderator") val isModerator: Boolean = false,
     @SerializedName("is_member") val isMember: Boolean = true,
-    @SerializedName("is_muted") val isMuted: Boolean = false, // 🔕 Вимкнено сповіщення для користувача
-    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("is_muted") val isMuted: Boolean = false,
+    @SerializedName("created_time") val createdTime: Long = 0,
     @SerializedName("updated_time") val updatedTime: Long? = null,
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null,
@@ -104,11 +104,11 @@ data class Group(
 )
 
 data class GroupMember(
-    @SerializedName("user_id") val userId: Long,
-    @SerializedName("username") val username: String,
-    @SerializedName("avatar") val avatarUrl: String,
-    @SerializedName("role") val role: String, // "admin", "moderator", "member"
-    @SerializedName("joined_time") val joinedTime: Long,
+    @SerializedName("user_id") val userId: Long = 0,
+    @SerializedName("username") val username: String = "",
+    @SerializedName("avatar") val avatarUrl: String = "",
+    @SerializedName("role") val role: String = "member",
+    @SerializedName("joined_time") val joinedTime: Long = 0,
     @SerializedName("is_muted") val isMuted: Boolean = false,
     @SerializedName("is_blocked") val isBlocked: Boolean = false,
     @SerializedName("permissions") val permissions: List<String>? = null
@@ -119,7 +119,156 @@ data class GroupSettings(
     @SerializedName("allow_members_pin") val allowMembersPin: Boolean = false,
     @SerializedName("allow_members_delete_messages") val allowMembersDeleteMessages: Boolean = false,
     @SerializedName("allow_voice_calls") val allowVoiceCalls: Boolean = true,
-    @SerializedName("allow_video_calls") val allowVideoCalls: Boolean = true
+    @SerializedName("allow_video_calls") val allowVideoCalls: Boolean = true,
+    // Slow mode - затримка між повідомленнями в секундах (0 = вимкнено)
+    @SerializedName("slow_mode_seconds") val slowModeSeconds: Int = 0,
+    // Історія для нових учасників
+    @SerializedName("history_visible_for_new_members") val historyVisibleForNewMembers: Boolean = true,
+    @SerializedName("history_messages_count") val historyMessagesCount: Int = 100, // Скільки повідомлень показувати
+    // Права учасників на медіа
+    @SerializedName("allow_members_send_media") val allowMembersSendMedia: Boolean = true,
+    @SerializedName("allow_members_send_stickers") val allowMembersSendStickers: Boolean = true,
+    @SerializedName("allow_members_send_gifs") val allowMembersSendGifs: Boolean = true,
+    @SerializedName("allow_members_send_links") val allowMembersSendLinks: Boolean = true,
+    @SerializedName("allow_members_send_polls") val allowMembersSendPolls: Boolean = true,
+    // Анти-спам налаштування
+    @SerializedName("anti_spam_enabled") val antiSpamEnabled: Boolean = false,
+    @SerializedName("max_messages_per_minute") val maxMessagesPerMinute: Int = 20,
+    @SerializedName("auto_mute_spammers") val autoMuteSpammers: Boolean = true,
+    @SerializedName("block_new_users_media") val blockNewUsersMedia: Boolean = false, // Блокувати медіа для нових
+    @SerializedName("new_user_restriction_hours") val newUserRestrictionHours: Int = 24 // Обмеження для нових користувачів
+)
+
+// ==================== JOIN REQUESTS (для приватних груп) ====================
+
+/**
+ * Запит на вступ до приватної групи
+ */
+data class GroupJoinRequest(
+    @SerializedName("id") val id: Long,
+    @SerializedName("group_id") val groupId: Long,
+    @SerializedName("user_id") val userId: Long,
+    @SerializedName("username") val username: String,
+    @SerializedName("user_avatar") val userAvatar: String? = null,
+    @SerializedName("message") val message: String? = null, // Повідомлення від користувача
+    @SerializedName("status") val status: String = "pending", // "pending", "approved", "rejected"
+    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("reviewed_by") val reviewedBy: Long? = null,
+    @SerializedName("reviewed_time") val reviewedTime: Long? = null
+)
+
+// ==================== GROUP STATISTICS ====================
+
+/**
+ * Статистика групи
+ */
+data class GroupStatistics(
+    @SerializedName("group_id") val groupId: Long,
+    @SerializedName("members_count") val membersCount: Int = 0,
+    @SerializedName("messages_count") val messagesCount: Int = 0,
+    @SerializedName("messages_today") val messagesToday: Int = 0,
+    @SerializedName("messages_this_week") val messagesThisWeek: Int = 0,
+    @SerializedName("messages_this_month") val messagesThisMonth: Int = 0,
+    @SerializedName("active_members_24h") val activeMembers24h: Int = 0,
+    @SerializedName("active_members_week") val activeMembersWeek: Int = 0,
+    @SerializedName("media_count") val mediaCount: Int = 0,
+    @SerializedName("links_count") val linksCount: Int = 0,
+    @SerializedName("new_members_today") val newMembersToday: Int = 0,
+    @SerializedName("new_members_week") val newMembersWeek: Int = 0,
+    @SerializedName("left_members_week") val leftMembersWeek: Int = 0,
+    @SerializedName("top_contributors") val topContributors: List<TopContributor>? = null,
+    @SerializedName("peak_hours") val peakHours: List<Int>? = null, // Години найбільшої активності
+    @SerializedName("growth_rate") val growthRate: Float = 0f // % зростання за тиждень
+)
+
+data class TopContributor(
+    @SerializedName("user_id") val userId: Long,
+    @SerializedName("username") val username: String,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("avatar") val avatar: String? = null,
+    @SerializedName("messages_count") val messagesCount: Int
+)
+
+// ==================== SCHEDULED POSTS ====================
+
+/**
+ * Заплановане повідомлення/пост
+ */
+data class ScheduledPost(
+    @SerializedName("id") val id: Long,
+    @SerializedName("group_id") val groupId: Long? = null,
+    @SerializedName("channel_id") val channelId: Long? = null,
+    @SerializedName("author_id") val authorId: Long,
+    @SerializedName("text") val text: String,
+    @SerializedName("media_url") val mediaUrl: String? = null,
+    @SerializedName("media_type") val mediaType: String? = null,
+    @SerializedName("scheduled_time") val scheduledTime: Long,
+    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("status") val status: String = "scheduled", // "scheduled", "published", "failed", "cancelled"
+    @SerializedName("repeat_type") val repeatType: String? = null, // "none", "daily", "weekly", "monthly"
+    @SerializedName("is_pinned") val isPinned: Boolean = false,
+    @SerializedName("notify_members") val notifyMembers: Boolean = true
+)
+
+// ==================== MEMBER PERMISSIONS ====================
+
+/**
+ * Детальні права учасника групи
+ */
+data class GroupMemberPermissions(
+    @SerializedName("can_send_messages") val canSendMessages: Boolean = true,
+    @SerializedName("can_send_media") val canSendMedia: Boolean = true,
+    @SerializedName("can_send_stickers") val canSendStickers: Boolean = true,
+    @SerializedName("can_send_gifs") val canSendGifs: Boolean = true,
+    @SerializedName("can_send_links") val canSendLinks: Boolean = true,
+    @SerializedName("can_send_polls") val canSendPolls: Boolean = true,
+    @SerializedName("can_add_members") val canAddMembers: Boolean = false,
+    @SerializedName("can_pin_messages") val canPinMessages: Boolean = false,
+    @SerializedName("can_delete_messages") val canDeleteMessages: Boolean = false,
+    @SerializedName("can_edit_group_info") val canEditGroupInfo: Boolean = false,
+    @SerializedName("can_manage_subgroups") val canManageSubgroups: Boolean = false,
+    @SerializedName("is_muted_until") val isMutedUntil: Long? = null // Замучений до цього часу
+)
+
+// ==================== SUBGROUPS (Topics) ====================
+
+/**
+ * Підгрупа (топік) в групі
+ */
+data class Subgroup(
+    @SerializedName("id") val id: Long,
+    @SerializedName("parent_group_id") val parentGroupId: Long,
+    @SerializedName("name") val name: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("icon_emoji") val iconEmoji: String? = null, // Емодзі як іконка
+    @SerializedName("color") val color: String = "#2196F3", // Колір теми
+    @SerializedName("members_count") val membersCount: Int = 0,
+    @SerializedName("messages_count") val messagesCount: Int = 0,
+    @SerializedName("is_private") val isPrivate: Boolean = false,
+    @SerializedName("is_closed") val isClosed: Boolean = false, // Закрита для нових повідомлень
+    @SerializedName("created_by") val createdBy: Long,
+    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("last_message_time") val lastMessageTime: Long? = null,
+    @SerializedName("pinned_message_id") val pinnedMessageId: Long? = null
+)
+
+// ==================== INVITATION LINKS ====================
+
+/**
+ * Посилання для запрошення в групу/канал
+ */
+data class InvitationLink(
+    @SerializedName("id") val id: Long,
+    @SerializedName("group_id") val groupId: Long? = null,
+    @SerializedName("channel_id") val channelId: Long? = null,
+    @SerializedName("link") val link: String,
+    @SerializedName("created_by") val createdBy: Long,
+    @SerializedName("created_time") val createdTime: Long,
+    @SerializedName("expires_time") val expiresTime: Long? = null, // Коли закінчується дія
+    @SerializedName("max_uses") val maxUses: Int? = null, // Максимальна кількість використань
+    @SerializedName("uses_count") val usesCount: Int = 0,
+    @SerializedName("is_revoked") val isRevoked: Boolean = false,
+    @SerializedName("requires_approval") val requiresApproval: Boolean = false // Потребує схвалення адміном
 )
 
 data class MediaFile(
@@ -215,33 +364,53 @@ data class ChatListResponse(
 }
 
 data class MessageListResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?, // Int (v2 API) или String (old API)
     @SerializedName("messages") val messages: List<Message>?,
     @SerializedName("total_count") val totalCount: Int? = null,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
-)
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 data class GroupListResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?,
     @SerializedName("groups") private val _groups: List<Group>? = null,
     @SerializedName("data") private val _data: List<Group>? = null, // API get-my-groups возвращает 'data' вместо 'groups'
     @SerializedName("total_count") val totalCount: Int? = null,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
 ) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
     // Универсальный геттер для получения групп (из groups или data)
     val groups: List<Group>?
         get() = _groups ?: _data
 }
 
 data class GroupDetailResponse(
-    @SerializedName("api_status") val apiStatus: Int,
+    @SerializedName("api_status") private val _apiStatus: Any?,
     @SerializedName("group") val group: Group?,
     @SerializedName("members") val members: List<GroupMember>? = null,
     @SerializedName("error_code") val errorCode: Int?,
     @SerializedName("error_message") val errorMessage: String?
-)
+) {
+    val apiStatus: Int
+        get() = when (_apiStatus) {
+            is Number -> _apiStatus.toInt()
+            is String -> _apiStatus.toIntOrNull() ?: 400
+            else -> 400
+        }
+}
 
 data class MediaUploadResponse(
     @SerializedName("api_status") val apiStatus: Int,

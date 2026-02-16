@@ -218,6 +218,7 @@ fun ChatsScreen(
 
     // 📇 Стан для ContactPicker
     var showContactPicker by remember { mutableStateOf(false) }
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -247,6 +248,10 @@ fun ChatsScreen(
                         context.startActivity(
                             Intent(context, com.worldmates.messenger.ui.drafts.DraftsActivity::class.java)
                         )
+                    },
+                    onCreateGroup = {
+                        // Open create group dialog
+                        showCreateGroupDialog = true
                     }
                 )
             }
@@ -258,7 +263,6 @@ fun ChatsScreen(
 
     var searchText by remember { mutableStateOf("") }
     var showGroups by remember { mutableStateOf(false) }
-    var showCreateGroupDialog by remember { mutableStateOf(false) }
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
     var showContactMenu by remember { mutableStateOf(false) }
 
@@ -508,15 +512,18 @@ fun ChatsScreen(
 
         // Create Group Dialog
         if (showCreateGroupDialog) {
+            val context = LocalContext.current
             com.worldmates.messenger.ui.groups.CreateGroupDialog(
                 onDismiss = { showCreateGroupDialog = false },
                 availableUsers = availableUsers,
-                onCreateGroup = { name, description, memberIds, isPrivate ->
+                onCreateGroup = { name, description, memberIds, isPrivate, avatarUri ->
                     groupsViewModel.createGroup(
                         name = name,
                         description = description,
                         memberIds = memberIds,
                         isPrivate = isPrivate,
+                        avatarUri = avatarUri,
+                        context = context,
                         onSuccess = {
                             showCreateGroupDialog = false
                         }
@@ -565,13 +572,23 @@ fun ChatsScreen(
                     )
                 },
                 onUploadAvatar = { uri ->
-                    // Завантаження нової аватарки
-                    // TODO: Реалізувати завантаження аватарки групи
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = "Завантаження аватарок буде реалізовано пізніше",
-                            duration = SnackbarDuration.Short
-                        )
+                    // Завантаження нової аватарки групи
+                    val currentGroup = groupsViewModel.selectedGroup.value
+                    if (currentGroup != null) {
+                        groupsViewModel.uploadGroupAvatar(currentGroup.id, uri, context)
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "Завантаження аватарки...",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    } else {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "Оберіть групу для зміни аватарки",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
                     }
                 },
                 isLoading = groupsViewModel.isLoading.collectAsState().value
@@ -637,13 +654,16 @@ fun SettingsDrawerContent(
     onClose: () -> Unit,
     onShowContactPicker: () -> Unit = {},
     onShowDrafts: () -> Unit = {},
-    onCreateStoryClick: () -> Unit = {}
+    onCreateStoryClick: () -> Unit = {},
+    onCreateGroup: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
+    // Observe avatar changes
+    val currentAvatar by com.worldmates.messenger.data.UserSession.avatarFlow.collectAsState()
+
     // State для діалогів
     var showAboutDialog by remember { mutableStateOf(false) }
-    var showCreateGroupDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -672,7 +692,7 @@ fun SettingsDrawerContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AsyncImage(
-                        model = com.worldmates.messenger.data.UserSession.avatar,
+                        model = currentAvatar,
                         contentDescription = "Avatar",
                         modifier = Modifier
                             .size(70.dp)
@@ -730,7 +750,7 @@ fun SettingsDrawerContent(
                     title = "Нова група",
                     onClick = {
                         onClose()
-                        showCreateGroupDialog = true
+                        onCreateGroup()
                     }
                 )
             }
@@ -774,7 +794,9 @@ fun SettingsDrawerContent(
                     title = "Дзвінки",
                     onClick = {
                         onClose()
-                        Toast.makeText(context, "Дзвінки", Toast.LENGTH_SHORT).show()
+                        context.startActivity(
+                            android.content.Intent(context, com.worldmates.messenger.ui.calls.CallHistoryActivity::class.java)
+                        )
                     }
                 )
             }
@@ -817,7 +839,7 @@ fun SettingsDrawerContent(
                             putExtra(
                                 Intent.EXTRA_TEXT,
                                 "Приєднуйся до WorldMates - найкращого месенджера! 🚀\n" +
-                                "Завантаж тут: https://worldmates.com"
+                                "Завантаж тут: https://worldmates.club"
                             )
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "Запросити друга"))
@@ -843,14 +865,6 @@ fun SettingsDrawerContent(
         com.worldmates.messenger.ui.components.AboutAppDialog(
             onDismiss = { showAboutDialog = false }
         )
-    }
-
-    // Діалог створення групи
-    if (showCreateGroupDialog) {
-        // Need to get GroupsViewModel from parent
-        // For now, show a Toast - will need to refactor to pass ViewModel
-        Toast.makeText(context, "Функція створення групи доступна на вкладці Групи", Toast.LENGTH_LONG).show()
-        showCreateGroupDialog = false
     }
 }
 
@@ -1304,7 +1318,7 @@ fun UserSearchDialog(
 }
 
 /**
- * Контекстне меню для контактів (Перейменувати, Видалити)
+ * Контекстне меню для контактів (Профіль, Перейменувати, Видалити)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1313,7 +1327,8 @@ fun ContactContextMenu(
     onDismiss: () -> Unit,
     onRename: (Chat) -> Unit,
     onDelete: (Chat) -> Unit,
-    nicknameRepository: ContactNicknameRepository
+    nicknameRepository: ContactNicknameRepository,
+    onViewProfile: ((Chat) -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState()
     val colorScheme = MaterialTheme.colorScheme
@@ -1338,6 +1353,42 @@ fun ContactContextMenu(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 color = colorScheme.onSurface
             )
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // View Profile
+            val context = LocalContext.current
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onDismiss()
+                        if (onViewProfile != null) {
+                            onViewProfile(chat)
+                        } else {
+                            // Відкриваємо профіль користувача
+                            val intent = android.content.Intent(context, com.worldmates.messenger.ui.profile.UserProfileActivity::class.java).apply {
+                                putExtra("user_id", chat.userId)
+                            }
+                            context.startActivity(intent)
+                        }
+                    }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Профіль",
+                    tint = colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Переглянути профіль",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colorScheme.onSurface
+                )
+            }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 

@@ -62,6 +62,7 @@ fun UserProfileScreen(
 ) {
     val profileState by viewModel.profileState.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
+    val ratingState by viewModel.ratingState.collectAsState()
 
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -125,7 +126,11 @@ fun UserProfileScreen(
                 is ProfileState.Success -> {
                     UserProfileContent(
                         user = state.user,
-                        isOwnProfile = userId == null
+                        isOwnProfile = userId == null,
+                        ratingState = ratingState,
+                        onRateUser = { ratingType, comment ->
+                            viewModel.rateUser(state.user.userId, ratingType, comment)
+                        }
                     )
                 }
             }
@@ -171,7 +176,9 @@ fun UserProfileScreen(
 @Composable
 fun UserProfileContent(
     user: User,
-    isOwnProfile: Boolean
+    isOwnProfile: Boolean,
+    ratingState: RatingState,
+    onRateUser: (String, String?) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -287,6 +294,49 @@ fun UserProfileContent(
                     label = "Пости",
                     count = user.details?.postCount?.toString() ?: "0"
                 )
+            }
+        }
+
+        // Rating/Karma Section (only for other users' profiles)
+        if (!isOwnProfile) {
+            item {
+                Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+                when (ratingState) {
+                    is RatingState.Loading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                    is RatingState.Success -> {
+                        UserRatingCard(
+                            rating = ratingState.rating,
+                            onLikeClick = { onRateUser("like", null) },
+                            onDislikeClick = { onRateUser("dislike", null) }
+                        )
+                    }
+                    is RatingState.Error -> {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Text(
+                                text = ratingState.message,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -591,4 +641,258 @@ fun EditProfileDialog(
             }
         }
     )
+}
+
+/**
+ * Card для відображення рейтингу користувача з можливістю оцінки
+ */
+@Composable
+fun UserRatingCard(
+    rating: com.worldmates.messenger.data.model.UserRating,
+    onLikeClick: () -> Unit,
+    onDislikeClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Карма користувача",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = rating.trustLevelEmoji,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+
+                // Trust level badge
+                Surface(
+                    color = when (rating.trustLevel) {
+                        "verified" -> Color(0xFF4CAF50)
+                        "trusted" -> Color(0xFF2196F3)
+                        "neutral" -> Color(0xFF9E9E9E)
+                        "untrusted" -> Color(0xFFF44336)
+                        else -> Color(0xFF9E9E9E)
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = when (rating.trustLevel) {
+                            "verified" -> "Перевірений"
+                            "trusted" -> "Надійний"
+                            "neutral" -> "Нейтральний"
+                            "untrusted" -> "Ненадійний"
+                            else -> "Невідомо"
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Rating stats
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Likes
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.ThumbUp,
+                        contentDescription = "Likes",
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Text(
+                        text = rating.likes.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4CAF50)
+                    )
+                    Text(
+                        text = "Лайків",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Score
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = "Score",
+                        tint = Color(0xFFFF9800),
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Text(
+                        text = String.format("%.1f", rating.score),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFF9800)
+                    )
+                    Text(
+                        text = "Рейтинг",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Dislikes
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.ThumbDown,
+                        contentDescription = "Dislikes",
+                        tint = Color(0xFFF44336),
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Text(
+                        text = rating.dislikes.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF44336)
+                    )
+                    Text(
+                        text = "Дізлайків",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Action buttons
+            Text(
+                text = "Оцініть цього користувача:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Like button
+                Button(
+                    onClick = onLikeClick,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (rating.myRating?.type == "like") {
+                            Color(0xFF4CAF50)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        contentColor = if (rating.myRating?.type == "like") {
+                            Color.White
+                        } else {
+                            Color(0xFF4CAF50)
+                        }
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.ThumbUp,
+                        contentDescription = "Like",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (rating.myRating?.type == "like") "Лайк поставлено" else "Лайк"
+                    )
+                }
+
+                // Dislike button
+                Button(
+                    onClick = onDislikeClick,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (rating.myRating?.type == "dislike") {
+                            Color(0xFFF44336)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        contentColor = if (rating.myRating?.type == "dislike") {
+                            Color.White
+                        } else {
+                            Color(0xFFF44336)
+                        }
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.ThumbDown,
+                        contentDescription = "Dislike",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (rating.myRating?.type == "dislike") "Дізлайк поставлено" else "Дізлайк"
+                    )
+                }
+            }
+
+            // My rating info
+            rating.myRating?.let { myRating ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Ви вже оцінили цього користувача. Натисніть кнопку ще раз щоб зняти оцінку.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

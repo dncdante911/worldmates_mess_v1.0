@@ -117,6 +117,7 @@ class MessagesViewModel(application: Application) :
 
     private var recipientId: Long = 0
     private var groupId: Long = 0
+    private var topicId: Long = 0 // 📁 Topic/Subgroup ID for topic-based filtering
     private var socketManager: SocketManager? = null
     private var mediaUploader: MediaUploader? = null
     private var fileManager: FileManager? = null
@@ -124,25 +125,32 @@ class MessagesViewModel(application: Application) :
     // 🎥 Публічні getters для відеодзвінків
     fun getRecipientId(): Long = recipientId
     fun getGroupId(): Long = groupId
+    fun getTopicId(): Long = topicId
 
     fun initialize(recipientId: Long) {
         Log.d("MessagesViewModel", "🔧 initialize() викликано для користувача $recipientId")
         this.recipientId = recipientId
         this.groupId = 0
+        this.topicId = 0
         fetchMessages()
         setupSocket()
         loadDraft() // Загружаем черновик
         Log.d("MessagesViewModel", "✅ Ініціалізація завершена для користувача $recipientId")
     }
 
-    fun initializeGroup(groupId: Long) {
+    fun initializeGroup(groupId: Long, topicId: Long = 0) {
         this.groupId = groupId
         this.recipientId = 0
+        this.topicId = topicId
         fetchGroupDetails(groupId) // 📌 Отримуємо деталі групи включаючи закріплене повідомлення
         fetchGroupMessages()
         setupSocket()
         loadDraft() // Загружаем черновик
-        Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
+        if (topicId != 0L) {
+            Log.d("MessagesViewModel", "Ініціалізація для групи $groupId, topic $topicId")
+        } else {
+            Log.d("MessagesViewModel", "Ініціалізація для групи $groupId")
+        }
     }
 
     /**
@@ -225,10 +233,11 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                // Використовуємо НОВИЙ API для групових повідомлень
+                // Використовуємо API для групових повідомлень (з опціональною фільтрацією по топіку)
                 val response = RetrofitClient.apiService.getGroupMessages(
                     accessToken = UserSession.accessToken!!,
                     groupId = groupId,
+                    topicId = topicId, // Фільтруємо по топіку якщо вказано
                     limit = Constants.MESSAGES_PAGE_SIZE,
                     beforeMessageId = beforeMessageId
                 )
@@ -244,7 +253,11 @@ class MessagesViewModel(application: Application) :
                     _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
 
                     _error.value = null
-                    Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень групи")
+                    if (topicId != 0L) {
+                        Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень топіку $topicId")
+                    } else {
+                        Log.d("MessagesViewModel", "Завантажено ${decryptedMessages.size} повідомлень групи")
+                    }
                 } else {
                     _error.value = response.errorMessage ?: "Помилка завантаження повідомлень"
                 }
@@ -274,10 +287,11 @@ class MessagesViewModel(application: Application) :
                 val messageHashId = System.currentTimeMillis().toString()
 
                 val response = if (groupId != 0L) {
-                    // Використовуємо НОВИЙ API для відправки в групу
+                    // Використовуємо API для відправки в групу (з опціональним топіком)
                     RetrofitClient.apiService.sendGroupMessage(
                         accessToken = UserSession.accessToken!!,
                         groupId = groupId,
+                        topicId = topicId, // Якщо є топік, повідомлення буде прив'язане до нього
                         text = text,
                         replyToId = replyToId
                     )
@@ -291,12 +305,14 @@ class MessagesViewModel(application: Application) :
                     )
                 }
 
-                Log.d("MessagesViewModel", "API Response: status=${response.apiStatus}, messages=${response.messages?.size}, errors=${response.errors}")
+                Log.d("MessagesViewModel", "API Response: status=${response.apiStatus}, messages=${response.messages?.size}, message=${response.message}, allMessages=${response.allMessages?.size}, errors=${response.errors}")
 
                 if (response.apiStatus == 200) {
                     // Если API вернул сообщения, добавляем их в список
-                    if (response.messages != null && response.messages.isNotEmpty()) {
-                        val decryptedMessages = response.messages.map { msg ->
+                    val receivedMessages = response.allMessages
+                    Log.d("MessagesViewModel", "receivedMessages: $receivedMessages")
+                    if (receivedMessages != null && receivedMessages.isNotEmpty()) {
+                        val decryptedMessages = receivedMessages.map { msg ->
                             decryptMessageFully(msg)
                         }
 
@@ -1529,6 +1545,14 @@ class MessagesViewModel(application: Application) :
         Log.d(TAG, "🔍 Search cleared")
     }
 
+    /**
+     * 🔍 Установить поисковый запрос
+     */
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+        Log.d(TAG, "🔍 Search query set to: $query")
+    }
+
     // ==================== MEDIA LOADING ====================
 
     /**
@@ -1631,6 +1655,112 @@ class MessagesViewModel(application: Application) :
     }
 
     // ==================== END MEDIA LOADING ====================
+
+    // ==================== CHAT ACTIONS ====================
+
+    /**
+     * 🗑️ Очистити історію чату
+     */
+    fun clearChatHistory(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null) {
+            onError("Не авторизовано")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = if (groupId != 0L) {
+                    // Очищення для групи
+                    RetrofitClient.apiService.clearGroupChatHistory(
+                        accessToken = UserSession.accessToken!!,
+                        groupId = groupId
+                    )
+                } else {
+                    // Очищення для приватного чату
+                    RetrofitClient.apiService.clearChatHistory(
+                        accessToken = UserSession.accessToken!!,
+                        userId = recipientId
+                    )
+                }
+
+                if (response.apiStatus == 200) {
+                    // Очищаємо локальний список повідомлень
+                    _messages.value = emptyList()
+                    onSuccess()
+                    Log.d(TAG, "🗑️ Chat history cleared")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося очистити історію"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to clear chat history: $errorMsg")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error clearing chat history", e)
+            }
+        }
+    }
+
+    /**
+     * 🚫 Заблокувати користувача
+     */
+    fun blockUser(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        if (UserSession.accessToken == null || recipientId == 0L) {
+            onError("Не авторизовано або невірний користувач")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.blockUser(
+                    accessToken = UserSession.accessToken!!,
+                    userId = recipientId
+                )
+
+                if (response.apiStatus == 200) {
+                    onSuccess()
+                    Log.d(TAG, "🚫 User $recipientId blocked")
+                } else {
+                    val errorMsg = response.message ?: "Не вдалося заблокувати користувача"
+                    onError(errorMsg)
+                    Log.e(TAG, "❌ Failed to block user: $errorMsg")
+                }
+            } catch (e: Exception) {
+                val errorMsg = "Помилка: ${e.localizedMessage}"
+                onError(errorMsg)
+                Log.e(TAG, "❌ Error blocking user", e)
+            }
+        }
+    }
+
+    // ==================== END CHAT ACTIONS ====================
+
+    // ==================== TEXT FORMATTING ====================
+
+    /**
+     * Застосовує форматування до тексту
+     * Обгортає весь текст у вказані маркери форматування
+     *
+     * @param text Текст для форматування
+     * @param prefix Маркер на початку (наприклад, "**" для жирного)
+     * @param suffix Маркер в кінці (наприклад, "**" для жирного)
+     * @return Відформатований текст
+     */
+    fun applyFormatting(text: String, prefix: String, suffix: String): String {
+        return if (text.isNotEmpty()) {
+            "$prefix$text$suffix"
+        } else {
+            "$prefix$suffix" // Повертаємо порожні маркери, щоб користувач міг друкувати між ними
+        }
+    }
+
+    // ==================== END TEXT FORMATTING ====================
 
     override fun onCleared() {
         super.onCleared()

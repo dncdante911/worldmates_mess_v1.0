@@ -38,13 +38,11 @@ class ChannelsViewModel : ViewModel() {
     val searchQuery: StateFlow<String> = _searchQuery
 
     init {
-        // Добавляем задержку перед первым запросом
-        // чтобы токен успел активироваться на сервере
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(2500) // 2.5 секунды задержка
-            fetchChannels()
-            fetchSubscribedChannels()
-        }
+        // Загружаем каналы сразу при инициализации
+        // isLoading = true покажет индикатор загрузки вместо "канали не знайдено"
+        _isLoading.value = true
+        fetchChannels()
+        fetchSubscribedChannels()
     }
 
     /**
@@ -720,6 +718,7 @@ class ChannelsViewModel : ViewModel() {
                     channelId.toString()
                 )
 
+                // Convert access token to RequestBody for multipart
                 val accessTokenBody = okhttp3.RequestBody.create(
                     "text/plain".toMediaTypeOrNull(),
                     token

@@ -128,12 +128,14 @@ fun GroupsScreenWrapper(
                 CreateGroupDialog(
                     onDismiss = { showCreateDialog = false },
                     availableUsers = availableUsers,
-                    onCreateGroup = { name, description, memberIds, isPrivate ->
+                    onCreateGroup = { name, description, memberIds, isPrivate, avatarUri ->
                         viewModel.createGroup(
                             name = name,
                             description = description,
                             memberIds = memberIds,
                             isPrivate = isPrivate,
+                            avatarUri = avatarUri,
+                            context = context,
                             onSuccess = {
                                 showCreateDialog = false
                             }

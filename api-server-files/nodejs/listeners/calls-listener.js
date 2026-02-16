@@ -519,6 +519,161 @@ async function registerCallsListeners(socket, io, ctx) {
         console.log(`[CALLS] User ${userId} toggled media: audio=${audio}, video=${video}`);
     });
 
+    /**
+     * 🔄 Renegotiation - когда участник включает/выключает видео во время звонка
+     * Data: { roomName, fromUserId, toUserId, sdpOffer, type }
+     */
+    socket.on('call:renegotiate', async (data) => {
+        try {
+            const { roomName, fromUserId, toUserId, sdpOffer } = data;
+
+            console.log(`[CALLS] 🔄 Renegotiation from ${fromUserId} to ${toUserId} in room ${roomName}`);
+
+            if (toUserId) {
+                // Отправить конкретному пользователю
+                const recipientSockets = ctx.userIdSocket[toUserId];
+                if (recipientSockets && recipientSockets.length > 0) {
+                    const renegotiateData = {
+                        roomName: roomName,
+                        fromUserId: fromUserId,
+                        sdpOffer: sdpOffer,
+                        type: 'renegotiate'
+                    };
+
+                    recipientSockets.forEach(recipientSocket => {
+                        recipientSocket.emit('call:renegotiate', renegotiateData);
+                    });
+
+                    console.log(`[CALLS] ✅ Renegotiation offer sent to user ${toUserId}`);
+                } else {
+                    console.warn(`[CALLS] ⚠️ No sockets found for user ${toUserId}`);
+                }
+            } else {
+                // Broadcast в комнату (для групповых звонков)
+                socket.to(roomName).emit('call:renegotiate', {
+                    fromUserId: fromUserId,
+                    sdpOffer: sdpOffer,
+                    type: 'renegotiate'
+                });
+                console.log(`[CALLS] ✅ Renegotiation offer broadcast to room ${roomName}`);
+            }
+
+        } catch (error) {
+            console.error('[CALLS] Error in call:renegotiate:', error);
+        }
+    });
+
+    /**
+     * 🔄 Renegotiation Answer - ответ на renegotiation offer
+     * Data: { roomName, fromUserId, toUserId, sdpAnswer, type }
+     */
+    socket.on('call:renegotiate_answer', async (data) => {
+        try {
+            const { roomName, fromUserId, toUserId, sdpAnswer } = data;
+
+            console.log(`[CALLS] 🔄 Renegotiation answer from ${fromUserId} to ${toUserId} in room ${roomName}`);
+
+            if (toUserId) {
+                // Отправить конкретному пользователю
+                const recipientSockets = ctx.userIdSocket[toUserId];
+                if (recipientSockets && recipientSockets.length > 0) {
+                    const answerData = {
+                        roomName: roomName,
+                        fromUserId: fromUserId,
+                        sdpAnswer: sdpAnswer,
+                        type: 'renegotiate_answer'
+                    };
+
+                    recipientSockets.forEach(recipientSocket => {
+                        recipientSocket.emit('call:renegotiate_answer', answerData);
+                    });
+
+                    console.log(`[CALLS] ✅ Renegotiation answer sent to user ${toUserId}`);
+                } else {
+                    console.warn(`[CALLS] ⚠️ No sockets found for user ${toUserId}`);
+                }
+            } else {
+                // Broadcast в комнату (для групповых звонков)
+                socket.to(roomName).emit('call:renegotiate_answer', {
+                    fromUserId: fromUserId,
+                    sdpAnswer: sdpAnswer,
+                    type: 'renegotiate_answer'
+                });
+                console.log(`[CALLS] ✅ Renegotiation answer broadcast to room ${roomName}`);
+            }
+
+        } catch (error) {
+            console.error('[CALLS] Error in call:renegotiate_answer:', error);
+        }
+    });
+
+    // ==================== SCREEN SHARING ====================
+
+    /**
+     * Notify participants that screen sharing started/stopped
+     * Data: { roomName, userId, action: 'start'|'stop' }
+     */
+    socket.on('call:screen_share', (data) => {
+        try {
+            const { roomName, userId, action } = data;
+            console.log(`[CALLS] 🖥️ Screen share ${action} by user ${userId} in room ${roomName}`);
+
+            // Broadcast to room
+            socket.to(roomName).emit('call:screen_share', {
+                userId: userId,
+                action: action,
+                roomName: roomName
+            });
+        } catch (error) {
+            console.error('[CALLS] Error in call:screen_share:', error);
+        }
+    });
+
+    // ==================== CALL RECORDING NOTIFICATION ====================
+
+    /**
+     * Notify participants that recording started/stopped
+     * Data: { roomName, userId, userName, action: 'start'|'stop' }
+     */
+    socket.on('call:recording', (data) => {
+        try {
+            const { roomName, userId, userName, action } = data;
+            console.log(`[CALLS] 🔴 Recording ${action} by user ${userId} (${userName}) in room ${roomName}`);
+
+            // Broadcast to ALL in room (including sender for confirmation)
+            io.in(roomName).emit('call:recording', {
+                userId: userId,
+                userName: userName || 'Учасник',
+                action: action,
+                roomName: roomName,
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            console.error('[CALLS] Error in call:recording:', error);
+        }
+    });
+
+    // ==================== NOISE CANCELLATION STATUS ====================
+
+    /**
+     * Share noise cancellation status with participants
+     * Data: { roomName, userId, enabled: boolean }
+     */
+    socket.on('call:noise_cancellation', (data) => {
+        try {
+            const { roomName, userId, enabled } = data;
+            console.log(`[CALLS] 🔇 Noise cancellation ${enabled ? 'ON' : 'OFF'} for user ${userId} in room ${roomName}`);
+
+            socket.to(roomName).emit('call:noise_cancellation', {
+                userId: userId,
+                enabled: enabled,
+                roomName: roomName
+            });
+        } catch (error) {
+            console.error('[CALLS] Error in call:noise_cancellation:', error);
+        }
+    });
+
     console.log(`[CALLS] Call listeners registered for socket ${socket.id}`);
 }
 

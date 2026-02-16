@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +79,10 @@ class CallsActivity : ComponentActivity() {
     private var isGroup: Boolean = false
     private var groupId: Long = 0
 
+    // Screen sharing & recording managers
+    private var screenSharingManager: ScreenSharingManager? = null
+    private var callRecordingManager: CallRecordingManager? = null
+
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val audioGranted = permissions.getOrDefault(Manifest.permission.RECORD_AUDIO, false)
@@ -107,6 +112,9 @@ class CallsActivity : ComponentActivity() {
 
         callsViewModel = ViewModelProvider(this).get(CallsViewModel::class.java)
 
+        // Initialize managers
+        callRecordingManager = CallRecordingManager(this)
+
         // 📥 Отримати параметри з Intent
         // Перевіряємо чи це вхідний дзвінок
         isIncomingCall = intent.getBooleanExtra("is_incoming", false)
@@ -117,9 +125,27 @@ class CallsActivity : ComponentActivity() {
             recipientName = intent.getStringExtra("from_name") ?: "Користувач"
             recipientAvatar = intent.getStringExtra("from_avatar") ?: ""
             callType = intent.getStringExtra("call_type") ?: "audio"
-            shouldInitiateCall = false  // ✅ НЕ ініціюємо дзвінок (вже прийнято в IncomingCallActivity)
+            val roomName = intent.getStringExtra("room_name") ?: ""
+            val sdpOffer = intent.getStringExtra("sdp_offer")
+            shouldInitiateCall = false  // ✅ НЕ ініціюємо дзвінок
 
-            android.util.Log.d("CallsActivity", "✅ Incoming call accepted from: $recipientName (ID: $recipientId)")
+            android.util.Log.d("CallsActivity", "✅ Incoming call from: $recipientName (ID: $recipientId), room: $roomName")
+
+            // ✅ КРИТИЧНО: Прийняти дзвінок через ViewModel
+            // ViewModel виконає: отримання ICE, створення PeerConnection, answer, відправку call:accept
+            val callData = CallData(
+                callId = 0,
+                fromId = recipientId.toInt(),  // ID того, хто дзвонить (інініатор)
+                fromName = recipientName,
+                fromAvatar = recipientAvatar,
+                toId = callsViewModel.getUserId(),  // ✅ ID поточного користувача (отримувач)
+                callType = callType,
+                roomName = roomName,
+                sdpOffer = sdpOffer
+            )
+
+            // Викликаємо acceptCall() - ViewModel зачекає на Socket і виконає все необхідне
+            callsViewModel.acceptCall(callData)
         } else {
             // ✅ Вихідний дзвінок - ініціюємо звонок
             recipientId = intent.getLongExtra("recipientId", 0)
@@ -247,6 +273,29 @@ class CallsActivity : ComponentActivity() {
         }
 
         requestPermissionLauncher.launch(permissions.toTypedArray())
+    }
+
+    /**
+     * Auto-enter PiP when user presses home (during active video call)
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (callType == "video" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(android.util.Rational(9, 16))
+                    .build()
+                enterPictureInPictureMode(params)
+            } catch (e: Exception) {
+                Log.e("CallsActivity", "Failed to enter PiP mode", e)
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        screenSharingManager?.release()
+        callRecordingManager?.release()
     }
 }
 
@@ -509,7 +558,16 @@ fun ActiveCallScreen(
     var speakerEnabled by remember { mutableStateOf(false) }
     var showReactions by remember { mutableStateOf(false) }
     var showChatOverlay by remember { mutableStateOf(false) }
+    var showQualitySelector by remember { mutableStateOf(false) }  // 📹 Селектор якості
     var callDuration by remember { mutableStateOf(0) }
+    var isScreenSharing by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
+    var noiseCancellation by remember { mutableStateOf(true) }
+
+    // 📹 Поточна якість відео
+    var currentVideoQuality by remember {
+        mutableStateOf(viewModel.getVideoQuality())
+    }
 
     // 🎨 Завантажити збережений стиль рамки з Settings
     var currentFrameStyle by remember {
@@ -599,29 +657,36 @@ fun ActiveCallScreen(
                 .align(Alignment.TopCenter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = formatDuration(callDuration),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier
-                        .background(Color(0x99000000), RoundedCornerShape(8.dp))
-                        .padding(12.dp)
+            // Enhanced status bar
+            EnhancedConnectionStatus(
+                connectionState = connectionState,
+                callDuration = callDuration,
+                calleeName = calleeName,
+                isRecording = isRecording,
+                isScreenSharing = isScreenSharing
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Noise cancellation indicator
+            NoiseCancellationIndicator(isEnabled = noiseCancellation)
+
+            // Recording banner
+            if (isRecording) {
+                Spacer(modifier = Modifier.height(8.dp))
+                RecordingNotificationBanner(
+                    recordedBy = "Ви",
+                    onStop = { isRecording = false },
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
+            }
 
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Text(
-                    text = connectionState,
-                    fontSize = 12.sp,
-                    color = Color(0xFFbbbbbb),
-                    modifier = Modifier
-                        .background(Color(0x99000000), RoundedCornerShape(8.dp))
-                        .padding(8.dp)
+            // Screen sharing banner
+            if (isScreenSharing) {
+                Spacer(modifier = Modifier.height(8.dp))
+                ScreenSharingBanner(
+                    onStop = { isScreenSharing = false },
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
 
@@ -636,118 +701,35 @@ fun ActiveCallScreen(
             }
         }
 
-        // Контрольні кнопки в низу (2 ряди) - ЗАВЖДИ видимі
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .align(Alignment.BottomCenter)
-        ) {
-            // Ряд 1: Основні функції
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Перемикач аудіо (Mute)
-                CallControlButton(
-                    icon = if (audioEnabled) Icons.Default.Mic else Icons.Default.MicOff,
-                    label = "Мік",
-                    isActive = audioEnabled,
-                    backgroundColor = if (audioEnabled) Color(0xFF2196F3) else Color(0xFF555555)
-                ) {
-                    audioEnabled = !audioEnabled
-                    viewModel.toggleAudio(audioEnabled)
-                }
-
-                // Перемикач відео
-                CallControlButton(
-                    icon = if (videoEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                    label = "Відео",
-                    isActive = videoEnabled,
-                    backgroundColor = if (videoEnabled) Color(0xFF2196F3) else Color(0xFF555555)
-                ) {
-                    videoEnabled = !videoEnabled
-                    viewModel.toggleVideo(videoEnabled)
-                }
-
-                // Громка связь (Speaker)
-                CallControlButton(
-                    icon = if (speakerEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeDown,
-                    label = "Динамік",
-                    isActive = speakerEnabled,
-                    backgroundColor = if (speakerEnabled) Color(0xFF4CAF50) else Color(0xFF555555)
-                ) {
-                    speakerEnabled = !speakerEnabled
-                    viewModel.toggleSpeaker(speakerEnabled)
-                }
-
-                // Перемикач камери (front/back)
-                CallControlButton(
-                    icon = Icons.Default.Cameraswitch,
-                    label = "Поверн.",
-                    isActive = false,
-                    backgroundColor = Color(0xFF555555)
-                ) {
-                    viewModel.switchCamera()
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Ряд 2: Додаткові функції
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Reactions
-                CallControlButton(
-                    icon = Icons.Default.EmojiEmotions,
-                    label = "Реакції",
-                    isActive = false,
-                    backgroundColor = Color(0xFFFF9800)
-                ) {
-                    showReactions = !showReactions
-                }
-
-                // Chat during call
-                CallControlButton(
-                    icon = Icons.Default.Chat,
-                    label = "Чат",
-                    isActive = showChatOverlay,
-                    backgroundColor = if (showChatOverlay) Color(0xFF9C27B0) else Color(0xFF555555)
-                ) {
-                    showChatOverlay = !showChatOverlay
-                }
-
-                // Picture-in-Picture
-                CallControlButton(
-                    icon = Icons.Default.PictureInPicture,
-                    label = "PiP",
-                    isActive = false,
-                    backgroundColor = Color(0xFF00BCD4)
-                ) {
-                    // Minimize to PiP mode
-                    if (context is ComponentActivity) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            val params = PictureInPictureParams.Builder().build()
-                            context.enterPictureInPictureMode(params)
-                        }
-                    }
-                }
-
-                // Завершити дзвінок
-                CallControlButton(
-                    icon = Icons.Default.CallEnd,
-                    label = "Завершити",
-                    isActive = false,
-                    backgroundColor = Color(0xFFd32f2f)
-                ) {
-                    viewModel.endCall()
-                }
-            }
-        }
+        // Enhanced control bar with glassmorphism
+        EnhancedCallControlBar(
+            audioEnabled = audioEnabled,
+            videoEnabled = videoEnabled,
+            speakerEnabled = speakerEnabled,
+            isScreenSharing = isScreenSharing,
+            isRecording = isRecording,
+            noiseCancellation = noiseCancellation,
+            onToggleAudio = {
+                audioEnabled = !audioEnabled
+                viewModel.toggleAudio(audioEnabled)
+            },
+            onToggleVideo = {
+                videoEnabled = !videoEnabled
+                viewModel.toggleVideo(videoEnabled)
+            },
+            onToggleSpeaker = {
+                speakerEnabled = !speakerEnabled
+                viewModel.toggleSpeaker(speakerEnabled)
+            },
+            onSwitchCamera = { viewModel.switchCamera() },
+            onToggleScreenShare = { isScreenSharing = !isScreenSharing },
+            onToggleRecording = { isRecording = !isRecording },
+            onToggleNoiseCancellation = { noiseCancellation = !noiseCancellation },
+            onEndCall = { viewModel.endCall() },
+            onPiP = { enterPiPMode(context) },
+            onShowReactions = { showReactions = !showReactions },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         // 🎭 Reactions Overlay - рендериться ПОВЕРХ усього
         if (showReactions) {
@@ -764,6 +746,20 @@ fun ActiveCallScreen(
         if (showChatOverlay) {
             ChatDuringCallOverlay(
                 onDismiss = { showChatOverlay = false }
+            )
+        }
+
+        // 📹 Video Quality Selector Overlay
+        if (showQualitySelector) {
+            VideoQualitySelector(
+                currentQuality = currentVideoQuality,
+                onQualitySelected = { quality ->
+                    if (viewModel.setVideoQuality(quality)) {
+                        currentVideoQuality = quality
+                    }
+                    showQualitySelector = false
+                },
+                onDismiss = { showQualitySelector = false }
             )
         }
     }
@@ -933,6 +929,9 @@ fun LocalVideoPiP(
     var isDragging by remember { mutableStateOf(false) }
     var dragStartOffset by remember { mutableStateOf(Offset.Zero) }
 
+    // ✅ Запам'ятовуємо поточний відео трек для відстеження змін
+    var currentVideoTrack by remember { mutableStateOf<org.webrtc.VideoTrack?>(null) }
+
     Box(
         modifier = Modifier
             .offset(x = offset.x.dp, y = offset.y.dp)
@@ -982,9 +981,22 @@ fun LocalVideoPiP(
                     init(WebRTCManager.getEglContext(), null)
                     setZOrderMediaOverlay(true)
                     setEnableHardwareScaler(true)
-                    if (localStream.videoTracks.isNotEmpty()) {
-                        localStream.videoTracks[0].addSink(this)
-                    }
+                    setMirror(true)  // ✅ Дзеркальне відображення для фронтальної камери
+                }
+            },
+            update = { surfaceViewRenderer ->
+                // ✅ КРИТИЧНО: Оновлювати sink при зміні stream або відео треку
+                val newVideoTrack = if (localStream.videoTracks.isNotEmpty()) {
+                    localStream.videoTracks[0]
+                } else null
+
+                if (newVideoTrack != currentVideoTrack) {
+                    // Видалити старий sink
+                    currentVideoTrack?.removeSink(surfaceViewRenderer)
+                    // Додати новий sink
+                    newVideoTrack?.addSink(surfaceViewRenderer)
+                    currentVideoTrack = newVideoTrack
+                    Log.d("LocalVideoPiP", "✅ Video track updated: ${newVideoTrack != null}")
                 }
             },
             modifier = Modifier.fillMaxSize()
@@ -1025,6 +1037,88 @@ fun LocalVideoPiP(
 }
 
 /**
+ * 🎥 Універсальний компонент для рендерингу WebRTC відео
+ * Правильно обробляє оновлення відео треку
+ *
+ * ✅ ВИПРАВЛЕНО: Використовує key для перестворення при зміні stream
+ */
+@Composable
+fun WebRTCVideoRenderer(
+    videoStream: MediaStream,
+    modifier: Modifier = Modifier,
+    isMirrored: Boolean = false,
+    isOverlay: Boolean = false
+) {
+    // ✅ Використовуємо label stream як key для перестворення
+    val streamId = remember(videoStream) { videoStream.id ?: "${System.currentTimeMillis()}" }
+
+    // Запам'ятовуємо поточний відео трек для відстеження змін
+    var currentVideoTrack by remember(streamId) { mutableStateOf<org.webrtc.VideoTrack?>(null) }
+
+    // ✅ Отримуємо актуальний відео трек
+    val newVideoTrack = remember(videoStream) {
+        if (videoStream.videoTracks.isNotEmpty()) videoStream.videoTracks[0] else null
+    }
+
+    Log.d("WebRTCVideoRenderer", "📹 Rendering stream: $streamId, hasVideo: ${newVideoTrack != null}")
+
+    // ✅ DisposableEffect для cleanup при unmount
+    DisposableEffect(streamId) {
+        onDispose {
+            Log.d("WebRTCVideoRenderer", "📹 Disposing renderer for stream: $streamId")
+        }
+    }
+
+    AndroidView(
+        factory = { androidContext ->
+            Log.d("WebRTCVideoRenderer", "📹 Creating SurfaceViewRenderer for stream: $streamId")
+            SurfaceViewRenderer(androidContext).apply {
+                try {
+                    init(WebRTCManager.getEglContext(), null)
+                    setZOrderMediaOverlay(isOverlay)
+                    setEnableHardwareScaler(true)
+                    setMirror(isMirrored)
+
+                    // ✅ КРИТИЧНО: Додати sink одразу при створенні
+                    newVideoTrack?.let { track ->
+                        track.addSink(this)
+                        currentVideoTrack = track
+                        Log.d("WebRTCVideoRenderer", "📹 Initial sink added for track: ${track.id()}")
+                    }
+                } catch (e: Exception) {
+                    Log.e("WebRTCVideoRenderer", "Error initializing SurfaceViewRenderer", e)
+                }
+            }
+        },
+        update = { surfaceViewRenderer ->
+            // ✅ КРИТИЧНО: Оновлювати sink при зміні відео треку
+            val latestVideoTrack = if (videoStream.videoTracks.isNotEmpty()) {
+                videoStream.videoTracks[0]
+            } else null
+
+            if (latestVideoTrack != currentVideoTrack) {
+                Log.d("WebRTCVideoRenderer", "📹 Track changed: old=${currentVideoTrack?.id()}, new=${latestVideoTrack?.id()}")
+                // Видалити старий sink
+                try {
+                    currentVideoTrack?.removeSink(surfaceViewRenderer)
+                } catch (e: Exception) {
+                    Log.w("WebRTCVideoRenderer", "Error removing old sink: ${e.message}")
+                }
+                // Додати новий sink
+                try {
+                    latestVideoTrack?.addSink(surfaceViewRenderer)
+                    currentVideoTrack = latestVideoTrack
+                    Log.d("WebRTCVideoRenderer", "✅ Video track updated: ${latestVideoTrack != null}, id: ${latestVideoTrack?.id()}")
+                } catch (e: Exception) {
+                    Log.e("WebRTCVideoRenderer", "Error adding new sink: ${e.message}")
+                }
+            }
+        },
+        modifier = modifier
+    )
+}
+
+/**
  * 🎨 CLASSIC: Класична рамка з легкою тінню
  */
 @Composable
@@ -1036,20 +1130,8 @@ fun ClassicVideoFrame(remoteStream: MediaStream) {
             .clip(RoundedCornerShape(24.dp))
             .background(Color.Black)
     ) {
-        // WebRTC SurfaceViewRenderer
-        AndroidView(
-            factory = { androidContext ->
-                SurfaceViewRenderer(androidContext).apply {
-                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.getEglContext(), null)
-                    setZOrderMediaOverlay(false)
-                    setEnableHardwareScaler(true)
-                    // Підключаємо відеотрек
-                    if (remoteStream.videoTracks.isNotEmpty()) {
-                        remoteStream.videoTracks[0].addSink(this)
-                    }
-                }
-            },
+        WebRTCVideoRenderer(
+            videoStream = remoteStream,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -1080,18 +1162,8 @@ fun NeonVideoFrame(remoteStream: MediaStream) {
             .clip(RoundedCornerShape(20.dp))
             .background(Color.Black)
     ) {
-        AndroidView(
-            factory = { androidContext ->
-                SurfaceViewRenderer(androidContext).apply {
-                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.getEglContext(), null)
-                    setZOrderMediaOverlay(false)
-                    setEnableHardwareScaler(true)
-                    if (remoteStream.videoTracks.isNotEmpty()) {
-                        remoteStream.videoTracks[0].addSink(this)
-                    }
-                }
-            },
+        WebRTCVideoRenderer(
+            videoStream = remoteStream,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -1119,18 +1191,8 @@ fun GradientVideoFrame(remoteStream: MediaStream) {
             .clip(RoundedCornerShape(20.dp))
             .background(Color.Black)
     ) {
-        AndroidView(
-            factory = { androidContext ->
-                SurfaceViewRenderer(androidContext).apply {
-                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.getEglContext(), null)
-                    setZOrderMediaOverlay(false)
-                    setEnableHardwareScaler(true)
-                    if (remoteStream.videoTracks.isNotEmpty()) {
-                        remoteStream.videoTracks[0].addSink(this)
-                    }
-                }
-            },
+        WebRTCVideoRenderer(
+            videoStream = remoteStream,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -1146,18 +1208,8 @@ fun MinimalVideoFrame(remoteStream: MediaStream) {
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        AndroidView(
-            factory = { androidContext ->
-                SurfaceViewRenderer(androidContext).apply {
-                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.getEglContext(), null)
-                    setZOrderMediaOverlay(false)
-                    setEnableHardwareScaler(true)
-                    if (remoteStream.videoTracks.isNotEmpty()) {
-                        remoteStream.videoTracks[0].addSink(this)
-                    }
-                }
-            },
+        WebRTCVideoRenderer(
+            videoStream = remoteStream,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -1179,18 +1231,8 @@ fun GlassVideoFrame(remoteStream: MediaStream) {
             .clip(RoundedCornerShape(22.dp))
             .background(Color.Black)
     ) {
-        AndroidView(
-            factory = { androidContext ->
-                SurfaceViewRenderer(androidContext).apply {
-                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.getEglContext(), null)
-                    setZOrderMediaOverlay(false)
-                    setEnableHardwareScaler(true)
-                    if (remoteStream.videoTracks.isNotEmpty()) {
-                        remoteStream.videoTracks[0].addSink(this)
-                    }
-                }
-            },
+        WebRTCVideoRenderer(
+            videoStream = remoteStream,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -1233,20 +1275,96 @@ fun RainbowVideoFrame(remoteStream: MediaStream) {
             .clip(RoundedCornerShape(20.dp))
             .background(Color.Black)
     ) {
-        AndroidView(
-            factory = { androidContext ->
-                SurfaceViewRenderer(androidContext).apply {
-                    // ✅ КРИТИЧНО: Ініціалізувати SurfaceViewRenderer з EGL контекстом
-                    init(WebRTCManager.getEglContext(), null)
-                    setZOrderMediaOverlay(false)
-                    setEnableHardwareScaler(true)
-                    if (remoteStream.videoTracks.isNotEmpty()) {
-                        remoteStream.videoTracks[0].addSink(this)
-                    }
-                }
-            },
+        WebRTCVideoRenderer(
+            videoStream = remoteStream,
             modifier = Modifier.fillMaxSize()
         )
+    }
+}
+
+/**
+ * 📹 Video Quality Selector Overlay
+ */
+@Composable
+fun VideoQualitySelector(
+    currentQuality: com.worldmates.messenger.network.VideoQuality,
+    onQualitySelected: (com.worldmates.messenger.network.VideoQuality) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f))
+            .clickable { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .padding(32.dp)
+                .clickable(enabled = false) { /* Prevent click through */ },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1a1a1a))
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "📹 Якість відео",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                com.worldmates.messenger.network.VideoQuality.entries.forEach { quality ->
+                    val isSelected = quality == currentQuality
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) Color(0xFF4CAF50).copy(alpha = 0.3f)
+                                else Color.Transparent
+                            )
+                            .clickable { onQualitySelected(quality) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Circle,
+                            contentDescription = null,
+                            tint = if (isSelected) Color(0xFF4CAF50) else Color.Gray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = quality.label,
+                                fontSize = 16.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) Color.White else Color(0xFFbbbbbb)
+                            )
+                            Text(
+                                text = "${quality.width}x${quality.height} @ ${quality.fps}fps • ${quality.maxBitrate/1000.0}Mbps",
+                                fontSize = 12.sp,
+                                color = Color(0xFF888888)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "💡 Виберіть нижчу якість для повільного інтернету",
+                    fontSize = 12.sp,
+                    color = Color(0xFF888888),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
 

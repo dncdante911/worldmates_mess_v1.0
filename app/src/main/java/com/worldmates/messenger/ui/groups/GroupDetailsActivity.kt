@@ -38,6 +38,14 @@ import com.worldmates.messenger.data.model.GroupMember
 import com.worldmates.messenger.ui.groups.components.ChangeAvatarDialog
 import com.worldmates.messenger.ui.groups.components.GroupQrDialog
 import com.worldmates.messenger.ui.groups.components.JoinGroupByQrDialog
+import com.worldmates.messenger.ui.groups.components.ModernInviteMembersDialog
+import com.worldmates.messenger.ui.groups.components.SubgroupsSection
+import com.worldmates.messenger.ui.groups.components.Subgroup
+import com.worldmates.messenger.ui.groups.components.CreateSubgroupDialog
+import com.worldmates.messenger.ui.groups.components.QuickAdminControlsCard
+import com.worldmates.messenger.ui.groups.FormattingSettingsPanel
+import com.worldmates.messenger.ui.groups.GroupFormattingPermissions
+import com.worldmates.messenger.ui.messages.MessagesActivity
 import com.worldmates.messenger.ui.theme.ThemeManager
 import com.worldmates.messenger.ui.theme.WorldMatesThemedApp
 import java.text.SimpleDateFormat
@@ -47,6 +55,8 @@ class GroupDetailsActivity : AppCompatActivity() {
 
     private lateinit var viewModel: GroupsViewModel
     private var groupId: Long = 0
+    private var openAddMembers: Boolean = false
+    private var openCreateSubgroup: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +66,10 @@ class GroupDetailsActivity : AppCompatActivity() {
             finish()
             return
         }
+
+        // Check if we should open specific dialogs
+        openAddMembers = intent.getBooleanExtra("open_add_members", false)
+        openCreateSubgroup = intent.getBooleanExtra("open_create_subgroup", false)
 
         // Инициализируем ThemeManager
         ThemeManager.initialize(this)
@@ -71,7 +85,9 @@ class GroupDetailsActivity : AppCompatActivity() {
                     onNavigateToMessages = {
                         // Already in messages, just go back
                         finish()
-                    }
+                    },
+                    initialOpenAddMembers = openAddMembers,
+                    initialOpenCreateSubgroup = openCreateSubgroup
                 )
             }
         }
@@ -84,19 +100,23 @@ fun GroupDetailsScreen(
     groupId: Long,
     viewModel: GroupsViewModel,
     onBackPressed: () -> Unit,
-    onNavigateToMessages: () -> Unit
+    onNavigateToMessages: () -> Unit,
+    initialOpenAddMembers: Boolean = false,
+    initialOpenCreateSubgroup: Boolean = false
 ) {
     val groups by viewModel.groupList.collectAsState()
     val members by viewModel.groupMembers.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val availableUsers by viewModel.availableUsers.collectAsState()
+    val joinRequests by viewModel.joinRequests.collectAsState()
+    val scheduledPosts by viewModel.scheduledPosts.collectAsState()
 
     val group = groups.find { it.id == groupId }
     val context = LocalContext.current
 
     var showEditDialog by remember { mutableStateOf(false) }
-    var showAddMemberDialog by remember { mutableStateOf(false) }
+    var showAddMemberDialog by remember { mutableStateOf(initialOpenAddMembers) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showLeaveConfirmation by remember { mutableStateOf(false) }
     var selectedMember by remember { mutableStateOf<GroupMember?>(null) }
@@ -105,6 +125,47 @@ fun GroupDetailsScreen(
     var showGroupQrDialog by remember { mutableStateOf(false) }
     var groupQrCode by remember { mutableStateOf<String?>(null) }
     var groupJoinUrl by remember { mutableStateOf<String?>(null) }
+
+    // 📝 Formatting settings panel state
+    var showFormattingSettings by remember { mutableStateOf(false) }
+    var formattingPermissions by remember {
+        mutableStateOf(viewModel.loadFormattingPermissions(groupId))
+    }
+
+    // 🔍 Search state
+    var showSearchBar by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    // 🔔 Notifications state
+    var notificationsEnabled by remember { mutableStateOf(viewModel.loadNotificationSettings(groupId)) }
+
+    // Subgroups (Topics) state
+    var showCreateSubgroupDialog by remember { mutableStateOf(initialOpenCreateSubgroup) }
+    // Локальний список підгруп (поки бекенд не готовий)
+    // Завантажуємо з SharedPreferences або показуємо приклади для адмінів
+    var subgroups by remember {
+        mutableStateOf<List<Subgroup>>(
+            // Показуємо приклади підгруп для демонстрації
+            listOf(
+                Subgroup(
+                    id = 1,
+                    parentGroupId = groupId,
+                    name = "General",
+                    description = "Основна тема для загальних обговорень",
+                    messagesCount = 0,
+                    color = "#0088CC"
+                ),
+                Subgroup(
+                    id = 2,
+                    parentGroupId = groupId,
+                    name = "Announcements",
+                    description = "Важливі оголошення",
+                    messagesCount = 0,
+                    color = "#00C853"
+                )
+            )
+        )
+    }
 
     // Лаунчер для вибору зображення аватара з галереї
     val avatarPickerLauncher = rememberLauncherForActivityResult(
@@ -233,20 +294,88 @@ fun GroupDetailsScreen(
                 )
             }
 
+            // 🔍 Search Bar (if enabled)
+            if (showSearchBar) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        tonalElevation = 2.dp
+                    ) {
+                        TextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            placeholder = { Text("Пошук учасників...") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = "Search")
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            )
+                        )
+                    }
+                }
+            }
+
             // Action Buttons Row
             item {
                 GroupActionButtons(
-                    onSearchClick = { /* TODO: Implement search */ },
-                    onNotificationsClick = { /* TODO: Toggle notifications */ },
-                    onShareClick = { /* TODO: Share group */ }
+                    onSearchClick = {
+                        showSearchBar = !showSearchBar
+                        if (!showSearchBar) {
+                            searchQuery = ""
+                        }
+                    },
+                    onNotificationsClick = {
+                        notificationsEnabled = !notificationsEnabled
+                        viewModel.saveNotificationSettings(groupId, notificationsEnabled) {
+                            android.widget.Toast.makeText(
+                                context,
+                                if (notificationsEnabled) "Сповіщення увімкнено" else "Сповіщення вимкнено",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
+                    onShareClick = {
+                        // Share group via Intent
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Приєднуйтесь до групи ${group.name}")
+                            putExtra(Intent.EXTRA_TEXT, "Приєднуйтесь до групи \"${group.name}\" в WorldMates!\n\n${groupJoinUrl ?: "worldmates://group/${group.id}"}")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Поділитися групою"))
+                    }
                 )
             }
 
-            // Admin Controls Section (if user is admin)
-            if (group.isAdmin) {
+            // Admin Controls Section (if user is admin or owner)
+            if (group.isAdmin || group.isOwner) {
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
-                    AdminControlsSection(
+                    QuickAdminControlsCard(
+                        group = group,
+                        joinRequestsCount = joinRequests.size,
+                        scheduledPostsCount = scheduledPosts.size,
+                        onOpenAdminPanel = {
+                            // Navigate to full admin panel
+                            val intent = Intent(context, GroupAdminPanelActivity::class.java).apply {
+                                putExtra("group_id", group.id)
+                            }
+                            context.startActivity(intent)
+                        },
                         onEditClick = { showEditDialog = true },
                         onAddMembersClick = { showAddMemberDialog = true },
                         onQrCodeClick = {
@@ -266,12 +395,37 @@ fun GroupDetailsScreen(
                                     ).show()
                                 }
                             )
-                        }
+                        },
+                        onFormattingClick = { showFormattingSettings = true }
                     )
                 }
             }
 
-            // Members Section
+            // Subgroups (Topics) Section - like Telegram
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                SubgroupsSection(
+                    subgroups = subgroups,
+                    canCreateSubgroup = group.isAdmin,
+                    onSubgroupClick = { subgroup ->
+                        // Navigate to topic chat
+                        val intent = Intent(context, MessagesActivity::class.java).apply {
+                            putExtra("group_id", group.id)
+                            putExtra("topic_id", subgroup.id)
+                            putExtra("topic_name", subgroup.name)
+                            putExtra("recipient_name", "${group.name} > ${subgroup.name}")
+                            putExtra("recipient_avatar", group.avatar)
+                            putExtra("is_group", true)
+                        }
+                        context.startActivity(intent)
+                    },
+                    onCreateSubgroupClick = {
+                        showCreateSubgroupDialog = true
+                    }
+                )
+            }
+
+            // Members Section Header with Add Button
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
@@ -279,24 +433,51 @@ fun GroupDetailsScreen(
                     color = Color.White
                 ) {
                     Column {
-                        Text(
-                            text = "Учасники • ${members.size}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Members • ${members.size}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray
+                            )
+
+                            // ✅ ADD MEMBERS BUTTON - Always visible for easier access
+                            IconButton(
+                                onClick = { showAddMemberDialog = true }
+                            ) {
+                                Icon(
+                                    Icons.Default.PersonAdd,
+                                    contentDescription = "Add members",
+                                    tint = Color(0xFF0084FF)
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            // Members List
-            items(members.sortedByDescending { it.role == "admin" }) { member ->
+            // Members List (filtered by search query)
+            val filteredMembers = if (searchQuery.isNotEmpty()) {
+                members.filter { member ->
+                    member.username.contains(searchQuery, ignoreCase = true) ||
+                    member.userId.toString().contains(searchQuery)
+                }
+            } else {
+                members
+            }
+
+            items(filteredMembers.sortedByDescending { it.role == "admin" }) { member ->
                 ModernMemberCard(
                     member = member,
                     isCurrentUser = member.userId == UserSession.userId,
                     onClick = {
-                        if (group.isAdmin && member.userId != UserSession.userId) {
+                        if ((group.isAdmin || group.isOwner) && member.userId != UserSession.userId) {
                             selectedMember = member
                             showMemberOptionsMenu = true
                         }
@@ -341,15 +522,50 @@ fun GroupDetailsScreen(
             )
         }
 
-        // Add Member Dialog
+        // Modern Add Member Dialog with search, selection, and invite link
         if (showAddMemberDialog) {
-            AddMemberDialog(
-                availableUsers = availableUsers.filter { user ->
-                    members.none { it.userId == user.userId }
-                },
+            ModernInviteMembersDialog(
+                groupName = group.name,
+                availableUsers = availableUsers,
+                existingMemberIds = members.map { it.userId },
                 onDismiss = { showAddMemberDialog = false },
-                onAddMember = { userId ->
-                    viewModel.addGroupMember(group.id, userId)
+                onInviteUsers = { userIds ->
+                    // Add each selected user to the group
+                    userIds.forEach { userId ->
+                        viewModel.addGroupMember(group.id, userId)
+                    }
+                    android.widget.Toast.makeText(
+                        context,
+                        "Invited ${userIds.size} user(s) to the group",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onSearchUsers = { query ->
+                    // Search for users when query changes
+                    viewModel.searchUsers(query)
+                },
+                isSearching = isLoading,
+                inviteLink = groupJoinUrl,
+                onShareLink = { url ->
+                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, "Join \"${group.name}\" group:\n$url")
+                    }
+                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share invite link"))
+                },
+                onGenerateQr = {
+                    viewModel.generateGroupQr(
+                        groupId = group.id,
+                        onSuccess = { qrCode, joinUrl ->
+                            groupQrCode = qrCode
+                            groupJoinUrl = joinUrl
+                            showGroupQrDialog = true
+                            showAddMemberDialog = false
+                        },
+                        onError = { error ->
+                            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             )
         }
@@ -461,6 +677,66 @@ fun GroupDetailsScreen(
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "Поділитися посиланням"))
                 }
+            )
+        }
+
+        // Create Subgroup (Topic) Dialog
+        if (showCreateSubgroupDialog) {
+            CreateSubgroupDialog(
+                onDismiss = { showCreateSubgroupDialog = false },
+                onCreate = { name, description, isPrivate, color ->
+                    // TODO: Connect to backend when ready
+                    // For now, add locally to demonstrate UI
+                    val newSubgroup = Subgroup(
+                        id = System.currentTimeMillis(),
+                        parentGroupId = group.id,
+                        name = name,
+                        description = description,
+                        isPrivate = isPrivate,
+                        color = color,
+                        membersCount = 1,
+                        messagesCount = 0
+                    )
+                    subgroups = subgroups + newSubgroup
+
+                    android.widget.Toast.makeText(
+                        context,
+                        "Topic \"$name\" created! (Backend integration pending)",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    showCreateSubgroupDialog = false
+                },
+                isLoading = isLoading
+            )
+        }
+
+        // 📝 Formatting Settings Panel
+        if (showFormattingSettings) {
+            FormattingSettingsPanel(
+                currentSettings = formattingPermissions,
+                isChannel = false,
+                onSettingsChange = { newSettings ->
+                    formattingPermissions = newSettings
+                    viewModel.saveFormattingPermissions(
+                        groupId = groupId,
+                        permissions = newSettings,
+                        onSuccess = {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Налаштування форматування збережено",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        onError = { error ->
+                            android.widget.Toast.makeText(
+                                context,
+                                "Помилка збереження: $error",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                },
+                onDismiss = { showFormattingSettings = false }
             )
         }
     }
@@ -597,7 +873,8 @@ fun ActionButton(
 fun AdminControlsSection(
     onEditClick: () -> Unit,
     onAddMembersClick: () -> Unit,
-    onQrCodeClick: () -> Unit = {}
+    onQrCodeClick: () -> Unit = {},
+    onFormattingSettingsClick: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -620,6 +897,12 @@ fun AdminControlsSection(
                 icon = Icons.Default.QrCode,
                 title = "QR код групи",
                 onClick = onQrCodeClick
+            )
+            Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(start = 56.dp))
+            SettingsItem(
+                icon = Icons.Default.TextFormat,
+                title = "Налаштування форматування",
+                onClick = onFormattingSettingsClick
             )
         }
     }
@@ -725,7 +1008,7 @@ fun GroupActionsSection(
                 onClick = onLeaveClick
             )
 
-            if (group.isAdmin) {
+            if (group.isAdmin || group.isOwner) {
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(start = 56.dp))
                 SettingsItem(
                     icon = Icons.Default.Delete,

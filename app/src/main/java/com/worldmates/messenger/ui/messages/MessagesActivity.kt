@@ -41,6 +41,8 @@ class MessagesActivity : AppCompatActivity() {
 
     private var recipientId: Long = 0
     private var groupId: Long = 0
+    private var topicId: Long = 0 // Subgroup/Topic ID for topic-based chats
+    private var topicName: String = "" // Topic name to show in header
     private var recipientName: String = ""
     private var recipientAvatar: String = ""
     private var isGroup: Boolean = false
@@ -63,19 +65,14 @@ class MessagesActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🚨🚨🚨 КРИТИЧНИЙ ТЕСТ - МАЄ З'ЯВИТИСЬ ПРИ ВІДКРИТТІ ЧАТУ! 🚨🚨🚨
-        android.widget.Toast.makeText(
-            this,
-            "🚨 НОВИЙ КОД ПРАЦЮЄ! Версія: 2.0 🚨",
-            android.widget.Toast.LENGTH_LONG
-        ).show()
-
         // Дозволяємо Compose керувати window insets (клавіатура, навігація)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Отримуємо параметри з Intent
         recipientId = intent.getLongExtra("recipient_id", 0)
         groupId = intent.getLongExtra("group_id", 0)
+        topicId = intent.getLongExtra("topic_id", 0)
+        topicName = intent.getStringExtra("topic_name") ?: ""
         recipientName = intent.getStringExtra("recipient_name") ?: "Unknown"
         recipientAvatar = intent.getStringExtra("recipient_avatar") ?: ""
         isGroup = intent.getBooleanExtra("is_group", false)
@@ -89,7 +86,7 @@ class MessagesActivity : AppCompatActivity() {
 
         // Завантажуємо повідомлення
         if (isGroup) {
-            viewModel.initializeGroup(groupId)
+            viewModel.initializeGroup(groupId, topicId)
         } else {
             viewModel.initialize(recipientId)
         }

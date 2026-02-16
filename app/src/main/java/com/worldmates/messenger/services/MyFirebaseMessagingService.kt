@@ -10,7 +10,13 @@ import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.worldmates.messenger.R
+import com.worldmates.messenger.data.UserSession
+import com.worldmates.messenger.network.RetrofitClient
 import com.worldmates.messenger.ui.messages.MessagesActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -99,5 +105,30 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // Надішліть token на ваш сервер через API
         // Це потрібно для отримання push-сповіщень на пристрої користувача
         Log.d(TAG, "FCM Token should be sent to server: $token")
+
+        val accessToken = UserSession.accessToken
+        if (accessToken == null) {
+            Log.w(TAG, "Cannot send FCM token: user not logged in")
+            return
+        }
+
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        scope.launch {
+            try {
+                val response = RetrofitClient.apiService.updateFcmToken(
+                    accessToken = accessToken,
+                    fcmToken = token,
+                    deviceType = "android"
+                )
+
+                if (response.apiStatus == 200) {
+                    Log.d(TAG, "FCM Token successfully sent to server")
+                } else {
+                    Log.e(TAG, "Failed to send FCM token: ${response.errorMessage}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending FCM token to server", e)
+            }
+        }
     }
 }

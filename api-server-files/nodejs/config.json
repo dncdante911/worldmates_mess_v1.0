@@ -4,5 +4,8 @@
     "sql_db_pass": "3344Frzaq0607DmC157",
     "sql_db_name": "socialhub",
     "site_url": "https://worldmates.club",
-    "purchase_code": "49efabf2-a87b-4628-a3c7-50fe53bdb482"
+    "purchase_code": "49efabf2-a87b-4628-a3c7-50fe53bdb482",
+    "redis_host": "127.0.0.1",
+    "redis_port": 6379,
+    "redis_password": "3344Frz@q0607Dm$157"
 }

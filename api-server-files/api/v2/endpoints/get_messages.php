@@ -9,8 +9,11 @@ $response_data = array(
     'api_status' => 400,
 );
 
-// Required: recipient user_id
-$recipient_id = !empty($_POST['user_id']) ? $_POST['user_id'] : (!empty($_GET['user_id']) ? $_GET['user_id'] : '');
+// Required: recipient user_id (also accepts recipient_id and from_id for compatibility)
+$recipient_id = !empty($_POST['user_id']) ? $_POST['user_id'] :
+    (!empty($_GET['user_id']) ? $_GET['user_id'] :
+        (!empty($_POST['recipient_id']) ? $_POST['recipient_id'] :
+            (!empty($_GET['recipient_id']) ? $_GET['recipient_id'] : '')));
 
 if (empty($recipient_id) || !is_numeric($recipient_id)) {
     $error_code    = 3;
@@ -42,6 +45,9 @@ if (empty($error_code)) {
     }
     if (!empty($_POST['before_message_id']) && is_numeric($_POST['before_message_id'])) {
         $before_message_id = (int)$_POST['before_message_id'];
+    } elseif (!empty($_POST['from_id']) && is_numeric($_POST['from_id'])) {
+        // WoWonder standard API uses from_id as pagination offset
+        $before_message_id = (int)$_POST['from_id'];
     }
     if (!empty($_POST['message_id']) && is_numeric($_POST['message_id'])) {
         $message_id = (int)$_POST['message_id'];

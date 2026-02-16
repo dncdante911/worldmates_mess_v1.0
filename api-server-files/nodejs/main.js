@@ -14,6 +14,7 @@ const { Sequelize, Op, DataTypes } = require("sequelize");
 // const notificationTemplate = Handlebars.compile(notification.toString());
 
 const listeners = require('./listeners/listeners')
+const turnHelper = require('./helpers/turn-credentials')
 
 let serverPort
 let server
@@ -39,8 +40,20 @@ async function loadConfig(ctx) {
   ctx.globalconfig['ftp_endpoint'] = endpoint_url.replace('https://', '');
 
    if (ctx.globalconfig["redis"] === "Y") {
-     const redisAdapter = require('socket.io-redis');
-     io.adapter(redisAdapter({ host: 'localhost', port: ctx.globalconfig["redis_port"] }));
+     try {
+       const redisAdapter = require('socket.io-redis');
+       const redisHost = ctx.globalconfig["redis_host"] || 'localhost';
+       const redisPort = ctx.globalconfig["redis_port"] || 6379;
+       const redisPassword = ctx.globalconfig["redis_password"] || '';
+       const adapterOpts = { host: redisHost, port: redisPort };
+       if (redisPassword) {
+         adapterOpts.auth_pass = redisPassword;
+       }
+       io.adapter(redisAdapter(adapterOpts));
+       console.log(`[Redis Adapter] Connected to ${redisHost}:${redisPort}`);
+     } catch (e) {
+       console.warn('[Redis Adapter] Failed to initialize:', e.message);
+     }
    }
 
 
@@ -82,36 +95,49 @@ async function init() {
 
 
 
+  // Helper: safely load a model, log warning if not found
+  function loadModel(name) {
+    try {
+      return require(`./models/${name}`)(sequelize, DataTypes);
+    } catch (e) {
+      console.warn(`[WARN] Model ${name} not found, skipping: ${e.message}`);
+      return null;
+    }
+  }
+
+  // Core models (required)
   ctx.wo_messages = require("./models/wo_messages")(sequelize, DataTypes)
   ctx.wo_userschat = require("./models/wo_userschat")(sequelize, DataTypes)
   ctx.wo_users = require("./models/wo_users")(sequelize, DataTypes)
   ctx.wo_notification = require("./models/wo_notifications")(sequelize, DataTypes)
   ctx.wo_groupchat = require("./models/wo_groupchat")(sequelize, DataTypes)
   ctx.wo_groupchatusers = require("./models/wo_groupchatusers")(sequelize, DataTypes)
-  ctx.wo_videocalls = require("./models/wo_videocalles")(sequelize, DataTypes)
-  ctx.wo_audiocalls = require("./models/wo_audiocalls")(sequelize, DataTypes)
   ctx.wo_appssessions = require("./models/wo_appssessions")(sequelize, DataTypes)
   ctx.wo_langs = require("./models/wo_langs")(sequelize, DataTypes)
   ctx.wo_config = require("./models/wo_config")(sequelize, DataTypes)
   ctx.wo_blocks = require("./models/wo_blocks")(sequelize, DataTypes)
-  ctx.wo_followers = require("./models/wo_followers")(sequelize, DataTypes)
-  ctx.wo_hashtags = require("./models/wo_hashtags")(sequelize, DataTypes)
-  ctx.wo_posts = require("./models/wo_posts")(sequelize, DataTypes)
-  ctx.wo_comments = require("./models/wo_comments")(sequelize, DataTypes)
-  ctx.wo_comment_replies = require("./models/wo_comment_replies")(sequelize, DataTypes)
-  ctx.wo_pages = require("./models/wo_pages")(sequelize, DataTypes)
-  ctx.wo_groups = require("./models/wo_groups")(sequelize, DataTypes)
-  ctx.wo_events = require("./models/wo_events")(sequelize, DataTypes)
-  ctx.wo_userstory = require("./models/wo_userstory")(sequelize, DataTypes)
-  ctx.wo_reactions_types = require("./models/wo_reactions_types")(sequelize, DataTypes)
-  ctx.wo_reactions = require("./models/wo_reactions")(sequelize, DataTypes)
-  ctx.wo_blog_reaction = require("./models/wo_blog_reaction")(sequelize, DataTypes)
   ctx.wo_mute = require("./models/wo_mute")(sequelize, DataTypes)
-  ctx.wo_calls = require("./models/wo_calls")(sequelize, DataTypes)
-  ctx.wo_group_calls = require("./models/wo_group_calls")(sequelize, DataTypes)
-  ctx.wo_group_call_participants = require("./models/wo_group_call_participants")(sequelize, DataTypes)
-  ctx.wo_ice_candidates = require("./models/wo_ice_candidates")(sequelize, DataTypes)
-  ctx.wo_call_statistics = require("./models/wo_call_statistics")(sequelize, DataTypes)
+
+  // Optional models (won't crash if missing on server)
+  ctx.wo_videocalls = loadModel("wo_videocalles")
+  ctx.wo_audiocalls = loadModel("wo_audiocalls")
+  ctx.wo_followers = loadModel("wo_followers")
+  ctx.wo_hashtags = loadModel("wo_hashtags")
+  ctx.wo_posts = loadModel("wo_posts")
+  ctx.wo_comments = loadModel("wo_comments")
+  ctx.wo_comment_replies = loadModel("wo_comment_replies")
+  ctx.wo_pages = loadModel("wo_pages")
+  ctx.wo_groups = loadModel("wo_groups")
+  ctx.wo_events = loadModel("wo_events")
+  ctx.wo_userstory = loadModel("wo_userstory")
+  ctx.wo_reactions_types = loadModel("wo_reactions_types")
+  ctx.wo_reactions = loadModel("wo_reactions")
+  ctx.wo_blog_reaction = loadModel("wo_blog_reaction")
+  ctx.wo_calls = loadModel("wo_calls")
+  ctx.wo_group_calls = loadModel("wo_group_calls")
+  ctx.wo_group_call_participants = loadModel("wo_group_call_participants")
+  ctx.wo_ice_candidates = loadModel("wo_ice_candidates")
+  ctx.wo_call_statistics = loadModel("wo_call_statistics")
 
   ctx.globalconfig = {}
   ctx.globallangs = {}
@@ -212,6 +238,9 @@ async function main() {
         origin: true,
         credentials: true
     },
+    transports: ['websocket', 'polling'], // WebSocket first, polling as fallback
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   io.on('connection', async (socket, query) => {

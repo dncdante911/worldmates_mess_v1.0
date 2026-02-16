@@ -176,6 +176,7 @@ class MessagesViewModel(application: Application) :
 
     /**
      * Завантажує історію повідомлень для особистого чату
+     * Спочатку пробує custom API endpoint, при 404 - WoWonder standard API
      */
     fun fetchMessages(beforeMessageId: Long = 0) {
         if (UserSession.accessToken == null || recipientId == 0L) {
@@ -187,12 +188,23 @@ class MessagesViewModel(application: Application) :
 
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.getMessages(
+                var response = RetrofitClient.apiService.getMessages(
                     accessToken = UserSession.accessToken!!,
                     recipientId = recipientId,
                     limit = Constants.MESSAGES_PAGE_SIZE,
                     beforeMessageId = beforeMessageId
                 )
+
+                // Fallback: якщо custom router повертає 404, пробуємо WoWonder standard API
+                if (response.apiStatus == 404) {
+                    Log.w("MessagesViewModel", "Custom API returned 404, trying WoWonder standard endpoint...")
+                    response = RetrofitClient.apiService.getMessagesWoWonder(
+                        accessToken = UserSession.accessToken!!,
+                        recipientId = recipientId,
+                        limit = Constants.MESSAGES_PAGE_SIZE,
+                        beforeMessageId = beforeMessageId
+                    )
+                }
 
                 if (response.apiStatus == 200 && response.messages != null) {
                     val decryptedMessages = response.messages!!.map { msg ->
@@ -1008,15 +1020,38 @@ class MessagesViewModel(application: Application) :
         try {
             Log.d("MessagesViewModel", "📨 Отримано Socket.IO повідомлення: $messageJson")
 
-            val timestamp = messageJson.getLong("time")
-            val encryptedText = messageJson.optString("text", null)
-            val mediaUrl = messageJson.optString("media", null)
+            // Server sends two formats:
+            // 1. Direct format (from Redis pub/sub): { id, from_id, to_id, text, time, ... }
+            // 2. Controller format: { message_id, time_api, messageData: {...}, ... }
+            val msgData = if (messageJson.has("messageData") && messageJson.opt("messageData") is JSONObject) {
+                // Controller format - extract the actual message data
+                Log.d("MessagesViewModel", "Using messageData sub-object for parsing")
+                messageJson.getJSONObject("messageData")
+            } else if (messageJson.has("from_id") && messageJson.has("to_id")) {
+                // Direct format - use as-is
+                messageJson
+            } else {
+                // Fallback: reconstruct from controller fields
+                Log.w("MessagesViewModel", "Unknown message format, attempting reconstruction")
+                JSONObject().apply {
+                    put("id", messageJson.optLong("message_id", 0))
+                    put("from_id", messageJson.optLong("sender", messageJson.optLong("id", 0)))
+                    put("to_id", messageJson.optLong("receiver", 0))
+                    put("text", messageJson.optString("message", ""))
+                    put("time", messageJson.optLong("time_api", System.currentTimeMillis() / 1000))
+                    put("media", messageJson.optString("mediaLink", ""))
+                }
+            }
+
+            val timestamp = msgData.optLong("time", System.currentTimeMillis() / 1000)
+            val encryptedText = msgData.optString("text", null)
+            val mediaUrl = msgData.optString("media", null)
 
             // Поддержка AES-GCM (v2) - новые поля
-            val iv = messageJson.optString("iv", null)?.takeIf { it.isNotEmpty() }
-            val tag = messageJson.optString("tag", null)?.takeIf { it.isNotEmpty() }
-            val cipherVersion = if (messageJson.has("cipher_version")) {
-                messageJson.getInt("cipher_version")
+            val iv = msgData.optString("iv", null)?.takeIf { it.isNotEmpty() }
+            val tag = msgData.optString("tag", null)?.takeIf { it.isNotEmpty() }
+            val cipherVersion = if (msgData.has("cipher_version")) {
+                msgData.getInt("cipher_version")
             } else null
 
             // Дешифруем текст с поддержкой GCM
@@ -1041,17 +1076,31 @@ class MessagesViewModel(application: Application) :
             val finalMediaUrl = decryptedMediaUrl
                 ?: DecryptionUtility.extractMediaUrlFromText(decryptedText)
 
+            // Get message ID: prefer message_id from controller, fallback to id in msgData
+            val messageId = if (messageJson.has("message_id") && messageJson.optLong("message_id", 0) > 0) {
+                messageJson.getLong("message_id")
+            } else {
+                msgData.optLong("id", 0)
+            }
+            val fromId = msgData.optLong("from_id", 0)
+            val toId = msgData.optLong("to_id", 0)
+
+            if (messageId == 0L || (fromId == 0L && toId == 0L)) {
+                Log.w("MessagesViewModel", "Skipping message with invalid data: id=$messageId from=$fromId to=$toId")
+                return
+            }
+
             val message = Message(
-                id = messageJson.getLong("id"),
-                fromId = messageJson.getLong("from_id"),
-                toId = messageJson.getLong("to_id"),
-                groupId = messageJson.optLong("group_id", 0).takeIf { it != 0L },
+                id = messageId,
+                fromId = fromId,
+                toId = toId,
+                groupId = msgData.optLong("group_id", 0).takeIf { it != 0L },
                 encryptedText = encryptedText,
                 timeStamp = timestamp,
                 mediaUrl = mediaUrl,
-                type = messageJson.optString("type", Constants.MESSAGE_TYPE_TEXT),
-                senderName = messageJson.optString("sender_name", null),
-                senderAvatar = messageJson.optString("sender_avatar", null),
+                type = msgData.optString("type", Constants.MESSAGE_TYPE_TEXT),
+                senderName = msgData.optString("sender_name", null),
+                senderAvatar = msgData.optString("sender_avatar", null),
                 // Поля для AES-GCM (v2)
                 iv = iv,
                 tag = tag,
@@ -1075,7 +1124,6 @@ class MessagesViewModel(application: Application) :
                 // Сортируем по времени (старые сверху, новые внизу)
                 _messages.value = currentMessages.distinctBy { it.id }.sortedBy { it.timeStamp }
                 Log.d("MessagesViewModel", "Додано нове повідомлення від Socket.IO: ${message.decryptedText}")
-                Log.d("MessagesViewModel", "Нове повідомлення додано")
             }
         } catch (e: Exception) {
             Log.e("MessagesViewModel", "Помилка обробки повідомлення", e)

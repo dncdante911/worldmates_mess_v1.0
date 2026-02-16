@@ -62,14 +62,69 @@ const { GetGroupDetailsController } = require('../controllers/GetGroupDetailsCon
 
 const redis = require("redis");
 let redisSubscribed = false;
-const sub = redis.createClient({ url: 'redis://127.0.0.1:6379' });
+let redisConnecting = false;
+let sub = null;
 
-sub.on('error', (err) => console.log('Redis Sub Error:', err));
+// Redis configuration - reads from config.json or uses defaults
+let redisConfig;
+try {
+    redisConfig = require('../config.json');
+} catch (e) {
+    redisConfig = {};
+}
+const REDIS_HOST = redisConfig.redis_host || '127.0.0.1';
+const REDIS_PORT = redisConfig.redis_port || 6379;
+const REDIS_PASSWORD = redisConfig.redis_password || '';
+
+function createRedisClient() {
+    const client = redis.createClient({
+        url: `redis://${REDIS_HOST}:${REDIS_PORT}`,
+        password: REDIS_PASSWORD,
+        socket: {
+            reconnectStrategy: (retries) => {
+                if (retries > 10) {
+                    console.log('[Redis] Max reconnection attempts reached');
+                    return new Error('Max reconnection attempts reached');
+                }
+                return Math.min(retries * 500, 5000);
+            }
+        }
+    });
+
+    client.on('error', (err) => {
+        // Don't spam logs for known connection issues
+        if (err.message && !err.message.includes('Socket already opened')) {
+            console.log('[Redis] Error:', err.message);
+        }
+    });
+
+    client.on('ready', () => {
+        console.log('[Redis] Connection ready');
+    });
+
+    return client;
+}
 
 async function initRedisSub(io) {
-    if (redisSubscribed) return;
+    // Prevent concurrent initialization and re-initialization
+    if (redisSubscribed || redisConnecting) return;
+    redisConnecting = true;
+
     try {
-        console.log("=== Попытка подключения к Redis 127.0.0.1:6379... ===");
+        console.log(`=== Попытка подключения к Redis ${REDIS_HOST}:${REDIS_PORT}... ===`);
+
+        // Create new client if needed
+        if (!sub) {
+            sub = createRedisClient();
+        }
+
+        // Check if already connected
+        if (sub.isOpen) {
+            console.log('[Redis] Already connected, skipping connect()');
+            redisConnecting = false;
+            return;
+        }
+
         await sub.connect();
         console.log("=== Node.js: ПОДКЛЮЧЕНО К REDIS успешно ===");
 
@@ -83,17 +138,15 @@ async function initRedisSub(io) {
 
                 console.log(`=== Redis: Получено сообщение для user_${targetUserId} ===`);
 
-                // 🔥 КРИТИЧНО: Емітимо в обидва формати для сумісності
+                // Emit to all formats for compatibility
 
-                // 1. Легке событие для мобільних додатків (new_message)
+                // 1. For mobile apps (new_message)
                 io.to(targetUserId).emit('new_message', msgData);
-                console.log(`>>> Emitted new_message to room: ${targetUserId}`);
 
-                // 2. Те ж саме но як private_message для сумісності
+                // 2. Same as private_message for compatibility
                 io.to(targetUserId).emit('private_message', msgData);
-                console.log(`>>> Emitted private_message to room: ${targetUserId}`);
 
-                // 3. Браузерна версія з HTML (private_message_page)
+                // 3. Browser version with HTML (private_message_page)
                 const simpleHtml = `<div class="messages-wrapper" data-message-id="${msgData.id}">
                                         <div class="message-text">${msgData.text || ""}</div>
                                     </div>`;
@@ -109,17 +162,20 @@ async function initRedisSub(io) {
                     messageData: msgData,
                     self: false
                 });
-                console.log(`>>> Emitted private_message_page to room: ${targetUserId}`);
 
-                console.log(`✅ Redis: Всі емити для user_${targetUserId} виконані успішно`);
+                console.log(`[Redis] Emitted message events to room: ${targetUserId}`);
 
             } catch (e) {
-                console.log("!!! Ошибка внутри подписки Redis:", e.message);
+                console.log("[Redis] Error in subscription handler:", e.message);
             }
         });
         redisSubscribed = true;
     } catch (e) {
-        console.log("!!! Ошибка инициализации Redis Sub:", e.message);
+        console.log("[Redis] Init error:", e.message);
+        // Reset state so next connection attempt can retry
+        redisSubscribed = false;
+    } finally {
+        redisConnecting = false;
     }
 }
 

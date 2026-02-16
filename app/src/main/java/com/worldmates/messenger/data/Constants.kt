@@ -14,6 +14,8 @@ object Constants {
     const val AUTH_ENDPOINT = "?type=auth"
     const val GET_CHATS_ENDPOINT = "?type=get_chats"
     const val GET_MESSAGES_ENDPOINT = "?type=get_user_messages"
+    // Fallback endpoint for WoWonder standard API (used if custom router is not active)
+    const val GET_MESSAGES_ENDPOINT_WOWONDER = "?type=get_messages"
     
     // ==================== SOCKET.IO EVENTS ====================
     const val SOCKET_EVENT_AUTH = "join"  // Изменено с register_socket на join

@@ -89,11 +89,13 @@ $routes = [
     'recent_search' => 'endpoints/recent_search.php',
     'search_for_posts' => 'endpoints/search_for_posts.php',
     'search_group_messages' => 'endpoints/search_group_messages.php',
+    'search_chat_messages' => 'endpoints/search_chat_messages.php',
 
     // Authentication
     'auth' => 'endpoints/auth.php',
     'get_chats' => 'endpoints/get_chats.php',
     'get_user_messages' => 'endpoints/get_messages.php',
+    'get_messages' => 'endpoints/get_messages.php',   // WoWonder standard alias
 
     // Verification
     'send_verification_code' => 'endpoints/send_verification_code.php',
@@ -101,7 +103,20 @@ $routes = [
 
     // Messaging
     'send_message' => 'endpoints/send-message.php',
+    'send-message' => 'endpoints/send-message.php',   // Hyphen alias
     'delete_message' => 'endpoints/delete_message.php',
+    'forward_message' => 'endpoints/forward_message.php',
+    'fav_message' => 'endpoints/fav_message.php',
+    'get_fav_messages' => 'endpoints/get_fav_messages.php',
+    'pin_message' => 'endpoints/pin_message.php',
+    'get_pin_message' => 'endpoints/get_pin_message.php',
+    'react_message' => 'endpoints/react_message.php',
+    'add_message_reaction' => 'endpoints/react_message.php',
+    'remove_message_reaction' => 'endpoints/react_message.php',
+    'get_message_reactions' => 'endpoints/get-reactions.php',
+    'get-reactions' => 'endpoints/get-reactions.php',
+    'set_typing' => 'endpoints/set-chat-typing-status.php',
+    'set-chat-typing-status' => 'endpoints/set-chat-typing-status.php',
     'read_chats' => 'endpoints/read_chats.php',
     'delete_chat' => 'endpoints/delete_chat.php',
     'delete_group_chat' => 'endpoints/delete_group_chat.php',
@@ -127,7 +142,10 @@ $routes = [
     'get-group-data' => 'endpoints/get-group-data.php',
 
     // Stories
+    'get_stories' => 'endpoints/get-stories.php',
+    'get-stories' => 'endpoints/get-stories.php',
     'delete_story' => 'endpoints/delete-story.php',
+    'delete-story' => 'endpoints/delete-story.php',
     'get_story_views' => 'endpoints/get_story_views.php',
     'mute_story' => 'endpoints/mute_story.php',
     'create_story_comment' => 'endpoints/create_story_comment.php',
@@ -194,3 +212,17 @@ if (!file_exists($endpoint_file)) {
 
 // Include and execute endpoint
 require_once($endpoint_file);
+
+// Output the response if the endpoint set $response_data but didn't echo it
+// Many WoWonder-style endpoints set $response_data without outputting it
+if (isset($response_data) && !headers_sent()) {
+    // Handle error codes set by endpoints
+    if (!empty($error_code)) {
+        $response_data = [
+            'api_status' => 400,
+            'error_code' => $error_code,
+            'error_message' => isset($error_message) ? $error_message : 'Unknown error'
+        ];
+    }
+    echo json_encode($response_data);
+}
